@@ -42,11 +42,11 @@ export function SummaryHeader({
   ).length;
 
   const stats = [
-    { label: "Product Categories", value: totalCategories, color: "text-primary" },
-    { label: "Total Features", value: totalFeatures, color: "text-foreground" },
-    { label: "In Development", value: inDevelopment, color: "text-accent" },
-    { label: "Ready for Release", value: readyForRelease, color: "text-success" },
-    { label: "Upcoming Releases", value: upcomingReleases, color: "text-muted-foreground" },
+    { label: "Product Categories", value: totalCategories },
+    { label: "Total Features", value: totalFeatures },
+    { label: "In Development", value: inDevelopment },
+    { label: "Ready for Release", value: readyForRelease },
+    { label: "Upcoming Releases", value: upcomingReleases },
   ];
 
   const hasActiveFilters = Object.values(filters).some(v => v !== '');
@@ -61,8 +61,8 @@ export function SummaryHeader({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {stats.map((stat) => (
           <Card key={stat.label} className="p-4 bg-card border border-border shadow-card">
-            <div className={`text-2xl font-bold ${stat.color} mb-0.5`}>{stat.value}</div>
-            <div className="text-xs text-muted-foreground">{stat.label}</div>
+            <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
+            <div className="text-sm font-medium text-foreground/80">{stat.label}</div>
           </Card>
         ))}
       </div>
