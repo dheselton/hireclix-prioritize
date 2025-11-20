@@ -1,7 +1,6 @@
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import type { Feature, ReleaseVersion, ProductCategory } from "@/types/roadmap";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -20,17 +19,17 @@ export function Timeline({
   onFeatureClick 
 }: TimelineProps) {
   const nonBacklogVersions = releaseVersions.filter(v => !v.is_backlog);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
+  const scroll = useCallback((direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
       const scrollAmount = 400;
-      scrollRef.current.scrollBy({
+      scrollContainerRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
       });
     }
-  };
+  }, []);
 
   return (
     <div className="space-y-2">
@@ -38,9 +37,9 @@ export function Timeline({
         Scroll horizontally to view future releases
       </p>
       <Card className="relative bg-card border border-border overflow-hidden">
-        <div className="flex">
+        <div className="flex relative">
           {/* Pinned Category Labels */}
-          <div className="flex-shrink-0 bg-card z-10 border-r border-border">
+          <div className="flex-shrink-0 bg-card z-20 border-r border-border">
             <div className="h-14 flex items-center px-6 border-b border-border bg-muted/30">
               <div className="font-semibold text-foreground text-sm">
                 Product Category
@@ -49,7 +48,7 @@ export function Timeline({
             {categories.map((category, idx) => (
               <div
                 key={category.id}
-                className={`h-14 flex items-center px-6 border-b border-border ${
+                className={`h-14 flex items-center px-6 border-b border-border last:border-b-0 ${
                   idx % 2 === 0 ? 'bg-muted/20' : 'bg-card'
                 }`}
               >
@@ -61,11 +60,12 @@ export function Timeline({
           </div>
 
           {/* Scrollable Timeline */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative overflow-hidden">
             {/* Scroll gradient indicators */}
             <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-card to-transparent pointer-events-none z-10" />
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none z-10" />
             
+            {/* Scroll Buttons - Positioned outside the scrollable area */}
             <Button
               variant="ghost"
               size="icon"
@@ -84,8 +84,13 @@ export function Timeline({
               <ChevronRight className="h-4 w-4" />
             </Button>
 
-            <ScrollArea className="w-full" ref={scrollRef}>
-              <div className="min-w-max">
+            {/* Scrollable container */}
+            <div 
+              ref={scrollContainerRef}
+              className="overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              <div className="inline-block min-w-full">
                 {/* Header Row */}
                 <div className="flex border-b border-border h-14 items-center bg-muted/30">
                   {nonBacklogVersions.map((version) => (
@@ -107,7 +112,7 @@ export function Timeline({
                   return (
                     <div 
                       key={category.id} 
-                      className={`flex border-b border-border h-14 items-center ${
+                      className={`flex border-b border-border last:border-b-0 h-14 items-center ${
                         idx % 2 === 0 ? 'bg-muted/20' : 'bg-card'
                       }`}
                     >
@@ -138,8 +143,7 @@ export function Timeline({
                   );
                 })}
               </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            </div>
           </div>
         </div>
       </Card>
