@@ -28,9 +28,9 @@ export default function RoadmapDashboard() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [filters, setFilters] = useState({
     dateRange: 'all',
-    category: '',
-    featureLevel: '',
-    status: '',
+    category: 'all',
+    featureLevel: 'all',
+    status: 'all',
   });
 
   const { data: features = [], refetch: refetchFeatures } = useQuery({
@@ -51,9 +51,9 @@ export default function RoadmapDashboard() {
   // Filter features based on selected filters
   const filteredFeatures = useMemo(() => {
     return features.filter(feature => {
-      if (filters.category && feature.product_category_id !== filters.category) return false;
-      if (filters.featureLevel && feature.feature_level !== filters.featureLevel) return false;
-      if (filters.status && feature.status !== filters.status) return false;
+      if (filters.category !== 'all' && feature.product_category_id !== filters.category) return false;
+      if (filters.featureLevel !== 'all' && feature.feature_level !== filters.featureLevel) return false;
+      if (filters.status !== 'all' && feature.status !== filters.status) return false;
       
       // Date range filter
       if (filters.dateRange !== 'all' && feature.due_date) {
@@ -232,7 +232,7 @@ export default function RoadmapDashboard() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
@@ -247,7 +247,7 @@ export default function RoadmapDashboard() {
                     <SelectValue placeholder="All Levels" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Levels</SelectItem>
+                    <SelectItem value="all">All Levels</SelectItem>
                     <SelectItem value="Core">Core</SelectItem>
                     <SelectItem value="Integrations">Integrations</SelectItem>
                     <SelectItem value="Add-On">Add-On</SelectItem>
@@ -262,7 +262,7 @@ export default function RoadmapDashboard() {
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                     <SelectItem value="Design">Design</SelectItem>
                     <SelectItem value="In Development">In Development</SelectItem>
