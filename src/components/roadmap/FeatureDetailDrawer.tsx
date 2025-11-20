@@ -51,8 +51,11 @@ export function FeatureDetailDrawer({
 
   const handleSave = async () => {
     try {
-      console.log('Updating feature:', feature.id, 'with data:', formData);
-      const result = await updateFeature(feature.id, formData);
+      // Exclude nested objects - only send scalar fields that exist as columns
+      const { product_category, release_version, ...updateData } = formData;
+      
+      console.log('Updating feature:', feature.id, 'with data:', updateData);
+      const result = await updateFeature(feature.id, updateData);
       console.log('Update successful:', result);
       toast({
         title: "Success",
