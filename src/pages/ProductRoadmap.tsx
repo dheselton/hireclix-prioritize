@@ -1,14 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { SummaryHeader } from "@/components/roadmap/SummaryHeader";
 import { KanbanBoard } from "@/components/roadmap/KanbanBoard";
 import { Timeline } from "@/components/roadmap/Timeline";
 import { FeatureDetailDrawer } from "@/components/roadmap/FeatureDetailDrawer";
 import { NewFeatureDrawer } from "@/components/roadmap/NewFeatureDrawer";
+import { IdeaIntakeForm } from "@/components/roadmap/IdeaIntakeForm";
+import { BacklogList } from "@/components/roadmap/BacklogList";
 import { fetchFeatures, fetchProductCategories, fetchReleaseVersions } from "@/lib/roadmapService";
 import type { Feature } from "@/types/roadmap";
 
 export default function ProductRoadmap() {
+  const [activeTab, setActiveTab] = useState("roadmap");
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [newFeatureDrawerOpen, setNewFeatureDrawerOpen] = useState(false);
@@ -35,8 +41,17 @@ export default function ProductRoadmap() {
     queryFn: fetchReleaseVersions,
   });
 
+  // Separate backlog features from scheduled features
+  const backlogVersion = releaseVersions.find(v => v.is_backlog);
+  const backlogFeatures = features.filter(f => 
+    f.release_version_id === backlogVersion?.id || !f.release_version_id
+  );
+  const scheduledFeatures = features.filter(f => 
+    f.release_version_id && f.release_version_id !== backlogVersion?.id
+  );
+
   const filteredFeatures = useMemo(() => {
-    return features.filter(feature => {
+    return scheduledFeatures.filter(feature => {
       if (filters.category && feature.product_category_id !== filters.category) return false;
       if (filters.featureLevel && feature.feature_level !== filters.featureLevel) return false;
       if (filters.featureType && feature.feature_type !== filters.featureType) return false;
@@ -49,7 +64,7 @@ export default function ProductRoadmap() {
       }
       return true;
     });
-  }, [features, filters]);
+  }, [scheduledFeatures, filters]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -70,7 +85,7 @@ export default function ProductRoadmap() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1440px] px-6 py-6 space-y-8">
+      <div className="mx-auto max-w-[1440px] px-6 py-6 space-y-6">
         <div>
           <h1 className="text-3xl font-unbounded font-bold text-foreground mb-2">
             Product Roadmap
@@ -80,33 +95,78 @@ export default function ProductRoadmap() {
           </p>
         </div>
 
-        <SummaryHeader
-          features={filteredFeatures}
-          categories={categories}
-          onAddFeature={handleAddFeature}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
+            <TabsTrigger value="ideas">
+              Ideas & Backlog
+              {backlogFeatures.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {backlogFeatures.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        <div>
-          <h2 className="text-xl font-bold mb-4 text-foreground">Release Versions</h2>
-          <KanbanBoard
-            features={filteredFeatures}
-            releaseVersions={releaseVersions}
-            onFeatureClick={handleFeatureClick}
-            onFeaturesChange={handleUpdate}
-          />
-        </div>
+          <TabsContent value="roadmap" className="space-y-6 mt-6">
+            <SummaryHeader
+              features={filteredFeatures}
+              categories={categories}
+              onAddFeature={handleAddFeature}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+            />
 
-        <div>
-          <h2 className="text-xl font-bold mb-4 text-foreground">Quarterly Timeline</h2>
-          <Timeline
-            features={filteredFeatures}
-            releaseVersions={releaseVersions}
-            categories={categories}
-            onFeatureClick={handleFeatureClick}
-          />
-        </div>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-foreground">Release Versions</h2>
+                {backlogFeatures.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveTab("ideas")}
+                  >
+                    Backlog · {backlogFeatures.length} items
+                  </Button>
+                )}
+              </div>
+              <KanbanBoard
+                features={filteredFeatures}
+                releaseVersions={releaseVersions}
+                onFeatureClick={handleFeatureClick}
+                onFeaturesChange={handleUpdate}
+                onViewBacklog={() => setActiveTab("ideas")}
+              />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold mb-4 text-foreground">Quarterly Timeline</h2>
+              <Timeline
+                features={filteredFeatures}
+                releaseVersions={releaseVersions}
+                categories={categories}
+                onFeatureClick={handleFeatureClick}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ideas" className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <IdeaIntakeForm
+                categories={categories}
+                backlogVersionId={backlogVersion?.id || null}
+                onSuccess={handleUpdate}
+              />
+              <BacklogList
+                features={backlogFeatures}
+                categories={categories}
+                releaseVersions={releaseVersions}
+                onFeatureClick={handleFeatureClick}
+                onUpdate={handleUpdate}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <FeatureDetailDrawer
           feature={selectedFeature}

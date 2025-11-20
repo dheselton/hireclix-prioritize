@@ -13,13 +13,15 @@ interface KanbanBoardProps {
   releaseVersions: ReleaseVersion[];
   onFeatureClick: (feature: Feature) => void;
   onFeaturesChange: () => void;
+  onViewBacklog?: () => void;
 }
 
 export function KanbanBoard({ 
   features, 
   releaseVersions, 
   onFeatureClick,
-  onFeaturesChange 
+  onFeaturesChange,
+  onViewBacklog 
 }: KanbanBoardProps) {
   const { toast } = useToast();
   const [draggedFeature, setDraggedFeature] = useState<Feature | null>(null);
@@ -65,6 +67,13 @@ export function KanbanBoard({
     setDraggedFeature(null);
   };
 
+  // Filter out backlog versions
+  const nonBacklogVersions = releaseVersions.filter(v => !v.is_backlog);
+  const backlogVersion = releaseVersions.find(v => v.is_backlog);
+  const backlogCount = backlogVersion 
+    ? features.filter(f => f.release_version_id === backlogVersion.id).length 
+    : 0;
+
   return (
     <Card className="relative bg-card border border-border">
       <Button
@@ -87,7 +96,7 @@ export function KanbanBoard({
 
       <ScrollArea className="w-full" ref={scrollRef}>
         <div className="flex gap-4 p-6 min-h-[600px]">
-          {releaseVersions.map((version) => {
+          {nonBacklogVersions.map((version) => {
             const versionFeatures = features.filter(
               f => f.release_version_id === version.id
             );
