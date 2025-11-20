@@ -8,7 +8,6 @@ import { KanbanBoard } from "@/components/roadmap/KanbanBoard";
 import { Timeline } from "@/components/roadmap/Timeline";
 import { FeatureDetailDrawer } from "@/components/roadmap/FeatureDetailDrawer";
 import { NewFeatureDrawer } from "@/components/roadmap/NewFeatureDrawer";
-import { IdeaIntakeForm } from "@/components/roadmap/IdeaIntakeForm";
 import { BacklogList } from "@/components/roadmap/BacklogList";
 import { fetchFeatures, fetchProductCategories, fetchReleaseVersions } from "@/lib/roadmapService";
 import type { Feature } from "@/types/roadmap";
@@ -151,20 +150,14 @@ export default function ProductRoadmap() {
           </TabsContent>
 
           <TabsContent value="ideas" className="space-y-6 mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <IdeaIntakeForm
-                categories={categories}
-                backlogVersionId={backlogVersion?.id || null}
-                onSuccess={handleUpdate}
-              />
-              <BacklogList
-                features={backlogFeatures}
-                categories={categories}
-                releaseVersions={releaseVersions}
-                onFeatureClick={handleFeatureClick}
-                onUpdate={handleUpdate}
-              />
-            </div>
+            <BacklogList
+              features={backlogFeatures}
+              categories={categories}
+              releaseVersions={releaseVersions}
+              backlogVersionId={backlogVersion?.id || null}
+              onFeatureClick={handleFeatureClick}
+              onUpdate={handleUpdate}
+            />
           </TabsContent>
         </Tabs>
 
