@@ -1,15 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  FolderOpen,
-  Video,
-  Plug,
-  Palette,
-  HelpCircle,
-  Settings,
-  Activity,
+  Map,
 } from "lucide-react";
 import {
   Sidebar,
@@ -20,16 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Customers", url: "/customers", icon: Users },
-  { title: "Internal Docs", url: "/internal-docs", icon: FileText },
-  { title: "Client-Facing Docs", url: "/client-docs", icon: FolderOpen },
-  { title: "Loom Library", url: "/loom-library", icon: Video },
-  { title: "Integrations", url: "/integrations", icon: Plug },
-  { title: "Job API Monitor", url: "/job-api-monitor", icon: Activity },
-  { title: "Design System", url: "/design-system", icon: Palette },
-  { title: "FAQ", url: "/faq", icon: HelpCircle },
-  { title: "Admin", url: "/admin", icon: Settings },
+  { title: "Product Roadmap", url: "/", icon: Map },
 ];
 
 export function AppSidebar() {

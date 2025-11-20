@@ -140,6 +140,90 @@ export type Database = {
         }
         Relationships: []
       }
+      features: {
+        Row: {
+          assignees: string[] | null
+          created_at: string
+          design_specs: string | null
+          documentation: string | null
+          due_date: string | null
+          feature_level: string
+          feature_type: string
+          id: string
+          product_category_id: string | null
+          qa_plan: string | null
+          release_version_id: string | null
+          rollout_instructions: string | null
+          sort_order: number | null
+          start_date: string | null
+          status: string
+          subtask_count: number | null
+          summary: string | null
+          technical_notes: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignees?: string[] | null
+          created_at?: string
+          design_specs?: string | null
+          documentation?: string | null
+          due_date?: string | null
+          feature_level: string
+          feature_type: string
+          id?: string
+          product_category_id?: string | null
+          qa_plan?: string | null
+          release_version_id?: string | null
+          rollout_instructions?: string | null
+          sort_order?: number | null
+          start_date?: string | null
+          status?: string
+          subtask_count?: number | null
+          summary?: string | null
+          technical_notes?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignees?: string[] | null
+          created_at?: string
+          design_specs?: string | null
+          documentation?: string | null
+          due_date?: string | null
+          feature_level?: string
+          feature_type?: string
+          id?: string
+          product_category_id?: string | null
+          qa_plan?: string | null
+          release_version_id?: string | null
+          rollout_instructions?: string | null
+          sort_order?: number | null
+          start_date?: string | null
+          status?: string
+          subtask_count?: number | null
+          summary?: string | null
+          technical_notes?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "features_product_category_id_fkey"
+            columns: ["product_category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "features_release_version_id_fkey"
+            columns: ["release_version_id"]
+            isOneToOne: false
+            referencedRelation: "release_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           capabilities: string[] | null
@@ -287,6 +371,60 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           view_count?: number | null
+        }
+        Relationships: []
+      }
+      product_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      release_versions: {
+        Row: {
+          created_at: string
+          id: string
+          is_backlog: boolean | null
+          name: string
+          quarter: number | null
+          sort_order: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_backlog?: boolean | null
+          name: string
+          quarter?: number | null
+          sort_order: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_backlog?: boolean | null
+          name?: string
+          quarter?: number | null
+          sort_order?: number
+          year?: number
         }
         Relationships: []
       }
