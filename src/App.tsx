@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 import ProductRoadmap from "./pages/ProductRoadmap";
+import RoadmapDashboard from "./pages/RoadmapDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ function App() {
                 <main className="flex-1 overflow-auto">
                   <Routes>
                     <Route path="/" element={<ProductRoadmap />} />
+                    <Route path="/dashboard" element={<RoadmapDashboard />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>

@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Map,
+  BarChart3,
 } from "lucide-react";
 import {
   Sidebar,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
+  { title: "Roadmap Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Product Roadmap", url: "/", icon: Map },
 ];
 

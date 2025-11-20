@@ -85,13 +85,18 @@ export default function ProductRoadmap() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1440px] px-6 py-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-unbounded font-bold text-foreground mb-2">
-            Product Roadmap
-          </h1>
-          <p className="text-muted-foreground">
-            Plan, track, and manage product features across releases
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-unbounded font-bold text-foreground mb-2">
+              Product Roadmap
+            </h1>
+            <p className="text-muted-foreground">
+              Plan, track, and manage product features across releases
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
+            View Dashboard
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
