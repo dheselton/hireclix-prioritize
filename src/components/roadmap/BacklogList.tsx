@@ -137,36 +137,70 @@ export function BacklogList({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
+              {filterCategory && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setFilterCategory('')}
+                >
+                  Category: {categories.find(c => c.id === filterCategory)?.name}
+                </Button>
+              )}
+              {filterLevel && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setFilterLevel('')}
+                >
+                  Level: {filterLevel}
+                </Button>
+              )}
+              {filterType && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setFilterType('')}
+                >
+                  Type: {filterType}
+                </Button>
+              )}
+              {filterStatus && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setFilterStatus('')}
+                >
+                  Status: {filterStatus}
+                </Button>
+              )}
+              
+              <Select value={filterCategory || undefined} onValueChange={setFilterCategory}>
                 <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Category" />
+                  <SelectValue placeholder="Filter Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
                   {categories.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Select value={filterLevel} onValueChange={setFilterLevel}>
+              <Select value={filterLevel || undefined} onValueChange={setFilterLevel}>
                 <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Level" />
+                  <SelectValue placeholder="Filter Level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Levels</SelectItem>
                   <SelectItem value="Core">Core</SelectItem>
                   <SelectItem value="Integrations">Integrations</SelectItem>
                   <SelectItem value="Add-On">Add-On</SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Type" />
+              <Select value={filterType || undefined} onValueChange={setFilterType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
                   <SelectItem value="Front End UI">Front End UI</SelectItem>
                   <SelectItem value="Back End CMS/Data">Back End CMS/Data</SelectItem>
                   <SelectItem value="SEO">SEO</SelectItem>
@@ -175,12 +209,11 @@ export function BacklogList({
                 </SelectContent>
               </Select>
 
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
+              <Select value={filterStatus || undefined} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
                   <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                   <SelectItem value="Design">Design</SelectItem>
                   <SelectItem value="In Development">In Development</SelectItem>
