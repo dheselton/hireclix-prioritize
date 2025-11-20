@@ -82,36 +82,33 @@ export function SummaryHeader({
             </div>
           </div>
 
-          <Select value={filters.category} onValueChange={(v) => onFilterChange('category', v)}>
+          <Select value={filters.category || undefined} onValueChange={(v) => onFilterChange('category', v)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Product Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
               {categories.map(cat => (
                 <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filters.featureLevel} onValueChange={(v) => onFilterChange('featureLevel', v)}>
+          <Select value={filters.featureLevel || undefined} onValueChange={(v) => onFilterChange('featureLevel', v)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Feature Level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Levels</SelectItem>
               <SelectItem value="Core">Core</SelectItem>
               <SelectItem value="Integrations">Integrations</SelectItem>
               <SelectItem value="Add-On">Add-On</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select value={filters.featureType} onValueChange={(v) => onFilterChange('featureType', v)}>
+          <Select value={filters.featureType || undefined} onValueChange={(v) => onFilterChange('featureType', v)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Feature Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
               <SelectItem value="Front End UI">Front End UI</SelectItem>
               <SelectItem value="Back End CMS/Data">Back End CMS/Data</SelectItem>
               <SelectItem value="SEO">SEO</SelectItem>
@@ -120,12 +117,11 @@ export function SummaryHeader({
             </SelectContent>
           </Select>
 
-          <Select value={filters.status} onValueChange={(v) => onFilterChange('status', v)}>
+          <Select value={filters.status || undefined} onValueChange={(v) => onFilterChange('status', v)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
               <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
               <SelectItem value="Design">Design</SelectItem>
               <SelectItem value="In Development">In Development</SelectItem>
