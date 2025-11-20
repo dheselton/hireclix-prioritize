@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Backgrounds */
+    --background: 0 0% 100%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+
+    /* Text */
+    --foreground: 0 0% 13%;
+    --card-foreground: 0 0% 13%;
+    --muted-foreground: 210 9% 46%;
+
+    /* Primary */
+    --primary: 209 75% 19%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 209 75% 15%;
+
+    /* Accent */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 0 0% 13%;
+    --accent-hover: 210 40% 92%;
+
+    /* Success */
+    --success: 39 96% 54%;
+    --success-foreground: 0 0% 13%;
+
+    /* Borders */
+    --border: 210 9% 79%;
+    --input: 210 9% 79%;
+    --ring: 209 61% 58%;
+
+    /* Secondary (for compatibility) */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 0 0% 13%;
+
+    /* Muted */
+    --muted: 210 40% 96.1%;
+
+    /* Destructive */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 13%;
+    --sidebar-primary: 209 75% 19%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 0 0% 13%;
+    --sidebar-border: 210 9% 79%;
+    --sidebar-ring: 209 61% 58%;
+
+    /* Hover/State Tokens */
+    --surface: 0 0% 100%;
+    --surface-muted: 210 22% 96%;
+    --hover-surface: 210 22% 96%;
+    --hover-accent-surface: 209 61% 94%;
+    --hover-primary-surface: 209 75% 18%;
+    --hover-danger-surface: 0 72% 96%;
+    --hover-foreground: 0 0% 13%;
+    --hover-on-primary: 0 0% 100%;
+    --hover-on-accent: 0 0% 13%;
+    --hover-border: 210 9% 79%;
+    --hover-ring: 209 61% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-roboto;
+  }
+
+  h1, h2, h3 {
+    @apply font-unbounded font-bold;
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism utilities */
+  .glass-card {
+    @apply rounded-2xl border border-white/20 backdrop-blur-sm shadow-glass hover:shadow-lg hover:scale-[1.02] transition-all duration-300;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 246, 248, 0.8) 100%);
+  }
+
+  /* Shadow utilities */
+  .shadow-card {
+    box-shadow: 0px 4px 16px rgba(11, 53, 85, 0.08), 0px 1px 4px rgba(11, 53, 85, 0.04);
+  }
+
+  .shadow-modal {
+    box-shadow: 0px 8px 32px rgba(11, 53, 85, 0.15), 0px 2px 8px rgba(11, 53, 85, 0.08);
+  }
+
+  .shadow-glass {
+    box-shadow: 0px 8px 32px rgba(84, 163, 218, 0.12), 0px 2px 8px rgba(84, 163, 218, 0.08);
+  }
+
+  /* Gradient utilities */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, hsl(209 75% 19%), hsl(209 61% 58%));
+  }
+
+  .bg-gradient-accent {
+    background: linear-gradient(135deg, hsl(39 96% 54%), hsl(209 61% 58%));
+  }
+
+  .bg-gradient-card {
+    background: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 22% 99%) 50%, hsl(0 0% 100%) 100%);
+  }
+
+  .bg-gradient-hero {
+    background: linear-gradient(135deg, hsl(210 22% 98%) 0%, hsl(209 61% 95%) 50%, hsl(210 22% 98%) 100%);
+  }
+
+  .bg-gradient-glass {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 246, 248, 0.8) 100%);
+  }
+}
+
+@layer components {
+  /* Standardized component classes */
+  
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+  
+  .btn-primary {
+    color: hsl(var(--primary-foreground));
+    background-color: hsl(var(--primary));
+  }
+  
+  .btn-primary:hover {
+    background-color: hsl(var(--primary-hover));
+  }
+  
+  .btn-accent {
+    color: hsl(var(--accent-foreground));
+    background-color: hsl(var(--success));
+  }
+  
+  .btn-accent:hover {
+    background-color: hsl(var(--success) / 0.9);
+  }
+  
+  .btn-secondary {
+    @apply border;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
+  }
+  
+  .btn-secondary:hover {
+    background-color: hsl(var(--hover-accent-surface));
+  }
+  
+  .btn-ghost {
+    color: hsl(var(--foreground));
+    background: transparent;
+  }
+  
+  .btn-ghost:hover {
+    background-color: hsl(var(--hover-accent-surface));
+  }
+  
+  /* Navigation items */
+  .nav-item {
+    @apply flex h-11 items-center gap-3 px-3 rounded-xl text-sm font-medium transition-colors;
+    color: hsl(var(--muted-foreground));
+    background-color: transparent;
+  }
+  
+  .nav-item:hover {
+    background-color: hsl(var(--accent) / 0.1);
+    color: hsl(var(--foreground));
+  }
+  
+  .nav-item[aria-current="page"],
+  .nav-item[data-active="true"] {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  
+  /* Table/list rows */
+  .row {
+    @apply transition-colors;
+  }
+  
+  .row:hover {
+    background-color: hsl(var(--hover-surface));
+  }
+  
+  /* Badges/Chips */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs border;
+  }
+  
+  .badge-muted {
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+    background: hsl(0 0% 100% / 0.6);
+  }
+  
+  .badge-success {
+    background: hsl(var(--success) / 0.2);
+    color: hsl(var(--success));
+    border-color: transparent;
+  }
+  
+  .badge-primary {
+    background: hsl(var(--primary) / 0.08);
+    color: hsl(var(--primary));
+    border-color: transparent;
+  }
+  
+  .badge-accent {
+    background: hsl(var(--success) / 0.15);
+    color: hsl(var(--success));
+    border-color: transparent;
+  }
+  
+  /* Accordion/FAQ */
+  .accordion-trigger {
+    @apply flex w-full items-center justify-between rounded-md px-4 py-3 text-left transition-colors;
+    color: hsl(var(--foreground));
+    background: transparent;
+  }
+  
+  .accordion-trigger:hover {
+    background: hsl(var(--hover-accent-surface));
+  }
+  
+  .accordion-trigger:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--hover-ring)), 0 0 0 4px white;
+  }
+  
+  .accordion-item[data-state="open"] .accordion-trigger {
+    background: color-mix(in oklab, hsl(var(--success)) 10%, white);
+  }
+  
+  /* Focus ring standard */
+  .focusable:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--hover-ring)), 0 0 0 4px white;
+  }
+}
