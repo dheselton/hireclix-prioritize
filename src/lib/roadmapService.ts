@@ -96,6 +96,8 @@ export const createFeature = async (feature: Omit<Feature, "id" | "created_at" |
 };
 
 export const updateFeature = async (id: string, updates: Partial<Feature>): Promise<Feature> => {
+  console.log('roadmapService.updateFeature called with:', { id, updates });
+  
   const { data, error } = await supabase
     .from('features')
     .update(updates)
@@ -107,8 +109,18 @@ export const updateFeature = async (id: string, updates: Partial<Feature>): Prom
     `)
     .single();
   
-  if (error) throw error;
-  if (!data) throw new Error("Feature not found");
+  if (error) {
+    console.error('Supabase update error:', error);
+    throw error;
+  }
+  if (!data) {
+    const notFoundError = new Error("Feature not found");
+    console.error('Feature not found after update');
+    throw notFoundError;
+  }
+  
+  console.log('Feature updated successfully:', data);
+  
   return {
     ...data,
     feature_level: data.feature_level as any,

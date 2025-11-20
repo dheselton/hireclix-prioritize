@@ -51,17 +51,21 @@ export function FeatureDetailDrawer({
 
   const handleSave = async () => {
     try {
-      await updateFeature(feature.id, formData);
+      console.log('Updating feature:', feature.id, 'with data:', formData);
+      const result = await updateFeature(feature.id, formData);
+      console.log('Update successful:', result);
       toast({
         title: "Success",
         description: "Feature updated successfully.",
       });
       onUpdate();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Feature update error:', error);
+      const errorMessage = error?.message || error?.toString() || "Failed to update feature.";
       toast({
         title: "Error",
-        description: "Failed to update feature.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
