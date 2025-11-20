@@ -69,57 +69,62 @@ export default function ProductRoadmap() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-unbounded font-bold text-foreground mb-2">
-          Product Roadmap
-        </h1>
-        <p className="text-muted-foreground">
-          Plan, track, and manage product features across releases
-        </p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-[1440px] px-6 py-6 space-y-8">
+        <div>
+          <h1 className="text-3xl font-unbounded font-bold text-foreground mb-2">
+            Product Roadmap
+          </h1>
+          <p className="text-muted-foreground">
+            Plan, track, and manage product features across releases
+          </p>
+        </div>
 
-      <SummaryHeader
-        features={filteredFeatures}
-        categories={categories}
-        onAddFeature={handleAddFeature}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-      />
-
-      <div>
-        <h2 className="text-xl font-bold mb-4 text-foreground">Release Versions</h2>
-        <KanbanBoard
+        <SummaryHeader
           features={filteredFeatures}
+          categories={categories}
+          onAddFeature={handleAddFeature}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+        />
+
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-foreground">Release Versions</h2>
+          <KanbanBoard
+            features={filteredFeatures}
+            releaseVersions={releaseVersions}
+            onFeatureClick={handleFeatureClick}
+            onFeaturesChange={handleUpdate}
+          />
+        </div>
+
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-foreground">Quarterly Timeline</h2>
+          <Timeline
+            features={filteredFeatures}
+            releaseVersions={releaseVersions}
+            categories={categories}
+            onFeatureClick={handleFeatureClick}
+          />
+        </div>
+
+        <FeatureDetailDrawer
+          feature={selectedFeature}
+          open={detailDrawerOpen}
+          onOpenChange={setDetailDrawerOpen}
+          categories={categories}
           releaseVersions={releaseVersions}
-          onFeatureClick={handleFeatureClick}
-          onFeaturesChange={handleUpdate}
+          onUpdate={handleUpdate}
+        />
+
+        <NewFeatureDrawer
+          open={newFeatureDrawerOpen}
+          onOpenChange={setNewFeatureDrawerOpen}
+          categories={categories}
+          releaseVersions={releaseVersions}
+          onCreate={handleUpdate}
         />
       </div>
-
-      <Timeline
-        features={filteredFeatures}
-        releaseVersions={releaseVersions}
-        categories={categories}
-        onFeatureClick={handleFeatureClick}
-      />
-
-      <FeatureDetailDrawer
-        feature={selectedFeature}
-        open={detailDrawerOpen}
-        onOpenChange={setDetailDrawerOpen}
-        categories={categories}
-        releaseVersions={releaseVersions}
-        onUpdate={handleUpdate}
-      />
-
-      <NewFeatureDrawer
-        open={newFeatureDrawerOpen}
-        onOpenChange={setNewFeatureDrawerOpen}
-        categories={categories}
-        releaseVersions={releaseVersions}
-        onCreate={handleUpdate}
-      />
     </div>
   );
 }
