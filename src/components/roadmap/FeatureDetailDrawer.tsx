@@ -120,6 +120,7 @@ const defaultRolloutData: RolloutData = {
 };
 
 const defaultOverviewData: OverviewData = {
+  description: '',
   priority: 'P2 – Medium',
   effortSize: 'M',
   estimatedDevDays: null,
@@ -204,7 +205,7 @@ export function FeatureDetailDrawer({
           assignees: newAssignees,
           due_date: formData.due_date,
           status: formData.status || feature.status,
-          summary: requirementsData.userProblem || '',
+          summary: overviewData.description || '',
         });
         toast({
           title: "Assignees notified",
@@ -222,7 +223,7 @@ export function FeatureDetailDrawer({
           stakeholders: newStakeholders,
           due_date: formData.due_date,
           status: formData.status || feature.status,
-          summary: requirementsData.userProblem || '',
+          summary: overviewData.description || '',
         });
         toast({
           title: "Stakeholders notified",

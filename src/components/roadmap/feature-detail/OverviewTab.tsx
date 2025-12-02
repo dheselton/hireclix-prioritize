@@ -67,8 +67,8 @@ export function OverviewTab({
       <div>
         <Label>Summary <span className="text-destructive">*</span></Label>
         <Textarea
-          value={formData.summary || ''}
-          onChange={(e) => onFormChange({ ...formData, summary: e.target.value })}
+          value={overviewData.description || ''}
+          onChange={(e) => onOverviewChange({ ...overviewData, description: e.target.value })}
           rows={3}
           placeholder="Business context, goals, and what problems this feature solves"
         />
