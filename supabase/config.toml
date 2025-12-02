@@ -1,1 +1,13 @@
 project_id = "aqdpshgmpgccujwwkdxd"
+
+[functions.test-ingest]
+verify_jwt = false
+
+[functions.sync-job-api-data]
+verify_jwt = false
+
+[functions.ingest-job-api-data]
+verify_jwt = false
+
+[functions.send-reminder-email]
+verify_jwt = false
