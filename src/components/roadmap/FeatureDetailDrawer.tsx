@@ -22,6 +22,7 @@ import type { Feature, ProductCategory, ReleaseVersion } from "@/types/roadmap";
 import { updateFeature } from "@/lib/roadmapService";
 import { useToast } from "@/hooks/use-toast";
 import { sendDueDateReminder, sendAssignmentNotification } from "@/lib/emailService";
+import { AssigneePicker } from "./AssigneePicker";
 
 interface FeatureDetailDrawerProps {
   feature: Feature | null;
@@ -310,15 +311,11 @@ export function FeatureDetailDrawer({
             </div>
 
             <div>
-              <Label>Assignees (comma-separated)</Label>
-              <Input
-                value={formData.assignees?.join(', ') || ''}
-                onChange={(e) => handleAssigneesChange(e.target.value)}
-                placeholder="Dan Heselton, Riley Mulligan, Lisa Thompson"
+              <Label>Assignees</Label>
+              <AssigneePicker
+                value={formData.assignees || []}
+                onChange={(assignees) => setFormData({ ...formData, assignees })}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Enter names matching team members in the system
-              </p>
             </div>
 
             <div className="flex gap-2 pt-2">

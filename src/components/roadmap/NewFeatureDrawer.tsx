@@ -19,6 +19,7 @@ import {
 import type { ProductCategory, ReleaseVersion, FeatureLevel, FeatureType, FeatureStatus } from "@/types/roadmap";
 import { createFeature } from "@/lib/roadmapService";
 import { useToast } from "@/hooks/use-toast";
+import { AssigneePicker } from "./AssigneePicker";
 
 interface NewFeatureDrawerProps {
   open: boolean;
@@ -47,6 +48,7 @@ export function NewFeatureDrawer({
     start_date: '',
     due_date: '',
     documentation: '',
+    assignees: [] as string[],
   });
 
   const handleCreate = async () => {
@@ -62,7 +64,6 @@ export function NewFeatureDrawer({
     try {
       await createFeature({
         ...formData,
-        assignees: [],
         subtask_count: 0,
         sort_order: 0,
       });
@@ -84,6 +85,7 @@ export function NewFeatureDrawer({
         start_date: '',
         due_date: '',
         documentation: '',
+        assignees: [],
       });
     } catch (error) {
       toast({
@@ -233,6 +235,14 @@ export function NewFeatureDrawer({
                 onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
               />
             </div>
+          </div>
+
+          <div>
+            <Label>Assignees</Label>
+            <AssigneePicker
+              value={formData.assignees}
+              onChange={(assignees) => setFormData({ ...formData, assignees })}
+            />
           </div>
 
           <div>

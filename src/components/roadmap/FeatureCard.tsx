@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, CheckSquare } from "lucide-react";
 import type { Feature } from "@/types/roadmap";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface FeatureCardProps {
   feature: Feature;
@@ -17,6 +18,30 @@ const statusColors: Record<string, string> = {
   "QA": "badge-primary",
   "Approved": "badge-success",
   "Released": "badge-success"
+};
+
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const getAvatarColor = (name: string) => {
+  const colors = [
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-purple-500',
+    'bg-orange-500',
+    'bg-pink-500',
+    'bg-teal-500',
+    'bg-indigo-500',
+    'bg-rose-500',
+  ];
+  const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[index % colors.length];
 };
 
 export function FeatureCard({ feature, onClick }: FeatureCardProps) {
@@ -43,14 +68,14 @@ export function FeatureCard({ feature, onClick }: FeatureCardProps) {
         {feature.assignees.length > 0 && (
           <div className="flex -space-x-2 mt-2">
             {feature.assignees.slice(0, 3).map((assignee, idx) => (
-              <Avatar key={idx} className="w-6 h-6 border-2 border-background">
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                  {assignee.split(' ').map(n => n[0]).join('')}
+              <Avatar key={idx} className={cn("w-6 h-6 border-2 border-background", getAvatarColor(assignee))}>
+                <AvatarFallback className="text-[10px] text-white bg-transparent">
+                  {getInitials(assignee)}
                 </AvatarFallback>
               </Avatar>
             ))}
             {feature.assignees.length > 3 && (
-              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] border-2 border-background text-muted-foreground font-medium">
                 +{feature.assignees.length - 3}
               </div>
             )}
