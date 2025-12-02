@@ -6,23 +6,26 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Mail, Send } from "lucide-react";
 import type { Feature, ProductCategory, ReleaseVersion } from "@/types/roadmap";
+import type { 
+  RequirementsData, 
+  DesignData, 
+  TechnicalData, 
+  QAData, 
+  RolloutData,
+  OverviewData 
+} from "@/types/featureDetail";
 import { updateFeature } from "@/lib/roadmapService";
 import { useToast } from "@/hooks/use-toast";
 import { sendDueDateReminder, sendAssignmentNotification } from "@/lib/emailService";
-import { AssigneePicker } from "./AssigneePicker";
+import { OverviewTab } from "./feature-detail/OverviewTab";
+import { RequirementsTab } from "./feature-detail/RequirementsTab";
+import { DesignTab } from "./feature-detail/DesignTab";
+import { TechnicalTab } from "./feature-detail/TechnicalTab";
+import { QATab } from "./feature-detail/QATab";
+import { RolloutTab } from "./feature-detail/RolloutTab";
 
 interface FeatureDetailDrawerProps {
   feature: Feature | null;
@@ -31,6 +34,107 @@ interface FeatureDetailDrawerProps {
   categories: ProductCategory[];
   releaseVersions: ReleaseVersion[];
   onUpdate: () => void;
+}
+
+const defaultRequirementsData: RequirementsData = {
+  userPersonas: [],
+  userProblem: '',
+  userStories: [],
+  functionalRequirements: [],
+  acceptanceCriteria: [],
+  nonFunctionalRequirements: [],
+  dependencies: [],
+  outOfScope: '',
+  successMetrics: [],
+};
+
+const defaultDesignData: DesignData = {
+  designStatus: 'Not Started',
+  figmaUrl: '',
+  prototypeUrl: '',
+  designSystemComponents: [],
+  screenStates: [],
+  interactionNotes: '',
+  responsiveBehavior: { mobile: '', tablet: '', desktop: '' },
+  accessibilityRequirements: [],
+  uiCopy: '',
+  toneNotes: '',
+  seoKeywords: [],
+  metaTitleGuidance: '',
+  metaDescriptionGuidance: '',
+};
+
+const defaultTechnicalData: TechnicalData = {
+  technicalOwner: '',
+  implementationType: [],
+  systemsTouched: [],
+  dataModelChanges: [],
+  apiIntegrations: [],
+  featureFlagName: '',
+  configOptions: '',
+  defaultState: 'Off',
+  performanceNotes: '',
+  securityNotes: '',
+  technicalRisks: [],
+  implementationTasks: [],
+};
+
+const defaultQAData: QAData = {
+  qaOwner: '',
+  testingScopeSummary: '',
+  testScenarios: [],
+  devicesBrowsers: {
+    desktop: { chrome: false, safari: false, firefox: false, edge: false },
+    tablet: { chrome: false, safari: false, firefox: false, edge: false },
+    mobile: { chrome: false, safari: false, firefox: false, edge: false },
+  },
+  testDataRequirements: '',
+  automatedTests: [],
+  regressionAreas: '',
+  signOff: {
+    readyForRollout: false,
+    signOffBy: '',
+    signOffDate: '',
+    signOffNotes: '',
+  },
+};
+
+const defaultRolloutData: RolloutData = {
+  rolloutStrategy: 'All Clients',
+  rolloutSummary: '',
+  clientRollouts: [],
+  rolloutChecklist: [],
+  internalAnnouncementNotes: '',
+  clientCommsTemplateLink: '',
+  clientApprovals: '',
+  trainingRequired: false,
+  trainingAssets: [],
+  internalTrainingComplete: false,
+  clientTrainingComplete: false,
+  monitoringPlan: '',
+  keyMetrics: [],
+  rollbackPlan: '',
+  rolloutComplete: false,
+  completionDate: '',
+  postMortemLearnings: '',
+};
+
+const defaultOverviewData: OverviewData = {
+  priority: 'P2 – Medium',
+  effortSize: 'M',
+  estimatedDevDays: null,
+  stakeholders: [],
+  sendDueDateReminder: false,
+  notifyOnChange: false,
+};
+
+function parseJsonField<T>(value: string | null | undefined, defaultValue: T): T {
+  if (!value) return defaultValue;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return defaultValue;
+  }
 }
 
 export function FeatureDetailDrawer({
@@ -43,11 +147,25 @@ export function FeatureDetailDrawer({
 }: FeatureDetailDrawerProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<Feature>>({});
+  const [overviewData, setOverviewData] = useState<OverviewData>(defaultOverviewData);
+  const [requirementsData, setRequirementsData] = useState<RequirementsData>(defaultRequirementsData);
+  const [designData, setDesignData] = useState<DesignData>(defaultDesignData);
+  const [technicalData, setTechnicalData] = useState<TechnicalData>(defaultTechnicalData);
+  const [qaData, setQAData] = useState<QAData>(defaultQAData);
+  const [rolloutData, setRolloutData] = useState<RolloutData>(defaultRolloutData);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   useEffect(() => {
     if (feature) {
       setFormData(feature);
+      // Parse JSON fields for each tab
+      setRequirementsData(parseJsonField(feature.documentation, defaultRequirementsData));
+      setDesignData(parseJsonField(feature.design_specs, defaultDesignData));
+      setTechnicalData(parseJsonField(feature.technical_notes, defaultTechnicalData));
+      setQAData(parseJsonField(feature.qa_plan, defaultQAData));
+      setRolloutData(parseJsonField(feature.rollout_instructions, defaultRolloutData));
+      // Overview data from summary field
+      setOverviewData(parseJsonField(feature.summary, defaultOverviewData));
     }
   }, [feature]);
 
@@ -55,12 +173,20 @@ export function FeatureDetailDrawer({
 
   const handleSave = async () => {
     try {
-      // Exclude nested objects - only send scalar fields that exist as columns
       const { product_category, release_version, ...updateData } = formData;
       
-      console.log('Updating feature:', feature.id, 'with data:', updateData);
-      const result = await updateFeature(feature.id, updateData);
-      console.log('Update successful:', result);
+      // Serialize structured data to JSON strings
+      const dataToSave = {
+        ...updateData,
+        summary: JSON.stringify(overviewData),
+        documentation: JSON.stringify(requirementsData),
+        design_specs: JSON.stringify(designData),
+        technical_notes: JSON.stringify(technicalData),
+        qa_plan: JSON.stringify(qaData),
+        rollout_instructions: JSON.stringify(rolloutData),
+      };
+      
+      await updateFeature(feature.id, dataToSave);
       toast({
         title: "Success",
         description: "Feature updated successfully.",
@@ -68,11 +194,9 @@ export function FeatureDetailDrawer({
       onUpdate();
       onOpenChange(false);
     } catch (error: any) {
-      console.error('Feature update error:', error);
-      const errorMessage = error?.message || error?.toString() || "Failed to update feature.";
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error?.message || "Failed to update feature.",
         variant: "destructive",
       });
     }
@@ -156,16 +280,35 @@ export function FeatureDetailDrawer({
     }
   };
 
-  const handleAssigneesChange = (value: string) => {
-    const assignees = value.split(',').map(s => s.trim()).filter(Boolean);
-    setFormData({ ...formData, assignees });
-  };
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Feature Details</SheetTitle>
+          <SheetTitle className="flex items-center justify-between">
+            <span>Feature Details</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSendReminder}
+                disabled={isSendingReminder || !formData.assignees?.length}
+              >
+                <Mail className="w-4 h-4 mr-1" />
+                Reminder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSendAssignmentNotification}
+                disabled={isSendingReminder || !formData.assignees?.length}
+              >
+                <Send className="w-4 h-4 mr-1" />
+                Notify
+              </Button>
+            </div>
+          </SheetTitle>
         </SheetHeader>
 
         <Tabs defaultValue="overview" className="mt-6">
@@ -178,235 +321,55 @@ export function FeatureDetailDrawer({
             <TabsTrigger value="rollout">Rollout</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4 mt-4">
-            <div>
-              <Label>Title</Label>
-              <Input
-                value={formData.title || ''}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label>Summary</Label>
-              <Textarea
-                value={formData.summary || ''}
-                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Product Category</Label>
-                <Select
-                  value={formData.product_category_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, product_category_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Release Version</Label>
-                <Select
-                  value={formData.release_version_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, release_version_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {releaseVersions.map(ver => (
-                      <SelectItem key={ver.id} value={ver.id}>{ver.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Feature Level</Label>
-                <Select
-                  value={formData.feature_level || ''}
-                  onValueChange={(value) => setFormData({ ...formData, feature_level: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Core">Core</SelectItem>
-                    <SelectItem value="Integrations">Integrations</SelectItem>
-                    <SelectItem value="Add-On">Add-On</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Feature Type</Label>
-                <Select
-                  value={formData.feature_type || ''}
-                  onValueChange={(value) => setFormData({ ...formData, feature_type: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Front End UI">Front End UI</SelectItem>
-                    <SelectItem value="Back End CMS/Data">Back End CMS/Data</SelectItem>
-                    <SelectItem value="SEO">SEO</SelectItem>
-                    <SelectItem value="Full Feature">Full Feature</SelectItem>
-                    <SelectItem value="3rd Party Integration">3rd Party Integration</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select
-                value={formData.status || ''}
-                onValueChange={(value) => setFormData({ ...formData, status: value as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
-                  <SelectItem value="Design">Design</SelectItem>
-                  <SelectItem value="In Development">In Development</SelectItem>
-                  <SelectItem value="QA">QA</SelectItem>
-                  <SelectItem value="Approved">Approved</SelectItem>
-                  <SelectItem value="Released">Released</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={formData.start_date || ''}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label>Due Date</Label>
-                <Input
-                  type="date"
-                  value={formData.due_date || ''}
-                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Assignees</Label>
-              <AssigneePicker
-                value={formData.assignees || []}
-                onChange={(assignees) => setFormData({ ...formData, assignees })}
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSendReminder}
-                disabled={isSendingReminder || !formData.assignees?.length}
-                className="flex items-center gap-2"
-              >
-                <Mail className="w-4 h-4" />
-                Send Due Date Reminder
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSendAssignmentNotification}
-                disabled={isSendingReminder || !formData.assignees?.length}
-                className="flex items-center gap-2"
-              >
-                <Send className="w-4 h-4" />
-                Notify Assignees
-              </Button>
-            </div>
+          <TabsContent value="overview" className="mt-4">
+            <OverviewTab
+              formData={formData}
+              overviewData={overviewData}
+              categories={categories}
+              releaseVersions={releaseVersions}
+              onFormChange={(updates) => setFormData({ ...formData, ...updates })}
+              onOverviewChange={setOverviewData}
+            />
           </TabsContent>
 
-          <TabsContent value="requirements" className="space-y-4 mt-4">
-            <div>
-              <Label>Documentation</Label>
-              <Textarea
-                value={formData.documentation || ''}
-                onChange={(e) => setFormData({ ...formData, documentation: e.target.value })}
-                rows={10}
-                placeholder="Enter requirements and documentation..."
-              />
-            </div>
+          <TabsContent value="requirements" className="mt-4">
+            <RequirementsTab
+              data={requirementsData}
+              onChange={setRequirementsData}
+            />
           </TabsContent>
 
-          <TabsContent value="design" className="space-y-4 mt-4">
-            <div>
-              <Label>Design Specifications</Label>
-              <Textarea
-                value={formData.design_specs || ''}
-                onChange={(e) => setFormData({ ...formData, design_specs: e.target.value })}
-                rows={10}
-                placeholder="Enter design specs, links to Figma, mockups..."
-              />
-            </div>
+          <TabsContent value="design" className="mt-4">
+            <DesignTab
+              data={designData}
+              onChange={setDesignData}
+            />
           </TabsContent>
 
-          <TabsContent value="technical" className="space-y-4 mt-4">
-            <div>
-              <Label>Technical Notes</Label>
-              <Textarea
-                value={formData.technical_notes || ''}
-                onChange={(e) => setFormData({ ...formData, technical_notes: e.target.value })}
-                rows={10}
-                placeholder="Enter technical implementation notes..."
-              />
-            </div>
+          <TabsContent value="technical" className="mt-4">
+            <TechnicalTab
+              data={technicalData}
+              onChange={setTechnicalData}
+            />
           </TabsContent>
 
-          <TabsContent value="qa" className="space-y-4 mt-4">
-            <div>
-              <Label>QA Plan</Label>
-              <Textarea
-                value={formData.qa_plan || ''}
-                onChange={(e) => setFormData({ ...formData, qa_plan: e.target.value })}
-                rows={10}
-                placeholder="Enter QA testing plan..."
-              />
-            </div>
+          <TabsContent value="qa" className="mt-4">
+            <QATab
+              data={qaData}
+              onChange={setQAData}
+            />
           </TabsContent>
 
-          <TabsContent value="rollout" className="space-y-4 mt-4">
-            <div>
-              <Label>Rollout Instructions</Label>
-              <Textarea
-                value={formData.rollout_instructions || ''}
-                onChange={(e) => setFormData({ ...formData, rollout_instructions: e.target.value })}
-                rows={10}
-                placeholder="Enter rollout instructions and ClickUp export details..."
-              />
-            </div>
+          <TabsContent value="rollout" className="mt-4">
+            <RolloutTab
+              data={rolloutData}
+              onChange={setRolloutData}
+            />
           </TabsContent>
         </Tabs>
 
-        <div className="flex gap-3 mt-6">
-          <Button onClick={handleSave} className="btn-primary flex-1">
+        <div className="flex gap-3 mt-6 sticky bottom-0 bg-background py-4 border-t">
+          <Button onClick={handleSave} className="flex-1">
             Save Changes
           </Button>
           <Button onClick={() => onOpenChange(false)} variant="outline">
