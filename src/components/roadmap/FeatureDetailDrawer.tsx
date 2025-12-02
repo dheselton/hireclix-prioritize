@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Mail, Send } from "lucide-react";
 import type { Feature, ProductCategory, ReleaseVersion } from "@/types/roadmap";
 import { updateFeature } from "@/lib/roadmapService";
 import { useToast } from "@/hooks/use-toast";
+import { sendDueDateReminder, sendAssignmentNotification } from "@/lib/emailService";
 
 interface FeatureDetailDrawerProps {
   feature: Feature | null;
@@ -40,6 +42,7 @@ export function FeatureDetailDrawer({
 }: FeatureDetailDrawerProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState<Partial<Feature>>({});
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   useEffect(() => {
     if (feature) {
@@ -72,6 +75,89 @@ export function FeatureDetailDrawer({
         variant: "destructive",
       });
     }
+  };
+
+  const handleSendReminder = async () => {
+    if (!formData.assignees?.length) {
+      toast({
+        title: "No assignees",
+        description: "Please add assignees before sending a reminder.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingReminder(true);
+    try {
+      const result = await sendDueDateReminder({
+        id: feature.id,
+        title: formData.title || feature.title,
+        assignees: formData.assignees,
+        due_date: formData.due_date,
+        status: formData.status || feature.status,
+      });
+
+      if (result.success) {
+        toast({
+          title: "Reminder sent",
+          description: `Due date reminder sent to ${formData.assignees.join(', ')}.`,
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to send reminder",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
+
+  const handleSendAssignmentNotification = async () => {
+    if (!formData.assignees?.length) {
+      toast({
+        title: "No assignees",
+        description: "Please add assignees first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingReminder(true);
+    try {
+      const result = await sendAssignmentNotification({
+        id: feature.id,
+        title: formData.title || feature.title,
+        assignees: formData.assignees,
+        due_date: formData.due_date,
+        status: formData.status || feature.status,
+      });
+
+      if (result.success) {
+        toast({
+          title: "Notification sent",
+          description: `Assignment notification sent to ${formData.assignees.join(', ')}.`,
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to send notification",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
+
+  const handleAssigneesChange = (value: string) => {
+    const assignees = value.split(',').map(s => s.trim()).filter(Boolean);
+    setFormData({ ...formData, assignees });
   };
 
   return (
@@ -221,6 +307,43 @@ export function FeatureDetailDrawer({
                   onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>Assignees (comma-separated)</Label>
+              <Input
+                value={formData.assignees?.join(', ') || ''}
+                onChange={(e) => handleAssigneesChange(e.target.value)}
+                placeholder="Dan Heselton, Riley Mulligan, Lisa Thompson"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter names matching team members in the system
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSendReminder}
+                disabled={isSendingReminder || !formData.assignees?.length}
+                className="flex items-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                Send Due Date Reminder
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSendAssignmentNotification}
+                disabled={isSendingReminder || !formData.assignees?.length}
+                className="flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Notify Assignees
+              </Button>
             </div>
           </TabsContent>
 
