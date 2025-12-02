@@ -191,7 +191,7 @@ const generateEmailHtml = (
   content: { heading: string; message: string; details?: string },
   metadata: { status?: string; dueDate?: string; summary?: string; category?: string; releaseVersion?: string }
 ): string => {
-  const featureUrl = `${APP_URL}/roadmap?feature=${featureId}`;
+  const featureUrl = `${APP_URL}/?feature=${featureId}`;
   const headerBg = getHeaderGradient(type);
   const icon = getIcon(type);
   const statusColor = getStatusColor(metadata.status || '');
@@ -296,7 +296,7 @@ const generateEmailHtml = (
         You're receiving this because you're assigned to or a stakeholder of this feature.
       </p>
       <p style="${styles.footerText}; margin-top: 12px;">
-        <a href="${APP_URL}/roadmap" style="color: ${colors.primary}; text-decoration: none;">View All Features</a>
+        <a href="${APP_URL}/" style="color: ${colors.primary}; text-decoration: none;">View All Features</a>
       </p>
     </div>
   </div>
