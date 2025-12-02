@@ -26,13 +26,29 @@ interface ReminderRequest {
   releaseVersion?: string;
 }
 
+// Navy blue color palette from the project design system
+const colors = {
+  primary: '#0f4c75',        // Navy blue (--primary: 209 75% 19%)
+  primaryLight: '#3282b8',   // Lighter navy
+  primaryDark: '#0b3954',    // Darker navy
+  accent: '#bbe1fa',         // Light blue accent
+  warning: '#f59e0b',        // Amber for due dates
+  danger: '#dc2626',         // Red for overdue
+  success: '#059669',        // Green for released
+  text: '#1a1a2e',           // Dark text
+  textMuted: '#64748b',      // Muted text
+  textLight: '#94a3b8',      // Light text
+  background: '#f8fafc',     // Light background
+  white: '#ffffff',
+};
+
 // Email template styles
 const styles = {
   container: `
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     max-width: 600px;
     margin: 0 auto;
-    background-color: #ffffff;
+    background-color: ${colors.white};
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -45,27 +61,27 @@ const styles = {
     margin: 0;
     font-size: 24px;
     font-weight: 700;
-    color: #ffffff;
+    color: ${colors.white};
   `,
   body: `
     padding: 32px 24px;
-    background-color: #ffffff;
+    background-color: ${colors.white};
   `,
   featureTitle: `
     font-size: 20px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: ${colors.text};
     margin: 0 0 16px 0;
   `,
   infoBox: `
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-left: 4px solid #6366f1;
+    background: linear-gradient(135deg, ${colors.background} 0%, #e2e8f0 100%);
+    border-left: 4px solid ${colors.primary};
     padding: 16px 20px;
     border-radius: 0 8px 8px 0;
     margin: 20px 0;
   `,
   summaryBox: `
-    background: #fafafa;
+    background: ${colors.background};
     border: 1px solid #e5e5e5;
     padding: 16px 20px;
     border-radius: 8px;
@@ -79,43 +95,34 @@ const styles = {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #64748b;
+    color: ${colors.textMuted};
     margin-bottom: 4px;
   `,
   value: `
     font-size: 15px;
-    color: #1e293b;
+    color: ${colors.text};
     margin: 0;
   `,
   button: `
     display: inline-block;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: #ffffff;
+    background: linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryLight} 100%);
+    color: ${colors.white};
     text-decoration: none;
     padding: 14px 28px;
     border-radius: 8px;
     font-weight: 600;
     font-size: 15px;
     margin: 24px 0;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-  `,
-  statusBadge: (color: string) => `
-    display: inline-block;
-    background: ${color}20;
-    color: ${color};
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(15, 76, 117, 0.4);
   `,
   footer: `
-    background: #f8fafc;
+    background: ${colors.background};
     padding: 24px;
     text-align: center;
     border-top: 1px solid #e2e8f0;
   `,
   footerText: `
-    color: #94a3b8;
+    color: ${colors.textLight};
     font-size: 12px;
     margin: 0;
     line-height: 1.6;
@@ -129,26 +136,26 @@ const styles = {
 };
 
 const getStatusColor = (status: string): string => {
-  const colors: Record<string, string> = {
-    'Scope/Ideation': '#8b5cf6',
+  const statusColors: Record<string, string> = {
+    'Scope/Ideation': colors.primaryLight,
     'Design': '#ec4899',
-    'In Development': '#3b82f6',
-    'QA': '#f59e0b',
+    'In Development': colors.primary,
+    'QA': colors.warning,
     'Approved': '#10b981',
-    'Released': '#059669',
+    'Released': colors.success,
   };
-  return colors[status] || '#6b7280';
+  return statusColors[status] || colors.textMuted;
 };
 
-const getHeaderColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    'due_date': 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-    'overdue': 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-    'status_change': 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-    'assignment': 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-    'stakeholder_assignment': 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
+const getHeaderGradient = (type: string): string => {
+  const gradients: Record<string, string> = {
+    'due_date': `linear-gradient(135deg, ${colors.warning} 0%, #d97706 100%)`,
+    'overdue': `linear-gradient(135deg, ${colors.danger} 0%, #b91c1c 100%)`,
+    'status_change': `linear-gradient(135deg, ${colors.primaryLight} 0%, ${colors.primary} 100%)`,
+    'assignment': `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryLight} 100%)`,
+    'stakeholder_assignment': `linear-gradient(135deg, ${colors.primaryDark} 0%, ${colors.primary} 100%)`,
   };
-  return colors[type] || 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';
+  return gradients[type] || `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryLight} 100%)`;
 };
 
 const getIcon = (type: string): string => {
@@ -185,7 +192,7 @@ const generateEmailHtml = (
   metadata: { status?: string; dueDate?: string; summary?: string; category?: string; releaseVersion?: string }
 ): string => {
   const featureUrl = `${APP_URL}/roadmap?feature=${featureId}`;
-  const headerBg = getHeaderColor(type);
+  const headerBg = getHeaderGradient(type);
   const icon = getIcon(type);
   const statusColor = getStatusColor(metadata.status || '');
 
@@ -197,7 +204,7 @@ const generateEmailHtml = (
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${content.heading}</title>
 </head>
-<body style="margin: 0; padding: 24px; background-color: #f1f5f9;">
+<body style="margin: 0; padding: 24px; background-color: #e2e8f0;">
   <div style="${styles.container}">
     <!-- Header -->
     <div style="${styles.header} background: ${headerBg};">
@@ -229,7 +236,15 @@ const generateEmailHtml = (
             <tr>
               <td style="padding: 8px 0; vertical-align: top;">
                 <div style="${styles.label}">Status</div>
-                <span style="${styles.statusBadge(statusColor)}">${metadata.status}</span>
+                <span style="
+                  display: inline-block;
+                  background: ${statusColor}20;
+                  color: ${statusColor};
+                  padding: 4px 12px;
+                  border-radius: 20px;
+                  font-size: 13px;
+                  font-weight: 600;
+                ">${metadata.status}</span>
               </td>
             </tr>
           ` : ''}
@@ -269,7 +284,7 @@ const generateEmailHtml = (
       
       <hr style="${styles.divider}">
       
-      <p style="color: #64748b; font-size: 13px; text-align: center; margin: 0;">
+      <p style="color: ${colors.textMuted}; font-size: 13px; text-align: center; margin: 0;">
         Click the button above to view full details and take action on this feature.
       </p>
     </div>
@@ -281,7 +296,7 @@ const generateEmailHtml = (
         You're receiving this because you're assigned to or a stakeholder of this feature.
       </p>
       <p style="${styles.footerText}; margin-top: 12px;">
-        <a href="${APP_URL}/roadmap" style="color: #6366f1; text-decoration: none;">View All Features</a>
+        <a href="${APP_URL}/roadmap" style="color: ${colors.primary}; text-decoration: none;">View All Features</a>
       </p>
     </div>
   </div>
