@@ -19,7 +19,7 @@ import type {
 } from "@/types/featureDetail";
 import { updateFeature } from "@/lib/roadmapService";
 import { useToast } from "@/hooks/use-toast";
-import { sendDueDateReminder, sendAssignmentNotification } from "@/lib/emailService";
+import { sendDueDateReminder, sendAssignmentNotification, sendStakeholderNotification } from "@/lib/emailService";
 import { OverviewTab } from "./feature-detail/OverviewTab";
 import { RequirementsTab } from "./feature-detail/RequirementsTab";
 import { DesignTab } from "./feature-detail/DesignTab";
@@ -154,6 +154,8 @@ export function FeatureDetailDrawer({
   const [qaData, setQAData] = useState<QAData>(defaultQAData);
   const [rolloutData, setRolloutData] = useState<RolloutData>(defaultRolloutData);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [originalAssignees, setOriginalAssignees] = useState<string[]>([]);
+  const [originalStakeholders, setOriginalStakeholders] = useState<string[]>([]);
 
   useEffect(() => {
     if (feature) {
@@ -165,7 +167,11 @@ export function FeatureDetailDrawer({
       setQAData(parseJsonField(feature.qa_plan, defaultQAData));
       setRolloutData(parseJsonField(feature.rollout_instructions, defaultRolloutData));
       // Overview data from summary field
-      setOverviewData(parseJsonField(feature.summary, defaultOverviewData));
+      const parsedOverview = parseJsonField(feature.summary, defaultOverviewData);
+      setOverviewData(parsedOverview);
+      // Track original assignees and stakeholders for notification detection
+      setOriginalAssignees(feature.assignees || []);
+      setOriginalStakeholders(parsedOverview.stakeholders || []);
     }
   }, [feature]);
 
@@ -187,6 +193,43 @@ export function FeatureDetailDrawer({
       };
       
       await updateFeature(feature.id, dataToSave);
+      
+      // Check for new assignees and notify them
+      const currentAssignees = formData.assignees || [];
+      const newAssignees = currentAssignees.filter(a => !originalAssignees.includes(a));
+      if (newAssignees.length > 0) {
+        await sendAssignmentNotification({
+          id: feature.id,
+          title: formData.title || feature.title,
+          assignees: newAssignees,
+          due_date: formData.due_date,
+          status: formData.status || feature.status,
+          summary: requirementsData.userProblem || '',
+        });
+        toast({
+          title: "Assignees notified",
+          description: `Email sent to: ${newAssignees.join(', ')}`,
+        });
+      }
+
+      // Check for new stakeholders and notify them
+      const currentStakeholders = overviewData.stakeholders || [];
+      const newStakeholders = currentStakeholders.filter(s => !originalStakeholders.includes(s));
+      if (newStakeholders.length > 0) {
+        await sendStakeholderNotification({
+          id: feature.id,
+          title: formData.title || feature.title,
+          stakeholders: newStakeholders,
+          due_date: formData.due_date,
+          status: formData.status || feature.status,
+          summary: requirementsData.userProblem || '',
+        });
+        toast({
+          title: "Stakeholders notified",
+          description: `Email sent to: ${newStakeholders.join(', ')}`,
+        });
+      }
+
       toast({
         title: "Success",
         description: "Feature updated successfully.",
