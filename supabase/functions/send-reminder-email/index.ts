@@ -5,7 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 // App URL for generating links to roadmap items
-const APP_URL = Deno.env.get("APP_URL") || "https://aqdpshgmpgccujwwkdxd.lovableproject.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://hireclix-product-roadmap.lovable.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
