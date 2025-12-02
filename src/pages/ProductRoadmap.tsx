@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { fetchFeatures, fetchProductCategories, fetchReleaseVersions } from "@/l
 import type { Feature } from "@/types/roadmap";
 
 export default function ProductRoadmap() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("roadmap");
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
@@ -29,6 +31,20 @@ export default function ProductRoadmap() {
     queryKey: ['features'],
     queryFn: fetchFeatures,
   });
+
+  // Handle feature query param to auto-open feature drawer from email links
+  useEffect(() => {
+    const featureId = searchParams.get('feature');
+    if (featureId && features.length > 0) {
+      const feature = features.find(f => f.id === featureId);
+      if (feature) {
+        setSelectedFeature(feature);
+        setDetailDrawerOpen(true);
+        // Clear the query param after opening
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, features, setSearchParams]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ['productCategories'],
