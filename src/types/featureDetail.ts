@@ -227,6 +227,7 @@ export type ExtendedFeatureStatus =
   | 'In Dev' | 'QA' | 'Ready for Rollout' | 'Rolled Out' | 'On Hold' | 'Cancelled';
 
 export interface OverviewData {
+  description: string;
   priority: FeaturePriority;
   effortSize: EffortSize;
   estimatedDevDays: number | null;
