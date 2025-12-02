@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "HireClix Roadmap <onboarding@resend.dev>",
+      from: "HireClix Roadmap <noreply@product.hireclix.com>",
       to: emails,
       subject,
       html: htmlContent,
