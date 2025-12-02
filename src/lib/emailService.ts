@@ -9,6 +9,8 @@ interface SendReminderParams {
   status?: string;
   message?: string;
   summary?: string;
+  category?: string;
+  releaseVersion?: string;
 }
 
 export async function sendReminder(params: SendReminderParams): Promise<{ success: boolean; error?: string }> {
@@ -81,6 +83,8 @@ export async function sendAssignmentNotification(feature: {
   due_date?: string;
   status: string;
   summary?: string;
+  category?: string;
+  releaseVersion?: string;
 }) {
   if (!feature.assignees?.length) {
     return { success: false, error: "No assignees to notify" };
@@ -94,6 +98,8 @@ export async function sendAssignmentNotification(feature: {
     dueDate: feature.due_date,
     status: feature.status,
     summary: feature.summary,
+    category: feature.category,
+    releaseVersion: feature.releaseVersion,
   });
 }
 
@@ -104,6 +110,8 @@ export async function sendStakeholderNotification(feature: {
   due_date?: string;
   status: string;
   summary?: string;
+  category?: string;
+  releaseVersion?: string;
 }) {
   if (!feature.stakeholders?.length) {
     return { success: false, error: "No stakeholders to notify" };
@@ -117,6 +125,8 @@ export async function sendStakeholderNotification(feature: {
     dueDate: feature.due_date,
     status: feature.status,
     summary: feature.summary,
+    category: feature.category,
+    releaseVersion: feature.releaseVersion,
   });
 }
 
