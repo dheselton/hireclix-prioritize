@@ -11,13 +11,14 @@ const corsHeaders = {
 };
 
 interface ReminderRequest {
-  type: 'due_date' | 'overdue' | 'status_change' | 'assignment';
+  type: 'due_date' | 'overdue' | 'status_change' | 'assignment' | 'stakeholder_assignment';
   featureId: string;
   featureTitle: string;
   assignees: string[];
   dueDate?: string;
   status?: string;
   message?: string;
+  summary?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -34,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { type, featureId, featureTitle, assignees, dueDate, status, message }: ReminderRequest = await req.json();
+    const { type, featureId, featureTitle, assignees, dueDate, status, message, summary }: ReminderRequest = await req.json();
 
     console.log("Processing reminder:", { type, featureTitle, assignees });
 
@@ -105,9 +106,24 @@ const handler = async (req: Request): Promise<Response> => {
         htmlContent = `
           <h2>New Feature Assignment</h2>
           <p>You have been assigned to the feature <strong>"${featureTitle}"</strong>.</p>
-          ${status ? `<p>Current status: ${status}</p>` : ""}
-          ${dueDate ? `<p>Due date: ${dueDate}</p>` : ""}
+          ${summary ? `<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin: 16px 0;"><strong>Summary:</strong><br/>${summary}</div>` : ""}
+          ${status ? `<p><strong>Current status:</strong> ${status}</p>` : ""}
+          ${dueDate ? `<p><strong>Due date:</strong> ${dueDate}</p>` : ""}
           ${message ? `<p>${message}</p>` : ""}
+          <hr>
+          <p style="color: #666; font-size: 12px;">This is an automated notification from HireClix Product Roadmap.</p>
+        `;
+        break;
+
+      case "stakeholder_assignment":
+        subject = `📋 You've been added as stakeholder to: "${featureTitle}"`;
+        htmlContent = `
+          <h2>Stakeholder Assignment</h2>
+          <p>You have been added as a stakeholder to the feature <strong>"${featureTitle}"</strong>.</p>
+          ${summary ? `<div style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin: 16px 0;"><strong>Summary:</strong><br/>${summary}</div>` : ""}
+          ${status ? `<p><strong>Current status:</strong> ${status}</p>` : ""}
+          ${dueDate ? `<p><strong>Due date:</strong> ${dueDate}</p>` : ""}
+          <p>As a stakeholder, you'll be kept informed of progress on this feature.</p>
           <hr>
           <p style="color: #666; font-size: 12px;">This is an automated notification from HireClix Product Roadmap.</p>
         `;

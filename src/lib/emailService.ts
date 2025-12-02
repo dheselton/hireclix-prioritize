@@ -1,13 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
 interface SendReminderParams {
-  type: 'due_date' | 'overdue' | 'status_change' | 'assignment';
+  type: 'due_date' | 'overdue' | 'status_change' | 'assignment' | 'stakeholder_assignment';
   featureId: string;
   featureTitle: string;
   assignees: string[];
   dueDate?: string;
   status?: string;
   message?: string;
+  summary?: string;
 }
 
 export async function sendReminder(params: SendReminderParams): Promise<{ success: boolean; error?: string }> {
@@ -79,6 +80,7 @@ export async function sendAssignmentNotification(feature: {
   assignees: string[];
   due_date?: string;
   status: string;
+  summary?: string;
 }) {
   if (!feature.assignees?.length) {
     return { success: false, error: "No assignees to notify" };
@@ -91,6 +93,30 @@ export async function sendAssignmentNotification(feature: {
     assignees: feature.assignees,
     dueDate: feature.due_date,
     status: feature.status,
+    summary: feature.summary,
+  });
+}
+
+export async function sendStakeholderNotification(feature: {
+  id: string;
+  title: string;
+  stakeholders: string[];
+  due_date?: string;
+  status: string;
+  summary?: string;
+}) {
+  if (!feature.stakeholders?.length) {
+    return { success: false, error: "No stakeholders to notify" };
+  }
+
+  return sendReminder({
+    type: 'stakeholder_assignment',
+    featureId: feature.id,
+    featureTitle: feature.title,
+    assignees: feature.stakeholders,
+    dueDate: feature.due_date,
+    status: feature.status,
+    summary: feature.summary,
   });
 }
 
