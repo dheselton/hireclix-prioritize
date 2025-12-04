@@ -63,7 +63,17 @@ export function NewFeatureDrawer({
 
     try {
       await createFeature({
-        ...formData,
+        title: formData.title,
+        summary: formData.summary || null,
+        product_category_id: formData.product_category_id || null,
+        release_version_id: formData.release_version_id || null,
+        feature_level: formData.feature_level,
+        feature_type: formData.feature_type,
+        status: formData.status,
+        start_date: formData.start_date || null,
+        due_date: formData.due_date || null,
+        documentation: formData.documentation || null,
+        assignees: formData.assignees.length > 0 ? formData.assignees : null,
         subtask_count: 0,
         sort_order: 0,
       });
