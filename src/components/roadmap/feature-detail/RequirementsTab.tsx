@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -185,7 +185,7 @@ export function RequirementsTab({ data, onChange }: RequirementsTabProps) {
       {/* User Problem */}
       <div>
         <Label>User Problem / Job To Be Done <span className="text-destructive">*</span></Label>
-        <Textarea
+        <SmartTextarea
           value={data.userProblem}
           onChange={(e) => onChange({ ...data, userProblem: e.target.value })}
           rows={3}
@@ -307,7 +307,7 @@ export function RequirementsTab({ data, onChange }: RequirementsTabProps) {
                   <span className="text-xs text-muted-foreground">Critical Path</span>
                 </div>
               </div>
-              <Textarea
+              <SmartTextarea
                 value={ac.description}
                 onChange={(e) => updateAC(index, { ...ac, description: e.target.value })}
                 placeholder="Given/When/Then format encouraged"
@@ -405,7 +405,7 @@ export function RequirementsTab({ data, onChange }: RequirementsTabProps) {
       {/* Out of Scope */}
       <div>
         <Label>Out of Scope</Label>
-        <Textarea
+        <SmartTextarea
           value={data.outOfScope}
           onChange={(e) => onChange({ ...data, outOfScope: e.target.value })}
           rows={3}

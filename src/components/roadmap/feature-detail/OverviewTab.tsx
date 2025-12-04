@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -66,7 +66,7 @@ export function OverviewTab({
       {/* Summary */}
       <div>
         <Label>Summary <span className="text-destructive">*</span></Label>
-        <Textarea
+        <SmartTextarea
           value={overviewData.description || ''}
           onChange={(e) => onOverviewChange({ ...overviewData, description: e.target.value })}
           rows={3}

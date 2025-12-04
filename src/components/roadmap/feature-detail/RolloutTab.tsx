@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
@@ -135,7 +135,7 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         </div>
         <div>
           <Label>Summary</Label>
-          <Textarea
+          <SmartTextarea
             value={data.rolloutSummary}
             onChange={(e) => onChange({ ...data, rolloutSummary: e.target.value })}
             rows={2}
@@ -297,7 +297,7 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         <h4 className="text-sm font-medium">Client Communication Plan</h4>
         <div>
           <Label>Internal Announcement Notes</Label>
-          <Textarea
+          <SmartTextarea
             value={data.internalAnnouncementNotes}
             onChange={(e) => onChange({ ...data, internalAnnouncementNotes: e.target.value })}
             rows={2}
@@ -315,7 +315,7 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         </div>
         <div>
           <Label>Required Client Approvals</Label>
-          <Textarea
+          <SmartTextarea
             value={data.clientApprovals}
             onChange={(e) => onChange({ ...data, clientApprovals: e.target.value })}
             rows={2}
@@ -386,7 +386,7 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         <h4 className="text-sm font-medium">Monitoring & Rollback</h4>
         <div>
           <Label>Monitoring Plan</Label>
-          <Textarea
+          <SmartTextarea
             value={data.monitoringPlan}
             onChange={(e) => onChange({ ...data, monitoringPlan: e.target.value })}
             rows={2}
@@ -415,7 +415,7 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         </div>
         <div>
           <Label>Rollback Plan</Label>
-          <Textarea
+          <SmartTextarea
             value={data.rollbackPlan}
             onChange={(e) => onChange({ ...data, rollbackPlan: e.target.value })}
             rows={3}
@@ -444,7 +444,7 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         </div>
         <div>
           <Label>Post-Mortem / Learnings</Label>
-          <Textarea
+          <SmartTextarea
             value={data.postMortemLearnings}
             onChange={(e) => onChange({ ...data, postMortemLearnings: e.target.value })}
             rows={3}

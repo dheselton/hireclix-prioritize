@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -345,7 +345,7 @@ export function TechnicalTab({ data, onChange }: TechnicalTabProps) {
         </div>
         <div>
           <Label>Config Options</Label>
-          <Textarea
+          <SmartTextarea
             value={data.configOptions}
             onChange={(e) => onChange({ ...data, configOptions: e.target.value })}
             rows={2}
@@ -357,7 +357,7 @@ export function TechnicalTab({ data, onChange }: TechnicalTabProps) {
       {/* Performance & Security Notes */}
       <div>
         <Label>Performance / Caching Notes</Label>
-        <Textarea
+        <SmartTextarea
           value={data.performanceNotes}
           onChange={(e) => onChange({ ...data, performanceNotes: e.target.value })}
           rows={2}
@@ -367,7 +367,7 @@ export function TechnicalTab({ data, onChange }: TechnicalTabProps) {
 
       <div>
         <Label>Security & Compliance Notes</Label>
-        <Textarea
+        <SmartTextarea
           value={data.securityNotes}
           onChange={(e) => onChange({ ...data, securityNotes: e.target.value })}
           rows={2}
