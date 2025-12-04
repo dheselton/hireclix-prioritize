@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +101,7 @@ export function QATab({ data, onChange }: QATabProps) {
       {/* Testing Scope Summary */}
       <div>
         <Label>Testing Scope Summary</Label>
-        <Textarea
+        <SmartTextarea
           value={data.testingScopeSummary}
           onChange={(e) => onChange({ ...data, testingScopeSummary: e.target.value })}
           rows={3}
@@ -150,7 +150,7 @@ export function QATab({ data, onChange }: QATabProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <Textarea
+              <SmartTextarea
                 value={scenario.description}
                 onChange={(e) => updateTestScenario(index, { ...scenario, description: e.target.value })}
                 placeholder="Test scenario description"
@@ -208,7 +208,7 @@ export function QATab({ data, onChange }: QATabProps) {
       {/* Test Data Requirements */}
       <div>
         <Label>Test Data Requirements</Label>
-        <Textarea
+        <SmartTextarea
           value={data.testDataRequirements}
           onChange={(e) => onChange({ ...data, testDataRequirements: e.target.value })}
           rows={3}
@@ -262,7 +262,7 @@ export function QATab({ data, onChange }: QATabProps) {
       {/* Regression Areas */}
       <div>
         <Label>Regression Areas to Check</Label>
-        <Textarea
+        <SmartTextarea
           value={data.regressionAreas}
           onChange={(e) => onChange({ ...data, regressionAreas: e.target.value })}
           rows={3}
@@ -308,7 +308,7 @@ export function QATab({ data, onChange }: QATabProps) {
         </div>
         <div>
           <Label>Sign-off Notes</Label>
-          <Textarea
+          <SmartTextarea
             value={data.signOff.signOffNotes}
             onChange={(e) => onChange({
               ...data,

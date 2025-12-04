@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
@@ -201,7 +201,7 @@ export function DesignTab({ data, onChange }: DesignTabProps) {
       {/* Interaction & UX Notes */}
       <div>
         <Label>Interaction & UX Notes</Label>
-        <Textarea
+        <SmartTextarea
           value={data.interactionNotes}
           onChange={(e) => onChange({ ...data, interactionNotes: e.target.value })}
           rows={3}
@@ -287,7 +287,7 @@ export function DesignTab({ data, onChange }: DesignTabProps) {
         <h4 className="text-sm font-medium">Content & Copy</h4>
         <div>
           <Label>Key UI Copy</Label>
-          <Textarea
+          <SmartTextarea
             value={data.uiCopy}
             onChange={(e) => onChange({ ...data, uiCopy: e.target.value })}
             rows={3}
@@ -337,7 +337,7 @@ export function DesignTab({ data, onChange }: DesignTabProps) {
         </div>
         <div>
           <Label>Meta Description Guidance</Label>
-          <Textarea
+          <SmartTextarea
             value={data.metaDescriptionGuidance}
             onChange={(e) => onChange({ ...data, metaDescriptionGuidance: e.target.value })}
             rows={2}
