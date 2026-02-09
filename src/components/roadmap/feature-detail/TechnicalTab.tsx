@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,9 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RepeatableList } from "./RepeatableList";
 import { AssigneePicker } from "../AssigneePicker";
-import type { TechnicalData, DataModelChange, ApiIntegration, TechnicalRisk, ImplementationTask } from "@/types/featureDetail";
+import { Github, Plus, ChevronDown, ChevronRight, Clock, Trash2, Copy } from "lucide-react";
+import type { TechnicalData, DataModelChange, ApiIntegration, TechnicalRisk, ImplementationTask, CodeSnippet, CodeSnippetVersion } from "@/types/featureDetail";
 
 interface TechnicalTabProps {
   data: TechnicalData;
@@ -483,6 +487,268 @@ export function TechnicalTab({ data, onChange }: TechnicalTabProps) {
           )}
         />
       </div>
+
+      {/* GitHub Repository */}
+      <div className="space-y-2 p-4 border border-border rounded-lg bg-card/50">
+        <div className="flex items-center gap-2">
+          <Github className="h-4 w-4 text-muted-foreground" />
+          <Label>GitHub Repository</Label>
+        </div>
+        <SmartTextarea
+          value={data.githubRepoUrl || ''}
+          onChange={(e) => onChange({ ...data, githubRepoUrl: e.target.value })}
+          rows={1}
+          placeholder="https://github.com/org/repo"
+          className="min-h-[40px]"
+        />
+      </div>
+
+      {/* Code Snippets Manager */}
+      <CodeSnippetsManager
+        snippets={data.codeSnippets || []}
+        onChange={(codeSnippets) => onChange({ ...data, codeSnippets })}
+      />
+    </div>
+  );
+}
+
+const LANGUAGES = ['JavaScript', 'TypeScript', 'HTML', 'CSS', 'Python', 'SQL', 'JSON', 'YAML', 'Bash', 'Ruby', 'Go', 'Rust', 'PHP', 'Java', 'C#', 'Other'];
+
+function CodeSnippetsManager({ snippets, onChange }: { snippets: CodeSnippet[]; onChange: (s: CodeSnippet[]) => void }) {
+  const addSnippet = () => {
+    const newVersion: CodeSnippetVersion = {
+      id: generateId(),
+      versionLabel: 'v1.0',
+      code: '',
+      language: 'TypeScript',
+      notes: '',
+      createdAt: new Date().toISOString(),
+    };
+    const newSnippet: CodeSnippet = {
+      id: generateId(),
+      title: '',
+      language: 'TypeScript',
+      versions: [newVersion],
+    };
+    onChange([...snippets, newSnippet]);
+  };
+
+  const removeSnippet = (index: number) => {
+    onChange(snippets.filter((_, i) => i !== index));
+  };
+
+  const updateSnippet = (index: number, updated: CodeSnippet) => {
+    const copy = [...snippets];
+    copy[index] = updated;
+    onChange(copy);
+  };
+
+  return (
+    <div>
+      <Label>Code Snippets</Label>
+      <div className="space-y-4 mt-2">
+        {snippets.length === 0 && (
+          <p className="text-sm text-muted-foreground italic">No code snippets added yet.</p>
+        )}
+        {snippets.map((snippet, index) => (
+          <SnippetCard
+            key={snippet.id}
+            snippet={snippet}
+            onUpdate={(s) => updateSnippet(index, s)}
+            onRemove={() => removeSnippet(index)}
+          />
+        ))}
+        <Button type="button" variant="outline" size="sm" onClick={addSnippet}>
+          <Plus className="h-3 w-3 mr-1" />
+          Add Snippet
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SnippetCard({ snippet, onUpdate, onRemove }: { snippet: CodeSnippet; onUpdate: (s: CodeSnippet) => void; onRemove: () => void }) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [addingVersion, setAddingVersion] = useState(false);
+  const [newVersionLabel, setNewVersionLabel] = useState('');
+  const [newVersionCode, setNewVersionCode] = useState('');
+  const [newVersionNotes, setNewVersionNotes] = useState('');
+  const [editingLatest, setEditingLatest] = useState(false);
+
+  const latestVersion = snippet.versions[snippet.versions.length - 1];
+  const olderVersions = snippet.versions.slice(0, -1).reverse();
+
+  const handleAddVersion = () => {
+    if (!newVersionCode.trim()) return;
+    const ver: CodeSnippetVersion = {
+      id: generateId(),
+      versionLabel: newVersionLabel || `v${snippet.versions.length + 1}.0`,
+      code: newVersionCode,
+      language: snippet.language,
+      notes: newVersionNotes,
+      createdAt: new Date().toISOString(),
+    };
+    onUpdate({ ...snippet, versions: [...snippet.versions, ver] });
+    setAddingVersion(false);
+    setNewVersionLabel('');
+    setNewVersionCode('');
+    setNewVersionNotes('');
+  };
+
+  const updateLatestCode = (code: string) => {
+    const updatedVersions = [...snippet.versions];
+    updatedVersions[updatedVersions.length - 1] = { ...latestVersion, code };
+    onUpdate({ ...snippet, versions: updatedVersions });
+  };
+
+  const updateLatestNotes = (notes: string) => {
+    const updatedVersions = [...snippet.versions];
+    updatedVersions[updatedVersions.length - 1] = { ...latestVersion, notes };
+    onUpdate({ ...snippet, versions: updatedVersions });
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+  };
+
+  return (
+    <div className="border border-border rounded-lg bg-card/50 overflow-hidden">
+      {/* Header */}
+      <div className="p-3 flex items-center gap-2">
+        <Input
+          value={snippet.title}
+          onChange={(e) => onUpdate({ ...snippet, title: e.target.value })}
+          placeholder="Snippet title"
+          className="flex-1 font-medium"
+        />
+        <Select
+          value={snippet.language}
+          onValueChange={(v) => onUpdate({ ...snippet, language: v })}
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGUAGES.map(l => (
+              <SelectItem key={l} value={l}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onRemove}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Latest Version */}
+      {latestVersion && (
+        <div className="px-3 pb-3">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{latestVersion.versionLabel}</Badge>
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(latestVersion.createdAt).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => copyCode(latestVersion.code)}>
+                <Copy className="h-3 w-3 mr-1" />Copy
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setEditingLatest(!editingLatest)}>
+                {editingLatest ? 'Preview' : 'Edit'}
+              </Button>
+            </div>
+          </div>
+          {editingLatest ? (
+            <div className="space-y-2">
+              <textarea
+                value={latestVersion.code}
+                onChange={(e) => updateLatestCode(e.target.value)}
+                className="w-full min-h-[120px] rounded-md border border-input bg-muted/50 px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Paste code here..."
+              />
+              <Input
+                value={latestVersion.notes}
+                onChange={(e) => updateLatestNotes(e.target.value)}
+                placeholder="Version notes (optional)"
+                className="text-xs"
+              />
+            </div>
+          ) : (
+            <pre className="bg-muted/50 border border-input rounded-md p-3 text-xs font-mono overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+              <code>{latestVersion.code || '// No code yet'}</code>
+            </pre>
+          )}
+          {latestVersion.notes && !editingLatest && (
+            <p className="text-xs text-muted-foreground mt-1 italic">{latestVersion.notes}</p>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="px-3 pb-3 flex items-center gap-2">
+        <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => setAddingVersion(!addingVersion)}>
+          <Plus className="h-3 w-3 mr-1" />New Version
+        </Button>
+        {olderVersions.length > 0 && (
+          <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="ghost" size="sm" className="text-xs">
+                {historyOpen ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                History ({olderVersions.length})
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
+        )}
+      </div>
+
+      {/* Add Version Form */}
+      {addingVersion && (
+        <div className="px-3 pb-3 space-y-2 border-t border-border pt-3">
+          <div className="flex items-center gap-2">
+            <Input
+              value={newVersionLabel}
+              onChange={(e) => setNewVersionLabel(e.target.value)}
+              placeholder={`v${snippet.versions.length + 1}.0`}
+              className="w-28 text-xs"
+            />
+            <Input
+              value={newVersionNotes}
+              onChange={(e) => setNewVersionNotes(e.target.value)}
+              placeholder="What changed?"
+              className="flex-1 text-xs"
+            />
+          </div>
+          <textarea
+            value={newVersionCode}
+            onChange={(e) => setNewVersionCode(e.target.value)}
+            className="w-full min-h-[100px] rounded-md border border-input bg-muted/50 px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Paste new version code..."
+          />
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={handleAddVersion}>Save Version</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setAddingVersion(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Version History */}
+      {historyOpen && olderVersions.length > 0 && (
+        <div className="px-3 pb-3 border-t border-border pt-3 space-y-3">
+          {olderVersions.map(ver => (
+            <div key={ver.id} className="space-y-1">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">{ver.versionLabel}</Badge>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(ver.createdAt).toLocaleDateString()}</span>
+                <Button type="button" variant="ghost" size="sm" className="h-5 text-[10px] ml-auto" onClick={() => copyCode(ver.code)}>
+                  <Copy className="h-3 w-3 mr-1" />Copy
+                </Button>
+              </div>
+              {ver.notes && <p className="text-xs text-muted-foreground italic">{ver.notes}</p>}
+              <pre className="bg-muted/50 border border-input rounded-md p-2 text-xs font-mono overflow-x-auto max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+                <code>{ver.code}</code>
+              </pre>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
