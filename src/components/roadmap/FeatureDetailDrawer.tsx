@@ -77,6 +77,8 @@ const defaultTechnicalData: TechnicalData = {
   securityNotes: '',
   technicalRisks: [],
   implementationTasks: [],
+  githubRepoUrl: '',
+  codeSnippets: [],
 };
 
 const defaultQAData: QAData = {

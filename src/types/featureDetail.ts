@@ -121,6 +121,22 @@ export interface ImplementationTask {
   externalTicketLink: string;
 }
 
+export interface CodeSnippetVersion {
+  id: string;
+  versionLabel: string;
+  code: string;
+  language: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface CodeSnippet {
+  id: string;
+  title: string;
+  language: string;
+  versions: CodeSnippetVersion[];
+}
+
 export interface TechnicalData {
   technicalOwner: string;
   implementationType: string[];
@@ -134,6 +150,8 @@ export interface TechnicalData {
   securityNotes: string;
   technicalRisks: TechnicalRisk[];
   implementationTasks: ImplementationTask[];
+  githubRepoUrl: string;
+  codeSnippets: CodeSnippet[];
 }
 
 export interface TestScenario {
