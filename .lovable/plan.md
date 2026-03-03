@@ -1,27 +1,73 @@
 
 
-## Fix: Add "Add-On" (and align Feature Levels) in the Overview Tab
+## Add GitHub Repo and Versioned Code Snippets to Technical Tab
 
-### Problem
-When editing a feature in the Feature Detail drawer's **Overview** tab, the "Feature Level" dropdown only shows: Core, Enhancement, Experiment, Bugfix. This is out of sync with the rest of the app (NewFeatureDrawer, BacklogList, filters) which correctly shows: Core, Integrations, Add-On.
+This plan adds two new sections to the existing **Technical** tab in the Feature Detail drawer: a GitHub repository link field, and a comprehensive versioned code snippets manager.
 
-### Solution
-Update the `FEATURE_LEVELS` constant in `src/components/roadmap/feature-detail/OverviewTab.tsx` (line 39) to match the canonical set used everywhere else:
+### What You Will Get
 
-**From:**
+1. **GitHub Repository Field** -- A dedicated input at the top of the Technical tab to link a GitHub repo URL (clickable via the existing SmartTextarea/linkified text system).
+
+2. **Code Snippets Manager** -- A full-featured section for storing code snippets with:
+   - Title/label for each snippet
+   - Language selector (JavaScript, TypeScript, HTML, CSS, Python, SQL, JSON, etc.)
+   - Syntax-highlighted code block display (using a `<pre><code>` styled block with monospace font)
+   - Version history per snippet: each snippet tracks an array of versions with version label, code content, timestamp, and optional notes
+   - Ability to add a new version to an existing snippet (previous versions are preserved and viewable)
+   - Collapse/expand to browse older versions
+   - Delete individual snippets
+
+### Technical Approach
+
+**1. Update `TechnicalData` type** (`src/types/featureDetail.ts`)
+
+Add new interfaces and fields:
+
+```typescript
+interface CodeSnippetVersion {
+  id: string;
+  versionLabel: string;   // e.g. "v1.0", "v2.1"
+  code: string;
+  language: string;
+  notes: string;
+  createdAt: string;      // ISO timestamp
+}
+
+interface CodeSnippet {
+  id: string;
+  title: string;
+  language: string;
+  versions: CodeSnippetVersion[];
+}
 ```
-['Core', 'Enhancement', 'Experiment', 'Bugfix']
-```
 
-**To:**
-```
-['Core', 'Integrations', 'Add-On']
-```
+Add to `TechnicalData`:
+- `githubRepoUrl: string`
+- `codeSnippets: CodeSnippet[]`
 
-This is a single-line change in one file. No database changes needed since `feature_level` is a free-text column.
+**2. Update default data** (`src/components/roadmap/FeatureDetailDrawer.tsx`)
 
-### File Changed
+Add `githubRepoUrl: ''` and `codeSnippets: []` to `defaultTechnicalData`.
+
+**3. Build Code Snippets UI** (`src/components/roadmap/feature-detail/TechnicalTab.tsx`)
+
+Add two new sections after the existing "Implementation Tasks" section:
+
+- **GitHub Repository**: A single input field with a GitHub icon, using SmartTextarea so the URL is clickable.
+- **Code Snippets**: Using the RepeatableList pattern for snippets. Each snippet card shows:
+  - Title input and language dropdown
+  - The latest version's code in a styled monospace `<pre>` block
+  - An "Add Version" button that appends a new version entry
+  - A collapsible section showing version history (version label, date, notes, and code)
+  - Edit mode for the current/new version's code via a `<textarea>` with monospace font
+
+All data is persisted in the existing `technical_notes` JSON field -- no database migration needed since it's already a flexible JSON blob.
+
+### Files to Change
+
 | File | Change |
 |------|--------|
-| `src/components/roadmap/feature-detail/OverviewTab.tsx` | Update `FEATURE_LEVELS` array to `['Core', 'Integrations', 'Add-On']` |
+| `src/types/featureDetail.ts` | Add `CodeSnippetVersion`, `CodeSnippet` interfaces; add fields to `TechnicalData` |
+| `src/components/roadmap/FeatureDetailDrawer.tsx` | Update `defaultTechnicalData` with new fields |
+| `src/components/roadmap/feature-detail/TechnicalTab.tsx` | Add GitHub repo input and Code Snippets manager UI |
 

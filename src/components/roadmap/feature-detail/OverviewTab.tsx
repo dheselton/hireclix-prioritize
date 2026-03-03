@@ -36,7 +36,7 @@ const STATUS_COLORS: Record<ExtendedFeatureStatus, string> = {
   'Cancelled': 'bg-red-500',
 };
 
-const FEATURE_LEVELS = ['Core', 'Enhancement', 'Experiment', 'Bugfix'] as const;
+const FEATURE_LEVELS = ['Core', 'Integrations', 'Add-On'] as const;
 const FEATURE_TYPES = ['Front End UI', 'Backend', 'Integration', 'Infrastructure', 'Analytics', 'Configuration Only', 'Content'] as const;
 const STATUSES: ExtendedFeatureStatus[] = ['Backlog', 'Discovery', 'In Design', 'Ready for Dev', 'In Dev', 'QA', 'Ready for Rollout', 'Rolled Out', 'On Hold', 'Cancelled'];
 const PRIORITIES: FeaturePriority[] = ['P0 – Critical', 'P1 – High', 'P2 – Medium', 'P3 – Low'];
