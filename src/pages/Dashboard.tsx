@@ -49,11 +49,11 @@ export default function Dashboard() {
 
   const totalLiveSites = customers
     .filter(c => c.status === "Live")
-    .reduce((sum, c) => sum + c.live_sites, 0);
+    .reduce((sum, c) => sum + (c.live_sites ?? 0), 0);
 
-  const integrationHealthPercent = Math.round(
-    (integrations.filter(i => i.health === "Healthy").length / integrations.length) * 100
-  );
+  const integrationHealthPercent = integrations.length > 0
+    ? Math.round((integrations.filter(i => i.health === "Healthy").length / integrations.length) * 100)
+    : 0;
 
   const recentlyLive = customers
     .filter(c => c.status === "Live" && c.go_live_date)
@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   const filteredDocs = docs
     .filter(d => docFilter === "all" || d.audience === docFilter)
-    .sort((a, b) => b.views_30d - a.views_30d)
+    .sort((a, b) => (b.views_30d ?? 0) - (a.views_30d ?? 0))
     .slice(0, 6);
 
   const activeIntegrations = integrations.filter(i => i.status === "GA" || i.status === "Beta").slice(0, 4);
