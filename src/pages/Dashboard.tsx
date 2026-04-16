@@ -213,7 +213,7 @@ export default function Dashboard() {
               <div key={customer.id} className="row flex items-center justify-between p-3 rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-unbounded font-bold">
-                    {customer.name.substring(0, 2).toUpperCase()}
+                    {(customer.name ?? "").substring(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <h4 className="font-medium text-foreground text-sm">{customer.name}</h4>
