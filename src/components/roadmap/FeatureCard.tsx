@@ -89,7 +89,7 @@ export function FeatureCard({ feature, onClick }: FeatureCardProps) {
               {format(new Date(feature.due_date), 'MMM d')}
             </div>
           )}
-          {feature.subtask_count > 0 && (
+          {(feature.subtask_count ?? 0) > 0 && (
             <div className="flex items-center gap-1">
               <CheckSquare className="w-3 h-3" />
               {feature.subtask_count}
