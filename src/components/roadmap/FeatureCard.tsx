@@ -65,18 +65,18 @@ export function FeatureCard({ feature, onClick }: FeatureCardProps) {
           </Badge>
         </div>
 
-        {feature.assignees.length > 0 && (
+        {(feature.assignees?.length ?? 0) > 0 && (
           <div className="flex -space-x-2 mt-2">
-            {feature.assignees.slice(0, 3).map((assignee, idx) => (
+            {feature.assignees!.slice(0, 3).map((assignee, idx) => (
               <Avatar key={idx} className={cn("w-6 h-6 border-2 border-background", getAvatarColor(assignee))}>
                 <AvatarFallback className="text-[10px] text-white bg-transparent">
                   {getInitials(assignee)}
                 </AvatarFallback>
               </Avatar>
             ))}
-            {feature.assignees.length > 3 && (
+            {feature.assignees!.length > 3 && (
               <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] border-2 border-background text-muted-foreground font-medium">
-                +{feature.assignees.length - 3}
+                +{feature.assignees!.length - 3}
               </div>
             )}
           </div>
