@@ -44,6 +44,27 @@ export type Database = {
         }
         Relationships: []
       }
+      clients: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           ats: string
@@ -371,6 +392,999 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           view_count?: number | null
+        }
+        Relationships: []
+      }
+      mock_users: {
+        Row: {
+          avatar_url: string | null
+          capacity_hours_per_week: number | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          capacity_hours_per_week?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          role: string
+        }
+        Update: {
+          avatar_url?: string | null
+          capacity_hours_per_week?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
+      pm_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          payload: Json | null
+          project_id: string | null
+          task_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          project_id?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          project_id?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_activity_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_activity_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_activity_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_attachments: {
+        Row: {
+          id: string
+          name: string
+          project_id: string | null
+          task_id: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          project_id?: string | null
+          task_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          project_id?: string | null
+          task_id?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_attachments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_checklist_items: {
+        Row: {
+          checked: boolean
+          id: string
+          label: string
+          sort_order: number
+          task_id: string
+        }
+        Insert: {
+          checked?: boolean
+          id?: string
+          label: string
+          sort_order?: number
+          task_id: string
+        }
+        Update: {
+          checked?: boolean
+          id?: string
+          label?: string
+          sort_order?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_checklist_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_client_environments: {
+        Row: {
+          client_id: string
+          contacts: Json | null
+          id: string
+          integrations: Json | null
+          name: string
+          notes: string | null
+          prod_endpoint: string | null
+          staging_endpoint: string | null
+        }
+        Insert: {
+          client_id: string
+          contacts?: Json | null
+          id?: string
+          integrations?: Json | null
+          name: string
+          notes?: string | null
+          prod_endpoint?: string | null
+          staging_endpoint?: string | null
+        }
+        Update: {
+          client_id?: string
+          contacts?: Json | null
+          id?: string
+          integrations?: Json | null
+          name?: string
+          notes?: string | null
+          prod_endpoint?: string | null
+          staging_endpoint?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_client_environments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          mentions: string[] | null
+          pinned: boolean
+          project_id: string | null
+          task_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          pinned?: boolean
+          project_id?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          mentions?: string[] | null
+          pinned?: boolean
+          project_id?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_form_fields: {
+        Row: {
+          conditionals: Json | null
+          form_id: string
+          id: string
+          label: string
+          options: Json | null
+          placeholder: string | null
+          required: boolean
+          sort_order: number
+          type: string
+        }
+        Insert: {
+          conditionals?: Json | null
+          form_id: string
+          id?: string
+          label: string
+          options?: Json | null
+          placeholder?: string | null
+          required?: boolean
+          sort_order?: number
+          type: string
+        }
+        Update: {
+          conditionals?: Json | null
+          form_id?: string
+          id?: string
+          label?: string
+          options?: Json | null
+          placeholder?: string | null
+          required?: boolean
+          sort_order?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_form_fields_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "pm_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_form_submissions: {
+        Row: {
+          created_at: string
+          created_project_id: string | null
+          created_task_id: string | null
+          form_id: string
+          id: string
+          payload: Json
+          status: string
+          submitter_email: string | null
+          submitter_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_project_id?: string | null
+          created_task_id?: string | null
+          form_id: string
+          id?: string
+          payload: Json
+          status?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_project_id?: string | null
+          created_task_id?: string | null
+          form_id?: string
+          id?: string
+          payload?: Json
+          status?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_form_submissions_created_project_id_fkey"
+            columns: ["created_project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_form_submissions_created_task_id_fkey"
+            columns: ["created_task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "pm_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_forms: {
+        Row: {
+          auth_token: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          name: string
+          notify_emails: string[] | null
+          shareable_slug: string | null
+          submit_action: Json | null
+          webhook_url: string | null
+        }
+        Insert: {
+          auth_token?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notify_emails?: string[] | null
+          shareable_slug?: string | null
+          submit_action?: Json | null
+          webhook_url?: string | null
+        }
+        Update: {
+          auth_token?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notify_emails?: string[] | null
+          shareable_slug?: string | null
+          submit_action?: Json | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_forms_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_project_members: {
+        Row: {
+          id: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_project_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_project_phases: {
+        Row: {
+          id: string
+          name: string
+          project_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          project_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          project_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_project_phases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_project_templates: {
+        Row: {
+          created_at: string
+          default_go_live_offset_days: number | null
+          description: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          default_go_live_offset_days?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          default_go_live_offset_days?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      pm_projects: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          custom_fields: Json | null
+          description: string | null
+          go_live_date: string | null
+          id: string
+          start_date: string | null
+          status: string
+          tags: string[] | null
+          template_id: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          description?: string | null
+          go_live_date?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string
+          tags?: string[] | null
+          template_id?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          description?: string | null
+          go_live_date?: string | null
+          id?: string
+          start_date?: string | null
+          status?: string
+          tags?: string[] | null
+          template_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_projects_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "pm_project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_subtasks: {
+        Row: {
+          complete: boolean
+          id: string
+          sort_order: number
+          task_id: string
+          title: string
+        }
+        Insert: {
+          complete?: boolean
+          id?: string
+          sort_order?: number
+          task_id: string
+          title: string
+        }
+        Update: {
+          complete?: boolean
+          id?: string
+          sort_order?: number
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_task_dependencies: {
+        Row: {
+          depends_on_task_id: string
+          id: string
+          lag_days: number | null
+          task_id: string
+          type: string
+        }
+        Insert: {
+          depends_on_task_id: string
+          id?: string
+          lag_days?: number | null
+          task_id: string
+          type?: string
+        }
+        Update: {
+          depends_on_task_id?: string
+          id?: string
+          lag_days?: number | null
+          task_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_task_dependencies_depends_on_task_id_fkey"
+            columns: ["depends_on_task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_task_dependencies_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by: string | null
+          custom_fields: Json | null
+          description: string | null
+          design_approval: string | null
+          design_round: number | null
+          dev_blocker: string | null
+          dev_environment: string | null
+          dev_links: Json | null
+          dev_status_log: Json | null
+          due_date: string | null
+          duration_days: number
+          id: string
+          phase_id: string | null
+          priority: string
+          project_id: string
+          sort_order: number
+          start_date: string | null
+          status: string
+          tags: string[] | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          description?: string | null
+          design_approval?: string | null
+          design_round?: number | null
+          dev_blocker?: string | null
+          dev_environment?: string | null
+          dev_links?: Json | null
+          dev_status_log?: Json | null
+          due_date?: string | null
+          duration_days?: number
+          id?: string
+          phase_id?: string | null
+          priority?: string
+          project_id: string
+          sort_order?: number
+          start_date?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          custom_fields?: Json | null
+          description?: string | null
+          design_approval?: string | null
+          design_round?: number | null
+          dev_blocker?: string | null
+          dev_environment?: string | null
+          dev_links?: Json | null
+          dev_status_log?: Json | null
+          due_date?: string | null
+          duration_days?: number
+          id?: string
+          phase_id?: string | null
+          priority?: string
+          project_id?: string
+          sort_order?: number
+          start_date?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "pm_project_phases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_template_dependencies: {
+        Row: {
+          from_temp_id: string
+          id: string
+          lag_days: number | null
+          template_id: string
+          to_temp_id: string
+          type: string
+        }
+        Insert: {
+          from_temp_id: string
+          id?: string
+          lag_days?: number | null
+          template_id: string
+          to_temp_id: string
+          type?: string
+        }
+        Update: {
+          from_temp_id?: string
+          id?: string
+          lag_days?: number | null
+          template_id?: string
+          to_temp_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_template_dependencies_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "pm_project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_template_tasks: {
+        Row: {
+          assignee_role: string | null
+          checklist_items: Json | null
+          duration_days: number
+          id: string
+          phase_name: string | null
+          role: string | null
+          sort_order: number
+          temp_id: string
+          template_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          assignee_role?: string | null
+          checklist_items?: Json | null
+          duration_days?: number
+          id?: string
+          phase_name?: string | null
+          role?: string | null
+          sort_order?: number
+          temp_id: string
+          template_id: string
+          title: string
+          type: string
+        }
+        Update: {
+          assignee_role?: string | null
+          checklist_items?: Json | null
+          duration_days?: number
+          id?: string
+          phase_name?: string | null
+          role?: string | null
+          sort_order?: number
+          temp_id?: string
+          template_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_template_tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "pm_project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_time_entries: {
+        Row: {
+          id: string
+          logged_at: string
+          minutes: number
+          note: string | null
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          minutes: number
+          note?: string | null
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          minutes?: number
+          note?: string | null
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_webhook_deliveries: {
+        Row: {
+          attempted_at: string
+          event: string
+          id: string
+          payload: Json | null
+          response_body: string | null
+          response_status: number | null
+          webhook_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          event: string
+          id?: string
+          payload?: Json | null
+          response_body?: string | null
+          response_status?: number | null
+          webhook_id: string
+        }
+        Update: {
+          attempted_at?: string
+          event?: string
+          id?: string
+          payload?: Json | null
+          response_body?: string | null
+          response_status?: number | null
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "pm_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_webhooks: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          events: string[]
+          headers: Json | null
+          id: string
+          name: string
+          secret: string | null
+          target_url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          events?: string[]
+          headers?: Json | null
+          id?: string
+          name: string
+          secret?: string | null
+          target_url: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          events?: string[]
+          headers?: Json | null
+          id?: string
+          name?: string
+          secret?: string | null
+          target_url?: string
         }
         Relationships: []
       }
