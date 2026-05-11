@@ -66,6 +66,7 @@ export interface PmTask {
   dev_status_log: Array<{ at: string; note: string; by?: string }>;
   dev_links: Array<{ label: string; url: string }>;
   dev_environment: string | null;
+  track?: Track;
   created_at: string;
   updated_at: string;
 }
