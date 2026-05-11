@@ -32,7 +32,7 @@ interface Props {
 
 export function CollectionToolbar({
   title, subtitle, actions, mode, onModeChange, modes,
-  showMeMode = true, chipState, extraControls,
+  showMeMode = true, showTrack = true, chipState, extraControls,
 }: Props) {
   return (
     <div className="space-y-3">
@@ -44,6 +44,7 @@ export function CollectionToolbar({
         <div className="flex items-center gap-2 flex-wrap">
           {actions}
           {extraControls}
+          {showTrack && <TrackToggle />}
           {showMeMode && <MeModeToggle />}
           {mode && onModeChange && (
             <ViewToggle value={mode} onChange={onModeChange} modes={modes} />
