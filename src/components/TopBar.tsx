@@ -17,6 +17,7 @@ const ROLE_LABEL: Record<string, string> = {
 export function TopBar() {
   const { user, users, setCurrent } = useCurrentUser();
   const initials = user?.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "?";
+  useEffect(() => { installMeModeHotkey(); }, []);
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center px-4 gap-4 sticky top-0 z-40">
