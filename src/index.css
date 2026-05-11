@@ -73,8 +73,17 @@ All colors MUST be HSL.
     --hover-on-accent: 0 0% 13%;
     --hover-border: 210 9% 79%;
     --hover-ring: 209 61% 58%;
+
+    /* Track colors (PM vs Production) */
+    --track-pm: 245 60% 55%;          /* indigo */
+    --track-production: 32 95% 50%;   /* amber */
   }
 }
+
+@layer utilities {
+  .track-border-pm { box-shadow: inset 3px 0 0 hsl(var(--track-pm)); }
+  .track-border-production { box-shadow: inset 3px 0 0 hsl(var(--track-production)); }
+  .other-track { opacity: 0.7; }
 
 @layer base {
   * {
