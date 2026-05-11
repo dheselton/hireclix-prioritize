@@ -1,17 +1,14 @@
 import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMockUsers } from "@/lib/pm/mockUser";
-import { TASK_STATUSES, type PmTask, type PmProject, type TaskStatus } from "@/types/pm";
-import { updateTask } from "@/lib/pm/api";
-import { toast } from "sonner";
+import { type PmTask, type PmProject } from "@/types/pm";
+import { BulkTaskActions } from "./BulkTaskActions";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
