@@ -1,17 +1,14 @@
 import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMockUsers } from "@/lib/pm/mockUser";
-import { TASK_STATUSES, type PmTask, type PmProject, type TaskStatus } from "@/types/pm";
-import { updateTask } from "@/lib/pm/api";
-import { toast } from "sonner";
+import { type PmTask, type PmProject } from "@/types/pm";
+import { BulkTaskActions } from "./BulkTaskActions";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
@@ -69,20 +66,6 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
     setSelected(s);
   }
 
-  async function bulkStatus(status: TaskStatus) {
-    await Promise.all(Array.from(selected).map(id => updateTask(id, { status })));
-    toast.success(`Updated ${selected.size} task${selected.size === 1 ? "" : "s"}`);
-    setSelected(new Set());
-    onChanged?.();
-  }
-
-  async function bulkAssign(userId: string | null) {
-    await Promise.all(Array.from(selected).map(id => updateTask(id, { assignee_id: userId })));
-    toast.success(`Reassigned ${selected.size} task${selected.size === 1 ? "" : "s"}`);
-    setSelected(new Set());
-    onChanged?.();
-  }
-
   const SortHead = ({ k, children, className }: { k: SortKey; children: React.ReactNode; className?: string }) => (
     <th className={cn("p-2 font-medium select-none cursor-pointer", className)} onClick={() => toggleSort(k)}>
       <span className="inline-flex items-center gap-1">
@@ -94,24 +77,12 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
 
   return (
     <div className="space-y-2">
-      {enableBulk && selected.size > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/40 text-sm">
-          <span className="font-medium">{selected.size} selected</span>
-          <Select onValueChange={(v) => bulkStatus(v as TaskStatus)}>
-            <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Change status" /></SelectTrigger>
-            <SelectContent className="z-50 bg-popover">
-              {TASK_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select onValueChange={(v) => bulkAssign(v === "none" ? null : v)}>
-            <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Reassign" /></SelectTrigger>
-            <SelectContent className="z-50 bg-popover">
-              <SelectItem value="none">Unassigned</SelectItem>
-              {users.filter(u => u.role !== "submitter").map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Clear</Button>
-        </div>
+      {enableBulk && (
+        <BulkTaskActions
+          selected={selected}
+          onClear={() => setSelected(new Set())}
+          onChanged={onChanged}
+        />
       )}
 
       <div className="border border-border rounded-md overflow-hidden">
