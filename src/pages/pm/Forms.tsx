@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ViewToggle } from "@/components/pm/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
 import { fmtDate } from "@/lib/pm/format";
+import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 
 export default function Forms() {
   const [forms, setForms] = useState<any[]>([]);
