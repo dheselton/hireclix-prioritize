@@ -66,6 +66,15 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
     setSelected(s);
   }
 
+  const SortHead = ({ k, children, className }: { k: SortKey; children: React.ReactNode; className?: string }) => (
+    <th className={cn("p-2 font-medium select-none cursor-pointer", className)} onClick={() => toggleSort(k)}>
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortKey === k && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+      </span>
+    </th>
+  );
+
   return (
     <div className="space-y-2">
       {enableBulk && (
