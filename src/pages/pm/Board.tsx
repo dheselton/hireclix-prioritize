@@ -8,13 +8,14 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtDateShort } from "@/lib/pm/format";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ViewToggle } from "@/components/pm/ViewToggle";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
+import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
+import { useMeMode } from "@/hooks/useMeMode";
+import { useChipFilters } from "@/hooks/useChipFilters";
+import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -24,10 +25,11 @@ const COL_LABELS: Record<TaskStatus, string> = {
 export default function Board() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
-  const [showAll, setShowAll] = useState(false);
-  const { user, role } = useCurrentUser();
+  const { user } = useCurrentUser();
   const drawer = useTaskDrawerLink();
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const { isMe } = useMeMode();
+  const chips = useChipFilters("board");
   const [boardMode, setBoardMode] = useState<"kanban" | "list" | "grid">(() => {
     const v = typeof window !== "undefined" ? localStorage.getItem("pm.viewMode.board") : null;
     return (v === "kanban" || v === "list" || v === "grid") ? v : "kanban";
@@ -43,11 +45,10 @@ export default function Board() {
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
   const visible = useMemo(() => {
-    if (showAll || role === "pm") return tasks;
-    if (role === "designer") return tasks.filter(t => t.type === "design" || t.assignee_id === user?.id);
-    if (role === "developer") return tasks.filter(t => t.type === "dev" || t.assignee_id === user?.id);
-    return tasks.filter(t => t.assignee_id === user?.id);
-  }, [tasks, showAll, role, user]);
+    let v = applyTaskMeMode(tasks, isMe, user?.id);
+    v = applyTaskChips(v, chips.active, user?.id);
+    return v;
+  }, [tasks, isMe, user?.id, chips.active]);
 
   async function moveTo(taskId: string, status: TaskStatus) {
     const t = tasks.find(x => x.id === taskId);
@@ -60,25 +61,14 @@ export default function Board() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold font-unbounded">Board</h1>
-          <p className="text-sm text-muted-foreground">
-            {boardMode === "kanban" ? "Drag cards across columns to update status." : "Tasks across all statuses."}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Switch id="all" checked={showAll} onCheckedChange={setShowAll} />
-            <Label htmlFor="all" className="text-sm">Show all</Label>
-          </div>
-          <ViewToggle
-            value={boardMode}
-            onChange={(m) => changeMode(m as any)}
-            modes={["kanban", "list", "grid"]}
-          />
-        </div>
-      </div>
+      <CollectionToolbar
+        title="Board"
+        subtitle={boardMode === "kanban" ? "Drag cards across columns to update status." : "Tasks across all statuses."}
+        mode={boardMode}
+        onModeChange={(m) => changeMode(m as any)}
+        modes={["kanban", "list", "grid"]}
+        chipState={chips}
+      />
 
       {boardMode === "list" && (
         <TaskListView tasks={visible} projects={projById} onOpen={drawer.open} onChanged={reload} />
