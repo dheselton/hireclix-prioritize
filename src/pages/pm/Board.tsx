@@ -46,11 +46,15 @@ export default function Board() {
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(user);
+
   const visible = useMemo(() => {
-    let v = applyTaskMeMode(tasks, isMe, user?.id);
+    let v = applyTaskTrack(tasks, trackMode, myTrack);
+    v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
     return v;
-  }, [tasks, isMe, user?.id, chips.active]);
+  }, [tasks, isMe, user?.id, chips.active, trackMode, myTrack]);
 
   async function moveTo(taskId: string, status: TaskStatus) {
     const t = tasks.find(x => x.id === taskId);
