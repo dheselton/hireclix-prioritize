@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
@@ -11,10 +11,14 @@ import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ViewToggle } from "@/components/pm/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
 import { ProjectListView } from "@/components/pm/collections/ProjectListView";
 import { ProjectGridView } from "@/components/pm/collections/ProjectGridView";
+import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
+import { useMeMode } from "@/hooks/useMeMode";
+import { useChipFilters } from "@/hooks/useChipFilters";
+import { useMyProjectIds } from "@/hooks/useMyProjectIds";
+import { applyProjectChips, applyProjectMeMode } from "@/lib/pm/filters";
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<PmProject[]>([]);
@@ -23,6 +27,9 @@ export default function ProjectList() {
   const [open, setOpen] = useState(false);
   const { user } = useCurrentUser();
   const [mode, setMode] = useViewMode("projects", "grid");
+  const { isMe } = useMeMode();
+  const chips = useChipFilters("projects");
+  const memberIds = useMyProjectIds();
 
   const reload = async () => {
     const [p, t, c] = await Promise.all([
@@ -32,6 +39,12 @@ export default function ProjectList() {
     setProjects(p); setTasks(t); setClients(c);
   };
   useEffect(() => { reload(); }, []);
+
+  const visible = useMemo(() => {
+    let v = applyProjectMeMode(projects, isMe, user?.id, memberIds);
+    v = applyProjectChips(v, tasks, chips.active, user?.id, memberIds);
+    return v;
+  }, [projects, tasks, isMe, user?.id, memberIds, chips.active]);
 
   const [form, setForm] = useState<any>({ title: "", type: "quick_request", status: "active", client_id: "", go_live_date: "" });
 
@@ -50,20 +63,18 @@ export default function ProjectList() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold font-unbounded">Projects</h1>
-          <p className="text-sm text-muted-foreground">{projects.length} total</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <ViewToggle value={mode} onChange={(m) => setMode(m as any)} />
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>
-        </div>
-      </div>
+      <CollectionToolbar
+        title="Projects"
+        subtitle={`${visible.length} of ${projects.length} total`}
+        mode={mode}
+        onModeChange={(m) => setMode(m as any)}
+        chipState={{ ...chips, hide: ["watching"] }}
+        actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>}
+      />
 
       {mode === "list"
-        ? <ProjectListView projects={projects} tasks={tasks} />
-        : <ProjectGridView projects={projects} tasks={tasks} />}
+        ? <ProjectListView projects={visible} tasks={tasks} />
+        : <ProjectGridView projects={visible} tasks={tasks} />}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
