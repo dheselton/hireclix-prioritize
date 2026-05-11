@@ -51,8 +51,8 @@ export function CollectionToolbar({
       {chipState && (
         <FilterChipBar
           active={chipState.active}
-          onToggle={chipState.onToggle}
-          onClear={chipState.onClear}
+          onToggle={chipState.toggle}
+          onClear={chipState.clear}
           hide={chipState.hide}
           counts={chipState.counts}
         />
