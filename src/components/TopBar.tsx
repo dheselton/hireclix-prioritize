@@ -34,15 +34,34 @@ export function TopBar() {
       <MeModeToggle />
 
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
-        <SelectTrigger className="w-[220px]">
+        <SelectTrigger className="w-[240px]">
           <SelectValue placeholder="Select user" />
         </SelectTrigger>
-        <SelectContent className="z-50 bg-popover">
-          {users.map(u => (
-            <SelectItem key={u.id} value={u.id}>
-              {u.name} · {ROLE_LABEL[u.role]}
-            </SelectItem>
-          ))}
+        <SelectContent className="z-50 bg-popover max-h-[400px]">
+          {(['pm','designer','developer','submitter'] as const).map(r => {
+            const group = users.filter(u => u.role === r);
+            if (!group.length) return null;
+            return (
+              <div key={r}>
+                <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {ROLE_LABEL[r]}s
+                </div>
+                {group.map(u => (
+                  <SelectItem key={u.id} value={u.id}>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block h-4 w-4 rounded-full text-[8px] text-white font-bold flex items-center justify-center"
+                        style={{ backgroundColor: u.avatar_color ?? "hsl(var(--primary))" }}
+                      >
+                        {u.name.split(" ").map(n => n[0]).join("").slice(0,2)}
+                      </span>
+                      {u.name}{u.secondary_role ? ` · +${ROLE_LABEL[u.secondary_role]}` : ""}
+                    </span>
+                  </SelectItem>
+                ))}
+              </div>
+            );
+          })}
         </SelectContent>
       </Select>
 
