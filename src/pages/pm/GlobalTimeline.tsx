@@ -32,12 +32,16 @@ export default function GlobalTimeline() {
   };
   useEffect(() => { reload(); }, []);
 
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(user);
+
   const visible = useMemo(() => {
     let v = filter === "all" ? tasks : tasks.filter(t => t.project_id === filter);
+    v = applyTaskTrack(v, trackMode, myTrack);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
     return v;
-  }, [tasks, filter, isMe, user?.id, chips.active]);
+  }, [tasks, filter, isMe, user?.id, chips.active, trackMode, myTrack]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
