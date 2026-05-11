@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { MeModeToggle } from "./MeModeToggle";
+import { TrackToggle } from "./TrackToggle";
 import { ViewToggle } from "./ViewToggle";
 import { FilterChipBar } from "./FilterChipBar";
 import type { ChipId } from "@/hooks/useChipFilters";
@@ -16,6 +17,7 @@ interface Props {
   onModeChange?: (m: Mode) => void;
   modes?: Mode[];
   showMeMode?: boolean;
+  showTrack?: boolean;
   /** filter-chip wiring; when omitted the chip row is hidden */
   chipState?: {
     active: Set<ChipId>;
