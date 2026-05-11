@@ -13,6 +13,8 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
+import { useTrackMode } from "@/hooks/useTrackMode";
+import { applyTaskTrack, userTrack } from "@/lib/pm/track";
 
 export default function GlobalTimeline() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
