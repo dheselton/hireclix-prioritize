@@ -10,10 +10,14 @@ export interface MockUser {
   id: string;
   name: string;
   role: PmRole;
+  secondary_role?: PmRole | null;
   email: string | null;
   avatar_url: string | null;
+  avatar_color?: string | null;
   capacity_hours_per_week: number;
 }
+
+export type Track = 'pm' | 'production';
 
 export interface PmProject {
   id: string;
