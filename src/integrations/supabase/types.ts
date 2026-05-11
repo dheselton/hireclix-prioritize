@@ -397,6 +397,7 @@ export type Database = {
       }
       mock_users: {
         Row: {
+          avatar_color: string | null
           avatar_url: string | null
           capacity_hours_per_week: number | null
           created_at: string
@@ -404,8 +405,10 @@ export type Database = {
           id: string
           name: string
           role: string
+          secondary_role: string | null
         }
         Insert: {
+          avatar_color?: string | null
           avatar_url?: string | null
           capacity_hours_per_week?: number | null
           created_at?: string
@@ -413,8 +416,10 @@ export type Database = {
           id?: string
           name: string
           role: string
+          secondary_role?: string | null
         }
         Update: {
+          avatar_color?: string | null
           avatar_url?: string | null
           capacity_hours_per_week?: number | null
           created_at?: string
@@ -422,6 +427,7 @@ export type Database = {
           id?: string
           name?: string
           role?: string
+          secondary_role?: string | null
         }
         Relationships: []
       }
@@ -1104,6 +1110,7 @@ export type Database = {
           status: string
           tags: string[] | null
           title: string
+          track: string
           type: string
           updated_at: string
         }
@@ -1130,6 +1137,7 @@ export type Database = {
           status?: string
           tags?: string[] | null
           title: string
+          track?: string
           type?: string
           updated_at?: string
         }
@@ -1156,6 +1164,7 @@ export type Database = {
           status?: string
           tags?: string[] | null
           title?: string
+          track?: string
           type?: string
           updated_at?: string
         }
@@ -1237,6 +1246,7 @@ export type Database = {
           temp_id: string
           template_id: string
           title: string
+          track: string | null
           type: string
         }
         Insert: {
@@ -1250,6 +1260,7 @@ export type Database = {
           temp_id: string
           template_id: string
           title: string
+          track?: string | null
           type: string
         }
         Update: {
@@ -1263,6 +1274,7 @@ export type Database = {
           temp_id?: string
           template_id?: string
           title?: string
+          track?: string | null
           type?: string
         }
         Relationships: [
