@@ -47,7 +47,7 @@ export default function Workload() {
         {users.map(u => {
           const isMyRow = u.id === me?.id;
           const dimmed = isMe && !isMyRow;
-          const activeRaw = tasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
+          const activeRaw = trackedTasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
           const active = applyTaskChips(activeRaw, chips.active, me?.id);
           const thisWeek = active.filter(t => t.due_date && new Date(t.due_date) <= weekEnd);
           const cap = u.capacity_hours_per_week / 8;
