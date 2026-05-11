@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Search, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { MeModeToggle } from "@/components/pm/MeModeToggle";
+import { installMeModeHotkey } from "@/hooks/useMeMode";
 
 const ROLE_LABEL: Record<string, string> = {
   pm: "PM", designer: "Designer", developer: "Developer", submitter: "Submitter",
