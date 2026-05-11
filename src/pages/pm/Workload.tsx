@@ -26,9 +26,12 @@ export default function Workload() {
   const [mode, setMode] = useViewMode("workload", "list");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workload");
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(me);
 
   useEffect(() => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); }, []);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const trackedTasks = useMemo(() => applyTaskTrack(tasks, trackMode, myTrack), [tasks, trackMode, myTrack]);
 
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
