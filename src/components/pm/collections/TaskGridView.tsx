@@ -43,7 +43,11 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
           return (
             <Card
               key={t.id}
-              className={cn("relative cursor-pointer hover:shadow-md transition", checked && "ring-2 ring-primary")}
+              className={cn(
+                "relative cursor-pointer hover:shadow-md transition",
+                checked && "ring-2 ring-primary",
+                t.track === "pm" ? "track-border-pm" : "track-border-production",
+              )}
               onClick={() => onOpen(t.id)}
             >
               <CardContent className="p-3 pl-9 space-y-2">
