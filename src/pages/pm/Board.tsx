@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ViewToggle } from "@/components/pm/ViewToggle";
-import { useViewMode } from "@/hooks/useViewMode";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
 
@@ -29,8 +28,6 @@ export default function Board() {
   const { user, role } = useCurrentUser();
   const drawer = useTaskDrawerLink();
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [mode, setMode] = useViewMode("board", "list") as any;
-  // mode here can be "list" | "grid" | "kanban"
   const [boardMode, setBoardMode] = useState<"kanban" | "list" | "grid">(() => {
     const v = typeof window !== "undefined" ? localStorage.getItem("pm.viewMode.board") : null;
     return (v === "kanban" || v === "list" || v === "grid") ? v : "kanban";
