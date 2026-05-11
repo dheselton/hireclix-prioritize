@@ -1,22 +1,21 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Inbox, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
+import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import type { PmTask, PmProject } from "@/types/pm";
-import { StatusPill } from "@/components/pm/StatusPill";
-import { UserAvatar } from "@/components/pm/UserAvatar";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
-import { fmtDate } from "@/lib/pm/format";
-import { toast } from "sonner";
+import { ViewToggle } from "@/components/pm/ViewToggle";
+import { useViewMode } from "@/hooks/useViewMode";
+import { TaskListView } from "@/components/pm/collections/TaskListView";
+import { TaskGridView } from "@/components/pm/collections/TaskGridView";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
+  const [mode, setMode] = useViewMode("workQueue", "list");
 
   const reload = async () => {
     const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
@@ -31,26 +30,14 @@ export default function WorkQueue() {
   const overdue = mine.filter(t => t.due_date && new Date(t.due_date) < new Date());
   const blocked = tasks.filter(t => t.status === "blocked");
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
-
-  const todayTasks = mine.filter(t => t.due_date && new Date(t.due_date) <= today);
-  const weekTasks = mine.filter(t => t.due_date && new Date(t.due_date) > today && new Date(t.due_date) <= weekEnd);
-  const laterTasks = mine.filter(t => !t.due_date || new Date(t.due_date) > weekEnd);
-
-  async function claim(t: PmTask) {
-    if (!user) return;
-    await updateTask(t.id, { assignee_id: user.id, status: "in_progress" });
-    await logActivity({ task_id: t.id, project_id: t.project_id, user_id: user.id, action: "task.claimed" });
-    toast.success(`Claimed: ${t.title}`);
-    reload();
-  }
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold font-unbounded">Good day, {user?.name?.split(" ")[0] ?? "there"}</h1>
-        <p className="text-sm text-muted-foreground">Viewing as <span className="font-medium">{role}</span></p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold font-unbounded">Good day, {user?.name?.split(" ")[0] ?? "there"}</h1>
+          <p className="text-sm text-muted-foreground">Viewing as <span className="font-medium">{role}</span></p>
+        </div>
+        <ViewToggle value={mode} onChange={(m) => setMode(m as any)} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -73,34 +60,15 @@ export default function WorkQueue() {
       )}
 
       <Section title="Unclaimed Requests" count={unclaimed.length}>
-        {unclaimed.length === 0 ? <Empty>No unclaimed work. </Empty> : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {unclaimed.map(t => {
-              const proj = projById.get(t.project_id);
-              return (
-                <Card key={t.id} className="hover:shadow-md transition cursor-pointer" onClick={() => drawer.open(t.id)}>
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
-                      <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
-                    </div>
-                    <div className="font-medium">{t.title}</div>
-                    <div className="text-xs text-muted-foreground">{proj?.title} · Due {fmtDate(t.due_date)}</div>
-                    <Button size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); claim(t); }}>Claim</Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        {mode === "list"
+          ? <TaskListView tasks={unclaimed} projects={projById} onOpen={drawer.open} onChanged={reload} />
+          : <TaskGridView tasks={unclaimed} projects={projById} onOpen={drawer.open} onChanged={reload} />}
       </Section>
 
       <Section title="My Tasks" count={mine.length}>
-        <div className="space-y-4">
-          <Group label="Today" tasks={todayTasks} projById={projById} onOpen={drawer.open} />
-          <Group label="This Week" tasks={weekTasks} projById={projById} onOpen={drawer.open} />
-          <Group label="Later" tasks={laterTasks} projById={projById} onOpen={drawer.open} />
-        </div>
+        {mode === "list"
+          ? <TaskListView tasks={mine} projects={projById} onOpen={drawer.open} onChanged={reload} />
+          : <TaskGridView tasks={mine} projects={projById} onOpen={drawer.open} onChanged={reload} />}
       </Section>
 
       <TaskDrawer />
@@ -122,38 +90,10 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">{title} <span className="text-foreground/50">({count})</span></h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+        {title} <span className="text-foreground/50">({count})</span>
+      </h2>
       {children}
     </div>
   );
-}
-
-function Group({ label, tasks, projById, onOpen }: { label: string; tasks: PmTask[]; projById: Map<string, PmProject>; onOpen: (id: string) => void }) {
-  if (!tasks.length) return null;
-  return (
-    <div>
-      <div className="text-xs font-medium text-muted-foreground mb-1">{label}</div>
-      <div className="space-y-1">
-        {tasks.map(t => {
-          const proj = projById.get(t.project_id);
-          return (
-            <Card key={t.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => onOpen(t.id)}>
-              <CardContent className="p-3 flex items-center gap-3">
-                <UserAvatar userId={t.assignee_id} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{t.title}</div>
-                  <div className="text-xs text-muted-foreground truncate">{proj?.title} · {fmtDate(t.due_date)}</div>
-                </div>
-                <StatusPill status={t.status} />
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="text-sm text-muted-foreground italic py-4">{children}</div>;
 }

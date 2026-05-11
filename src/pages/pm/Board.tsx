@@ -12,6 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ViewToggle } from "@/components/pm/ViewToggle";
+import { TaskListView } from "@/components/pm/collections/TaskListView";
+import { TaskGridView } from "@/components/pm/collections/TaskGridView";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -25,6 +28,14 @@ export default function Board() {
   const { user, role } = useCurrentUser();
   const drawer = useTaskDrawerLink();
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [boardMode, setBoardMode] = useState<"kanban" | "list" | "grid">(() => {
+    const v = typeof window !== "undefined" ? localStorage.getItem("pm.viewMode.board") : null;
+    return (v === "kanban" || v === "list" || v === "grid") ? v : "kanban";
+  });
+  function changeMode(m: "kanban" | "list" | "grid") {
+    setBoardMode(m);
+    try { localStorage.setItem("pm.viewMode.board", m); } catch {}
+  }
 
   const reload = async () => { setTasks(await fetchTasks()); setProjects(await fetchProjects()); };
   useEffect(() => { reload(); }, []);
@@ -49,64 +60,83 @@ export default function Board() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold font-unbounded">Board</h1>
-          <p className="text-sm text-muted-foreground">Drag cards across columns to update status.</p>
+          <p className="text-sm text-muted-foreground">
+            {boardMode === "kanban" ? "Drag cards across columns to update status." : "Tasks across all statuses."}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Switch id="all" checked={showAll} onCheckedChange={setShowAll} />
-          <Label htmlFor="all" className="text-sm">Show all (default: my role)</Label>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch id="all" checked={showAll} onCheckedChange={setShowAll} />
+            <Label htmlFor="all" className="text-sm">Show all</Label>
+          </div>
+          <ViewToggle
+            value={boardMode}
+            onChange={(m) => changeMode(m as any)}
+            modes={["kanban", "list", "grid"]}
+          />
         </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-3">
-        {TASK_STATUSES.map(s => {
-          const items = visible.filter(t => t.status === s);
-          return (
-            <div key={s}
-              className="flex-shrink-0 w-72 bg-muted/30 rounded-lg p-2"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => { if (draggingId) { moveTo(draggingId, s); setDraggingId(null); } }}
-            >
-              <div className="flex items-center justify-between px-1 mb-2">
-                <div className="text-xs font-semibold uppercase tracking-wide">{COL_LABELS[s]}</div>
-                <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+      {boardMode === "list" && (
+        <TaskListView tasks={visible} projects={projById} onOpen={drawer.open} onChanged={reload} />
+      )}
+
+      {boardMode === "grid" && (
+        <TaskGridView tasks={visible} projects={projById} onOpen={drawer.open} onChanged={reload} />
+      )}
+
+      {boardMode === "kanban" && (
+        <div className="flex gap-3 overflow-x-auto pb-3">
+          {TASK_STATUSES.map(s => {
+            const items = visible.filter(t => t.status === s);
+            return (
+              <div key={s}
+                className="flex-shrink-0 w-72 bg-muted/30 rounded-lg p-2"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { if (draggingId) { moveTo(draggingId, s); setDraggingId(null); } }}
+              >
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide">{COL_LABELS[s]}</div>
+                  <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+                </div>
+                <div className="space-y-2 min-h-[100px]">
+                  {items.map(t => {
+                    const proj = projById.get(t.project_id);
+                    const blocked = t.status === "blocked";
+                    return (
+                      <Card
+                        key={t.id}
+                        draggable
+                        onDragStart={() => setDraggingId(t.id)}
+                        onDragEnd={() => setDraggingId(null)}
+                        onClick={() => drawer.open(t.id)}
+                        className={cn("cursor-pointer hover:shadow-md transition", blocked && "border-red-500/60")}
+                      >
+                        <CardContent className="p-2.5 space-y-1.5">
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
+                            <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
+                          </div>
+                          <div className="text-sm font-medium leading-tight">{t.title}</div>
+                          <div className="text-[11px] text-muted-foreground">{proj?.title}</div>
+                          {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
+                          <div className="flex items-center justify-between pt-1">
+                            <UserAvatar userId={t.assignee_id} size="xs" />
+                            <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-2 min-h-[100px]">
-                {items.map(t => {
-                  const proj = projById.get(t.project_id);
-                  const blocked = t.status === "blocked";
-                  return (
-                    <Card
-                      key={t.id}
-                      draggable
-                      onDragStart={() => setDraggingId(t.id)}
-                      onDragEnd={() => setDraggingId(null)}
-                      onClick={() => drawer.open(t.id)}
-                      className={cn("cursor-pointer hover:shadow-md transition", blocked && "border-red-500/60")}
-                    >
-                      <CardContent className="p-2.5 space-y-1.5">
-                        <div className="flex items-center gap-1">
-                          <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
-                          <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
-                        </div>
-                        <div className="text-sm font-medium leading-tight">{t.title}</div>
-                        <div className="text-[11px] text-muted-foreground">{proj?.title}</div>
-                        {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
-                        <div className="flex items-center justify-between pt-1">
-                          <UserAvatar userId={t.assignee_id} size="xs" />
-                          <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       <TaskDrawer />
     </div>
