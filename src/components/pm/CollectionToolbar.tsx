@@ -19,8 +19,8 @@ interface Props {
   /** filter-chip wiring; when omitted the chip row is hidden */
   chipState?: {
     active: Set<ChipId>;
-    onToggle: (id: ChipId) => void;
-    onClear: () => void;
+    toggle: (id: ChipId) => void;
+    clear: () => void;
     hide?: ChipId[];
     counts?: Partial<Record<ChipId, number>>;
   };
