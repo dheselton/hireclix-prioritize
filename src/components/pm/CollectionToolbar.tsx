@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { MeModeToggle } from "./MeModeToggle";
+import { TrackToggle } from "./TrackToggle";
 import { ViewToggle } from "./ViewToggle";
 import { FilterChipBar } from "./FilterChipBar";
 import type { ChipId } from "@/hooks/useChipFilters";
@@ -16,6 +17,7 @@ interface Props {
   onModeChange?: (m: Mode) => void;
   modes?: Mode[];
   showMeMode?: boolean;
+  showTrack?: boolean;
   /** filter-chip wiring; when omitted the chip row is hidden */
   chipState?: {
     active: Set<ChipId>;
@@ -30,7 +32,7 @@ interface Props {
 
 export function CollectionToolbar({
   title, subtitle, actions, mode, onModeChange, modes,
-  showMeMode = true, chipState, extraControls,
+  showMeMode = true, showTrack = true, chipState, extraControls,
 }: Props) {
   return (
     <div className="space-y-3">
@@ -42,6 +44,7 @@ export function CollectionToolbar({
         <div className="flex items-center gap-2 flex-wrap">
           {actions}
           {extraControls}
+          {showTrack && <TrackToggle />}
           {showMeMode && <MeModeToggle />}
           {mode && onModeChange && (
             <ViewToggle value={mode} onChange={onModeChange} modes={modes} />

@@ -12,6 +12,8 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips } from "@/lib/pm/filters";
+import { useTrackMode } from "@/hooks/useTrackMode";
+import { applyTaskTrack, userTrack } from "@/lib/pm/track";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
@@ -21,6 +23,8 @@ export default function WorkQueue() {
   const [mode, setMode] = useViewMode("workQueue", "list");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workQueue");
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(user);
 
   const reload = async () => {
     const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
@@ -30,10 +34,12 @@ export default function WorkQueue() {
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
-  const unclaimed = tasks.filter(t => t.status === "unclaimed");
-  const mineRaw = tasks.filter(t => t.assignee_id === user?.id && t.status !== "complete" && t.status !== "approved");
+  const tracked = useMemo(() => applyTaskTrack(tasks, trackMode, myTrack), [tasks, trackMode, myTrack]);
+
+  const unclaimed = tracked.filter(t => t.status === "unclaimed");
+  const mineRaw = tracked.filter(t => t.assignee_id === user?.id && t.status !== "complete" && t.status !== "approved");
   const overdue = mineRaw.filter(t => t.due_date && new Date(t.due_date) < new Date());
-  const blocked = tasks.filter(t => t.status === "blocked");
+  const blocked = tracked.filter(t => t.status === "blocked");
 
   // Me Mode applies only to "My Tasks" — Unclaimed always shown.
   const mine = useMemo(

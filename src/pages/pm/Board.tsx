@@ -16,6 +16,8 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
+import { useTrackMode } from "@/hooks/useTrackMode";
+import { applyTaskTrack, userTrack } from "@/lib/pm/track";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -44,11 +46,15 @@ export default function Board() {
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(user);
+
   const visible = useMemo(() => {
-    let v = applyTaskMeMode(tasks, isMe, user?.id);
+    let v = applyTaskTrack(tasks, trackMode, myTrack);
+    v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
     return v;
-  }, [tasks, isMe, user?.id, chips.active]);
+  }, [tasks, isMe, user?.id, chips.active, trackMode, myTrack]);
 
   async function moveTo(taskId: string, status: TaskStatus) {
     const t = tasks.find(x => x.id === taskId);

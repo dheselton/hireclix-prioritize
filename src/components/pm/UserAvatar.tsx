@@ -10,10 +10,16 @@ export function UserAvatar({ userId, size = "sm", className }: { userId?: string
     return <div className={cn("rounded-full border border-dashed border-muted-foreground/40", sz, className)} title="Unassigned" />;
   }
   const initials = user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0,2);
+  const bg = user.avatar_color ?? undefined;
   return (
     <Avatar className={cn(sz, className)} title={user.name}>
       <AvatarImage src={user.avatar_url ?? undefined} />
-      <AvatarFallback className="bg-primary/10 text-primary font-medium">{initials}</AvatarFallback>
+      <AvatarFallback
+        className="font-medium text-white"
+        style={bg ? { backgroundColor: bg } : undefined}
+      >
+        {initials}
+      </AvatarFallback>
     </Avatar>
   );
 }

@@ -13,6 +13,8 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
+import { useTrackMode } from "@/hooks/useTrackMode";
+import { applyTaskTrack, userTrack } from "@/lib/pm/track";
 
 export default function GlobalTimeline() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
@@ -30,12 +32,16 @@ export default function GlobalTimeline() {
   };
   useEffect(() => { reload(); }, []);
 
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(user);
+
   const visible = useMemo(() => {
     let v = filter === "all" ? tasks : tasks.filter(t => t.project_id === filter);
+    v = applyTaskTrack(v, trackMode, myTrack);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
     return v;
-  }, [tasks, filter, isMe, user?.id, chips.active]);
+  }, [tasks, filter, isMe, user?.id, chips.active, trackMode, myTrack]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 

@@ -14,6 +14,8 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips } from "@/lib/pm/filters";
+import { useTrackMode } from "@/hooks/useTrackMode";
+import { applyTaskTrack, userTrack } from "@/lib/pm/track";
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
@@ -24,9 +26,12 @@ export default function Workload() {
   const [mode, setMode] = useViewMode("workload", "list");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workload");
+  const { mode: trackMode } = useTrackMode();
+  const myTrack = userTrack(me);
 
   useEffect(() => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); }, []);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const trackedTasks = useMemo(() => applyTaskTrack(tasks, trackMode, myTrack), [tasks, trackMode, myTrack]);
 
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
@@ -42,7 +47,7 @@ export default function Workload() {
         {users.map(u => {
           const isMyRow = u.id === me?.id;
           const dimmed = isMe && !isMyRow;
-          const activeRaw = tasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
+          const activeRaw = trackedTasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
           const active = applyTaskChips(activeRaw, chips.active, me?.id);
           const thisWeek = active.filter(t => t.due_date && new Date(t.due_date) <= weekEnd);
           const cap = u.capacity_hours_per_week / 8;
