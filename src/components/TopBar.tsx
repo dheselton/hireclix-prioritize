@@ -31,6 +31,8 @@ export function TopBar() {
 
       <Badge variant="outline" className="hidden md:inline-flex">Auth disabled · dev mode</Badge>
 
+      <MeModeToggle />
+
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
         <SelectTrigger className="w-[220px]">
           <SelectValue placeholder="Select user" />
