@@ -113,7 +113,11 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
               return (
                 <tr
                   key={t.id}
-                  className={cn("border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer", checked && "bg-primary/5")}
+                  className={cn(
+                    "border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer",
+                    checked && "bg-primary/5",
+                    t.track === "pm" ? "track-border-pm" : "track-border-production",
+                  )}
                   onClick={() => onOpen(t.id)}
                 >
                   {enableBulk && (
