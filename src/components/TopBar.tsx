@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Search, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { MeModeToggle } from "@/components/pm/MeModeToggle";
+import { installMeModeHotkey } from "@/hooks/useMeMode";
 
 const ROLE_LABEL: Record<string, string> = {
   pm: "PM", designer: "Designer", developer: "Developer", submitter: "Submitter",
@@ -14,6 +17,7 @@ const ROLE_LABEL: Record<string, string> = {
 export function TopBar() {
   const { user, users, setCurrent } = useCurrentUser();
   const initials = user?.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "?";
+  useEffect(() => { installMeModeHotkey(); }, []);
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center px-4 gap-4 sticky top-0 z-40">
@@ -26,6 +30,8 @@ export function TopBar() {
       </div>
 
       <Badge variant="outline" className="hidden md:inline-flex">Auth disabled · dev mode</Badge>
+
+      <MeModeToggle />
 
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
         <SelectTrigger className="w-[220px]">

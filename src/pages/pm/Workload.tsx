@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useMockUsers } from "@/lib/pm/mockUser";
+import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import type { PmTask, PmProject } from "@/types/pm";
 import { UserAvatar } from "@/components/pm/UserAvatar";
@@ -9,15 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { fmtDate } from "@/lib/pm/format";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { cn } from "@/lib/utils";
-import { ViewToggle } from "@/components/pm/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
+import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
+import { useMeMode } from "@/hooks/useMeMode";
+import { useChipFilters } from "@/hooks/useChipFilters";
+import { applyTaskChips } from "@/lib/pm/filters";
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
+  const { user: me } = useCurrentUser();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
   const [mode, setMode] = useViewMode("workload", "list");
+  const { isMe } = useMeMode();
+  const chips = useChipFilters("workload");
 
   useEffect(() => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); }, []);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -26,24 +32,33 @@ export default function Workload() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold font-unbounded">Team Workload</h1>
-        <ViewToggle value={mode} onChange={(m) => setMode(m as any)} />
-      </div>
+      <CollectionToolbar
+        title="Team Workload"
+        mode={mode}
+        onModeChange={(m) => setMode(m as any)}
+        chipState={chips}
+      />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {users.map(u => {
-          const active = tasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
+          const isMyRow = u.id === me?.id;
+          const dimmed = isMe && !isMyRow;
+          const activeRaw = tasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
+          const active = applyTaskChips(activeRaw, chips.active, me?.id);
           const thisWeek = active.filter(t => t.due_date && new Date(t.due_date) <= weekEnd);
           const cap = u.capacity_hours_per_week / 8;
           const ratio = thisWeek.length / Math.max(1, cap);
           const tone = ratio < 0.7 ? "bg-emerald-500" : ratio < 1.05 ? "bg-amber-500" : "bg-red-500";
           return (
-            <Card key={u.id}>
+            <Card key={u.id} className={cn(
+              "transition",
+              isMyRow && isMe && "ring-2 ring-primary",
+              dimmed && "opacity-50",
+            )}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   <UserAvatar userId={u.id} size="md" />
                   <div>
-                    <div className="font-semibold">{u.name}</div>
+                    <div className="font-semibold">{u.name}{isMyRow && <span className="ml-1.5 text-[10px] uppercase text-primary">you</span>}</div>
                     <div className="text-xs text-muted-foreground capitalize">{u.role}</div>
                   </div>
                 </div>

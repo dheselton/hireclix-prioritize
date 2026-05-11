@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ViewToggle } from "@/components/pm/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
 import { fmtDate } from "@/lib/pm/format";
+import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 
 export default function Forms() {
   const [forms, setForms] = useState<any[]>([]);
@@ -42,13 +42,12 @@ export default function Forms() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold font-unbounded">Forms</h1>
-        <div className="flex items-center gap-3">
-          <ViewToggle value={mode} onChange={(m) => setMode(m as any)} />
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Form</Button>
-        </div>
-      </div>
+      <CollectionToolbar
+        title="Forms"
+        mode={mode}
+        onModeChange={(m) => setMode(m as any)}
+        actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Form</Button>}
+      />
 
       {!forms.length && <div className="text-sm text-muted-foreground italic py-8 text-center">No forms yet.</div>}
 

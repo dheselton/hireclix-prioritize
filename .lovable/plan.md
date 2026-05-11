@@ -1,85 +1,113 @@
-# List / Grid View Toggle Across PM Collection Views
+# Me Mode, Filter Chips & Standardized Toolbar
 
-Add a consistent List | Grid toggle to every PM screen that renders a collection. Each view remembers its own preference, persisted per-user via localStorage.
+Three coordinated additions that unify how every PM collection view is filtered and laid out.
 
-## Scope (views getting the toggle)
+## 1. Me Mode (global)
 
-| View | Default | Notes |
-|---|---|---|
-| Work Queue (`/pm`) — Unclaimed + My Tasks | List | Two collections on one page; share one toggle |
-| Board (`/pm/board`) | (Kanban stays default) | Add a third mode: Kanban / List / Grid |
-| Projects (`/pm/projects`) | Grid | Currently list-only |
-| Team Workload (`/pm/workload`) — per-person task lists | List | Toggle controls the inner task lists, not the user cards |
-| Global Timeline (`/pm/timeline`) — task list under the Gantt | List | Gantt always visible; toggle only the list below |
-| Forms submissions (`/pm/forms/:id` submissions tab) | Grid | |
-| Search results (when added) | List | Hook in same component |
+A persistent **Me | All** segmented toggle in the TopBar, visible on every page.
 
-## Shared building blocks (new)
+- **State**: `sessionStorage` key `pm.meMode` (`"me"` | `"all"`). Resets when the tab/session ends or user is switched.
+- **Default**: `All`.
+- **Hotkey**: pressing `M` (when not focused in an input/textarea/contenteditable) toggles.
+- **Active state**: when on, the toggle's "Me" side gets the primary fill; a small ring or dot signals "filter active" so it's obvious from anywhere.
+- **Hook**: `useMeMode()` → `{ mode, setMode, isMe }`. Subscribes to a tiny event emitter so all views update in sync.
+
+### Per-view behavior (when Me is on)
+
+| View | Effect |
+|---|---|
+| Work Queue | My Tasks list filtered to me; Unclaimed always shown (label clarifies "Unclaimed — visible to all") |
+| Board (kanban/list/grid) | Only cards assigned to me (no role-based fallback) |
+| Projects | Only projects where I am a member (`pm_project_members.user_id = me`) or `created_by = me` |
+| Team Workload | All cards still render; my row gets a primary ring + subtle highlight; others fade to ~50% opacity |
+| Global Timeline | Gantt + task list filtered to my tasks |
+| Activity (Project Detail Activity tab + future global feed) | Entries where `user_id = me` OR `task.assignee_id = me` OR payload contains `@me` mention |
+| Forms / Templates / Integrations | No effect (toggle still visible but is a no-op; tooltip: "Me mode doesn't apply here") |
+
+## 2. Filter Chip Bar
+
+Below the toolbar on every list/board view: a row of toggleable chips.
+
+Chips: **Assigned to me · Created by me · Watching · Overdue · Due this week · Blocked**
+
+- Multi-select, additive (AND across active chips).
+- Independent of Me Mode — both can be active; results are intersection.
+- Persisted per-view in `localStorage` (`pm.filters.<viewKey>`), same key style as `useViewMode`.
+- Active chip = filled primary; inactive = outline. Right-side "Clear" link appears when ≥1 chip is active.
+- Counts (e.g. "Overdue (3)") shown when cheap to compute from already-loaded data.
+
+### Chip predicates (against `PmTask` unless noted)
+
+| Chip | Predicate |
+|---|---|
+| Assigned to me | `assignee_id === me.id` |
+| Created by me | `created_by === me.id` |
+| Watching | `pm_task_watchers.user_id === me.id` (new lightweight table — see Tech) |
+| Overdue | `due_date && new Date(due_date) < startOfToday && !['complete','approved'].includes(status)` |
+| Due this week | `due_date >= today && due_date <= today+7d` |
+| Blocked | `status === 'blocked'` |
+
+For Projects view, chips translate where applicable:
+- Assigned to me → I am a member
+- Created by me → `created_by === me.id`
+- Watching → hidden (n/a v1)
+- Overdue → `go_live_date < today && status !== 'complete'`
+- Due this week → `go_live_date` within 7d
+- Blocked → has any task with status `blocked`
+
+## 3. Standardized Toolbar
+
+Every collection view header uses one shared component:
 
 ```text
-src/components/pm/
-  ViewToggle.tsx         // List | Grid segmented control (lucide: List, LayoutGrid)
-  collections/
-    TaskListView.tsx     // sortable table, checkbox bulk-select, inline status
-    TaskGridView.tsx     // responsive card grid (3/2/1)
-    ProjectListView.tsx  // sortable table (extracted from ProjectList.tsx)
-    ProjectGridView.tsx  // card grid w/ progress bar
-    SubmissionListView.tsx
-    SubmissionGridView.tsx
-src/hooks/
-  useViewMode.ts         // ('list'|'grid', setMode) keyed by viewKey, persisted
-src/lib/pm/
-  bulkActions.ts         // reassign / change status / archive helpers
+[Page Title + subtitle]  ··········  [Me|All] [Filter ▾] [Sort ▾] [List|Grid]
+                                              \________ FilterChipBar (row 2) ________/
 ```
 
-### `useViewMode(viewKey, default)`
-- Reads `localStorage["pm.viewMode." + viewKey]`
-- Falls back to provided default
-- Writes on change
-- `viewKey` examples: `workQueue`, `board`, `projects`, `workload`, `globalTimeline`, `formSubmissions:<formId>`
+- New component: `<CollectionToolbar />` accepting `title`, `subtitle`, `actions` (e.g. New Project button), `viewKey`, `mode`, `onModeChange`, `sortOptions`, `filterChips` (which chips to show — some views opt out of, e.g., "Watching"), and a children slot for the chip bar (rendered by the toolbar).
+- The **Filter ▾** popover holds advanced filters (project, type, priority, assignee). v1 ships with a minimal popover (project + type) and a "More filters coming" hint — chips cover the common cases.
+- The **Sort ▾** dropdown exposes the same sort keys the list view's column headers do (Title, Due, Priority, Status, Updated). It writes to `pm.sort.<viewKey>` so List and Grid views share sort state.
+- Page-specific actions (e.g. "New Project") render inside `actions`, placed before the Me|All toggle so the destructive/creation action stays visually anchored to the title block.
 
-### `<ViewToggle value onChange />`
-- Top-right of each view's header row
-- Two icon buttons (List, LayoutGrid) in a segmented control styled with existing tokens
-- Tooltips: "List view" / "Grid view"
+Final placement on the right cluster, in order: `[actions] [Me|All] [Filter ▾] [Sort ▾] [List|Grid]`. New Project / New Form etc. live in `actions`.
 
-## Per-view shape
+## Tech outline
 
-**List view (tasks)** — columns: checkbox · Title · Client · Type · Status (click to change inline) · Assignee · Due · Priority dot. Click column header to sort (asc/desc). Bulk action bar appears when ≥1 row checked: Reassign, Change Status, Archive.
+New files
+- `src/hooks/useMeMode.ts` — sessionStorage + emitter + `M` global hotkey installer
+- `src/hooks/useChipFilters.ts` — `(viewKey) => { active: Set<ChipId>, toggle, clear }` persisted to localStorage
+- `src/lib/pm/filters.ts` — pure predicate functions: `applyMeMode(items, view, me)`, `applyChips(items, chips, me, watchers)`
+- `src/components/pm/MeModeToggle.tsx`
+- `src/components/pm/FilterChipBar.tsx`
+- `src/components/pm/CollectionToolbar.tsx`
+- `src/components/pm/FilterPopover.tsx` (project + type for v1)
+- `src/components/pm/SortMenu.tsx`
 
-**Grid view (tasks)** — responsive `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`. Card shows: type+priority badges, title, client/project, status pill, assignee avatar, due date. Hover reveals Claim / Open / Reassign quick actions (absolute-positioned overlay).
+Edits
+- `src/components/TopBar.tsx` — insert `<MeModeToggle />` (left of role switcher) + register `M` hotkey at app root
+- `src/pages/pm/WorkQueue.tsx`, `Board.tsx`, `ProjectList.tsx`, `Workload.tsx`, `GlobalTimeline.tsx`, `Forms.tsx` — replace ad-hoc headers with `<CollectionToolbar />` and pipe data through `applyMeMode` + `applyChips`
+- `src/pages/pm/ProjectDetail.tsx` Activity tab — apply Me Mode predicate to activity entries
+- Sort state shared between `TaskListView` and toolbar Sort menu (lift sort to parent or expose via hook `useTableSort(viewKey)`)
 
-**List view (projects)** — keep existing table shape, add sortable headers + checkboxes.
+Database
+- Add `pm_task_watchers (id, task_id, user_id, created_at)` with permissive RLS (matches existing `pm_*` posture). Bare-bones — UI to add/remove watchers can come later; for now any task the current user is assignee on is considered "watched" as a fallback so the chip isn't empty on day one.
+- Add `pm_project_members` if not already present (the Projects-Me-Mode rule needs it). If it exists from earlier migration, reuse; if not, add `(id, project_id, user_id, role_on_project, created_at)`.
 
-**Grid view (projects)** — card per project: title, client, type tag, status badge, member avatars, go-live date, progress bar (existing % calc).
-
-**Submissions** — list = compact rows (submitted_at, submitter, status); grid = cards with first-field preview.
-
-## Per-screen edits
-
-- **WorkQueue.tsx** — wrap Unclaimed + My Tasks lists in `TaskListView` / `TaskGridView`; toggle in header.
-- **Board.tsx** — header gains 3-way mode switch: Kanban | List | Grid. Kanban keeps existing implementation.
-- **ProjectList.tsx** — extract current table into `ProjectListView`; add `ProjectGridView`; default Grid.
-- **Workload.tsx** — keep user cards; inside each card, the inner task list switches between compact list and small card stack based on the page-level toggle.
-- **GlobalTimeline.tsx** — under the Gantt, render the task collection in chosen mode.
-- **Forms.tsx / form detail submissions tab** — add toggle, default Grid.
-
-## Bulk actions (list view only)
-- Selected IDs held in local state
-- Floating action bar above the table
-- Reassign → opens existing assignee picker dialog
-- Change Status → status select
-- Archive → soft-flag (adds `archived_at`; field added in a tiny migration if not present — confirm before adding)
-
-## Out of scope for this pass
-- Saved filters / per-column filters
-- Drag reordering in list view
-- Server-side pagination (current data volumes are small)
-- Search results screen itself (toggle hook will be ready when search is built)
+Confirm before migration
+- Whether to add `pm_task_watchers` now or stub the chip with the fallback predicate (assignee = me).
 
 ## Acceptance
-- Every listed view shows the toggle in its top-right.
-- Switching toggles the rendered component immediately; reload restores choice per view.
-- Preference is independent per view (Projects can be Grid while Work Queue stays List).
-- List columns sort on header click; bulk actions work on checked rows.
-- Grid cards reveal Claim/Open/Reassign on hover.
+
+- TopBar shows Me|All toggle on every route; pressing `M` toggles; reload preserves session, new tab/session resets to All.
+- Toggling Me Mode immediately re-filters every open collection view per the per-view rules.
+- Filter chip bar appears under the toolbar on Work Queue, Board, Projects, Workload, Global Timeline. Clicking chips narrows results; clicking again clears.
+- All five collection toolbars share identical layout and ordering.
+- Sort selection in the toolbar ↔ list view header clicks stay in sync.
+- Workload shows me-row highlighted and others dimmed (cards remain interactive).
+
+## Out of scope (v1)
+
+- @mention parser for activity (only `assignee_id`/`user_id` matches in v1; chip still filters to my-task activity)
+- Watchers UI on TaskDrawer (table created, surface added later)
+- Saved filter presets
+- Filter popover advanced fields beyond project + type

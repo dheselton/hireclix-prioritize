@@ -5,10 +5,13 @@ import { useCurrentUser } from "@/lib/pm/mockUser";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import type { PmTask, PmProject } from "@/types/pm";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
-import { ViewToggle } from "@/components/pm/ViewToggle";
 import { useViewMode } from "@/hooks/useViewMode";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
+import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
+import { useMeMode } from "@/hooks/useMeMode";
+import { useChipFilters } from "@/hooks/useChipFilters";
+import { applyTaskChips } from "@/lib/pm/filters";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
@@ -16,6 +19,8 @@ export default function WorkQueue() {
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
   const [mode, setMode] = useViewMode("workQueue", "list");
+  const { isMe } = useMeMode();
+  const chips = useChipFilters("workQueue");
 
   const reload = async () => {
     const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
@@ -26,22 +31,32 @@ export default function WorkQueue() {
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
   const unclaimed = tasks.filter(t => t.status === "unclaimed");
-  const mine = tasks.filter(t => t.assignee_id === user?.id && t.status !== "complete" && t.status !== "approved");
-  const overdue = mine.filter(t => t.due_date && new Date(t.due_date) < new Date());
+  const mineRaw = tasks.filter(t => t.assignee_id === user?.id && t.status !== "complete" && t.status !== "approved");
+  const overdue = mineRaw.filter(t => t.due_date && new Date(t.due_date) < new Date());
   const blocked = tasks.filter(t => t.status === "blocked");
+
+  // Me Mode applies only to "My Tasks" — Unclaimed always shown.
+  const mine = useMemo(
+    () => applyTaskChips(isMe ? mineRaw.filter(t => t.assignee_id === user?.id) : mineRaw, chips.active, user?.id),
+    [mineRaw, chips.active, user?.id, isMe],
+  );
+  const unclaimedFiltered = useMemo(
+    () => applyTaskChips(unclaimed, chips.active, user?.id),
+    [unclaimed, chips.active, user?.id],
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold font-unbounded">Good day, {user?.name?.split(" ")[0] ?? "there"}</h1>
-          <p className="text-sm text-muted-foreground">Viewing as <span className="font-medium">{role}</span></p>
-        </div>
-        <ViewToggle value={mode} onChange={(m) => setMode(m as any)} />
-      </div>
+      <CollectionToolbar
+        title={`Good day, ${user?.name?.split(" ")[0] ?? "there"}`}
+        subtitle={<>Viewing as <span className="font-medium">{role}</span></>}
+        mode={mode}
+        onModeChange={(m) => setMode(m as any)}
+        chipState={chips}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={<Clock className="h-4 w-4" />} label="My active" value={mine.length} />
+        <StatCard icon={<Clock className="h-4 w-4" />} label="My active" value={mineRaw.length} />
         <StatCard icon={<Inbox className="h-4 w-4" />} label="Unclaimed" value={unclaimed.length} />
         <StatCard icon={<AlertTriangle className="h-4 w-4 text-red-500" />} label="Overdue (mine)" value={overdue.length} />
         <StatCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label="Blocked total" value={blocked.length} />
@@ -59,13 +74,13 @@ export default function WorkQueue() {
         </Card>
       )}
 
-      <Section title="Unclaimed Requests" count={unclaimed.length}>
+      <Section title="Unclaimed Requests — visible to all" count={unclaimedFiltered.length}>
         {mode === "list"
-          ? <TaskListView tasks={unclaimed} projects={projById} onOpen={drawer.open} onChanged={reload} />
-          : <TaskGridView tasks={unclaimed} projects={projById} onOpen={drawer.open} onChanged={reload} />}
+          ? <TaskListView tasks={unclaimedFiltered} projects={projById} onOpen={drawer.open} onChanged={reload} />
+          : <TaskGridView tasks={unclaimedFiltered} projects={projById} onOpen={drawer.open} onChanged={reload} />}
       </Section>
 
-      <Section title="My Tasks" count={mine.length}>
+      <Section title={isMe ? "My Tasks" : "My Tasks"} count={mine.length}>
         {mode === "list"
           ? <TaskListView tasks={mine} projects={projById} onOpen={drawer.open} onChanged={reload} />
           : <TaskGridView tasks={mine} projects={projById} onOpen={drawer.open} onChanged={reload} />}
