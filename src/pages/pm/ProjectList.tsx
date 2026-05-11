@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { fetchProjects, fetchTasks, createProject } from "@/lib/pm/api";
 import type { PmProject, PmTask } from "@/types/pm";
-import { fmtDate } from "@/lib/pm/format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +11,10 @@ import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ViewToggle } from "@/components/pm/ViewToggle";
+import { useViewMode } from "@/hooks/useViewMode";
+import { ProjectListView } from "@/components/pm/collections/ProjectListView";
+import { ProjectGridView } from "@/components/pm/collections/ProjectGridView";
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<PmProject[]>([]);
@@ -22,6 +22,7 @@ export default function ProjectList() {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [open, setOpen] = useState(false);
   const { user } = useCurrentUser();
+  const [mode, setMode] = useViewMode("projects", "grid");
 
   const reload = async () => {
     const [p, t, c] = await Promise.all([
@@ -36,7 +37,7 @@ export default function ProjectList() {
 
   async function submit() {
     if (!form.title.trim()) return;
-    const p = await createProject({
+    await createProject({
       title: form.title, type: form.type, status: form.status,
       client_id: form.client_id || null, go_live_date: form.go_live_date || null,
       start_date: new Date().toISOString().slice(0,10),
@@ -49,53 +50,20 @@ export default function ProjectList() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold font-unbounded">Projects</h1>
           <p className="text-sm text-muted-foreground">{projects.length} total</p>
         </div>
-        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>
+        <div className="flex items-center gap-3">
+          <ViewToggle value={mode} onChange={(m) => setMode(m as any)} />
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 border-b border-border">
-              <tr className="text-left">
-                <th className="p-3 font-medium">Project</th>
-                <th className="p-3 font-medium">Type</th>
-                <th className="p-3 font-medium">Status</th>
-                <th className="p-3 font-medium">Go-Live</th>
-                <th className="p-3 font-medium">Progress</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map(p => {
-                const projTasks = tasks.filter(t => t.project_id === p.id);
-                const done = projTasks.filter(t => t.status === "complete" || t.status === "approved").length;
-                const pct = projTasks.length ? Math.round((done / projTasks.length) * 100) : 0;
-                return (
-                  <tr key={p.id} className="border-b border-border hover:bg-muted/30">
-                    <td className="p-3"><Link to={`/pm/projects/${p.id}`} className="font-medium hover:underline">{p.title}</Link></td>
-                    <td className="p-3"><Badge variant="outline">{p.type}</Badge></td>
-                    <td className="p-3"><Badge variant="outline">{p.status}</Badge></td>
-                    <td className="p-3 text-muted-foreground">{fmtDate(p.go_live_date)}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 max-w-[140px] h-2 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">{pct}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!projects.length && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No projects yet.</td></tr>}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      {mode === "list"
+        ? <ProjectListView projects={projects} tasks={tasks} />
+        : <ProjectGridView projects={projects} tasks={tasks} />}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
