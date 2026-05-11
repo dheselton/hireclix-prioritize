@@ -16,6 +16,8 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
+import { useTrackMode } from "@/hooks/useTrackMode";
+import { applyTaskTrack, userTrack } from "@/lib/pm/track";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
