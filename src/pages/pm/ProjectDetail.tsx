@@ -414,13 +414,15 @@ function PhaseGroup({ phase, tasks, onOpen, onAdd, dimSet, allowAdd = true }: {
               </div>
             );
           })}
-          <div className="flex gap-2 pt-2">
-            <Input value={adding} onChange={e => setAdding(e.target.value)} placeholder="Add task…" className="text-sm h-8"
-              onKeyDown={(e) => { if (e.key === "Enter") { onAdd(adding); setAdding(""); } }} />
-            <Button size="sm" variant="ghost" onClick={() => { onAdd(adding); setAdding(""); }} disabled={!adding.trim()}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          {allowAdd && (
+            <div className="flex gap-2 pt-2">
+              <Input value={adding} onChange={e => setAdding(e.target.value)} placeholder="Add task…" className="text-sm h-8"
+                onKeyDown={(e) => { if (e.key === "Enter") { onAdd(adding); setAdding(""); } }} />
+              <Button size="sm" variant="ghost" onClick={() => { onAdd(adding); setAdding(""); }} disabled={!adding.trim()}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
