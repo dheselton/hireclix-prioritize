@@ -1,109 +1,51 @@
+## What's actually broken
 
-# Real Data + PM/Production Track UX
+I dug into the data and code. There are **two real bugs**, both fixable in minutes.
 
-## 1. Team (final)
-Added to `mock_users` on top of existing data, with `avatar_color` matching your screenshots.
+### Bug 1 — Switching users in the top-bar dropdown doesn't update the rest of the app
+`useCurrentUser()` keeps the current user id in **local component state** and only writes to localStorage. The TopBar's copy updates, but every other page (WorkQueue, Board, Workload, Timeline, etc.) has its own instance that read localStorage *once on mount* and never re-renders. So changing the user in the picker visibly flips the avatar in the top-bar but leaves all task lists frozen on the original user. Track toggle has the same publish/subscribe pattern as `useTrackMode` and works correctly — `useCurrentUser` was never wired the same way.
 
-**PMs (4)** — Drew Luster, Michael Norwood, Moe Hutt, Erika Atwood
-**Designers (5)** — Heather Oxsen, Jillian Perrone, Veronica Funk, Amelia Beigel, Lisa Thompson
-**Developers (2)** — Riley Mulligan, Lisa Thompson
-**Both Designer + Developer** — Dan Heselton (you), Lisa Thompson
+**Fix:** Convert `useCurrentUser` to a tiny pub/sub store (same pattern as `useTrackMode` / `useMockUsers`) so every component re-renders when the current user changes.
 
-Since the schema has a single `role`, I'll add a `secondary_role` column so Dan and Lisa can carry both. The Track filter treats anyone with `designer` or `developer` (primary or secondary) as **Production**.
+### Bug 2 — Assigned tasks still show as "unclaimed"
+Data check on `pm_tasks`:
+- 200 / 200 rows have `assignee_id` set
+- 197 / 200 still have `status = 'unclaimed'`
 
-## 2. Clients & Career-Site Projects
-Insert four `clients` and four `pm_projects` (type `career_site`, status `active`):
-BrightSpring Health · The Container Store · Sheppard Pratt · Resideo. PMs are added as `pm_project_members` with role `pm`; designers/devs as `production`.
+The seed inserted assignees but left status default. So WorkQueue's "Unclaimed Requests" bucket shows almost everything, and "My Tasks" looks tiny no matter who you're viewing as. That also makes the Track toggle look like it's doing nothing — both PM and Production tracks are full of "unclaimed" rows that all funnel into the same section.
 
-## 3. Career Site Template — full structure
-One reusable template `pm_project_templates` named **"Career Site — Full Build"** with phases & tasks taken from your ClickUp screenshots:
+**Fix (data):** One-time UPDATE — any task with an `assignee_id` and current status `unclaimed` becomes `claimed`. Going forward, the existing assignee trigger should also bump status from `unclaimed` → `claimed` when an assignee is set (and clear back to `unclaimed` when assignee is removed). Tasks already `in_progress`, `blocked`, `complete`, `approved`, `review` are left alone.
+
+### Bonus polish (small)
+- WorkQueue's "Unclaimed" stat right now counts *all* unclaimed in the visible track. Once Bug 2 is fixed, that becomes the true backlog number, which is what you actually want.
+- The WorkQueue subtitle ("Viewing as PM") will now correctly change when you switch users — useful confirmation that the dropdown took effect.
+
+## Plan
 
 ```text
-Pre-Kickoff Activities          → PM
-  Schedule Meeting · Conduct Meeting
-  PM Introduction Meeting (Schedule + Conduct)
-  Initial Set Up (ClickUp Workspace, Project Plan, RAID Log,
-    Google Chat Space, Career Site Drive folder)
-Project Kickoff                 → PM
-  Schedule Kickoff Call · Kickoff Call
-Discovery                       → PM
-  Discovery Call #1 (Provide EVP, Brand Guidelines, Inspiration)
-Research Discovery              → PM
-  Career Site Kick-Off Meetings · Site Map confirmation · Page speed testing
-Concept Development             → Design
-  Wireframes · Design Concepts R1 / R2 / R3
-Figma Design                    → Design
-  Meetings · Overarching Figma Set-Up · Client Corporate Design
-  Editing Figma For Build · Gray Components Catalogue · etc.
-Build                           → Dev
-  Webflow Style Guide · Search page · Job Description Page
-  Favorite Job · Second Chance · Recruiter Hub · Talent Community
-  Sandbox Set-Up
-API Connect                     → Dev
-  ATS API Creds · Field Mapping · API Testing
-  Build Job Search · Build JD Page · Additional CMS · Job Error Reporting
-QA & Launch                     → PM + Dev
+1. src/lib/pm/mockUser.ts
+   • Add module-level currentId + subscribers (like useTrackMode).
+   • useCurrentUser reads from store, subscribes, setCurrent broadcasts.
+   • Default-pick a PM on first load if nothing in localStorage.
+
+2. supabase migration
+   • Update pm_set_task_track_from_assignee trigger (or add a sibling
+     trigger pm_set_task_status_from_assignee) so:
+       - INSERT/UPDATE: assignee_id IS NOT NULL AND status = 'unclaimed'
+         → status := 'claimed'
+       - UPDATE: assignee_id set to NULL AND status = 'claimed'
+         → status := 'unclaimed'
+
+3. supabase data update (insert tool, not migration)
+   • UPDATE pm_tasks SET status='claimed'
+       WHERE assignee_id IS NOT NULL AND status='unclaimed';
+
+4. Quick verify
+   • SELECT status, count(*) → expect ~3 in_progress, ~197 claimed, 0 unclaimed.
+   • In preview: switch user in TopBar → My Tasks count changes.
+   • Toggle PM ↔ Production → list visibly changes.
 ```
 
-Each `pm_template_tasks` row carries `assignee_role` and `track` so instantiation routes work to the right people automatically.
+No UI/visual changes. No new files. Two small edits + one data backfill.
 
-Then **instantiate the template for all 4 clients**: full phases + tasks created, assignees populated round-robin within each role group, dates left blank (you set go-live and let the existing scheduler back-fill).
-
-## 4. Sample Quick Requests
-Convert the 6 visible cards from your second screenshot into real `pm_projects` of type `quick_request` with the assignees, due dates, priority, and CREATIVE-#### tag from the cards:
-Lightcast Video · ASRC YouTube/Meta Video Ad (Orion) · Public Storage Search Terms · RGS Career Sites · GA4/GTM Checklist · Beyond + Career Site Concept.
-
-Existing fake projects/tasks are **not deleted** — just sit alongside the real ones.
-
-## 5. The Dual-Track UX — how PMs and Designers/Devs stay out of each other's way
-
-**Concept:** every task carries a `track` — `pm` or `production` — auto-set from its assignee's role. Each user lands in their own track by default; one click to peek at the other.
-
-### Toolbar (added to every collection view)
-```text
-[Title]  ···  [My Track | Other Track | All]  [Me|All]  [Filter]  [Sort]  [List|Grid]
-```
-- PMs default to "My Track" = PM tasks only.
-- Designers/Devs default to "My Track" = Production tasks only.
-- "Other Track" gives a read-friendly view of the other side (muted styling, a small "viewing other team" banner) — no accidental edits.
-- "All" merges everything.
-- Persists per-view in localStorage (same pattern as existing chip filters).
-
-### Visual cues so the two never get tangled
-- 3px **left border** on every task row/card colored by track (PM = indigo, Production = amber).
-- Phase headers in Project Detail show a track tag.
-- Workload page splits into two stacked panels: "PM Capacity" and "Production Capacity" — each user's own panel expanded, the other collapsed.
-- Project Detail keeps one timeline but adds tabs: **Overview · PM Plan · Production · Files** — same data, pre-filtered.
-
-### Why this works for your team
-- Designers/devs open the app and see only Build / Design / QA work — no kickoff/RAID/meeting noise.
-- PMs see planning and client-facing tasks only.
-- Anyone can flip to "Other Track" to check status without changing assignments.
-- Cross-team handoffs (Discovery complete → Wireframes start) still work via dependencies — the receiving team just sees the new task land in their track.
-
-## Technical Details
-
-### Schema (one migration)
-- `mock_users.avatar_color text`, `mock_users.secondary_role text` (nullable).
-- `pm_tasks.track text default 'production'` with CHECK in `('pm','production')`.
-- `pm_template_tasks.track text` for templates.
-- DB trigger: when `pm_tasks.assignee_id` changes, set `track` from that user's primary role (`pm` → `pm`, otherwise `production`). Manual override allowed.
-
-### Data seeding (one `supabase--insert` script)
-- 11 users, 4 clients, 1 template + ~50 template tasks, 4 instantiated career-site projects with phases/tasks/members, 6 quick-request projects.
-- Nothing existing is deleted.
-
-### Frontend
-- `useTrackMode.ts` hook (mirrors `useMeMode`) — values `mine` / `other` / `all`, sessionStorage.
-- `TrackToggle.tsx` segmented control inside `CollectionToolbar`.
-- Extend `src/lib/pm/filters.ts` with `applyTrackFilter(tasks, mode, currentUserRoles)`.
-- `UserAvatar.tsx`: use `avatar_color` when present.
-- `TopBar` role switcher: show all 11 real users grouped (PMs / Designers / Developers / Both).
-- Project Detail: Overview / PM Plan / Production / Files tab strip pipes into the existing task list.
-- Workload: two `<TaskListView>` panels split by track.
-- Subtle left-border treatment in `TaskListView` and `TaskGridView` via CSS vars `--track-pm` / `--track-production` in `index.css`.
-
-### Out of scope
-- Real auth (still mock-user switcher).
-- Tightening RLS (still permissive).
-- Auto-scheduling the seeded tasks (dates blank — you set go-live and the existing scheduler back-fills).
+Ready to implement?
