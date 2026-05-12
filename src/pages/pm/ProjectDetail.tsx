@@ -21,7 +21,7 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { GanttChart } from "@/components/pm/GanttChart";
 import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
-import { recalculateBackwardFromGoLive, type DateDiff } from "@/lib/pm/scheduler";
+import { recalculateBackwardFromGoLive, recalculateForward, type DateDiff } from "@/lib/pm/scheduler";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
