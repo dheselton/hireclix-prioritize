@@ -60,6 +60,15 @@ export default function ProjectDetail() {
   useEffect(() => { reload(); }, [id]);
   useTasksChanged(reload);
 
+  useTaskDateProposed(({ taskId, start, end }) => {
+    if (!tasks.find(t => t.id === taskId)) return;
+    const diffs = recalculateForward(taskId, { start, end }, tasks, deps);
+    if (!diffs.length) return;
+    setPendingMode("forward");
+    setPendingGoLive(null);
+    setPendingDiffs(diffs);
+  });
+
   const tasksByPhase = useMemo(() => {
     const m = new Map<string | null, PmTask[]>();
     for (const t of tasks) {
