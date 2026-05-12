@@ -41,18 +41,21 @@ export const fetchDependencies = async (projectId: string) => {
 export const updateTask = async (id: string, patch: Partial<PmTask>) => {
   const { data, error } = await supabase.from('pm_tasks').update(patch as any).eq('id', id).select().single();
   if (error) throw error;
+  emitTasksChanged();
   return data as unknown as PmTask;
 };
 
 export const createTask = async (task: Partial<PmTask>) => {
   const { data, error } = await supabase.from('pm_tasks').insert(task as any).select().single();
   if (error) throw error;
+  emitTasksChanged();
   return data as unknown as PmTask;
 };
 
 export const deleteTask = async (id: string) => {
   const { error } = await supabase.from('pm_tasks').delete().eq('id', id);
   if (error) throw error;
+  emitTasksChanged();
 };
 
 export const updateProject = async (id: string, patch: Partial<PmProject>) => {
