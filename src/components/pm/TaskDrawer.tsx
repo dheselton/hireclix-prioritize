@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -180,11 +181,11 @@ export function TaskDrawer() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs">Start</Label>
-                  <Input type="date" value={task.start_date ?? ""} onChange={e => patch({ start_date: e.target.value || null })} />
+                  <DatePicker value={task.start_date} onChange={v => patch({ start_date: v })} />
                 </div>
                 <div>
                   <Label className="text-xs">Due</Label>
-                  <Input type="date" value={task.due_date ?? ""} onChange={e => patch({ due_date: e.target.value || null })} />
+                  <DatePicker value={task.due_date} onChange={v => patch({ due_date: v })} />
                 </div>
               </div>
               <div>

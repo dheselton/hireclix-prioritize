@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -124,7 +125,7 @@ export default function ProjectDetail() {
             </div>
             <div className="text-right">
               <div className="text-xs text-muted-foreground">Go-Live</div>
-              <Input type="date" value={project.go_live_date ?? ""} onChange={e => handleGoLiveChange(e.target.value)} className="w-44" />
+              <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
             </div>
           </div>
           <div className="flex items-center gap-3">

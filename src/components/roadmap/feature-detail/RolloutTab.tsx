@@ -1,4 +1,5 @@
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
@@ -267,12 +268,13 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
                     onChange={(assignees) => updateChecklistItem(index, { ...item, owner: assignees[0] || '' })}
                   />
                 </div>
-                <Input
-                  type="date"
-                  value={item.dueDate}
-                  onChange={(e) => updateChecklistItem(index, { ...item, dueDate: e.target.value })}
-                  className="w-36"
-                />
+                <div className="w-36">
+                  <DatePicker
+                    value={item.dueDate}
+                    onChange={(v) => updateChecklistItem(index, { ...item, dueDate: v ?? '' })}
+                    size="sm"
+                  />
+                </div>
                 <Select
                   value={item.status}
                   onValueChange={(v) => updateChecklistItem(index, { ...item, status: v as typeof CHECKLIST_STATUSES[number] })}
@@ -436,10 +438,9 @@ export function RolloutTab({ data, onChange }: RolloutTabProps) {
         </div>
         <div>
           <Label>Completion Date</Label>
-          <Input
-            type="date"
+          <DatePicker
             value={data.completionDate}
-            onChange={(e) => onChange({ ...data, completionDate: e.target.value })}
+            onChange={(v) => onChange({ ...data, completionDate: v ?? '' })}
           />
         </div>
         <div>
