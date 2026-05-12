@@ -119,10 +119,17 @@ export function GanttChart({
           const x2 = xFor(new Date(to.start_date));
           const y2 = headerHeight + toIdx * rowHeight + rowHeight / 2;
           const mx = (x1 + x2) / 2;
+          const lag = d.lag_days || 0;
           return (
             <g key={d.id}>
               <path d={`M${x1},${y1} L${mx},${y1} L${mx},${y2} L${x2},${y2}`} stroke="hsl(var(--muted-foreground))" strokeWidth={1} fill="none" />
               <polygon points={`${x2},${y2} ${x2-5},${y2-3} ${x2-5},${y2+3}`} fill="hsl(var(--muted-foreground))" />
+              {lag > 0 && (
+                <g>
+                  <rect x={x2 - 22} y={y2 - 16} width={20} height={12} rx={2} fill="hsl(var(--background))" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
+                  <text x={x2 - 12} y={y2 - 7} textAnchor="middle" className="fill-muted-foreground text-[9px] font-medium">+{lag}d</text>
+                </g>
+              )}
             </g>
           );
         })}

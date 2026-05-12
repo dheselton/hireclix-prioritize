@@ -180,9 +180,12 @@ export function TimelineSetupWizard({
                 </div>
               ))}
             </div>
-            <div className="flex gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Locked</span>
-              <span>Diagonal pattern = locked task at minimum duration</span>
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              <div className="flex gap-3">
+                <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Locked</span>
+                <span>Diagonal pattern = locked task at minimum duration</span>
+              </div>
+              <div>Gaps between bars include realistic client-scheduling time (typically 3–5 days). Adjust per-task in Configure Timeline after creating the project.</div>
             </div>
           </div>
         )}
