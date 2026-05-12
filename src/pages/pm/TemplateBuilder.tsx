@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ArrowLeft, Rocket } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, ArrowLeft, Rocket, Lock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_TYPES } from "@/types/pm";
-import { toast } from "sonner";
+import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 
 export default function TemplateBuilder() {
   const { id } = useParams<{ id: string }>();
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [tpl, setTpl] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const navigate = useNavigate();
