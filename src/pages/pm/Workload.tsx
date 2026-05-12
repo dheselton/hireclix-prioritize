@@ -30,7 +30,9 @@ export default function Workload() {
   const { mode: trackMode } = useTrackMode();
   const myTrack = userTrack(me);
 
-  useEffect(() => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); }, []);
+  const reloadAll = () => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); };
+  useEffect(() => { reloadAll(); }, []);
+  useTasksChanged(reloadAll);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const trackedTasks = useMemo(() => applyTaskTrack(tasks, trackMode, myTrack), [tasks, trackMode, myTrack]);
 
