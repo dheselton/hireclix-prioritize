@@ -79,3 +79,139 @@ export const logActivity = async (params: { project_id?: string; task_id?: strin
     payload: params.payload ?? {},
   } as any);
 };
+
+// ============================================================================
+// Template instantiation + schedule diffs
+// ============================================================================
+
+import { scheduleForwardFromKickoff, fitToWindow, type ScheduleTask, type ScheduleDep, type DateDiff } from '@/lib/pm/scheduler';
+
+export interface PreviewTask extends ScheduleTask {
+  temp_id: string;
+  phase_name: string | null;
+  type: string;
+  assignee_role: string | null;
+  sort_order: number;
+}
+
+export const fetchTemplateBundle = async (templateId: string) => {
+  const [{ data: tpl }, { data: tts }, { data: tdeps }] = await Promise.all([
+    supabase.from('pm_project_templates').select('*').eq('id', templateId).maybeSingle(),
+    supabase.from('pm_template_tasks').select('*').eq('template_id', templateId).order('sort_order'),
+    supabase.from('pm_template_dependencies').select('*').eq('template_id', templateId),
+  ]);
+  return { template: tpl, tasks: (tts || []) as any[], deps: (tdeps || []) as any[] };
+};
+
+/** Build preview tasks + deps keyed by temp_id, ready for scheduler. */
+export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
+  const previewTasks: PreviewTask[] = tasks.map(t => ({
+    id: t.temp_id,
+    temp_id: t.temp_id,
+    title: t.title,
+    duration_days: t.duration_days,
+    min_duration_days: t.min_duration_days,
+    locked: !!t.locked,
+    locked_to_kickoff: !!t.locked_to_kickoff,
+    locked_to_go_live: !!t.locked_to_go_live,
+    phase_name: t.phase_name,
+    type: t.type,
+    assignee_role: t.assignee_role,
+    sort_order: t.sort_order,
+  }));
+  const previewDeps: ScheduleDep[] = deps.map(d => ({
+    task_id: d.to_temp_id,
+    depends_on_task_id: d.from_temp_id,
+    type: d.type,
+    lag_days: d.lag_days || 0,
+  }));
+  return { previewTasks, previewDeps };
+};
+
+/** Create a project from template + scheduled placement (already computed). */
+export const createProjectFromTemplate = async (params: {
+  template: any;
+  previewTasks: PreviewTask[];
+  previewDeps: ScheduleDep[];
+  placement: Map<string, { start: Date; end: Date; duration: number }>;
+  kickoff: string;
+  goLive: string;
+  title?: string;
+  client_id?: string | null;
+}) => {
+  const { template, previewTasks, previewDeps, placement, kickoff, goLive, title, client_id } = params;
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  const { data: proj, error: pe } = await supabase.from('pm_projects').insert({
+    title: title || `${template.name} — ${new Date().toLocaleDateString()}`,
+    type: template.type,
+    status: 'active',
+    template_id: template.id,
+    client_id: client_id ?? null,
+    kickoff_date: kickoff,
+    start_date: kickoff,
+    go_live_date: goLive,
+  } as any).select().single();
+  if (pe || !proj) throw pe;
+
+  // Phases
+  const phaseNames = Array.from(new Set(previewTasks.map(t => t.phase_name).filter(Boolean))) as string[];
+  const phaseRows = phaseNames.map((name, i) => ({ project_id: proj.id, name, sort_order: i * 10 }));
+  const phaseIdByName = new Map<string, string>();
+  if (phaseRows.length) {
+    const { data: phs } = await supabase.from('pm_project_phases').insert(phaseRows as any).select();
+    for (const p of phs || []) phaseIdByName.set((p as any).name, (p as any).id);
+  }
+
+  // Tasks
+  const taskRows = previewTasks.map(pt => {
+    const placed = placement.get(pt.temp_id);
+    return {
+      project_id: proj.id,
+      phase_id: pt.phase_name ? phaseIdByName.get(pt.phase_name) ?? null : null,
+      title: pt.title,
+      type: pt.type,
+      status: 'unclaimed',
+      priority: 'medium',
+      duration_days: placed?.duration ?? pt.duration_days,
+      min_duration_days: pt.min_duration_days ?? null,
+      locked: !!pt.locked,
+      locked_to_kickoff: !!pt.locked_to_kickoff,
+      locked_to_go_live: !!pt.locked_to_go_live,
+      start_date: placed ? fmt(placed.start) : null,
+      due_date: placed ? fmt(placed.end) : null,
+      sort_order: pt.sort_order,
+    };
+  });
+  const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();
+  if (te) throw te;
+
+  // Map temp_id -> real task id (by sort_order + title — match exactly)
+  const idByTemp = new Map<string, string>();
+  for (const pt of previewTasks) {
+    const match = (insertedTasks || []).find((it: any) => it.title === pt.title && it.sort_order === pt.sort_order);
+    if (match) idByTemp.set(pt.temp_id, (match as any).id);
+  }
+
+  // Dependencies
+  const depRows = previewDeps
+    .map(d => ({
+      task_id: idByTemp.get(d.task_id),
+      depends_on_task_id: idByTemp.get(d.depends_on_task_id),
+      type: d.type,
+      lag_days: d.lag_days || 0,
+    }))
+    .filter(d => d.task_id && d.depends_on_task_id);
+  if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
+
+  emitTasksChanged();
+  return proj as unknown as PmProject;
+};
+
+/** Apply scheduler diffs to live tasks. */
+export const applyScheduleDiffs = async (diffs: DateDiff[]) => {
+  for (const d of diffs) {
+    await supabase.from('pm_tasks').update({ start_date: d.newStart, due_date: d.newEnd } as any).eq('id', d.taskId);
+  }
+  emitTasksChanged();
+};
