@@ -189,12 +189,14 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
-          {phases.map(ph => (
-            <PhaseGroup key={ph.id} phase={ph} tasks={tasksByPhase.get(ph.id) || []} onOpen={drawer.open} onAdd={(title) => addTask(ph.id, title)} />
-          ))}
-          {tasksByPhase.has(null) && (
-            <PhaseGroup phase={null} tasks={tasksByPhase.get(null)!} onOpen={drawer.open} onAdd={(title) => addTask(null, title)} />
-          )}
+          <TaskTabContent
+            phases={phases}
+            tasksByPhase={tasksByPhase}
+            onOpen={drawer.open}
+            onAdd={addTask}
+            userRole={user?.role}
+            meId={user?.id ?? null}
+          />
         </TabsContent>
 
         <TabsContent value="timeline">
@@ -255,22 +257,121 @@ export default function ProjectDetail() {
   );
 }
 
-function PhaseGroup({ phase, tasks, onOpen, onAdd }: { phase: PmPhase | null; tasks: PmTask[]; onOpen: (id: string) => void; onAdd: (title: string) => void }) {
+type TaskPill = "all" | "pm" | "design" | "dev" | "review";
+
+const PILL_LABEL: Record<TaskPill, string> = {
+  all: "All", pm: "PM", design: "Design", dev: "Dev", review: "Review",
+};
+const PILL_TYPES: Record<Exclude<TaskPill, "all" | "review">, string[]> = {
+  pm: ["review", "approval"],
+  design: ["design", "content"],
+  dev: ["dev", "qa"],
+};
+
+function defaultPillForRole(role?: string | null): TaskPill {
+  if (role === "designer") return "design";
+  if (role === "developer") return "dev";
+  return "all";
+}
+function dimsForRole(role?: string | null): Set<string> | null {
+  if (role === "designer") return new Set(["dev", "qa"]);
+  if (role === "developer") return new Set(["design", "content"]);
+  return null;
+}
+
+function TaskTabContent({
+  phases, tasksByPhase, onOpen, onAdd, userRole, meId,
+}: {
+  phases: PmPhase[];
+  tasksByPhase: Map<string | null, PmTask[]>;
+  onOpen: (id: string) => void;
+  onAdd: (phaseId: string | null, title: string) => void;
+  userRole?: string | null;
+  meId: string | null;
+}) {
+  const [pill, setPill] = useState<TaskPill>(() => defaultPillForRole(userRole));
+  // Re-seed when role changes (user switched in TopBar).
+  useEffect(() => { setPill(defaultPillForRole(userRole)); }, [userRole]);
+
+  const dimSet = pill === "all" ? dimsForRole(userRole) : null;
+
+  const filterPhaseTasks = (list: PmTask[]) => {
+    if (pill === "all") return list;
+    if (pill === "review") return list.filter(t => t.status === "in_review");
+    return list.filter(t => PILL_TYPES[pill].includes(t.type));
+  };
+
+  const pills: TaskPill[] = ["all", "pm", "design", "dev", "review"];
+
+  return (
+    <>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground mr-1">View</span>
+        {pills.map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPill(p)}
+            className={`px-3 h-7 text-xs font-medium rounded-full border transition ${
+              pill === p
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {PILL_LABEL[p]}
+          </button>
+        ))}
+      </div>
+
+      {phases.map(ph => (
+        <PhaseGroup
+          key={ph.id}
+          phase={ph}
+          tasks={filterPhaseTasks(tasksByPhase.get(ph.id) || [])}
+          onOpen={onOpen}
+          onAdd={(title) => onAdd(ph.id, title)}
+          dimSet={dimSet}
+        />
+      ))}
+      {tasksByPhase.has(null) && (
+        <PhaseGroup
+          phase={null}
+          tasks={filterPhaseTasks(tasksByPhase.get(null)!)}
+          onOpen={onOpen}
+          onAdd={(title) => onAdd(null, title)}
+          dimSet={dimSet}
+        />
+      )}
+    </>
+  );
+}
+
+function PhaseGroup({ phase, tasks, onOpen, onAdd, dimSet }: {
+  phase: PmPhase | null; tasks: PmTask[]; onOpen: (id: string) => void;
+  onAdd: (title: string) => void; dimSet?: Set<string> | null;
+}) {
   const [adding, setAdding] = useState("");
   return (
     <Card>
       <CardContent className="p-4">
         <div className="font-semibold text-sm mb-2">{phase?.name ?? "No phase"}</div>
         <div className="space-y-1">
-          {tasks.map(t => (
-            <div key={t.id} className="grid grid-cols-12 items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/30 cursor-pointer" onClick={() => onOpen(t.id)}>
-              <div className="col-span-5 text-sm font-medium truncate">{t.title}</div>
-              <div className="col-span-2"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></div>
-              <div className="col-span-2"><StatusPill status={t.status} /></div>
-              <div className="col-span-2 text-xs text-muted-foreground"><CalIcon className="h-3 w-3 inline mr-1" />{fmtDate(t.due_date)}</div>
-              <div className="col-span-1 flex justify-end"><UserAvatar userId={t.assignee_id} size="xs" /></div>
-            </div>
-          ))}
+          {tasks.map(t => {
+            const dim = dimSet?.has(t.type);
+            return (
+              <div
+                key={t.id}
+                className={`grid grid-cols-12 items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/30 cursor-pointer ${dim ? "opacity-50" : ""}`}
+                onClick={() => onOpen(t.id)}
+              >
+                <div className="col-span-5 text-sm font-medium truncate">{t.title}</div>
+                <div className="col-span-2"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></div>
+                <div className="col-span-2"><StatusPill status={t.status} /></div>
+                <div className="col-span-2 text-xs text-muted-foreground"><CalIcon className="h-3 w-3 inline mr-1" />{fmtDate(t.due_date)}</div>
+                <div className="col-span-1 flex justify-end"><UserAvatar userId={t.assignee_id} size="xs" /></div>
+              </div>
+            );
+          })}
           <div className="flex gap-2 pt-2">
             <Input value={adding} onChange={e => setAdding(e.target.value)} placeholder="Add task…" className="text-sm h-8"
               onKeyDown={(e) => { if (e.key === "Enter") { onAdd(adding); setAdding(""); } }} />
