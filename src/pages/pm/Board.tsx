@@ -43,6 +43,7 @@ export default function Board() {
 
   const reload = async () => { setTasks(await fetchTasks()); setProjects(await fetchProjects()); };
   useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
