@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
+import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmTask, PmProject } from "@/types/pm";
 import { GanttChart } from "@/components/pm/GanttChart";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
