@@ -275,9 +275,9 @@ export default function ProjectDetail() {
       <TaskDrawer />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}
-        onOpenChange={(v) => { if (!v) { setPendingDiffs([]); setPendingGoLive(null); } }}
+        onOpenChange={(v) => { if (!v) { setPendingDiffs([]); setPendingGoLive(null); reload(); } }}
         diffs={pendingDiffs}
-        goLiveDate={pendingGoLive ?? project.go_live_date}
+        goLiveDate={pendingMode === "backward" ? pendingGoLive : project.go_live_date}
         onConfirm={applyCascade}
       />
       <ConfigureTimelinePanel project={project} open={configOpen} onOpenChange={setConfigOpen} onApplied={reload} />
