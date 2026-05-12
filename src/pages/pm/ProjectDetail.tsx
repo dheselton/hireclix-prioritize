@@ -24,6 +24,9 @@ import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
 import { recalculateBackwardFromGoLive, type DateDiff } from "@/lib/pm/scheduler";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useMeMode } from "@/hooks/useMeMode";
+import { useViewMode } from "@/hooks/useViewMode";
+import { ViewToggle } from "@/components/pm/ViewToggle";
+import { TaskKanban } from "@/components/pm/TaskKanban";
 import { toast } from "sonner";
 
 export default function ProjectDetail() {
