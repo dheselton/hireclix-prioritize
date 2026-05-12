@@ -41,6 +41,7 @@ export default function ProjectList() {
     setProjects(p); setTasks(t); setClients(c);
   };
   useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
 
   const visible = useMemo(() => {
     let v = applyProjectMeMode(projects, isMe, user?.id, memberIds);
