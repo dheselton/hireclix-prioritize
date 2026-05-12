@@ -14,9 +14,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
-import { applyTaskChips } from "@/lib/pm/filters";
-import { useTrackMode } from "@/hooks/useTrackMode";
-import { applyTaskTrack, userTrack } from "@/lib/pm/track";
+import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
+import { useTypeFilter } from "@/hooks/useTypeFilter";
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
@@ -27,14 +26,13 @@ export default function Workload() {
   const [mode, setMode] = useViewMode("workload", "list");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workload");
-  const { mode: trackMode } = useTrackMode();
-  const myTrack = userTrack(me);
+  const { types } = useTypeFilter("workload");
 
   const reloadAll = () => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); };
   useEffect(() => { reloadAll(); }, []);
   useTasksChanged(reloadAll);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
-  const trackedTasks = useMemo(() => applyTaskTrack(tasks, trackMode, myTrack), [tasks, trackMode, myTrack]);
+  const trackedTasks = useMemo(() => applyTaskTypes(tasks, types), [tasks, types]);
 
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
@@ -45,6 +43,7 @@ export default function Workload() {
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
         chipState={chips}
+        typeFilterPage="workload"
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {users.map(u => {

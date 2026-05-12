@@ -13,9 +13,8 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
-import { useTrackMode } from "@/hooks/useTrackMode";
-import { applyTaskTrack, userTrack } from "@/lib/pm/track";
+import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
+import { useTypeFilter } from "@/hooks/useTypeFilter";
 
 export default function GlobalTimeline() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
@@ -34,16 +33,15 @@ export default function GlobalTimeline() {
   useEffect(() => { reload(); }, []);
   useTasksChanged(reload);
 
-  const { mode: trackMode } = useTrackMode();
-  const myTrack = userTrack(user);
+  const { types } = useTypeFilter("globalTimeline");
 
   const visible = useMemo(() => {
     let v = filter === "all" ? tasks : tasks.filter(t => t.project_id === filter);
-    v = applyTaskTrack(v, trackMode, myTrack);
+    v = applyTaskTypes(v, types);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
     return v;
-  }, [tasks, filter, isMe, user?.id, chips.active, trackMode, myTrack]);
+  }, [tasks, filter, isMe, user?.id, chips.active, types]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
@@ -54,6 +52,7 @@ export default function GlobalTimeline() {
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
         chipState={chips}
+        typeFilterPage="globalTimeline"
         extraControls={
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-64 h-8"><SelectValue /></SelectTrigger>

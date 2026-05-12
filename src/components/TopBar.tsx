@@ -14,6 +14,17 @@ const ROLE_LABEL: Record<string, string> = {
   pm: "PM", designer: "Designer", developer: "Developer", submitter: "Submitter",
 };
 
+const ROLE_BADGE_LABEL: Record<string, string> = {
+  pm: "Project Manager", designer: "Designer", developer: "Developer", submitter: "Submitter",
+};
+
+const ROLE_BADGE_STYLE: Record<string, string> = {
+  pm: "bg-[hsl(var(--role-pm))] text-[hsl(var(--role-pm-foreground))]",
+  designer: "bg-[hsl(var(--role-designer))] text-[hsl(var(--role-designer-foreground))]",
+  developer: "bg-[hsl(var(--role-developer))] text-[hsl(var(--role-developer-foreground))]",
+  submitter: "bg-[hsl(var(--role-submitter))] text-[hsl(var(--role-submitter-foreground))]",
+};
+
 export function TopBar() {
   const { user, users, setCurrent } = useCurrentUser();
   const initials = user?.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "?";
@@ -29,7 +40,16 @@ export function TopBar() {
         </div>
       </div>
 
-      <Badge variant="outline" className="hidden md:inline-flex">Auth disabled · dev mode</Badge>
+      {user?.role && (
+        <span
+          className={`hidden md:inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-semibold ${ROLE_BADGE_STYLE[user.role] ?? ""}`}
+          aria-label={`Your role: ${ROLE_BADGE_LABEL[user.role]}`}
+          title={`Your role: ${ROLE_BADGE_LABEL[user.role]}`}
+        >
+          {ROLE_BADGE_LABEL[user.role]}
+        </span>
+      )}
+      <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
 
       <MeModeToggle />
 

@@ -13,12 +13,3 @@ export function isProductionUser(user: Pick<MockUser, "role" | "secondary_role">
   return roles.some(r => r === "designer" || r === "developer");
 }
 
-export function applyTaskTrack(
-  tasks: PmTask[],
-  mode: "mine" | "other" | "all",
-  myTrack: Track,
-): PmTask[] {
-  if (mode === "all") return tasks;
-  const want: Track = mode === "mine" ? myTrack : (myTrack === "pm" ? "production" : "pm");
-  return tasks.filter(t => (t.track ?? "production") === want);
-}

@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import { MeModeToggle } from "./MeModeToggle";
-import { TrackToggle } from "./TrackToggle";
 import { ViewToggle } from "./ViewToggle";
 import { FilterChipBar } from "./FilterChipBar";
+import { TypeFilterLabel } from "./TypeFilterLabel";
 import type { ChipId } from "@/hooks/useChipFilters";
 import type { ViewMode } from "@/hooks/useViewMode";
 
@@ -17,7 +17,8 @@ interface Props {
   onModeChange?: (m: Mode) => void;
   modes?: Mode[];
   showMeMode?: boolean;
-  showTrack?: boolean;
+  /** page key for the role-aware type filter label; omit to hide */
+  typeFilterPage?: string;
   /** filter-chip wiring; when omitted the chip row is hidden */
   chipState?: {
     active: Set<ChipId>;
@@ -32,7 +33,7 @@ interface Props {
 
 export function CollectionToolbar({
   title, subtitle, actions, mode, onModeChange, modes,
-  showMeMode = true, showTrack = true, chipState, extraControls,
+  showMeMode = true, typeFilterPage, chipState, extraControls,
 }: Props) {
   return (
     <div className="space-y-3">
@@ -44,7 +45,6 @@ export function CollectionToolbar({
         <div className="flex items-center gap-2 flex-wrap">
           {actions}
           {extraControls}
-          {showTrack && <TrackToggle />}
           {showMeMode && <MeModeToggle />}
           {mode && onModeChange && (
             <ViewToggle value={mode} onChange={onModeChange} modes={modes} />
@@ -60,6 +60,7 @@ export function CollectionToolbar({
           counts={chipState.counts}
         />
       )}
+      {typeFilterPage && <TypeFilterLabel page={typeFilterPage} />}
     </div>
   );
 }

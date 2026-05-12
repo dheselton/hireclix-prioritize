@@ -1,5 +1,11 @@
-import type { PmTask, PmProject } from "@/types/pm";
+import type { PmTask, PmProject, TaskType } from "@/types/pm";
 import type { ChipId } from "@/hooks/useChipFilters";
+
+/** Filter tasks by a type allow-list. Empty set = no filter (show all). */
+export function applyTaskTypes(tasks: PmTask[], types: Set<TaskType>): PmTask[] {
+  if (!types || types.size === 0) return tasks;
+  return tasks.filter(t => types.has(t.type));
+}
 
 const startOfToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const endOfWeek = () => { const d = startOfToday(); d.setDate(d.getDate() + 7); return d; };
