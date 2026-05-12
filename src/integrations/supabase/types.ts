@@ -951,6 +951,7 @@ export type Database = {
           description: string | null
           go_live_date: string | null
           id: string
+          kickoff_date: string | null
           start_date: string | null
           status: string
           tags: string[] | null
@@ -967,6 +968,7 @@ export type Database = {
           description?: string | null
           go_live_date?: string | null
           id?: string
+          kickoff_date?: string | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
@@ -983,6 +985,7 @@ export type Database = {
           description?: string | null
           go_live_date?: string | null
           id?: string
+          kickoff_date?: string | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
@@ -1102,6 +1105,10 @@ export type Database = {
           due_date: string | null
           duration_days: number
           id: string
+          locked: boolean
+          locked_to_go_live: boolean
+          locked_to_kickoff: boolean
+          min_duration_days: number | null
           phase_id: string | null
           priority: string
           project_id: string
@@ -1129,6 +1136,10 @@ export type Database = {
           due_date?: string | null
           duration_days?: number
           id?: string
+          locked?: boolean
+          locked_to_go_live?: boolean
+          locked_to_kickoff?: boolean
+          min_duration_days?: number | null
           phase_id?: string | null
           priority?: string
           project_id: string
@@ -1156,6 +1167,10 @@ export type Database = {
           due_date?: string | null
           duration_days?: number
           id?: string
+          locked?: boolean
+          locked_to_go_live?: boolean
+          locked_to_kickoff?: boolean
+          min_duration_days?: number | null
           phase_id?: string | null
           priority?: string
           project_id?: string
@@ -1240,6 +1255,11 @@ export type Database = {
           checklist_items: Json | null
           duration_days: number
           id: string
+          locked: boolean
+          locked_to_go_live: boolean
+          locked_to_kickoff: boolean
+          min_duration_days: number | null
+          parallel_with_temp_id: string | null
           phase_name: string | null
           role: string | null
           sort_order: number
@@ -1254,6 +1274,11 @@ export type Database = {
           checklist_items?: Json | null
           duration_days?: number
           id?: string
+          locked?: boolean
+          locked_to_go_live?: boolean
+          locked_to_kickoff?: boolean
+          min_duration_days?: number | null
+          parallel_with_temp_id?: string | null
           phase_name?: string | null
           role?: string | null
           sort_order?: number
@@ -1268,6 +1293,11 @@ export type Database = {
           checklist_items?: Json | null
           duration_days?: number
           id?: string
+          locked?: boolean
+          locked_to_go_live?: boolean
+          locked_to_kickoff?: boolean
+          min_duration_days?: number | null
+          parallel_with_temp_id?: string | null
           phase_name?: string | null
           role?: string | null
           sort_order?: number
