@@ -325,6 +325,9 @@ function TaskTabContent({
             {PILL_LABEL[p]}
           </button>
         ))}
+        {isMe && (
+          <span className="ml-2 text-xs text-muted-foreground italic">Showing my tasks</span>
+        )}
       </div>
 
       {phases.map(ph => (
