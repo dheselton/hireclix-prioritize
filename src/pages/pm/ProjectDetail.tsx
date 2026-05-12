@@ -265,6 +265,7 @@ export default function ProjectDetail() {
         goLiveDate={pendingGoLive ?? project.go_live_date}
         onConfirm={applyCascade}
       />
+      <ConfigureTimelinePanel project={project} open={configOpen} onOpenChange={setConfigOpen} onApplied={reload} />
     </div>
   );
 }
