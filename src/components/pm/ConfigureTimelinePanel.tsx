@@ -56,6 +56,37 @@ export function ConfigureTimelinePanel({
     await supabase.from("pm_task_dependencies").update({ lag_days: lag }).eq("id", depId);
   }
 
+  async function autoLinkInOrder() {
+    if (deps.length && !confirm(`This project already has ${deps.length} dependencies. Replace them with an auto-generated chain?`)) return;
+    // Sort tasks by phase sort_order, then task sort_order
+    const phaseOrder = new Map<string | null, number>();
+    phaseGroups.forEach(([pid], i) => phaseOrder.set(pid, i));
+    const ordered = [...tasks].sort((a, b) => {
+      const pa = phaseOrder.get(a.phase_id) ?? 999;
+      const pb = phaseOrder.get(b.phase_id) ?? 999;
+      if (pa !== pb) return pa - pb;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+    const newDeps = [];
+    for (let i = 1; i < ordered.length; i++) {
+      newDeps.push({
+        task_id: ordered[i].id,
+        depends_on_task_id: ordered[i - 1].id,
+        type: "finish_start",
+        lag_days: 0,
+      });
+    }
+    if (deps.length) {
+      await supabase.from("pm_task_dependencies").delete().in("id", deps.map(d => d.id));
+    }
+    if (newDeps.length) {
+      const { error } = await supabase.from("pm_task_dependencies").insert(newDeps as any);
+      if (error) { toast.error(error.message); return; }
+    }
+    toast.success(`Linked ${newDeps.length} dependencies in order`);
+    await reload();
+  }
+
   function recalcFromKickoff() {
     if (!kickoff) return toast.error("Set a kickoff date first");
     const r = scheduleForwardFromKickoff(kickoff, tasks, deps);
