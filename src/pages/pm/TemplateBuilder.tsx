@@ -16,7 +16,7 @@ export default function TemplateBuilder() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [tpl, setTpl] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
-  const navigate = useNavigate();
+  
 
   const reload = async () => {
     const { data: t } = await supabase.from("pm_project_templates").select("*").eq("id", id).maybeSingle();
@@ -35,33 +35,6 @@ export default function TemplateBuilder() {
   async function patchTask(tid: string, p: any) { await supabase.from("pm_template_tasks").update(p).eq("id", tid); reload(); }
   async function delTask(tid: string) { await supabase.from("pm_template_tasks").delete().eq("id", tid); reload(); }
 
-  async function instantiate() {
-    if (!tpl) return;
-    const goLive = new Date();
-    goLive.setDate(goLive.getDate() + (tpl.default_go_live_offset_days || 30));
-    const { data: proj } = await supabase.from("pm_projects").insert({
-      title: `${tpl.name} — ${new Date().toLocaleDateString()}`,
-      type: tpl.type, status: "active",
-      go_live_date: goLive.toISOString().slice(0, 10),
-      start_date: new Date().toISOString().slice(0, 10),
-      template_id: tpl.id,
-    } as any).select().single();
-    if (!proj) return;
-    // simple sequential schedule from start_date
-    let cursor = new Date(proj.start_date);
-    for (const tt of tasks) {
-      const start = new Date(cursor);
-      const end = new Date(cursor); end.setDate(end.getDate() + tt.duration_days - 1);
-      await supabase.from("pm_tasks").insert({
-        project_id: proj.id, title: tt.title, type: tt.type, status: "unclaimed", priority: "medium",
-        duration_days: tt.duration_days, sort_order: tt.sort_order,
-        start_date: start.toISOString().slice(0, 10), due_date: end.toISOString().slice(0, 10),
-      } as any);
-      cursor = new Date(end); cursor.setDate(cursor.getDate() + 1);
-    }
-    toast.success("Project created from template");
-    navigate(`/pm/projects/${proj.id}`);
-  }
 
   if (!tpl) return <div className="p-6">Loading…</div>;
 
