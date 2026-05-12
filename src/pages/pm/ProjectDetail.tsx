@@ -13,7 +13,7 @@ import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
   updateProject, updateTask, createTask, logActivity,
 } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
+import { useTasksChanged, useTaskDateProposed } from "@/lib/pm/refresh";
 import type { PmProject, PmTask, PmPhase, PmDependency } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
@@ -21,7 +21,7 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { GanttChart } from "@/components/pm/GanttChart";
 import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
-import { recalculateBackwardFromGoLive, type DateDiff } from "@/lib/pm/scheduler";
+import { recalculateBackwardFromGoLive, recalculateForward, type DateDiff } from "@/lib/pm/scheduler";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
@@ -45,6 +45,7 @@ export default function ProjectDetail() {
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
+  const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [configOpen, setConfigOpen] = useState(false);
 
   const reload = async () => {
@@ -58,6 +59,15 @@ export default function ProjectDetail() {
   };
   useEffect(() => { reload(); }, [id]);
   useTasksChanged(reload);
+
+  useTaskDateProposed(({ taskId, start, end }) => {
+    if (!tasks.find(t => t.id === taskId)) return;
+    const diffs = recalculateForward(taskId, { start, end }, tasks, deps);
+    if (!diffs.length) return;
+    setPendingMode("forward");
+    setPendingGoLive(null);
+    setPendingDiffs(diffs);
+  });
 
   const tasksByPhase = useMemo(() => {
     const m = new Map<string | null, PmTask[]>();
@@ -80,18 +90,23 @@ export default function ProjectDetail() {
       reload(); return;
     }
     const diffs = recalculateBackwardFromGoLive(newDate, tasks, deps);
+    setPendingMode("backward");
     setPendingDiffs(diffs);
     setPendingGoLive(newDate);
   }
 
   async function applyCascade() {
-    if (!project || !pendingGoLive) return;
-    await updateProject(project.id, { go_live_date: pendingGoLive });
+    if (!project) return;
+    if (pendingMode === "backward" && pendingGoLive) {
+      await updateProject(project.id, { go_live_date: pendingGoLive });
+      await logActivity({ project_id: project.id, user_id: user?.id, action: "project.go_live_changed", payload: { go_live: pendingGoLive, shifted: pendingDiffs.length } });
+    } else {
+      await logActivity({ project_id: project.id, user_id: user?.id, action: "task.dates_cascaded", payload: { shifted: pendingDiffs.length } });
+    }
     for (const d of pendingDiffs) {
       await updateTask(d.taskId, { start_date: d.newStart, due_date: d.newEnd });
     }
-    await logActivity({ project_id: project.id, user_id: user?.id, action: "project.go_live_changed", payload: { go_live: pendingGoLive, shifted: pendingDiffs.length } });
-    toast.success(`Updated go-live · ${pendingDiffs.length} tasks shifted`);
+    toast.success(`${pendingDiffs.length} task${pendingDiffs.length === 1 ? "" : "s"} updated`);
     setPendingDiffs([]); setPendingGoLive(null);
     reload();
   }
@@ -260,9 +275,9 @@ export default function ProjectDetail() {
       <TaskDrawer />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}
-        onOpenChange={(v) => { if (!v) { setPendingDiffs([]); setPendingGoLive(null); } }}
+        onOpenChange={(v) => { if (!v) { setPendingDiffs([]); setPendingGoLive(null); reload(); } }}
         diffs={pendingDiffs}
-        goLiveDate={pendingGoLive ?? project.go_live_date}
+        goLiveDate={pendingMode === "backward" ? pendingGoLive : project.go_live_date}
         onConfirm={applyCascade}
       />
       <ConfigureTimelinePanel project={project} open={configOpen} onOpenChange={setConfigOpen} onApplied={reload} />
