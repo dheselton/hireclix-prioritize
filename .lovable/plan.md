@@ -1,62 +1,99 @@
-# Plan: Hide empty buckets + universal View toggle with user default
+## Date Dependency Engine — Career Site Timeline
 
-## 1. Hide empty phase sections in Project Detail → Tasks
+Rebuild the project-creation and timeline logic around **kickoff-first scheduling** with **locked vs flexible** tasks, plus a built-in Career Site template and configuration UI.
 
-In `src/pages/pm/ProjectDetail.tsx` (`TaskTabContent`):
+---
 
-- After running `filterPhaseTasks(...)`, only render a `PhaseGroup` if the filtered list has at least one task.
-- Applies to all phases plus the "No phase" bucket.
-- When Me Mode (or any pill filter) yields zero results across **all** phases, show a single empty state card: "No tasks match the current filters" with a quick "Clear filters" link that resets the pill to default and exits Me Mode.
-- The phase still appears with its current "Add task…" inline input ONLY when the user is viewing `All` with no Me Mode (i.e. authoring context). With an active filter (Me Mode on, or a non-default pill), empty phases are hidden entirely — no add row.
+### 1. Database changes (migration)
 
-Result: in the screenshot, Designer + Me Mode would only show phases that contain at least one of Dan's design/content tasks.
+Add fields to support locking and minimums on both templates and live tasks:
 
-## 2. Extend `useViewMode` to support `kanban`
+- `pm_template_tasks`: add `locked boolean default false`, `min_duration_days int`, `parallel_with_temp_id text` (for parallel tasks), `locked_to_kickoff boolean default false`, `locked_to_go_live boolean default false`.
+- `pm_tasks`: add `locked boolean default false`, `min_duration_days int`, `locked_to_kickoff boolean default false`, `locked_to_go_live boolean default false`.
+- `pm_projects`: add `kickoff_date date` (separate from existing `start_date`/`go_live_date`).
 
-In `src/hooks/useViewMode.ts`:
+Seed a built-in **"Career Site"** template (`pm_project_templates` + `pm_template_tasks` + `pm_template_dependencies`) with the 5 phases / ~20 tasks listed in the request, with correct `locked`, `min_duration_days`, `duration_days`, `phase_name`, `assignee_role`, and finish-start dependencies between sequential tasks (parallel tasks share the same predecessor).
 
-- Change `ViewMode` to `"list" | "grid" | "kanban"`.
-- Update validation in the initial read and `storage` listener to accept all three.
-- Add a second hook `useDefaultViewMode()` that reads/writes a single global preference at `pm.viewMode.default` used as the fallback when a specific `viewKey` has no stored value.
-- `useViewMode(viewKey, fallback?)` resolution order: per-key stored value → global default → passed `fallback` → `"list"`.
+---
 
-## 3. ViewToggle already supports kanban
+### 2. Scheduler engine (`src/lib/pm/scheduler.ts`)
 
-`src/components/pm/ViewToggle.tsx` already accepts a `modes` prop including `"kanban"`. No changes needed beyond passing `modes={["list","grid","kanban"]}` from callers that should expose all three.
+Add three new pure functions alongside the existing ones:
 
-## 4. Add View toggle to Project Detail → Tasks tab
+- `scheduleForwardFromKickoff(kickoff, tasks, deps)` → assigns every task `start/end` walking forward from kickoff, respecting dependencies and durations. Returns `{ diffs, suggestedGoLive }`.
+- `fitToWindow(kickoff, goLive, tasks, deps)` → the core "compress flexible, preserve locked" algorithm:
+  1. Compute critical-path length using `min_duration_days` for locked tasks and `duration_days` for flexible.
+  2. If window < min length → return `{ diffs: [], warning: { earliestGoLive, offendingTasks[] } }`.
+  3. Otherwise distribute slack: keep locked tasks at `min_duration_days`, scale flexible tasks proportionally (`flex_dur * slackRatio`, never below 1 day), then forward-schedule from kickoff.
+- `validateSchedule(tasks)` → returns per-task flags: `atMinimum`, `belowRecommended`, used by Gantt for amber warnings/tooltips.
 
-In `ProjectDetail.tsx` Tasks tab header row (next to the View pills + "Showing my tasks" label):
+Existing `recalculateForward` / `recalculateBackwardFromGoLive` / `computeCriticalPath` stay as-is and continue to feed `CascadeConfirmModal`.
 
-- Add `<ViewToggle>` on the right with `viewKey="project.tasks"` and modes `list | kanban` (grid not meaningful for grouped phase tasks; kanban groups by status).
-- **List mode** (default): current phase-grouped layout (with empty-phase hiding from step 1).
-- **Kanban mode**: render a single board across all filtered tasks for the project, columns = task statuses (`unclaimed`, `in_progress`, `in_review`, `blocked`, `complete`/`approved`). Reuse the column rendering pattern from `src/pages/pm/Board.tsx` (extract a small `<TaskKanban tasks={...} onOpen={...} />` presentational component if Board's internals aren't directly reusable; otherwise import).
-- Filtering (pill + Me Mode + empty-phase logic) is applied to the task list before it reaches either renderer.
+---
 
-## 5. Surface kanban option in other collections
+### 3. Template instantiation rewrite (`TemplateBuilder.tsx` + new wizard)
 
-Add `"kanban"` to the `modes` array everywhere a `ViewToggle` is rendered with task data:
+Replace the current one-click "Create Project" button with a **3-step wizard** (`src/components/pm/TimelineSetupWizard.tsx`, used from Templates list and Template Builder):
 
-- `src/pages/pm/WorkQueue.tsx`
-- `src/pages/pm/Workload.tsx`
-- `src/components/pm/CollectionToolbar.tsx` (when used for tasks)
+```text
+Step 1  Kickoff date           [date picker — mm/dd/yyyy]
+Step 2  Suggested go-live      [auto-calculated, read-only]
+        Or choose your own:    [date picker]
+        ⚠ inline warning if window too tight, with earliest-allowed date
+Step 3  Mini Gantt preview     phases grouped, 🔒 on locked bars
+        [Confirm & Create]
+```
 
-Project-collection screens (`ProjectList.tsx`, `Forms.tsx`, `GlobalTimeline.tsx`) keep their current modes — kanban doesn't apply to projects/forms/timeline.
+On confirm: insert `pm_projects` row (kickoff_date + go_live_date), insert all `pm_tasks` with computed `start_date`/`due_date`/`locked`/`min_duration_days`, then insert `pm_task_dependencies` from template deps (mapping `temp_id` → real task id).
 
-For each that gains kanban, render a `TaskKanban` (same component as Project Detail) when `mode === "kanban"`, fed by the already-filtered task list. No new data fetching.
+Template Builder gets two new columns per row: **Locked** (checkbox, 🔒) and **Min days** (numeric, only when locked).
 
-## 6. User-chosen global default
+---
 
-In `src/components/TopBar.tsx` (or a small new `ViewDefaultMenu` rendered in TopBar near the role badge):
+### 4. Per-project Configure Timeline panel
 
-- Add a small dropdown labeled "Default view" with options List / Grid / Kanban.
-- Persists via `useDefaultViewMode()` to `localStorage`.
-- Acts as the fallback any time a screen hasn't had its per-screen toggle clicked yet. Per-screen toggles still override and are remembered per `viewKey`.
-- Add a "Reset view preferences" link in the same menu that clears all `pm.viewMode.*` keys so every screen falls back to the global default again.
+New component `src/components/pm/ConfigureTimelinePanel.tsx`, opened from a **"Configure Timeline"** button on `ProjectDetail` (PM only via `useMeMode`/role check):
 
-## Technical notes
+- Lists all tasks grouped by phase.
+- Locked tasks: 🔒 + min duration shown; "Unlock" toggle with confirm warning.
+- Flexible tasks: editable duration input.
+- Editable kickoff_date and go_live_date at the top.
+- Two action buttons:
+  - **Recalculate from Kickoff** → `scheduleForwardFromKickoff` → produces new go-live suggestion.
+  - **Recalculate from Go-Live** → `fitToWindow` → compresses flexible to fit.
+- All resulting diffs go through the existing `CascadeConfirmModal` before being written.
 
-- `ViewMode` type widening must be reflected in callers; TS will surface any miss.
-- `Board.tsx` currently builds columns from `pm_tasks` for the whole workspace. For Project Detail kanban, scope its query/state to the project. Easiest: factor the column rendering (header + droppable list of `TaskCard`) into `src/components/pm/TaskKanban.tsx` taking `(tasks, onOpen, columns?)`. Leave drag-and-drop reordering as it currently exists in Board; in the project kanban, dropping into a column updates `task.status` via existing `updateTask`.
-- Empty-state handling in step 1 should not regress the ability to add tasks. Provide a small "Add phase task" affordance from the empty state when no filter is active.
-- No DB schema changes. No backend changes.
+---
+
+### 5. Gantt visual indicators (`src/components/pm/GanttChart.tsx`)
+
+- Locked bars: render an SVG `<pattern>` with diagonal lines as fill, plus a small 🔒 glyph at the left edge.
+- At-minimum locked bars: hover tooltip "Minimum duration — cannot compress further".
+- Below-recommended flexible bars (flagged by `validateSchedule`): amber stroke + warning icon.
+- Critical-path bars keep the existing bold border.
+
+---
+
+### 6. Files to add / modify
+
+**New**
+- `src/components/pm/TimelineSetupWizard.tsx`
+- `src/components/pm/ConfigureTimelinePanel.tsx`
+- `supabase/migrations/<ts>_timeline_engine.sql` (schema + Career Site seed)
+
+**Modified**
+- `src/lib/pm/scheduler.ts` — add forward-from-kickoff, fit-to-window, validateSchedule
+- `src/lib/pm/api.ts` — helpers `createProjectFromTemplate(templateId, kickoff, goLive)` and `applyScheduleDiffs(diffs)`
+- `src/pages/pm/Templates.tsx` — "Use template" opens the wizard
+- `src/pages/pm/TemplateBuilder.tsx` — Locked + Min days columns; "Create Project" opens wizard
+- `src/pages/pm/ProjectDetail.tsx` — "Configure Timeline" button + panel mount
+- `src/components/pm/GanttChart.tsx` — locked pattern, 🔒 icon, amber warnings, tooltips
+- `src/types/pm.ts` — extend `PmTask` and `PmTemplateTask` types with `locked`, `min_duration_days`
+
+---
+
+### Open questions before I build
+
+1. **Working days vs calendar days** — should locked minimums and flexible compression skip weekends, or treat every duration as calendar days like today's scheduler does?
+2. **Built-in Career Site template** — overwrite if one already exists with that name, or always insert a fresh copy and let you delete duplicates?
+3. **"Unlock" on a per-project task** — should unlocking persist only for that project (overrides template), and should re-running the wizard ever re-lock it?
