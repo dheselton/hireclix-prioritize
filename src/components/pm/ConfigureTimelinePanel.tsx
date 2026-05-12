@@ -40,6 +40,21 @@ export function ConfigureTimelinePanel({
   async function persistTask(id: string, p: Partial<PmTask>) {
     await supabase.from("pm_tasks").update(p as any).eq("id", id);
   }
+  const taskTitle = (id: string) => tasks.find(t => t.id === id)?.title || "—";
+  const incomingDeps = useMemo(() => {
+    const m = new Map<string, PmDependency[]>();
+    for (const d of deps) {
+      if (!m.has(d.task_id)) m.set(d.task_id, []);
+      m.get(d.task_id)!.push(d);
+    }
+    return m;
+  }, [deps]);
+  function patchDepLag(depId: string, lag: number) {
+    setDeps(deps.map(d => d.id === depId ? { ...d, lag_days: lag } : d));
+  }
+  async function persistDepLag(depId: string, lag: number) {
+    await supabase.from("pm_task_dependencies").update({ lag_days: lag }).eq("id", depId);
+  }
 
   function recalcFromKickoff() {
     if (!kickoff) return toast.error("Set a kickoff date first");
@@ -102,11 +117,26 @@ export function ConfigureTimelinePanel({
               </div>
               {phaseGroups.map(([phaseId, phaseTasks]) => (
                 <div key={String(phaseId)}>
-                  {phaseTasks.map(t => (
-                    <div key={t.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-center border-t border-border">
-                      <div className="col-span-6 flex items-center gap-1.5 text-sm">
-                        {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
-                        <span className="truncate">{t.title}</span>
+                  {phaseTasks.map(t => {
+                    const deps = incomingDeps.get(t.id) || [];
+                    return (
+                    <div key={t.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-start border-t border-border">
+                      <div className="col-span-6 flex flex-col gap-1 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                          <span className="truncate">{t.title}</span>
+                        </div>
+                        {deps.map(dep => (
+                          <div key={dep.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground pl-4">
+                            <span>← {taskTitle(dep.depends_on_task_id)}</span>
+                            <span>+</span>
+                            <Input type="number" min={0} className="h-5 w-12 text-[11px] px-1.5 py-0"
+                              value={dep.lag_days ?? 0}
+                              onChange={e => patchDepLag(dep.id, Number(e.target.value))}
+                              onBlur={e => persistDepLag(dep.id, Number(e.target.value))} />
+                            <span>d wait</span>
+                          </div>
+                        ))}
                       </div>
                       <Input type="number" className="col-span-2 h-8" value={t.duration_days}
                         disabled={t.locked}
@@ -123,7 +153,8 @@ export function ConfigureTimelinePanel({
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
             </div>
