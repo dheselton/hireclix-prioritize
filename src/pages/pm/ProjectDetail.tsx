@@ -13,7 +13,7 @@ import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
   updateProject, updateTask, createTask, logActivity,
 } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
+import { useTasksChanged, useTaskDateProposed } from "@/lib/pm/refresh";
 import type { PmProject, PmTask, PmPhase, PmDependency } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
