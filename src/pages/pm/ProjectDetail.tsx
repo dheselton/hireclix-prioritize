@@ -23,6 +23,7 @@ import { GanttChart } from "@/components/pm/GanttChart";
 import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
 import { recalculateBackwardFromGoLive, type DateDiff } from "@/lib/pm/scheduler";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useMeMode } from "@/hooks/useMeMode";
 import { toast } from "sonner";
 
 export default function ProjectDetail() {
@@ -292,13 +293,16 @@ function TaskTabContent({
   const [pill, setPill] = useState<TaskPill>(() => defaultPillForRole(userRole));
   // Re-seed when role changes (user switched in TopBar).
   useEffect(() => { setPill(defaultPillForRole(userRole)); }, [userRole]);
+  const { isMe } = useMeMode();
 
   const dimSet = pill === "all" ? dimsForRole(userRole) : null;
 
   const filterPhaseTasks = (list: PmTask[]) => {
-    if (pill === "all") return list;
-    if (pill === "review") return list.filter(t => t.status === "in_review");
-    return list.filter(t => PILL_TYPES[pill].includes(t.type));
+    let out = list;
+    if (pill === "review") out = out.filter(t => t.status === "in_review");
+    else if (pill !== "all") out = out.filter(t => PILL_TYPES[pill].includes(t.type));
+    if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
+    return out;
   };
 
   const pills: TaskPill[] = ["all", "pm", "design", "dev", "review"];
@@ -321,6 +325,9 @@ function TaskTabContent({
             {PILL_LABEL[p]}
           </button>
         ))}
+        {isMe && (
+          <span className="ml-2 text-xs text-muted-foreground italic">Showing my tasks</span>
+        )}
       </div>
 
       {phases.map(ph => (
