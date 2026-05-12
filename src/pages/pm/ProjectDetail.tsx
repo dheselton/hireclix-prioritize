@@ -296,9 +296,10 @@ function TaskTabContent({
   const [pill, setPill] = useState<TaskPill>(() => defaultPillForRole(userRole));
   // Re-seed when role changes (user switched in TopBar).
   useEffect(() => { setPill(defaultPillForRole(userRole)); }, [userRole]);
-  const { isMe } = useMeMode();
+  const { isMe, setMe } = useMeMode();
+  const [view, setView] = useViewMode("project.tasks", "list");
 
-  const dimSet = pill === "all" ? dimsForRole(userRole) : null;
+  const dimSet = pill === "all" && view === "list" ? dimsForRole(userRole) : null;
 
   const filterPhaseTasks = (list: PmTask[]) => {
     let out = list;
@@ -309,6 +310,27 @@ function TaskTabContent({
   };
 
   const pills: TaskPill[] = ["all", "pm", "design", "dev", "review"];
+  const filtersActive = isMe || pill !== defaultPillForRole(userRole);
+
+  // Build list of phase entries (including null). Hide empty ones when a filter is active.
+  const phaseEntries: { phase: PmPhase | null; tasks: PmTask[] }[] = [];
+  for (const ph of phases) {
+    const t = filterPhaseTasks(tasksByPhase.get(ph.id) || []);
+    if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: ph, tasks: t });
+  }
+  if (tasksByPhase.has(null)) {
+    const t = filterPhaseTasks(tasksByPhase.get(null)!);
+    if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: null, tasks: t });
+  }
+
+  // Flat task list for kanban view.
+  const allFiltered = phaseEntries.flatMap(e => e.tasks);
+  const totalVisible = allFiltered.length;
+
+  function clearFilters() {
+    setPill(defaultPillForRole(userRole));
+    if (isMe) setMe(false);
+  }
 
   return (
     <>
@@ -331,27 +353,37 @@ function TaskTabContent({
         {isMe && (
           <span className="ml-2 text-xs text-muted-foreground italic">Showing my tasks</span>
         )}
+        <div className="ml-auto">
+          <ViewToggle value={view} onChange={(m) => setView(m as any)} modes={["list", "kanban"]} />
+        </div>
       </div>
 
-      {phases.map(ph => (
+      {totalVisible === 0 && filtersActive && (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            No tasks match the current filters.
+            <button type="button" onClick={clearFilters} className="ml-2 underline hover:text-foreground">
+              Clear filters
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
+      {totalVisible > 0 && view === "kanban" && (
+        <TaskKanban tasks={allFiltered} onOpen={onOpen} />
+      )}
+
+      {view === "list" && phaseEntries.map(({ phase, tasks }) => (
         <PhaseGroup
-          key={ph.id}
-          phase={ph}
-          tasks={filterPhaseTasks(tasksByPhase.get(ph.id) || [])}
+          key={phase?.id ?? "no-phase"}
+          phase={phase}
+          tasks={tasks}
           onOpen={onOpen}
-          onAdd={(title) => onAdd(ph.id, title)}
+          onAdd={(title) => onAdd(phase?.id ?? null, title)}
           dimSet={dimSet}
+          allowAdd={!filtersActive}
         />
       ))}
-      {tasksByPhase.has(null) && (
-        <PhaseGroup
-          phase={null}
-          tasks={filterPhaseTasks(tasksByPhase.get(null)!)}
-          onOpen={onOpen}
-          onAdd={(title) => onAdd(null, title)}
-          dimSet={dimSet}
-        />
-      )}
     </>
   );
 }
