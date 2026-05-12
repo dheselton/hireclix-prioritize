@@ -85,6 +85,12 @@ export function GanttChart({
   return (
     <div className="overflow-auto border border-border rounded-lg bg-card">
       <svg ref={svgRef} width={width} height={height} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
+        <defs>
+          <pattern id="lockedHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="hsl(var(--background))" fillOpacity="0.18" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="hsl(var(--background))" strokeOpacity="0.45" strokeWidth="2" />
+          </pattern>
+        </defs>
         {/* month header */}
         {months.map((m, i) => (
           <g key={i}>
