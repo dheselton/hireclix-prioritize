@@ -50,6 +50,7 @@ export default function ProjectDetail() {
     setComments(cm || []);
   };
   useEffect(() => { reload(); }, [id]);
+  useTasksChanged(reload);
 
   const tasksByPhase = useMemo(() => {
     const m = new Map<string | null, PmTask[]>();
