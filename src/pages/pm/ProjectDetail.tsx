@@ -27,6 +27,8 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { ViewToggle } from "@/components/pm/ViewToggle";
 import { TaskKanban } from "@/components/pm/TaskKanban";
+import { ConfigureTimelinePanel } from "@/components/pm/ConfigureTimelinePanel";
+import { Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ProjectDetail() {
@@ -43,6 +45,7 @@ export default function ProjectDetail() {
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
 
   const reload = async () => {
     if (!id) return;
@@ -129,9 +132,14 @@ export default function ProjectDetail() {
                 <Badge variant="outline">{project.status}</Badge>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Go-Live</div>
-              <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
+            <div className="flex items-start gap-3">
+              <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
+                <Settings2 className="h-4 w-4 mr-1" /> Configure Timeline
+              </Button>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">Go-Live</div>
+                <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
