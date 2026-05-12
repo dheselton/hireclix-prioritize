@@ -45,6 +45,7 @@ export default function ProjectDetail() {
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
+  const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [configOpen, setConfigOpen] = useState(false);
 
   const reload = async () => {
