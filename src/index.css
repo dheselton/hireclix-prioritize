@@ -77,6 +77,16 @@ All colors MUST be HSL.
     /* Track colors (PM vs Production) */
     --track-pm: 245 60% 55%;          /* indigo */
     --track-production: 32 95% 50%;   /* amber */
+
+    /* Role badge colors */
+    --role-pm: 215 70% 30%;            /* dark blue */
+    --role-pm-foreground: 0 0% 100%;
+    --role-designer: 270 55% 50%;      /* purple */
+    --role-designer-foreground: 0 0% 100%;
+    --role-developer: 142 60% 35%;     /* green */
+    --role-developer-foreground: 0 0% 100%;
+    --role-submitter: 210 9% 46%;      /* neutral grey */
+    --role-submitter-foreground: 0 0% 100%;
   }
 }
 
