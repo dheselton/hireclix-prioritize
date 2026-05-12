@@ -187,11 +187,27 @@ export function TaskDrawer() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs">Start</Label>
-                  <DatePicker value={task.start_date} onChange={v => patch({ start_date: v })} />
+                  <DatePicker value={task.start_date} onChange={v => {
+                    if (!v) { patch({ start_date: v }); return; }
+                    const dur = Math.max(1, task.duration_days || 1);
+                    const startD = new Date(v + "T00:00:00");
+                    const endD = new Date(startD.getTime() + (dur - 1) * 86400000);
+                    const end = endD.toISOString().slice(0, 10);
+                    setTask({ ...task, start_date: v, due_date: end });
+                    emitTaskDateProposed({ taskId: task.id, start: v, end });
+                  }} />
                 </div>
                 <div>
                   <Label className="text-xs">Due</Label>
-                  <DatePicker value={task.due_date} onChange={v => patch({ due_date: v })} />
+                  <DatePicker value={task.due_date} onChange={v => {
+                    if (!v) { patch({ due_date: v }); return; }
+                    const dur = Math.max(1, task.duration_days || 1);
+                    const endD = new Date(v + "T00:00:00");
+                    const startD = new Date(endD.getTime() - (dur - 1) * 86400000);
+                    const start = startD.toISOString().slice(0, 10);
+                    setTask({ ...task, start_date: start, due_date: v });
+                    emitTaskDateProposed({ taskId: task.id, start, end: v });
+                  }} />
                 </div>
               </div>
               <div>
