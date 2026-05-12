@@ -1,14 +1,17 @@
 import { useEffect } from "react";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { MeModeToggle } from "@/components/pm/MeModeToggle";
 import { installMeModeHotkey } from "@/hooks/useMeMode";
+import { useDefaultViewMode, type ViewMode } from "@/hooks/useViewMode";
+import { toast } from "sonner";
 
 const ROLE_LABEL: Record<string, string> = {
   pm: "PM", designer: "Designer", developer: "Developer", submitter: "Submitter",
@@ -51,6 +54,7 @@ export function TopBar() {
       )}
       <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
 
+      <DefaultViewMenu />
       <MeModeToggle />
 
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
