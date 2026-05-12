@@ -32,6 +32,7 @@ export default function WorkQueue() {
     setTasks(t); setProjects(p);
   };
   useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
