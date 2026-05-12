@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
+import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmTask, PmProject } from "@/types/pm";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { StatusPill } from "@/components/pm/StatusPill";
