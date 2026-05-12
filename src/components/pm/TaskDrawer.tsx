@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask } from "@/lib/pm/api";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 import { TASK_STATUSES, TASK_TYPES, PRIORITIES, type PmTask, type TaskStatus, type TaskType, type TaskPriority } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
