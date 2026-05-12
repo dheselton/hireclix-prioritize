@@ -44,9 +44,14 @@ export function TaskDrawer() {
 
   async function patch(p: Partial<PmTask>) {
     if (!task) return;
-    const updated = await updateTask(task.id, p);
-    setTask(updated);
-    await logActivity({ task_id: task.id, project_id: task.project_id, user_id: user?.id, action: "task.updated", payload: p });
+    try {
+      const updated = await updateTask(task.id, p);
+      setTask(updated);
+      await logActivity({ task_id: task.id, project_id: task.project_id, user_id: user?.id, action: "task.updated", payload: p });
+      emitTasksChanged();
+    } catch (err: any) {
+      toast.error(`Save failed: ${err?.message ?? "unknown error"}`);
+    }
   }
 
   async function logTime(minutes: number) {
