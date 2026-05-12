@@ -62,25 +62,38 @@ export default function TemplateBuilder() {
           <div className="text-xs uppercase text-muted-foreground">Tasks</div>
           <Button size="sm" variant="outline" onClick={addTask}><Plus className="h-3 w-3 mr-1" /> Add</Button>
         </div>
+        <div className="grid grid-cols-12 gap-2 px-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <div className="col-span-4">Title</div>
+          <div className="col-span-2">Type</div>
+          <div className="col-span-2">Phase</div>
+          <div className="col-span-1">Days</div>
+          <div className="col-span-1 text-center">Lock</div>
+          <div className="col-span-1">Min</div>
+        </div>
         {tasks.map(t => (
           <div key={t.id} className="grid grid-cols-12 gap-2 items-center border border-border rounded p-2">
-            <Input className="col-span-5" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
+            <Input className="col-span-4" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
             <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
               <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
               <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
             </Select>
             <Input className="col-span-2" placeholder="Phase name" value={t.phase_name ?? ""} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, phase_name: e.target.value } : x))} onBlur={e => patchTask(t.id, { phase_name: e.target.value })} />
-            <div className="col-span-2 flex items-center gap-1">
-              <Input type="number" value={t.duration_days} className="w-16"
-                onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
-                onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
-              <span className="text-xs text-muted-foreground">days</span>
+            <Input type="number" className="col-span-1" value={t.duration_days}
+              onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
+              onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
+            <div className="col-span-1 flex justify-center items-center gap-1">
+              <Checkbox checked={!!t.locked} onCheckedChange={(v) => patchTask(t.id, { locked: !!v })} />
+              {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
             </div>
+            <Input type="number" className="col-span-1" value={t.min_duration_days ?? ""} placeholder="—" disabled={!t.locked}
+              onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, min_duration_days: e.target.value ? Number(e.target.value) : null } : x))}
+              onBlur={e => patchTask(t.id, { min_duration_days: e.target.value ? Number(e.target.value) : null })} />
             <Button size="icon" variant="ghost" className="col-span-1" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
           </div>
         ))}
         {!tasks.length && <div className="text-sm text-muted-foreground italic">No tasks yet.</div>}
       </CardContent></Card>
+      <TimelineSetupWizard templateId={id || null} open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 }
