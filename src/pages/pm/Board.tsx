@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtDateShort } from "@/lib/pm/format";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useTasksChanged } from "@/lib/pm/refresh";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
@@ -43,6 +44,7 @@ export default function Board() {
 
   const reload = async () => { setTasks(await fetchTasks()); setProjects(await fetchProjects()); };
   useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 

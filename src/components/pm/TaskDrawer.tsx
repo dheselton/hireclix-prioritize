@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask } from "@/lib/pm/api";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 import { TASK_STATUSES, TASK_TYPES, PRIORITIES, type PmTask, type TaskStatus, type TaskType, type TaskPriority } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
@@ -43,9 +44,14 @@ export function TaskDrawer() {
 
   async function patch(p: Partial<PmTask>) {
     if (!task) return;
-    const updated = await updateTask(task.id, p);
-    setTask(updated);
-    await logActivity({ task_id: task.id, project_id: task.project_id, user_id: user?.id, action: "task.updated", payload: p });
+    try {
+      const updated = await updateTask(task.id, p);
+      setTask(updated);
+      await logActivity({ task_id: task.id, project_id: task.project_id, user_id: user?.id, action: "task.updated", payload: p });
+      emitTasksChanged();
+    } catch (err: any) {
+      toast.error(`Save failed: ${err?.message ?? "unknown error"}`);
+    }
   }
 
   async function logTime(minutes: number) {

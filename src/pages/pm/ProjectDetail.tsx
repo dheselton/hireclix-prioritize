@@ -13,6 +13,7 @@ import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
   updateProject, updateTask, createTask, logActivity,
 } from "@/lib/pm/api";
+import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmProject, PmTask, PmPhase, PmDependency } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
@@ -49,6 +50,7 @@ export default function ProjectDetail() {
     setComments(cm || []);
   };
   useEffect(() => { reload(); }, [id]);
+  useTasksChanged(reload);
 
   const tasksByPhase = useMemo(() => {
     const m = new Map<string | null, PmTask[]>();
