@@ -190,9 +190,12 @@ export function ConfigureTimelinePanel({
               ))}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button variant="outline" onClick={recalcFromKickoff}>Recalculate from Kickoff</Button>
               <Button onClick={recalcFromGoLive}>Recalculate from Go-Live</Button>
+              <Button variant="ghost" onClick={autoLinkInOrder} title="Create finish→start dependencies in current sort order. Useful for legacy projects that have no dependency graph.">
+                Auto-link tasks in order
+              </Button>
             </div>
           </div>
         </SheetContent>
