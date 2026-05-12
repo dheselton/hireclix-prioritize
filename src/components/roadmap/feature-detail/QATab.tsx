@@ -1,4 +1,5 @@
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { SmartTextarea } from "@/components/ui/smart-textarea";
 import { Switch } from "@/components/ui/switch";
@@ -297,12 +298,11 @@ export function QATab({ data, onChange }: QATabProps) {
         </div>
         <div>
           <Label>Sign-off Date</Label>
-          <Input
-            type="date"
+          <DatePicker
             value={data.signOff.signOffDate}
-            onChange={(e) => onChange({
+            onChange={(v) => onChange({
               ...data,
-              signOff: { ...data.signOff, signOffDate: e.target.value }
+              signOff: { ...data.signOff, signOffDate: v ?? '' }
             })}
           />
         </div>

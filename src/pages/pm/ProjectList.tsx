@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Plus } from "lucide-react";
 import { fetchProjects, fetchTasks, createProject } from "@/lib/pm/api";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -103,7 +104,7 @@ export default function ProjectList() {
                 </Select>
               </div>
             </div>
-            <div><Label>Go-Live Date</Label><Input type="date" value={form.go_live_date} onChange={e => setForm({ ...form, go_live_date: e.target.value })} /></div>
+            <div><Label>Go-Live Date</Label><DatePicker value={form.go_live_date} onChange={v => setForm({ ...form, go_live_date: v ?? "" })} /></div>
           </div>
           <DialogFooter><Button onClick={submit}>Create</Button></DialogFooter>
         </DialogContent>

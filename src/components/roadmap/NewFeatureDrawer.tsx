@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -230,19 +231,17 @@ export function NewFeatureDrawer({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Start Date</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, start_date: v ?? "" })}
               />
             </div>
 
             <div>
               <Label>Due Date</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={formData.due_date}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, due_date: v ?? "" })}
               />
             </div>
           </div>
