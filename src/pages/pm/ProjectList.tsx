@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Plus } from "lucide-react";
 import { fetchProjects, fetchTasks, createProject } from "@/lib/pm/api";
+import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmProject, PmTask } from "@/types/pm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
