@@ -53,7 +53,7 @@ export default function TemplateBuilder() {
               onChange={e => setTpl({ ...tpl, default_go_live_offset_days: Number(e.target.value) })}
               onBlur={e => patchTpl({ default_go_live_offset_days: Number(e.target.value) })} />
           </div>
-          <Button onClick={instantiate}><Rocket className="h-4 w-4 mr-1" /> Create Project</Button>
+          <Button onClick={() => setWizardOpen(true)}><Rocket className="h-4 w-4 mr-1" /> Create Project</Button>
         </div>
       </CardContent></Card>
 
