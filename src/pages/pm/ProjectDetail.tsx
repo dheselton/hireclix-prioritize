@@ -23,6 +23,7 @@ import { GanttChart } from "@/components/pm/GanttChart";
 import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
 import { recalculateBackwardFromGoLive, type DateDiff } from "@/lib/pm/scheduler";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useMeMode } from "@/hooks/useMeMode";
 import { toast } from "sonner";
 
 export default function ProjectDetail() {
