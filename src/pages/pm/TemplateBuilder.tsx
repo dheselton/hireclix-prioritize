@@ -1,21 +1,22 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ArrowLeft, Rocket } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, ArrowLeft, Rocket, Lock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_TYPES } from "@/types/pm";
-import { toast } from "sonner";
+import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 
 export default function TemplateBuilder() {
   const { id } = useParams<{ id: string }>();
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [tpl, setTpl] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
-  const navigate = useNavigate();
+  
 
   const reload = async () => {
     const { data: t } = await supabase.from("pm_project_templates").select("*").eq("id", id).maybeSingle();
@@ -34,33 +35,6 @@ export default function TemplateBuilder() {
   async function patchTask(tid: string, p: any) { await supabase.from("pm_template_tasks").update(p).eq("id", tid); reload(); }
   async function delTask(tid: string) { await supabase.from("pm_template_tasks").delete().eq("id", tid); reload(); }
 
-  async function instantiate() {
-    if (!tpl) return;
-    const goLive = new Date();
-    goLive.setDate(goLive.getDate() + (tpl.default_go_live_offset_days || 30));
-    const { data: proj } = await supabase.from("pm_projects").insert({
-      title: `${tpl.name} — ${new Date().toLocaleDateString()}`,
-      type: tpl.type, status: "active",
-      go_live_date: goLive.toISOString().slice(0, 10),
-      start_date: new Date().toISOString().slice(0, 10),
-      template_id: tpl.id,
-    } as any).select().single();
-    if (!proj) return;
-    // simple sequential schedule from start_date
-    let cursor = new Date(proj.start_date);
-    for (const tt of tasks) {
-      const start = new Date(cursor);
-      const end = new Date(cursor); end.setDate(end.getDate() + tt.duration_days - 1);
-      await supabase.from("pm_tasks").insert({
-        project_id: proj.id, title: tt.title, type: tt.type, status: "unclaimed", priority: "medium",
-        duration_days: tt.duration_days, sort_order: tt.sort_order,
-        start_date: start.toISOString().slice(0, 10), due_date: end.toISOString().slice(0, 10),
-      } as any);
-      cursor = new Date(end); cursor.setDate(cursor.getDate() + 1);
-    }
-    toast.success("Project created from template");
-    navigate(`/pm/projects/${proj.id}`);
-  }
 
   if (!tpl) return <div className="p-6">Loading…</div>;
 
@@ -79,7 +53,7 @@ export default function TemplateBuilder() {
               onChange={e => setTpl({ ...tpl, default_go_live_offset_days: Number(e.target.value) })}
               onBlur={e => patchTpl({ default_go_live_offset_days: Number(e.target.value) })} />
           </div>
-          <Button onClick={instantiate}><Rocket className="h-4 w-4 mr-1" /> Create Project</Button>
+          <Button onClick={() => setWizardOpen(true)}><Rocket className="h-4 w-4 mr-1" /> Create Project</Button>
         </div>
       </CardContent></Card>
 
@@ -88,25 +62,38 @@ export default function TemplateBuilder() {
           <div className="text-xs uppercase text-muted-foreground">Tasks</div>
           <Button size="sm" variant="outline" onClick={addTask}><Plus className="h-3 w-3 mr-1" /> Add</Button>
         </div>
+        <div className="grid grid-cols-12 gap-2 px-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <div className="col-span-4">Title</div>
+          <div className="col-span-2">Type</div>
+          <div className="col-span-2">Phase</div>
+          <div className="col-span-1">Days</div>
+          <div className="col-span-1 text-center">Lock</div>
+          <div className="col-span-1">Min</div>
+        </div>
         {tasks.map(t => (
           <div key={t.id} className="grid grid-cols-12 gap-2 items-center border border-border rounded p-2">
-            <Input className="col-span-5" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
+            <Input className="col-span-4" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
             <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
               <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
               <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
             </Select>
             <Input className="col-span-2" placeholder="Phase name" value={t.phase_name ?? ""} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, phase_name: e.target.value } : x))} onBlur={e => patchTask(t.id, { phase_name: e.target.value })} />
-            <div className="col-span-2 flex items-center gap-1">
-              <Input type="number" value={t.duration_days} className="w-16"
-                onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
-                onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
-              <span className="text-xs text-muted-foreground">days</span>
+            <Input type="number" className="col-span-1" value={t.duration_days}
+              onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
+              onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
+            <div className="col-span-1 flex justify-center items-center gap-1">
+              <Checkbox checked={!!t.locked} onCheckedChange={(v) => patchTask(t.id, { locked: !!v })} />
+              {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
             </div>
+            <Input type="number" className="col-span-1" value={t.min_duration_days ?? ""} placeholder="—" disabled={!t.locked}
+              onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, min_duration_days: e.target.value ? Number(e.target.value) : null } : x))}
+              onBlur={e => patchTask(t.id, { min_duration_days: e.target.value ? Number(e.target.value) : null })} />
             <Button size="icon" variant="ghost" className="col-span-1" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
           </div>
         ))}
         {!tasks.length && <div className="text-sm text-muted-foreground italic">No tasks yet.</div>}
       </CardContent></Card>
+      <TimelineSetupWizard templateId={id || null} open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
 }

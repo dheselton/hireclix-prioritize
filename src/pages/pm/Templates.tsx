@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus } from "lucide-react";
+import { Plus, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PROJECT_TYPES } from "@/types/pm";
+import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 
 export default function Templates() {
   const [items, setItems] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [type, setType] = useState("career_site");
-  const navigate = useNavigate();
+  const [wizardId, setWizardId] = useState<string | null>(null);
 
   const reload = async () => {
     const { data } = await supabase.from("pm_project_templates").select("*").order("created_at", { ascending: false });
@@ -25,7 +26,7 @@ export default function Templates() {
   async function create() {
     const { data } = await supabase.from("pm_project_templates").insert({ name, type } as any).select().single();
     setOpen(false); setName("");
-    if (data) navigate(`/pm/templates/${data.id}/edit`);
+    if (data) window.location.href = `/pm/templates/${data.id}/edit`;
   }
 
   return (
@@ -37,10 +38,13 @@ export default function Templates() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map(t => (
           <Card key={t.id}>
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-2">
               <div className="font-semibold">{t.name}</div>
               <div className="text-xs text-muted-foreground">{t.type}</div>
-              <Button asChild size="sm" variant="outline" className="mt-2"><Link to={`/pm/templates/${t.id}/edit`}>Edit</Link></Button>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setWizardId(t.id)}><Rocket className="h-3 w-3 mr-1" /> Use</Button>
+                <Button asChild size="sm" variant="outline"><Link to={`/pm/templates/${t.id}/edit`}>Edit</Link></Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -60,6 +64,7 @@ export default function Templates() {
           <DialogFooter><Button onClick={create} disabled={!name.trim()}>Create</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <TimelineSetupWizard templateId={wizardId} open={!!wizardId} onOpenChange={(v) => !v && setWizardId(null)} />
     </div>
   );
 }

@@ -27,6 +27,7 @@ export interface PmProject {
   status: ProjectStatus;
   go_live_date: string | null;
   start_date: string | null;
+  kickoff_date: string | null;
   description: string | null;
   tags: string[];
   template_id: string | null;
@@ -56,6 +57,10 @@ export interface PmTask {
   start_date: string | null;
   due_date: string | null;
   duration_days: number;
+  min_duration_days: number | null;
+  locked: boolean;
+  locked_to_kickoff: boolean;
+  locked_to_go_live: boolean;
   priority: TaskPriority;
   tags: string[];
   sort_order: number;

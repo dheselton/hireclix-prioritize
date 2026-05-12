@@ -85,6 +85,12 @@ export function GanttChart({
   return (
     <div className="overflow-auto border border-border rounded-lg bg-card">
       <svg ref={svgRef} width={width} height={height} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
+        <defs>
+          <pattern id="lockedHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="hsl(var(--background))" fillOpacity="0.18" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="hsl(var(--background))" strokeOpacity="0.45" strokeWidth="2" />
+          </pattern>
+        </defs>
         {/* month header */}
         {months.map((m, i) => (
           <g key={i}>
@@ -128,11 +134,23 @@ export function GanttChart({
           const y = headerHeight + i * rowHeight + 4;
           const h = rowHeight - 8;
           const isCritical = critical.has(t.id);
+          const locked = !!(t as any).locked;
+          const minDur = (t as any).min_duration_days as number | null | undefined;
+          const atMin = locked && minDur != null && t.duration_days <= minDur;
+          const belowRec = !locked && minDur != null && t.duration_days < minDur;
+          const tooltip = atMin
+            ? "Minimum duration — cannot compress further"
+            : belowRec ? `Below recommended (${minDur}d)` : `${t.title} (${t.duration_days}d)`;
           return (
             <g key={t.id} onClick={() => onTaskClick?.(t.id)} onMouseDown={(e) => onMouseDown(e, t)} style={{ cursor: "grab" }}>
+              <title>{tooltip}</title>
               <rect x={x} y={y} width={w} height={h} rx={4} fill={TYPE_COLORS[t.type]}
-                stroke={isCritical ? "hsl(var(--foreground))" : "transparent"} strokeWidth={isCritical ? 2 : 0} opacity={0.85} />
-              <text x={x + 6} y={y + h / 2 + 4} className="fill-white text-[11px] font-medium pointer-events-none">{t.title}</text>
+                stroke={belowRec ? "hsl(40 95% 55%)" : isCritical ? "hsl(var(--foreground))" : "transparent"}
+                strokeWidth={belowRec ? 2 : isCritical ? 2 : 0} opacity={0.85} />
+              {locked && <rect x={x} y={y} width={w} height={h} rx={4} fill="url(#lockedHatch)" pointerEvents="none" />}
+              {locked && <text x={x + 4} y={y + h / 2 + 4} className="text-[10px] pointer-events-none" fill="white">🔒</text>}
+              <text x={x + (locked ? 18 : 6)} y={y + h / 2 + 4} className="fill-white text-[11px] font-medium pointer-events-none">{t.title}</text>
+              {belowRec && <text x={x + w - 12} y={y + h / 2 + 4} className="text-[11px] pointer-events-none" fill="hsl(40 95% 55%)">⚠</text>}
             </g>
           );
         })}
