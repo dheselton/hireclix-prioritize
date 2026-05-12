@@ -10,6 +10,7 @@ import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { useViewMode } from "@/hooks/useViewMode";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
+import { TaskKanban } from "@/components/pm/TaskKanban";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
@@ -155,6 +156,7 @@ export default function WorkQueue() {
         subtitle={<>Viewing as <span className="font-medium capitalize">{role}</span></>}
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
+        modes={["list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
       />
@@ -190,9 +192,15 @@ export default function WorkQueue() {
             </Button>
           ) : null}
         >
-          {mode === "list"
-            ? <TaskListView tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
-            : <TaskGridView tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />}
+          {mode === "list" && (
+            <TaskListView tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
+          )}
+          {mode === "grid" && (
+            <TaskGridView tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
+          )}
+          {mode === "kanban" && (
+            <TaskKanban tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
+          )}
         </Section>
       ))}
 

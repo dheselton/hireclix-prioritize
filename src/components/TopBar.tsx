@@ -1,14 +1,17 @@
 import { useEffect } from "react";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { MeModeToggle } from "@/components/pm/MeModeToggle";
 import { installMeModeHotkey } from "@/hooks/useMeMode";
+import { useDefaultViewMode, type ViewMode } from "@/hooks/useViewMode";
+import { toast } from "sonner";
 
 const ROLE_LABEL: Record<string, string> = {
   pm: "PM", designer: "Designer", developer: "Developer", submitter: "Submitter",
@@ -51,6 +54,7 @@ export function TopBar() {
       )}
       <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
 
+      <DefaultViewMenu />
       <MeModeToggle />
 
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
@@ -94,5 +98,54 @@ export function TopBar() {
         <AvatarFallback className="bg-primary text-primary-foreground text-sm">{initials}</AvatarFallback>
       </Avatar>
     </header>
+  );
+}
+
+const VIEW_OPTIONS: { value: ViewMode; label: string; icon: React.ReactNode }[] = [
+  { value: "list", label: "List", icon: <List className="h-4 w-4" /> },
+  { value: "grid", label: "Grid", icon: <LayoutGrid className="h-4 w-4" /> },
+  { value: "kanban", label: "Kanban", icon: <Columns className="h-4 w-4" /> },
+];
+
+function DefaultViewMenu() {
+  const { defaultMode, setDefault, resetAll } = useDefaultViewMode();
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="hidden md:inline-flex h-8" title="Default view preference">
+          <Eye className="h-4 w-4 mr-1" /> Default view
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 z-50 bg-popover" align="end">
+        <div className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+          Default view
+        </div>
+        <div className="space-y-1">
+          {VIEW_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setDefault(opt.value)}
+              className={`w-full flex items-center gap-2 px-2 h-8 rounded text-sm transition ${
+                defaultMode === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted text-foreground"
+              }`}
+            >
+              {opt.icon} {opt.label}
+            </button>
+          ))}
+        </div>
+        <Button
+          size="sm" variant="ghost" className="w-full mt-2 h-7 text-xs"
+          onClick={() => { resetAll(); toast.success("Reset all view preferences"); }}
+        >
+          Reset all view preferences
+        </Button>
+        <p className="text-[10px] text-muted-foreground mt-2 leading-snug">
+          Used as the starting view on every screen until you pick a different view there.
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
