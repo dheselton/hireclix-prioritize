@@ -296,7 +296,7 @@ function TaskTabContent({
   const [pill, setPill] = useState<TaskPill>(() => defaultPillForRole(userRole));
   // Re-seed when role changes (user switched in TopBar).
   useEffect(() => { setPill(defaultPillForRole(userRole)); }, [userRole]);
-  const { isMe, setMe } = useMeMode();
+  const { isMe, setMode: setMeMode } = useMeMode();
   const [view, setView] = useViewMode("project.tasks", "list");
 
   const dimSet = pill === "all" && view === "list" ? dimsForRole(userRole) : null;
@@ -329,7 +329,7 @@ function TaskTabContent({
 
   function clearFilters() {
     setPill(defaultPillForRole(userRole));
-    if (isMe) setMe(false);
+    if (isMe) setMeMode("all");
   }
 
   return (
@@ -388,9 +388,9 @@ function TaskTabContent({
   );
 }
 
-function PhaseGroup({ phase, tasks, onOpen, onAdd, dimSet }: {
+function PhaseGroup({ phase, tasks, onOpen, onAdd, dimSet, allowAdd = true }: {
   phase: PmPhase | null; tasks: PmTask[]; onOpen: (id: string) => void;
-  onAdd: (title: string) => void; dimSet?: Set<string> | null;
+  onAdd: (title: string) => void; dimSet?: Set<string> | null; allowAdd?: boolean;
 }) {
   const [adding, setAdding] = useState("");
   return (
