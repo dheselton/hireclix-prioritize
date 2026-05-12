@@ -90,18 +90,23 @@ export default function ProjectDetail() {
       reload(); return;
     }
     const diffs = recalculateBackwardFromGoLive(newDate, tasks, deps);
+    setPendingMode("backward");
     setPendingDiffs(diffs);
     setPendingGoLive(newDate);
   }
 
   async function applyCascade() {
-    if (!project || !pendingGoLive) return;
-    await updateProject(project.id, { go_live_date: pendingGoLive });
+    if (!project) return;
+    if (pendingMode === "backward" && pendingGoLive) {
+      await updateProject(project.id, { go_live_date: pendingGoLive });
+      await logActivity({ project_id: project.id, user_id: user?.id, action: "project.go_live_changed", payload: { go_live: pendingGoLive, shifted: pendingDiffs.length } });
+    } else {
+      await logActivity({ project_id: project.id, user_id: user?.id, action: "task.dates_cascaded", payload: { shifted: pendingDiffs.length } });
+    }
     for (const d of pendingDiffs) {
       await updateTask(d.taskId, { start_date: d.newStart, due_date: d.newEnd });
     }
-    await logActivity({ project_id: project.id, user_id: user?.id, action: "project.go_live_changed", payload: { go_live: pendingGoLive, shifted: pendingDiffs.length } });
-    toast.success(`Updated go-live · ${pendingDiffs.length} tasks shifted`);
+    toast.success(`${pendingDiffs.length} task${pendingDiffs.length === 1 ? "" : "s"} updated`);
     setPendingDiffs([]); setPendingGoLive(null);
     reload();
   }
