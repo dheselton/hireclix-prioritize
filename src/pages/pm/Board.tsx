@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Columns3 } from "lucide-react";
 import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
-import type { PmTask, PmProject, TaskStatus } from "@/types/pm";
+import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
@@ -16,14 +20,31 @@ import { TaskGridView } from "@/components/pm/collections/TaskGridView";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
-import { applyTaskChips, applyTaskMeMode } from "@/lib/pm/filters";
-import { useTrackMode } from "@/hooks/useTrackMode";
-import { applyTaskTrack, userTrack } from "@/lib/pm/track";
+import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
+import { useTypeFilter } from "@/hooks/useTypeFilter";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
   in_review: "In Review", approved: "Approved", complete: "Complete",
 };
+
+const DEFAULT_COLUMNS_BY_ROLE: Record<string, TaskStatus[]> = {
+  designer: ["unclaimed", "claimed", "in_progress", "in_review", "complete"],
+  developer: ["in_progress", "blocked", "in_review", "complete"],
+  pm: [...TASK_STATUSES],
+  submitter: [...TASK_STATUSES],
+};
+
+function loadCols(role: PmRole | null | undefined): TaskStatus[] {
+  const key = `pm.boardColumns.${role ?? "anon"}`;
+  if (typeof window === "undefined") return DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"];
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"];
+    const arr = JSON.parse(raw) as TaskStatus[];
+    return arr.length ? arr : DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"];
+  } catch { return DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"]; }
+}
 
 export default function Board() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
@@ -33,6 +54,17 @@ export default function Board() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const { isMe } = useMeMode();
   const chips = useChipFilters("board");
+  const role = user?.role ?? null;
+  const [cols, setCols] = useState<TaskStatus[]>(() => loadCols(role));
+
+  // Re-seed if user (and thus role) changes.
+  useEffect(() => { setCols(loadCols(role)); }, [role]);
+
+  const persistCols = (next: TaskStatus[]) => {
+    setCols(next);
+    try { localStorage.setItem(`pm.boardColumns.${role ?? "anon"}`, JSON.stringify(next)); } catch {}
+  };
+
   const [boardMode, setBoardMode] = useState<"kanban" | "list" | "grid">(() => {
     const v = typeof window !== "undefined" ? localStorage.getItem("pm.viewMode.board") : null;
     return (v === "kanban" || v === "list" || v === "grid") ? v : "kanban";
@@ -48,15 +80,17 @@ export default function Board() {
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
-  const { mode: trackMode } = useTrackMode();
-  const myTrack = userTrack(user);
+  const { types } = useTypeFilter("board");
 
   const visible = useMemo(() => {
-    let v = applyTaskTrack(tasks, trackMode, myTrack);
+    let v = applyTaskTypes(tasks, types);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
     return v;
-  }, [tasks, isMe, user?.id, chips.active, trackMode, myTrack]);
+  }, [tasks, isMe, user?.id, chips.active, types]);
+
+  const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
+  const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visible.filter(t => t.status === s).length }));
 
   async function moveTo(taskId: string, status: TaskStatus) {
     const t = tasks.find(x => x.id === taskId);
@@ -76,7 +110,59 @@ export default function Board() {
         onModeChange={(m) => changeMode(m as any)}
         modes={["kanban", "list", "grid"]}
         chipState={chips}
+        typeFilterPage="board"
+        actions={
+          boardMode === "kanban" ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8">
+                  <Columns3 className="h-4 w-4 mr-1" /> Columns
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 z-50 bg-popover" align="end">
+                <div className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Show columns</div>
+                <div className="space-y-1.5">
+                  {TASK_STATUSES.map(s => (
+                    <label key={s} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={cols.includes(s)}
+                        onCheckedChange={(checked) => {
+                          if (checked) persistCols(TASK_STATUSES.filter(x => cols.includes(x) || x === s));
+                          else persistCols(cols.filter(x => x !== s));
+                        }}
+                      />
+                      {COL_LABELS[s]}
+                    </label>
+                  ))}
+                </div>
+                <Button
+                  size="sm" variant="ghost" className="w-full mt-2 h-7 text-xs"
+                  onClick={() => persistCols(DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"])}
+                >
+                  Reset to default
+                </Button>
+              </PopoverContent>
+            </Popover>
+          ) : null
+        }
       />
+
+      {boardMode === "kanban" && hiddenCounts.some(h => h.n > 0) && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+          <span>Hidden:</span>
+          {hiddenCounts.filter(h => h.n > 0).map(h => (
+            <button
+              key={h.s}
+              type="button"
+              onClick={() => persistCols([...cols, h.s].filter((v, i, a) => a.indexOf(v) === i))}
+              className="inline-flex items-center gap-1 px-2 h-5 rounded border border-border hover:bg-muted"
+            >
+              <span>{COL_LABELS[h.s]}</span>
+              <Badge variant="outline" className="text-[10px] h-4 px-1">{h.n}</Badge>
+            </button>
+          ))}
+        </div>
+      )}
 
       {boardMode === "list" && (
         <TaskListView tasks={visible} projects={projById} onOpen={drawer.open} onChanged={reload} />
@@ -88,7 +174,7 @@ export default function Board() {
 
       {boardMode === "kanban" && (
         <div className="flex gap-3 overflow-x-auto pb-3">
-          {TASK_STATUSES.map(s => {
+          {cols.map(s => {
             const items = visible.filter(t => t.status === s);
             return (
               <div key={s}
