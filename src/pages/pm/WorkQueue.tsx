@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Inbox, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
+import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmTask, PmProject } from "@/types/pm";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { useViewMode } from "@/hooks/useViewMode";
