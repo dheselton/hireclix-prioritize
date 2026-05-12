@@ -32,6 +32,7 @@ export default function GlobalTimeline() {
     setTasks(t); setProjects(p);
   };
   useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
 
   const { mode: trackMode } = useTrackMode();
   const myTrack = userTrack(user);
