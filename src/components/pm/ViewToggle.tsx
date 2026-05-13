@@ -1,4 +1,4 @@
-import { List, LayoutGrid, Columns } from "lucide-react";
+import { List, LayoutGrid, Columns, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ViewMode } from "@/hooks/useViewMode";
 
@@ -12,12 +12,14 @@ interface ViewToggleProps {
 }
 
 const ICONS: Record<Mode, React.ReactNode> = {
+  projects: <FolderKanban className="h-4 w-4" />,
   list: <List className="h-4 w-4" />,
   grid: <LayoutGrid className="h-4 w-4" />,
   kanban: <Columns className="h-4 w-4" />,
 };
 
 const LABELS: Record<Mode, string> = {
+  projects: "Projects view",
   list: "List view",
   grid: "Grid view",
   kanban: "Kanban view",

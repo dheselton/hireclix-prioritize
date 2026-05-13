@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask } from "@/lib/pm/api";
+import { recordTaskActivity } from "@/lib/pm/activity";
 import { emitTasksChanged, emitTaskDateProposed } from "@/lib/pm/refresh";
 import { TASK_STATUSES, TASK_TYPES, PRIORITIES, type PmTask, type TaskStatus, type TaskType, type TaskPriority } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
@@ -37,10 +38,12 @@ export function TaskDrawer() {
     if (!taskId) { setTask(null); return; }
     setLoading(true);
     supabase.from("pm_tasks").select("*").eq("id", taskId).maybeSingle().then(({ data }) => {
-      setTask((data as any) ?? null);
+      const t = (data as any) ?? null;
+      setTask(t);
       setLoading(false);
+      if (t && user?.id) recordTaskActivity(user.id, t.project_id, t.id);
     });
-  }, [taskId]);
+  }, [taskId, user?.id]);
 
   async function patch(p: Partial<PmTask>) {
     if (!task) return;

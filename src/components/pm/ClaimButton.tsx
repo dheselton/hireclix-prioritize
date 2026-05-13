@@ -2,6 +2,7 @@ import { Hand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { updateTask, logActivity } from "@/lib/pm/api";
+import { recordTaskActivity } from "@/lib/pm/activity";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "@/types/pm";
@@ -27,6 +28,7 @@ export function ClaimButton({ task, onChanged, size = "xs", className }: Props) 
       task_id: task.id, project_id: task.project_id, user_id: user.id,
       action: "task.claimed", payload: { title: task.title },
     });
+    recordTaskActivity(user.id, task.project_id, task.id);
     toast.success(`Claimed: ${task.title}`);
     onChanged?.();
   }

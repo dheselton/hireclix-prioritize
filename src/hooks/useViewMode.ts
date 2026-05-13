@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 
-export type ViewMode = "list" | "grid" | "kanban";
+export type ViewMode = "list" | "grid" | "kanban" | "projects";
 
-const isMode = (v: any): v is ViewMode => v === "list" || v === "grid" || v === "kanban";
+const isMode = (v: any): v is ViewMode => v === "list" || v === "grid" || v === "kanban" || v === "projects";
 
 const KEY = (viewKey: string) => `pm.viewMode.${viewKey}`;
 const DEFAULT_KEY = "pm.viewMode.default";

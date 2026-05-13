@@ -17,6 +17,7 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
+import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
 const ROLE_LANE: Record<string, TaskType[]> = {
@@ -33,7 +34,7 @@ export default function WorkQueue() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
-  const [mode, setMode] = useViewMode("workQueue", "list");
+  const [mode, setMode] = useViewMode("workQueue", "projects");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workQueue");
   const { types } = useTypeFilter("workQueue");
@@ -172,7 +173,7 @@ export default function WorkQueue() {
         subtitle={<>Viewing as <span className="font-medium capitalize">{role}</span></>}
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
-        modes={["list", "grid", "kanban"]}
+        modes={["projects", "list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
       />
@@ -208,6 +209,9 @@ export default function WorkQueue() {
             </Button>
           ) : null}
         >
+          {mode === "projects" && (
+            <ProjectWorkGrid tasks={s.tasks} projects={projById} meId={meId} onOpenTask={drawer.open} onChanged={reload} />
+          )}
           {mode === "list" && (
             <TaskListView tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
           )}

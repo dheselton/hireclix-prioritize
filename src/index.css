@@ -112,6 +112,13 @@ All colors MUST be HSL.
     0%, 100% { box-shadow: 0 0 0 0 hsl(39 96% 54% / 0.6); }
     50% { box-shadow: 0 0 0 6px hsl(39 96% 54% / 0); }
   }
+
+  /* Health dots for project work cards */
+  .health-dot-red { background: hsl(0 84% 55%); }
+  .health-dot-amber { background: hsl(39 96% 54%); }
+  .health-dot-violet { background: hsl(270 70% 60%); }
+  .health-dot-emerald { background: hsl(152 65% 45%); }
+  .health-dot-slate { background: hsl(215 16% 55%); }
 }
 
 @layer base {
