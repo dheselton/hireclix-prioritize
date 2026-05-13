@@ -1,121 +1,105 @@
-## Goal
+## The problem
 
-Make tasks land in the right team's queue, make unclaimed work impossible to miss, and support shared design+dev tasks via linked sub-tasks. Then seed the 3 fake requests so you can see it in action.
+"My Design Work" (and the parallel sections for Dev/PM/Strategy/Analytics) currently lists every active task assigned to the user as its own card. Once projects mature, that becomes hundreds of near-identical cards with no project context — overwhelming and hard to prioritize. Users actually think in projects ("how is Resideo doing?") and only need to see the 1–3 tasks per project that are due now or up next, plus a quick way to resume whatever they had open last.
 
----
+## The shift
 
-## 1. Teams model
+**Project is always the primary unit. Tasks live inside projects.** Every main view in `/pm/*` follows a project > task hierarchy:
+- Work Queue → role-scoped project cards with inline task indicators.
+- Projects → project cards (already project-first; gets the same "my next up" block).
+- Board → grouped by project, then tasks within.
+- Workload / Timeline → unchanged (those are intentionally cross-project task-level analyses, not "my work" surfaces).
 
-Today every task has a `track` of `pm` or `production`. We expand that so each task belongs to one of four **teams**, each with its own Work Queue lane:
+Task-only flat views remain available behind a view toggle for power users, but are never the default.
 
-| Team | Task types | Who claims |
-|---|---|---|
-| **Creative** (existing) | design, content, dev, qa, review, approval | designers + developers |
-| **PM** (existing) | review, approval | PMs |
-| **Strategy** (new) | strategy, research | strategists |
-| **Analytics** (new) | analytics, reporting | analysts |
+## New project card anatomy ("My work on this project")
 
-Schema changes:
-- Add `'strategy' \| 'analytics'` to the `track` enum (it's currently a free text column, so just expand the trigger logic + TS union).
-- Add new task types: `strategy`, `research`, `analytics`, `reporting`.
-- Add new mock_users roles: `strategist`, `analyst` (so the role switcher can preview these queues).
-- Update `pm_set_task_track_from_assignee` trigger so a strategist assignee → track=strategy, analyst → track=analytics.
+```text
+┌────────────────────────────────────────────────────────┐
+│ Career Site — Resideo                    ● on track    │
+│ Client: Resideo · Go-live 06/12/2026                   │
+│                                                        │
+│ ▶ Pick up where you left off                           │
+│   Wireframes — edited 2h ago             [Resume]      │
+│                                                        │
+│ My next up (3 of 7)                                    │
+│  ⬤ 1 overdue  · ⬤ 2 due this week  · ⬤ 4 upcoming      │
+│                                                        │
+│  • Design Concepts — Round 3        due 04/02  [Open]  │
+│  • Final Figma Handoff              due 04/01  [Open]  │
+│  • Gray Components Catalogue        due 04/08  [Open]  │
+│                                                        │
+│  [+ 4 more]               [Open project] [View all 7]  │
+└────────────────────────────────────────────────────────┘
+```
 
-Routing rule (auto-derived, no manual track-picking):
-- Task type → default track (design/content → creative, dev/qa → creative, strategy/research → strategy, analytics/reporting → analytics, review/approval → pm).
-- Assignee role overrides type when it conflicts.
+### "Pick up where you left off"
+- Shows the single most recently touched task by the current user on this project.
+- Source of truth: a lightweight `pm_task_activity` signal — last task the user opened in the drawer, commented on, status-changed, or claimed. Stored as `(user_id, task_id, project_id, last_touched_at)` with one row per user per task; we only need the most recent per project.
+- If the resume task is also in the "next up" list, it's still pinned at the top in this band and **suppressed** from the "next up" rows below to avoid duplication.
+- Hidden if the user has never touched a task in this project.
 
----
+### "My next up" rules
+- Filter project tasks down to the role's lane AND assigned-to-me (or unclaimed for the unclaimed section).
+- Sort: overdue → due this week → soonest due → no-date.
+- Top 3 only; rest collapses behind "+ N more".
+- Status dots summarize the rest: overdue / due-this-week / upcoming / blocked.
+- Project header shows health (on track / at risk / overdue) computed from the user's slice — keeps the signal personal.
 
-## 2. Work Queue & Board separation
+## Section restructure on Work Queue
 
-`/pm/queue` and `/pm/board` already filter by the current user's role lane. We extend `ROLE_LANE` so:
-- `designer` / `developer` → see Creative team tasks only (design, dev, content, qa).
-- `strategist` → strategy + research.
-- `analyst` → analytics + reporting.
-- `pm` → sees everything (with a team filter chip to narrow).
+Per role, replace the flat task list with two layers:
 
-Add a **team chip filter** to the toolbar so a PM can switch between "Creative", "Strategy", "Analytics", "PM" views. Persist the choice per page in localStorage like the existing view modes.
+1. **Project cards** (default) — one card per project that has at least one task in the user's slice. Grouped by health: At risk first (overdue/blocked), then On track, then Idle.
+2. **Loose tasks** (collapsed by default) — tasks with no project (the seeded one-off requests). Always visible because they're the "where do these land?" cases.
 
----
+Unclaimed stays its own section but also flips to project-grouped cards, with a "Loose unclaimed" group at the top so project-less requests remain highly visible.
 
-## 3. Unclaimed prominence (banner + badge + card highlight)
+A view toggle at the top of each section lets power users switch back to flat **List / Grid / Kanban** (existing components).
 
-Three reinforcing signals:
+## Indicators inside the project card
 
-**A. Sidebar nav badge** — `AppSidebar` shows a pulsing red dot + count next to "Work Queue" whenever there are unclaimed tasks in *this user's team lane*. Live-updates via the existing `useTasksChanged` hook.
+- `●` red — overdue count
+- `●` amber — due in next 7 days
+- `●` slate — upcoming
+- `●` violet — blocked
+- Pulsing amber dot on the card if the project has an unclaimed task in the user's lane (mirrors sidebar).
+- Critical-path tasks get a thin left accent on the inline row (reuses existing styling).
 
-**B. Top-of-page banner** — On Work Queue, Board, and Project Detail, show a sticky banner at the top when unclaimed-in-lane > 0:
-> ⚡ **3 unclaimed creative tasks** waiting for someone to grab them. [View →]
+## Behavior
 
-Dismissible per session, but reappears when the count grows.
+- Click project title or "Open project" → existing ProjectDetail.
+- Click a task row, "Open", or "Resume" → existing TaskDrawer.
+- "View all N" expands the card in place to show every task in the slice.
+- Card collapse/expand state persists per-project in localStorage.
+- Top-of-page counts (My active / Unclaimed / Overdue / Blocked) stay as-is.
 
-**C. Card highlighting** — Unclaimed task cards/rows get:
-- A bright accent left border (using `--primary` or a new `--unclaimed` token).
-- A prominent "Claim" button right on the card (one click → assigns to current user, status → claimed).
-- A faint background tint so they read as a distinct group inside any kanban column or list.
+## Where else this pattern applies
 
-All three derive from the same predicate (`status === 'unclaimed' && inLane(task)`) so they can never disagree.
-
----
-
-## 4. Shared tasks: parent + linked sub-tasks
-
-For work like "Job Feed Filter Fix" where design and dev happen in parallel:
-
-- Create a **parent task** (type: `coordination`, track: `pm`) that owns the overall scope, dates, and client-facing status.
-- Create **child sub-tasks** for each discipline (one `design`, one `dev`), each independently claimable, assignable, and statusable.
-- Parent rolls up child status: parent is "in_progress" while any child is active, "complete" when all children complete.
-- TaskDrawer shows children inline with claim buttons; child drawer shows a "Parent: ..." backlink.
-
-Schema: add `parent_task_id uuid` (nullable, self-FK) on `pm_tasks`. Existing `pm_subtasks` table is for lightweight checklists — keep it as-is and add this richer parent/child relationship for cross-team coordination.
-
-A "Split into design + dev" quick action on any task creates the two children in one click.
-
----
-
-## 5. Where tasks come from
-
-No code change needed today — just confirming the routing works for all three sources:
-- **Form submissions** (`pm_form_submissions` → `created_task_id`): forms get a "default task type" field so the resulting task lands in the right team queue.
-- **Manual creation** (TaskDrawer / Project Detail): type picker drives default track; assignee role overrides.
-- **API / webhook** (future): same rules apply server-side via the existing trigger.
-
----
-
-## 6. Seed the 3 fake requests
-
-Add 1–2 realistic tasks per project:
-
-- **Banner Update — Q2 Hiring Push**
-  - 1 design task: "Design Q2 banner creative" (unclaimed, designer lane)
-- **Meta Ad Creative — June Campaign**
-  - 1 design task: "Design 4 carousel creatives" (unclaimed)
-  - 1 design task: "Revisions round 1" (unclaimed, depends on first, lag 2 days)
-- **Job Feed Filter Fix** (shared)
-  - 1 parent coordination task: "Fix remote-jobs filter persistence"
-    - Child design: "Design filter UI states" (unclaimed)
-    - Child dev: "Fix filter persistence on reload" (unclaimed, depends on design)
-
-All start unclaimed so you can immediately see the banner, sidebar badge, and highlighted cards working across roles.
-
----
+- **ProjectList page** — embed the same "Pick up where you left off" + "My next up" block in each project card.
+- **Board** — already grouped, ensure project headers carry the same health dot + "my work" count chip; tasks inside are unchanged.
+- **ProjectDetail** unchanged — that's the deep view.
+- **Workload, Timeline, Forms, Templates, Integrations** unchanged.
 
 ## Technical notes
 
-**Files touched**
-- Schema: migration adds `parent_task_id`, expands track + type enums, seeds new mock_users.
-- `src/types/pm.ts`: extend `Track`, `TaskType`, `PmRole` unions; add `parent_task_id` to `PmTask`.
-- `src/lib/pm/track.ts`: routing rules (type→track, role→track, assignee override).
-- `src/pages/pm/WorkQueue.tsx`: extend `ROLE_LANE`, add team chip for PMs.
-- `src/pages/pm/Board.tsx`: same team-aware filtering.
-- `src/components/AppSidebar.tsx`: unclaimed badge with pulse animation.
-- New `src/components/pm/UnclaimedBanner.tsx`: sticky banner used by Queue/Board/ProjectDetail.
-- `src/components/pm/collections/TaskListView.tsx` + `TaskGridView.tsx` + `TaskKanban.tsx`: unclaimed accent border + Claim button.
-- `src/components/pm/TaskDrawer.tsx`: parent/child UI, "Split into design + dev" quick action.
-- `src/index.css`: `--unclaimed` accent token + pulse keyframe.
+Schema (single small migration):
+- `pm_task_activity` table: `id`, `user_id` (uuid, mock_users for now), `task_id` (fk pm_tasks), `project_id` (fk pm_projects, nullable), `last_touched_at` (timestamptz default now()), unique `(user_id, task_id)`. Permissive RLS to match other `pm_` tables.
+- Trigger on `pm_tasks` UPDATE/INSERT records activity for the actor when available; otherwise the client writes activity from the drawer/claim/status actions.
 
-**Out of scope**
-- Re-enabling auth (still off per project memory).
-- Backfilling `track` on existing tasks beyond what the trigger sets on next update.
-- Approval workflows for the new Strategy/Analytics teams (use existing review/approval pattern when needed).
+New components:
+- `src/components/pm/collections/ProjectWorkCard.tsx` — `{ project, tasks, role, meId, lastResumeTask, onOpenTask, onOpenProject }`. Pure presentation; computes counts and top-3.
+- `src/components/pm/collections/ProjectWorkGrid.tsx` — groups incoming tasks by `project_id`, splits loose tasks, sorts groups by health, renders `ProjectWorkCard`s + Loose block.
+- `src/lib/pm/activity.ts` — `recordTaskActivity(taskId)` and `getLastResumeByProject(userId)` helpers.
+
+Edits:
+- `src/pages/pm/WorkQueue.tsx` — each role section renders `<ProjectWorkGrid>` by default; toggle adds `"projects"` mode alongside existing `list | grid | kanban`.
+- `src/hooks/useViewMode.ts` — extend allowed modes (string-typed).
+- `src/pages/pm/ProjectList.tsx` — embed the resume + next-up block in each card.
+- `src/pages/pm/Board.tsx` — add health dot + "my work" count chip on project group headers.
+- `src/components/pm/TaskDrawer.tsx` + `ClaimButton.tsx` + status change handlers — call `recordTaskActivity` on open/claim/status change.
+- `src/index.css` — small `.health-dot-*` utilities on existing tokens; no new colors.
+
+Out of scope:
+- No changes to claiming logic, scheduler, cascade modal, or task drawer internals.
+- PM "Approvals waiting on me" stays flat (action-oriented, already short). Tell me if you'd rather project-group approvals too.
