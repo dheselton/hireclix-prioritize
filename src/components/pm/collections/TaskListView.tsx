@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { type PmTask, type PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
+import { ClaimButton } from "@/components/pm/ClaimButton";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
@@ -116,7 +117,9 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   className={cn(
                     "border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer",
                     checked && "bg-primary/5",
-                    t.track === "pm" ? "track-border-pm" : "track-border-production",
+                    t.status === "unclaimed"
+                      ? "unclaimed-row"
+                      : (t.track === "pm" ? "track-border-pm" : "track-border-production"),
                   )}
                   onClick={() => onOpen(t.id)}
                 >
@@ -125,7 +128,12 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(t.id, !!v)} />
                     </td>
                   )}
-                  <td className="p-2 font-medium">{t.title}</td>
+                  <td className="p-2 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{t.title}</span>
+                      <ClaimButton task={t} onChanged={onChanged} />
+                    </div>
+                  </td>
                   <td className="p-2 text-muted-foreground hidden md:table-cell truncate max-w-[200px]">{proj?.title ?? "—"}</td>
                   <td className="p-2 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></td>
                   <td className="p-2"><StatusPill status={t.status} /></td>

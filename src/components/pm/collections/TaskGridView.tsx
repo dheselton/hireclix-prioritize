@@ -8,6 +8,7 @@ import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
+import { ClaimButton } from "@/components/pm/ClaimButton";
 
 const PRIORITY_DOT: Record<string, string> = {
   urgent: "bg-red-500", high: "bg-orange-500", medium: "bg-amber-400", low: "bg-emerald-500",
@@ -46,7 +47,9 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
               className={cn(
                 "relative cursor-pointer hover:shadow-md transition",
                 checked && "ring-2 ring-primary",
-                t.track === "pm" ? "track-border-pm" : "track-border-production",
+                t.status === "unclaimed"
+                  ? "unclaimed-card"
+                  : (t.track === "pm" ? "track-border-pm" : "track-border-production"),
               )}
               onClick={() => onOpen(t.id)}
             >
@@ -75,7 +78,9 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                     <UserAvatar userId={t.assignee_id} size="xs" />
                     <StatusPill status={t.status} />
                   </div>
-                  <span className="text-[11px] text-muted-foreground">{fmtDate(t.due_date)}</span>
+                  {t.status === "unclaimed"
+                    ? <ClaimButton task={t} onChanged={onChanged} />
+                    : <span className="text-[11px] text-muted-foreground">{fmtDate(t.due_date)}</span>}
                 </div>
               </CardContent>
             </Card>

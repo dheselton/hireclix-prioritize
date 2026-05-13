@@ -8,6 +8,7 @@ import { TASK_STATUSES, type PmTask, type PmProject, type TaskStatus } from "@/t
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { ClaimButton } from "@/components/pm/ClaimButton";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -64,7 +65,11 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
                     onDragStart={() => setDraggingId(t.id)}
                     onDragEnd={() => setDraggingId(null)}
                     onClick={() => onOpen(t.id)}
-                    className={cn("cursor-pointer hover:shadow-md transition", blocked && "border-red-500/60")}
+                    className={cn(
+                      "cursor-pointer hover:shadow-md transition",
+                      blocked && "border-red-500/60",
+                      t.status === "unclaimed" && "unclaimed-card",
+                    )}
                   >
                     <CardContent className="p-2.5 space-y-1.5">
                       <div className="flex items-center gap-1">
@@ -76,7 +81,9 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
                       {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
                       <div className="flex items-center justify-between pt-1">
                         <UserAvatar userId={t.assignee_id} size="xs" />
-                        <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
+                        {t.status === "unclaimed"
+                          ? <ClaimButton task={t} onChanged={onChanged} />
+                          : <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>}
                       </div>
                     </CardContent>
                   </Card>
