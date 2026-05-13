@@ -34,7 +34,7 @@ export default function WorkQueue() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
-  const [mode, setMode] = useViewMode("workQueue", "list");
+  const [mode, setMode] = useViewMode("workQueue", "projects");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workQueue");
   const { types } = useTypeFilter("workQueue");
