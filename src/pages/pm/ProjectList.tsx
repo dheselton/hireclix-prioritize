@@ -30,7 +30,8 @@ export default function ProjectList() {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [open, setOpen] = useState(false);
   const { user } = useCurrentUser();
-  const [mode, setMode] = useViewMode("projects", "grid");
+  const [mode, setMode] = useViewMode("projects", "projects");
+  const drawer = useTaskDrawerLink();
   const { isMe } = useMeMode();
   const chips = useChipFilters("projects");
   const memberIds = useMyProjectIds();
