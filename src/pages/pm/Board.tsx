@@ -68,14 +68,8 @@ export default function Board() {
     try { localStorage.setItem(`pm.boardColumns.${role ?? "anon"}`, JSON.stringify(next)); } catch {}
   };
 
-  const [boardMode, setBoardMode] = useState<"kanban" | "list" | "grid">(() => {
-    const v = typeof window !== "undefined" ? localStorage.getItem("pm.viewMode.board") : null;
-    return (v === "kanban" || v === "list" || v === "grid") ? v : "kanban";
-  });
-  function changeMode(m: "kanban" | "list" | "grid") {
-    setBoardMode(m);
-    try { localStorage.setItem("pm.viewMode.board", m); } catch {}
-  }
+  const [boardMode, setBoardMode] = useViewMode("board", "projects");
+  const changeMode = (m: typeof boardMode) => setBoardMode(m);
 
   const reload = async () => { setTasks(await fetchTasks()); setProjects(await fetchProjects()); };
   useEffect(() => { reload(); }, []);
