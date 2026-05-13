@@ -173,7 +173,7 @@ export default function WorkQueue() {
         subtitle={<>Viewing as <span className="font-medium capitalize">{role}</span></>}
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
-        modes={["list", "grid", "kanban"]}
+        modes={["projects", "list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
       />
