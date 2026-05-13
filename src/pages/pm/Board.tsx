@@ -103,10 +103,14 @@ export default function Board() {
       <UnclaimedBanner />
       <CollectionToolbar
         title="Board"
-        subtitle={boardMode === "kanban" ? "Drag cards across columns to update status." : "Tasks across all statuses."}
+        subtitle={
+          boardMode === "kanban" ? "Drag cards across columns to update status." :
+          boardMode === "projects" ? "Projects with active work — open a card to drill in." :
+          "Tasks across all statuses."
+        }
         mode={boardMode}
         onModeChange={(m) => changeMode(m as any)}
-        modes={["kanban", "list", "grid"]}
+        modes={["projects", "kanban", "list", "grid"]}
         chipState={chips}
         typeFilterPage="board"
         actions={
