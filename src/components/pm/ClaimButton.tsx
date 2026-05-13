@@ -2,6 +2,7 @@ import { Hand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { updateTask, logActivity } from "@/lib/pm/api";
+import { recordTaskActivity } from "@/lib/pm/activity";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { PmTask } from "@/types/pm";
