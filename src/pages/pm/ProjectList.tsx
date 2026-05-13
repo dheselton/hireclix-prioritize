@@ -133,6 +133,7 @@ export default function ProjectList() {
           <DialogFooter><Button onClick={submit}>Create</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <TaskDrawer />
     </div>
   );
 }
