@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useViewMode } from "@/hooks/useViewMode";
 import { ProjectListView } from "@/components/pm/collections/ProjectListView";
 import { ProjectGridView } from "@/components/pm/collections/ProjectGridView";
+import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
+import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
@@ -28,7 +30,8 @@ export default function ProjectList() {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [open, setOpen] = useState(false);
   const { user } = useCurrentUser();
-  const [mode, setMode] = useViewMode("projects", "grid");
+  const [mode, setMode] = useViewMode("projects", "projects");
+  const drawer = useTaskDrawerLink();
   const { isMe } = useMeMode();
   const chips = useChipFilters("projects");
   const memberIds = useMyProjectIds();
@@ -71,13 +74,32 @@ export default function ProjectList() {
         subtitle={`${visible.length} of ${projects.length} total`}
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
+        modes={["projects", "list", "grid"]}
         chipState={{ ...chips, hide: ["watching"] }}
         actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>}
       />
 
-      {mode === "list"
-        ? <ProjectListView projects={visible} tasks={tasks} />
-        : <ProjectGridView projects={visible} tasks={tasks} />}
+      {mode === "projects" ? (
+        (() => {
+          const visIds = new Set(visible.map(p => p.id));
+          const projMap = new Map(visible.map(p => [p.id, p]));
+          const scopedTasks = tasks.filter(t => t.project_id && visIds.has(t.project_id));
+          return (
+            <ProjectWorkGrid
+              tasks={scopedTasks}
+              projects={projMap}
+              meId={user?.id ?? null}
+              onOpenTask={drawer.open}
+              onChanged={reload}
+              hideLoose
+            />
+          );
+        })()
+      ) : mode === "list" ? (
+        <ProjectListView projects={visible} tasks={tasks} />
+      ) : (
+        <ProjectGridView projects={visible} tasks={tasks} />
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -111,6 +133,7 @@ export default function ProjectList() {
           <DialogFooter><Button onClick={submit}>Create</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <TaskDrawer />
     </div>
   );
 }

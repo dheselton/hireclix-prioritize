@@ -17,11 +17,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
+import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 
 const COL_LABELS: Record<TaskStatus, string> = {
@@ -66,14 +68,8 @@ export default function Board() {
     try { localStorage.setItem(`pm.boardColumns.${role ?? "anon"}`, JSON.stringify(next)); } catch {}
   };
 
-  const [boardMode, setBoardMode] = useState<"kanban" | "list" | "grid">(() => {
-    const v = typeof window !== "undefined" ? localStorage.getItem("pm.viewMode.board") : null;
-    return (v === "kanban" || v === "list" || v === "grid") ? v : "kanban";
-  });
-  function changeMode(m: "kanban" | "list" | "grid") {
-    setBoardMode(m);
-    try { localStorage.setItem("pm.viewMode.board", m); } catch {}
-  }
+  const [boardMode, setBoardMode] = useViewMode("board", "projects");
+  const changeMode = (m: typeof boardMode) => setBoardMode(m);
 
   const reload = async () => { setTasks(await fetchTasks()); setProjects(await fetchProjects()); };
   useEffect(() => { reload(); }, []);
@@ -107,10 +103,14 @@ export default function Board() {
       <UnclaimedBanner />
       <CollectionToolbar
         title="Board"
-        subtitle={boardMode === "kanban" ? "Drag cards across columns to update status." : "Tasks across all statuses."}
+        subtitle={
+          boardMode === "kanban" ? "Drag cards across columns to update status." :
+          boardMode === "projects" ? "Projects with active work — open a card to drill in." :
+          "Tasks across all statuses."
+        }
         mode={boardMode}
         onModeChange={(m) => changeMode(m as any)}
-        modes={["kanban", "list", "grid"]}
+        modes={["projects", "kanban", "list", "grid"]}
         chipState={chips}
         typeFilterPage="board"
         actions={
@@ -164,6 +164,10 @@ export default function Board() {
             </button>
           ))}
         </div>
+      )}
+
+      {boardMode === "projects" && (
+        <ProjectWorkGrid tasks={visible} projects={projById} meId={user?.id ?? null} onOpenTask={drawer.open} onChanged={reload} />
       )}
 
       {boardMode === "list" && (
