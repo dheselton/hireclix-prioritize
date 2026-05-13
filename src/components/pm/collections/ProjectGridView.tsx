@@ -92,6 +92,25 @@ export function ProjectGridView({ projects, tasks, onChanged }: Props) {
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-1">{done} of {projTasks.length} tasks complete</div>
                 </div>
+                {(() => {
+                  const resume = getResumeForProject(user?.id, p.id);
+                  const t = resume ? projTasks.find(x => x.id === resume.taskId && x.status !== "complete" && x.status !== "approved") : null;
+                  if (!t || !resume) return null;
+                  return (
+                    <div
+                      className="rounded-md border border-primary/30 bg-primary/5 p-2 flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Play className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Pick up where you left off</div>
+                        <div className="text-xs font-medium truncate">{t.title}</div>
+                        <div className="text-[10px] text-muted-foreground">edited {fmtAgo(resume.at)}</div>
+                      </div>
+                      <Button size="sm" className="h-6 text-[11px] px-2" onClick={() => drawer.open(t.id)}>Resume</Button>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           );
