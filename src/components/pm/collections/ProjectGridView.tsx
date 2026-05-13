@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Play } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
+import { fmtAgo, getResumeForProject, onActivityChanged } from "@/lib/pm/activity";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
