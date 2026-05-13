@@ -94,6 +94,24 @@ All colors MUST be HSL.
   .track-border-pm { box-shadow: inset 3px 0 0 hsl(var(--track-pm)); }
   .track-border-production { box-shadow: inset 3px 0 0 hsl(var(--track-production)); }
   .other-track { opacity: 0.7; }
+
+  /* Unclaimed task emphasis */
+  .unclaimed-row {
+    background: linear-gradient(90deg, hsl(39 96% 54% / 0.08), transparent 60%);
+    box-shadow: inset 4px 0 0 hsl(39 96% 54%);
+  }
+  .unclaimed-card {
+    border-color: hsl(39 96% 54% / 0.6) !important;
+    box-shadow: 0 0 0 1px hsl(39 96% 54% / 0.4), inset 4px 0 0 hsl(39 96% 54%);
+    background: linear-gradient(135deg, hsl(39 96% 54% / 0.06), transparent 70%);
+  }
+  .unclaimed-pulse {
+    animation: unclaimed-pulse 2s ease-in-out infinite;
+  }
+  @keyframes unclaimed-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(39 96% 54% / 0.6); }
+    50% { box-shadow: 0 0 0 6px hsl(39 96% 54% / 0); }
+  }
 }
 
 @layer base {
