@@ -1,5 +1,6 @@
-export type PmRole = 'pm' | 'designer' | 'developer' | 'submitter';
-export type TaskType = 'design' | 'dev' | 'review' | 'approval' | 'content' | 'qa';
+export type PmRole = 'pm' | 'designer' | 'developer' | 'submitter' | 'strategist' | 'analyst';
+export type TaskType = 'design' | 'dev' | 'review' | 'approval' | 'content' | 'qa' | 'strategy' | 'research' | 'analytics' | 'reporting';
+export type Team = 'creative' | 'pm' | 'strategy' | 'analytics';
 export type TaskStatus = 'unclaimed' | 'claimed' | 'in_progress' | 'blocked' | 'in_review' | 'approved' | 'complete';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type ProjectType = 'quick_request' | 'career_site' | 'rfp' | 'evp' | 'dev' | 'candidate_experience';
