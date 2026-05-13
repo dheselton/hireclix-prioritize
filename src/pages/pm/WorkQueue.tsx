@@ -17,6 +17,7 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
+import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
 const ROLE_LANE: Record<string, TaskType[]> = {
