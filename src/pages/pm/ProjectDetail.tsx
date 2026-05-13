@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,6 +134,7 @@ export default function ProjectDetail() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+      <UnclaimedBanner projectId={project.id} />
       <Link to="/pm/projects" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
         <ArrowLeft className="h-3 w-3" /> Projects
       </Link>
