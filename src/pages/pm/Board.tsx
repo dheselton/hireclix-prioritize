@@ -166,6 +166,10 @@ export default function Board() {
         </div>
       )}
 
+      {boardMode === "projects" && (
+        <ProjectWorkGrid tasks={visible} projects={projById} meId={user?.id ?? null} onOpenTask={drawer.open} onChanged={reload} />
+      )}
+
       {boardMode === "list" && (
         <TaskListView tasks={visible} projects={projById} onOpen={drawer.open} onChanged={reload} />
       )}
