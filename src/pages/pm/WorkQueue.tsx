@@ -209,6 +209,9 @@ export default function WorkQueue() {
             </Button>
           ) : null}
         >
+          {mode === "projects" && (
+            <ProjectWorkGrid tasks={s.tasks} projects={projById} meId={meId} onOpenTask={drawer.open} onChanged={reload} />
+          )}
           {mode === "list" && (
             <TaskListView tasks={s.tasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
           )}
