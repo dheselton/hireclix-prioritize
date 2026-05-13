@@ -16,12 +16,15 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
 const ROLE_LANE: Record<string, TaskType[]> = {
   designer: ["design", "content"],
   developer: ["dev", "qa"],
   pm: ["review", "approval"],
+  strategist: ["strategy", "research"],
+  analyst: ["analytics", "reporting"],
   submitter: [],
 };
 
