@@ -28,6 +28,7 @@ export function ClaimButton({ task, onChanged, size = "xs", className }: Props) 
       task_id: task.id, project_id: task.project_id, user_id: user.id,
       action: "task.claimed", payload: { title: task.title },
     });
+    recordTaskActivity(user.id, task.project_id, task.id);
     toast.success(`Claimed: ${task.title}`);
     onChanged?.();
   }
