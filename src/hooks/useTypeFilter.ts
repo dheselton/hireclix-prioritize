@@ -15,13 +15,19 @@ export const TYPE_LABEL: Record<TaskType, string> = {
   qa: "QA",
   review: "Review",
   approval: "Approval",
+  strategy: "Strategy",
+  research: "Research",
+  analytics: "Analytics",
+  reporting: "Reporting",
 };
 
-const ALL_TYPES: TaskType[] = ["design", "content", "dev", "qa", "review", "approval"];
+const ALL_TYPES: TaskType[] = ["design", "content", "dev", "qa", "review", "approval", "strategy", "research", "analytics", "reporting"];
 
 export function defaultTypesForRole(role: PmRole | null | undefined): Set<TaskType> {
   if (role === "designer") return new Set<TaskType>(["design", "content"]);
   if (role === "developer") return new Set<TaskType>(["dev", "qa"]);
+  if (role === "strategist") return new Set<TaskType>(["strategy", "research"]);
+  if (role === "analyst") return new Set<TaskType>(["analytics", "reporting"]);
   // pm + submitter see all by default
   return new Set<TaskType>();
 }

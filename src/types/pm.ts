@@ -73,6 +73,7 @@ export interface PmTask {
   dev_links: Array<{ label: string; url: string }>;
   dev_environment: string | null;
   track?: Track;
+  parent_task_id?: string | null;
   created_at: string;
   updated_at: string;
 }
