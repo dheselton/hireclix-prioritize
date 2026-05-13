@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useViewMode } from "@/hooks/useViewMode";
 import { ProjectListView } from "@/components/pm/collections/ProjectListView";
 import { ProjectGridView } from "@/components/pm/collections/ProjectGridView";
+import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
+import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
