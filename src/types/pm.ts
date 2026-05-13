@@ -86,7 +86,7 @@ export interface PmDependency {
 }
 
 export const TASK_STATUSES: TaskStatus[] = ['unclaimed','claimed','in_progress','blocked','in_review','approved','complete'];
-export const TASK_TYPES: TaskType[] = ['design','dev','review','approval','content','qa'];
+export const TASK_TYPES: TaskType[] = ['design','dev','review','approval','content','qa','strategy','research','analytics','reporting'];
 export const PRIORITIES: TaskPriority[] = ['low','medium','high','urgent'];
 export const PROJECT_TYPES: ProjectType[] = ['quick_request','career_site','rfp','evp','dev','candidate_experience'];
 export const PROJECT_STATUSES: ProjectStatus[] = ['draft','active','on_hold','in_review','complete','archived'];
@@ -98,6 +98,10 @@ export const TYPE_COLORS: Record<TaskType, string> = {
   approval: 'hsl(200 80% 50%)',
   content: 'hsl(340 70% 55%)',
   qa: 'hsl(50 90% 50%)',
+  strategy: 'hsl(260 70% 60%)',
+  research: 'hsl(220 60% 55%)',
+  analytics: 'hsl(190 70% 45%)',
+  reporting: 'hsl(170 60% 45%)',
 };
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
