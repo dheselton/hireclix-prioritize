@@ -23,6 +23,10 @@ interface Props {
 export function ProjectGridView({ projects, tasks, onChanged }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
+  const drawer = useTaskDrawerLink();
+  const [, force] = useState(0);
+  useEffect(() => onActivityChanged(() => force(v => v + 1)), []);
 
   function toggle(id: string, checked: boolean) {
     const s = new Set(selected);
