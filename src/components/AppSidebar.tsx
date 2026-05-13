@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, LayoutGrid, FolderKanban, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map, BarChart3,
@@ -6,16 +7,21 @@ import {
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
 } from "@/components/ui/sidebar";
+import { fetchTasks } from "@/lib/pm/api";
+import { useTasksChanged } from "@/lib/pm/refresh";
+import { useCurrentUser } from "@/lib/pm/mockUser";
+import { teamForRole, teamForTask } from "@/lib/pm/track";
+import type { PmTask } from "@/types/pm";
 
 const pmItems = [
-  { title: "Work Queue", url: "/pm", icon: Inbox, end: true },
-  { title: "Board", url: "/pm/board", icon: LayoutGrid },
-  { title: "Projects", url: "/pm/projects", icon: FolderKanban },
-  { title: "Team Workload", url: "/pm/workload", icon: Users },
-  { title: "Global Timeline", url: "/pm/timeline", icon: Calendar },
-  { title: "Forms", url: "/pm/forms", icon: FileText },
-  { title: "Templates", url: "/pm/templates", icon: LayoutTemplate },
-  { title: "Integrations", url: "/pm/integrations", icon: Plug },
+  { title: "Work Queue", url: "/pm", icon: Inbox, end: true, key: "queue" as const },
+  { title: "Board", url: "/pm/board", icon: LayoutGrid, key: "board" as const },
+  { title: "Projects", url: "/pm/projects", icon: FolderKanban, key: "projects" as const },
+  { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" as const },
+  { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" as const },
+  { title: "Forms", url: "/pm/forms", icon: FileText, key: "forms" as const },
+  { title: "Templates", url: "/pm/templates", icon: LayoutTemplate, key: "templates" as const },
+  { title: "Integrations", url: "/pm/integrations", icon: Plug, key: "integrations" as const },
 ];
 
 const roadmapItems = [
@@ -23,8 +29,25 @@ const roadmapItems = [
   { title: "Product Roadmap", url: "/roadmap", icon: Map },
 ];
 
+function useUnclaimedCount() {
+  const { role } = useCurrentUser();
+  const [tasks, setTasks] = useState<PmTask[]>([]);
+  const reload = async () => setTasks(await fetchTasks());
+  useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
+  return useMemo(() => {
+    const myTeam = teamForRole(role);
+    return tasks.filter(t => {
+      if (t.status !== "unclaimed") return false;
+      if (role === "pm") return true;
+      return teamForTask(t) === myTeam;
+    }).length;
+  }, [tasks, role]);
+}
+
 export function AppSidebar() {
   const { pathname } = useLocation();
+  const unclaimed = useUnclaimedCount();
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>
@@ -41,15 +64,23 @@ export function AppSidebar() {
             <nav className="space-y-1 px-2">
               {pmItems.map((item) => {
                 const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
+                const showBadge = item.key === "queue" && unclaimed > 0;
                 return (
                   <NavLink
                     key={item.title}
                     to={item.url}
                     end={item.end}
-                    className={`nav-item ${active ? "bg-accent/40 text-accent-foreground font-medium" : ""}`}
+                    className={`nav-item flex items-center justify-between ${active ? "bg-accent/40 text-accent-foreground font-medium" : ""}`}
                   >
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
-                    <span>{item.title}</span>
+                    <span className="flex items-center gap-2">
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      <span>{item.title}</span>
+                    </span>
+                    {showBadge && (
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold unclaimed-pulse">
+                        {unclaimed}
+                      </span>
+                    )}
                   </NavLink>
                 );
               })}

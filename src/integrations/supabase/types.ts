@@ -1109,6 +1109,7 @@ export type Database = {
           locked_to_go_live: boolean
           locked_to_kickoff: boolean
           min_duration_days: number | null
+          parent_task_id: string | null
           phase_id: string | null
           priority: string
           project_id: string
@@ -1140,6 +1141,7 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          parent_task_id?: string | null
           phase_id?: string | null
           priority?: string
           project_id: string
@@ -1171,6 +1173,7 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          parent_task_id?: string | null
           phase_id?: string | null
           priority?: string
           project_id?: string
@@ -1196,6 +1199,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
             referencedColumns: ["id"]
           },
           {

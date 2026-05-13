@@ -22,6 +22,7 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -103,6 +104,7 @@ export default function Board() {
 
   return (
     <div className="p-6 space-y-4">
+      <UnclaimedBanner />
       <CollectionToolbar
         title="Board"
         subtitle={boardMode === "kanban" ? "Drag cards across columns to update status." : "Tasks across all statuses."}

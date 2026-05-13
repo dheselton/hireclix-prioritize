@@ -16,12 +16,15 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
 const ROLE_LANE: Record<string, TaskType[]> = {
   designer: ["design", "content"],
   developer: ["dev", "qa"],
   pm: ["review", "approval"],
+  strategist: ["strategy", "research"],
+  analyst: ["analytics", "reporting"],
   submitter: [],
 };
 
@@ -133,6 +136,18 @@ export default function WorkQueue() {
         title: "Unclaimed dev tasks",
         tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed || inLane(t))),
       });
+    } else if (role === "strategist" || role === "analyst") {
+      const teamLabel = role === "strategist" ? "strategy" : "analytics";
+      list.push({
+        key: "mine",
+        title: `My ${teamLabel} work`,
+        tasks: minePred(t => active(t) && lane.includes(t.type)),
+      });
+      list.push({
+        key: "unclaimed",
+        title: `Unclaimed ${teamLabel} tasks`,
+        tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed || inLane(t))),
+      });
     } else {
       // submitter / fallback
       list.push({
@@ -151,6 +166,7 @@ export default function WorkQueue() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <UnclaimedBanner hideCta />
       <CollectionToolbar
         title={`Good day, ${user?.name?.split(" ")[0] ?? "there"}`}
         subtitle={<>Viewing as <span className="font-medium capitalize">{role}</span></>}
