@@ -1,56 +1,121 @@
 ## Goal
-When a PM edits a task's start or due date (e.g. Discovery Call #1 → 3/31), every downstream task — Concept Round 1/2/3, Design rounds, GLAAT, Go Live, etc. — should automatically shift forward through the existing dependency graph + lag days. The PM sees a single "X tasks will move" confirmation and clicks Apply.
 
-We already have all the pieces. We just need to wire them together.
+Make tasks land in the right team's queue, make unclaimed work impossible to miss, and support shared design+dev tasks via linked sub-tasks. Then seed the 3 fake requests so you can see it in action.
 
-## What exists today
-- `recalculateForward(changedTaskId, {start, end}, tasks, deps)` in `src/lib/pm/scheduler.ts` — already does the cascade math (respects `finish_start`, `lag_days`, only pushes later, never pulls earlier).
-- `CascadeConfirmModal` — already renders the diff list with a go-live warning.
-- `ProjectDetail.tsx` — already uses the modal for go-live changes (`handleGoLiveChange` → `recalculateBackwardFromGoLive` → modal → `applyCascade`).
-- `TaskDrawer.tsx` — currently calls `patch({ start_date })` / `patch({ due_date })` directly with no cascade.
+---
 
-## The simple wiring (one event + one handler)
+## 1. Teams model
 
-### 1. Add a lightweight event in `src/lib/pm/refresh.ts`
-Add `emitTaskDateProposed(payload)` / `useTaskDateProposed(handler)` mirroring the existing pub/sub. Payload: `{ taskId, start, end }`.
+Today every task has a `track` of `pm` or `production`. We expand that so each task belongs to one of four **teams**, each with its own Work Queue lane:
 
-### 2. `TaskDrawer.tsx` — intercept date edits
-Replace the two date `DatePicker.onChange` handlers so that instead of immediately `patch({ start_date })`:
-- Compute the implied `{ start, end }` (using current `duration_days` to derive the missing side).
-- Call `emitTaskDateProposed({ taskId, start, end })`.
-- Do NOT write to DB yet — ProjectDetail will write everything atomically after confirmation.
-- Optimistically update local `task` state so the picker reflects the chosen date until cascade resolves.
+| Team | Task types | Who claims |
+|---|---|---|
+| **Creative** (existing) | design, content, dev, qa, review, approval | designers + developers |
+| **PM** (existing) | review, approval | PMs |
+| **Strategy** (new) | strategy, research | strategists |
+| **Analytics** (new) | analytics, reporting | analysts |
 
-Other (non-date) fields keep working exactly as today.
+Schema changes:
+- Add `'strategy' \| 'analytics'` to the `track` enum (it's currently a free text column, so just expand the trigger logic + TS union).
+- Add new task types: `strategy`, `research`, `analytics`, `reporting`.
+- Add new mock_users roles: `strategist`, `analyst` (so the role switcher can preview these queues).
+- Update `pm_set_task_track_from_assignee` trigger so a strategist assignee → track=strategy, analyst → track=analytics.
 
-### 3. `ProjectDetail.tsx` — handle the event with the existing modal
-Add a `useTaskDateProposed` listener that:
-- Runs `recalculateForward(taskId, {start, end}, tasks, deps)`.
-- Sets `pendingDiffs` (existing state) and a new `pendingMode: 'forward' | 'backward'`.
-- Opens `CascadeConfirmModal` (already mounted).
+Routing rule (auto-derived, no manual track-picking):
+- Task type → default track (design/content → creative, dev/qa → creative, strategy/research → strategy, analytics/reporting → analytics, review/approval → pm).
+- Assignee role overrides type when it conflicts.
 
-Generalize `applyCascade()` to handle both modes:
-- forward mode: write all diffs (including the originally-changed task, which `recalculateForward` already includes), no `updateProject`.
-- backward mode: existing go-live behavior.
+---
 
-Cancel = revert (just `reload()`), so the drawer's optimistic value is discarded.
+## 2. Work Queue & Board separation
 
-### 4. Modal copy tweak
-When `pendingMode === 'forward'`, title becomes "Cascade date change" and the warning still fires if anything pushes past `project.go_live_date`. No new component needed.
+`/pm/queue` and `/pm/board` already filter by the current user's role lane. We extend `ROLE_LANE` so:
+- `designer` / `developer` → see Creative team tasks only (design, dev, content, qa).
+- `strategist` → strategy + research.
+- `analyst` → analytics + reporting.
+- `pm` → sees everything (with a team filter chip to narrow).
 
-## Why this is the simplest viable approach
-- Zero new schema, zero new business logic — `recalculateForward` already does exactly what the user described.
-- One pub/sub event keeps `TaskDrawer` decoupled from `ProjectDetail`, mirroring the existing `emitTasksChanged` pattern.
-- Single confirmation modal everywhere dates cascade (go-live OR task date), so PMs always get the same "here's what will move" preview before anything is written.
-- Works automatically anywhere a date changes in the drawer; future entry points (inline Gantt drag, list-view edit) just emit the same event.
+Add a **team chip filter** to the toolbar so a PM can switch between "Creative", "Strategy", "Analytics", "PM" views. Persist the choice per page in localStorage like the existing view modes.
 
-## Out of scope (intentionally)
-- Inline Gantt drag-to-reschedule cascade — same event can be wired later.
-- Auto-pulling tasks earlier when slack opens up — current `recalculateForward` only pushes later, which matches user expectation ("3/31 should push following things back").
-- Business-day vs calendar-day math — unchanged.
+---
 
-## Files touched
-- `src/lib/pm/refresh.ts` — add `emitTaskDateProposed` / `useTaskDateProposed`.
-- `src/components/pm/TaskDrawer.tsx` — intercept start/due `onChange`, emit event instead of immediate patch.
-- `src/pages/pm/ProjectDetail.tsx` — add listener, generalize `applyCascade`, add `pendingMode` state.
-- `src/components/pm/CascadeConfirmModal.tsx` — minor: dynamic title based on mode (optional prop).
+## 3. Unclaimed prominence (banner + badge + card highlight)
+
+Three reinforcing signals:
+
+**A. Sidebar nav badge** — `AppSidebar` shows a pulsing red dot + count next to "Work Queue" whenever there are unclaimed tasks in *this user's team lane*. Live-updates via the existing `useTasksChanged` hook.
+
+**B. Top-of-page banner** — On Work Queue, Board, and Project Detail, show a sticky banner at the top when unclaimed-in-lane > 0:
+> ⚡ **3 unclaimed creative tasks** waiting for someone to grab them. [View →]
+
+Dismissible per session, but reappears when the count grows.
+
+**C. Card highlighting** — Unclaimed task cards/rows get:
+- A bright accent left border (using `--primary` or a new `--unclaimed` token).
+- A prominent "Claim" button right on the card (one click → assigns to current user, status → claimed).
+- A faint background tint so they read as a distinct group inside any kanban column or list.
+
+All three derive from the same predicate (`status === 'unclaimed' && inLane(task)`) so they can never disagree.
+
+---
+
+## 4. Shared tasks: parent + linked sub-tasks
+
+For work like "Job Feed Filter Fix" where design and dev happen in parallel:
+
+- Create a **parent task** (type: `coordination`, track: `pm`) that owns the overall scope, dates, and client-facing status.
+- Create **child sub-tasks** for each discipline (one `design`, one `dev`), each independently claimable, assignable, and statusable.
+- Parent rolls up child status: parent is "in_progress" while any child is active, "complete" when all children complete.
+- TaskDrawer shows children inline with claim buttons; child drawer shows a "Parent: ..." backlink.
+
+Schema: add `parent_task_id uuid` (nullable, self-FK) on `pm_tasks`. Existing `pm_subtasks` table is for lightweight checklists — keep it as-is and add this richer parent/child relationship for cross-team coordination.
+
+A "Split into design + dev" quick action on any task creates the two children in one click.
+
+---
+
+## 5. Where tasks come from
+
+No code change needed today — just confirming the routing works for all three sources:
+- **Form submissions** (`pm_form_submissions` → `created_task_id`): forms get a "default task type" field so the resulting task lands in the right team queue.
+- **Manual creation** (TaskDrawer / Project Detail): type picker drives default track; assignee role overrides.
+- **API / webhook** (future): same rules apply server-side via the existing trigger.
+
+---
+
+## 6. Seed the 3 fake requests
+
+Add 1–2 realistic tasks per project:
+
+- **Banner Update — Q2 Hiring Push**
+  - 1 design task: "Design Q2 banner creative" (unclaimed, designer lane)
+- **Meta Ad Creative — June Campaign**
+  - 1 design task: "Design 4 carousel creatives" (unclaimed)
+  - 1 design task: "Revisions round 1" (unclaimed, depends on first, lag 2 days)
+- **Job Feed Filter Fix** (shared)
+  - 1 parent coordination task: "Fix remote-jobs filter persistence"
+    - Child design: "Design filter UI states" (unclaimed)
+    - Child dev: "Fix filter persistence on reload" (unclaimed, depends on design)
+
+All start unclaimed so you can immediately see the banner, sidebar badge, and highlighted cards working across roles.
+
+---
+
+## Technical notes
+
+**Files touched**
+- Schema: migration adds `parent_task_id`, expands track + type enums, seeds new mock_users.
+- `src/types/pm.ts`: extend `Track`, `TaskType`, `PmRole` unions; add `parent_task_id` to `PmTask`.
+- `src/lib/pm/track.ts`: routing rules (type→track, role→track, assignee override).
+- `src/pages/pm/WorkQueue.tsx`: extend `ROLE_LANE`, add team chip for PMs.
+- `src/pages/pm/Board.tsx`: same team-aware filtering.
+- `src/components/AppSidebar.tsx`: unclaimed badge with pulse animation.
+- New `src/components/pm/UnclaimedBanner.tsx`: sticky banner used by Queue/Board/ProjectDetail.
+- `src/components/pm/collections/TaskListView.tsx` + `TaskGridView.tsx` + `TaskKanban.tsx`: unclaimed accent border + Claim button.
+- `src/components/pm/TaskDrawer.tsx`: parent/child UI, "Split into design + dev" quick action.
+- `src/index.css`: `--unclaimed` accent token + pulse keyframe.
+
+**Out of scope**
+- Re-enabling auth (still off per project memory).
+- Backfilling `track` on existing tasks beyond what the trigger sets on next update.
+- Approval workflows for the new Strategy/Analytics teams (use existing review/approval pattern when needed).
