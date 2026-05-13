@@ -1,9 +1,12 @@
-import type { MockUser, PmTask, Track } from "@/types/pm";
+import type { MockUser, PmTask, Track, Team, TaskType, PmRole } from "@/types/pm";
 
-/** A user's primary track: PMs are 'pm', everyone else 'production'. */
+/** A user's primary track. */
 export function userTrack(user: Pick<MockUser, "role"> | null | undefined): Track {
   if (!user) return "production";
-  return user.role === "pm" ? "pm" : "production";
+  if (user.role === "pm") return "pm";
+  if (user.role === "strategist") return "strategy";
+  if (user.role === "analyst") return "analytics";
+  return "production";
 }
 
 /** True if user can perform production work (designer or developer, primary or secondary). */
@@ -13,3 +16,55 @@ export function isProductionUser(user: Pick<MockUser, "role" | "secondary_role">
   return roles.some(r => r === "designer" || r === "developer");
 }
 
+/** Map a task type to its team. */
+export function teamForType(type: TaskType): Team {
+  switch (type) {
+    case "design":
+    case "content":
+    case "dev":
+    case "qa":
+      return "creative";
+    case "strategy":
+    case "research":
+      return "strategy";
+    case "analytics":
+    case "reporting":
+      return "analytics";
+    case "review":
+    case "approval":
+    default:
+      return "pm";
+  }
+}
+
+/** Map a task to its team using track first, then falling back to type. */
+export function teamForTask(t: Pick<PmTask, "track" | "type">): Team {
+  if (t.track === "strategy") return "strategy";
+  if (t.track === "analytics") return "analytics";
+  if (t.track === "pm") return "pm";
+  if (t.track === "production") return "creative";
+  return teamForType(t.type);
+}
+
+/** Default team a role belongs to. PMs see everything via PM team. */
+export function teamForRole(role: PmRole | null | undefined): Team {
+  if (role === "designer" || role === "developer") return "creative";
+  if (role === "strategist") return "strategy";
+  if (role === "analyst") return "analytics";
+  return "pm";
+}
+
+export const TEAM_LABEL: Record<Team, string> = {
+  creative: "Creative",
+  pm: "PM",
+  strategy: "Strategy",
+  analytics: "Analytics",
+};
+
+/** Tints used by the unclaimed banner / sidebar badge to match the team. */
+export const TEAM_ACCENT: Record<Team, string> = {
+  creative: "hsl(var(--primary))",
+  pm: "hsl(200 80% 50%)",
+  strategy: "hsl(260 70% 60%)",
+  analytics: "hsl(190 70% 45%)",
+};

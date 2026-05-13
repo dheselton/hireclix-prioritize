@@ -18,7 +18,7 @@ export interface MockUser {
   capacity_hours_per_week: number;
 }
 
-export type Track = 'pm' | 'production';
+export type Track = 'pm' | 'production' | 'strategy' | 'analytics';
 
 export interface PmProject {
   id: string;
