@@ -405,6 +405,7 @@ export default function ProjectDetail() {
         onConfirm={applyCascade}
       />
       <ConfigureTimelinePanel project={project} open={configOpen} onOpenChange={setConfigOpen} onApplied={reload} />
+      <ConvertToProjectModal open={convertOpen} onOpenChange={setConvertOpen} projectId={project.id} userId={user?.id ?? null} onConverted={reload} />
     </div>
   );
 }
