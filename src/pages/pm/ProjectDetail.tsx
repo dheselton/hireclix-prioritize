@@ -5,10 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Calendar as CalIcon } from "lucide-react";
+import { Plus, ArrowLeft, Calendar as CalIcon, Pin, PinOff, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
@@ -23,7 +22,7 @@ import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { GanttChart } from "@/components/pm/GanttChart";
 import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
 import { recalculateBackwardFromGoLive, recalculateForward, type DateDiff } from "@/lib/pm/scheduler";
-import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { ViewToggle } from "@/components/pm/ViewToggle";
@@ -31,6 +30,11 @@ import { TaskKanban } from "@/components/pm/TaskKanban";
 import { ConfigureTimelinePanel } from "@/components/pm/ConfigureTimelinePanel";
 import { Settings2 } from "lucide-react";
 import { toast } from "sonner";
+import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
+import { TeamCard } from "@/components/pm/project/TeamCard";
+import { ClientCard } from "@/components/pm/project/ClientCard";
+import { FilesTab } from "@/components/pm/project/FilesTab";
+import { MentionTextarea, MentionText } from "@/components/pm/drawer/MentionTextarea";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +46,9 @@ export default function ProjectDetail() {
   const [activity, setActivity] = useState<any[]>([]);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [commentMentions, setCommentMentions] = useState<string[]>([]);
+  const [activityFilter, setActivityFilter] = useState<"all" | "comments" | "activity">("all");
+  const allUsers = useMockUsers();
   const drawer = useTaskDrawerLink();
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
@@ -124,13 +131,38 @@ export default function ProjectDetail() {
 
   async function postComment() {
     if (!project || !newComment.trim()) return;
-    await supabase.from("pm_comments").insert({ project_id: project.id, user_id: user?.id ?? null, body: newComment } as any);
+    const body = newComment.trim();
+    await supabase.from("pm_comments").insert({
+      project_id: project.id, user_id: user?.id ?? null, body,
+      mentions: commentMentions, pinned: false,
+    } as any);
+    if (commentMentions.length && user) {
+      const rows = commentMentions.filter(id => id !== user.id).map(uid => ({
+        user_id: uid, type: "mention",
+        title: `${user.name} mentioned you in ${project.title}`,
+        body: body.slice(0, 200),
+        link: `/pm/projects/${project.id}?tab=activity`,
+        read: false,
+      }));
+      if (rows.length) await supabase.from("pm_notifications").insert(rows as any);
+    }
     await logActivity({ project_id: project.id, user_id: user?.id, action: "comment.added" });
-    setNewComment("");
+    setNewComment(""); setCommentMentions([]);
+    reload();
+  }
+
+  async function togglePin(c: any) {
+    if (user?.role !== "pm") return;
+    if (!c.pinned) {
+      const pinnedCount = comments.filter(x => x.pinned).length;
+      if (pinnedCount >= 3) { toast.error("Max 3 pinned comments"); return; }
+    }
+    await supabase.from("pm_comments").update({ pinned: !c.pinned } as any).eq("id", c.id);
     reload();
   }
 
   if (!project) return <div className="p-6">Loading…</div>;
+  const p: any = project;
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
