@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { ClaimButton } from "@/components/pm/ClaimButton";
+import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -26,6 +27,7 @@ interface Props {
 export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_STATUSES }: Props) {
   const { user } = useCurrentUser();
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const subCounts = useSubtaskCounts(tasks.map(t => t.id));
 
   async function moveTo(taskId: string, status: TaskStatus) {
     const t = tasks.find(x => x.id === taskId);
@@ -75,6 +77,7 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
                       <div className="flex items-center gap-1">
                         <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
                         <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
+                        <SubtaskBadge count={subCounts.get(t.id)} />
                       </div>
                       <div className="text-sm font-medium leading-tight">{t.title}</div>
                       {proj && <div className="text-[11px] text-muted-foreground">{proj.title}</div>}
