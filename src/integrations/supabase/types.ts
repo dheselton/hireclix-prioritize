@@ -1060,6 +1060,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          work_type: string
         }
         Insert: {
           client_contact_email?: string | null
@@ -1079,6 +1080,7 @@ export type Database = {
           title: string
           type?: string
           updated_at?: string
+          work_type?: string
         }
         Update: {
           client_contact_email?: string | null
@@ -1098,6 +1100,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          work_type?: string
         }
         Relationships: [
           {

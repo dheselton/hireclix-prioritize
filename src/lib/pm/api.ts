@@ -132,35 +132,20 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
   return { previewTasks, previewDeps };
 };
 
-/** Create a project from template + scheduled placement (already computed). */
-export const createProjectFromTemplate = async (params: {
-  template: any;
+/** Insert phases/tasks/dependencies from a template-bundle preview into an existing project. */
+const instantiateTemplateIntoProject = async (params: {
+  projectId: string;
   previewTasks: PreviewTask[];
   previewDeps: ScheduleDep[];
   placement: Map<string, { start: Date; end: Date; duration: number }>;
-  kickoff: string;
-  goLive: string;
-  title?: string;
-  client_id?: string | null;
+  sortOffset?: number;
 }) => {
-  const { template, previewTasks, previewDeps, placement, kickoff, goLive, title, client_id } = params;
+  const { projectId, previewTasks, previewDeps, placement, sortOffset = 0 } = params;
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-  const { data: proj, error: pe } = await supabase.from('pm_projects').insert({
-    title: title || `${template.name} — ${new Date().toLocaleDateString()}`,
-    type: template.type,
-    status: 'active',
-    template_id: template.id,
-    client_id: client_id ?? null,
-    kickoff_date: kickoff,
-    start_date: kickoff,
-    go_live_date: goLive,
-  } as any).select().single();
-  if (pe || !proj) throw pe;
 
   // Phases
   const phaseNames = Array.from(new Set(previewTasks.map(t => t.phase_name).filter(Boolean))) as string[];
-  const phaseRows = phaseNames.map((name, i) => ({ project_id: proj.id, name, sort_order: i * 10 }));
+  const phaseRows = phaseNames.map((name, i) => ({ project_id: projectId, name, sort_order: (i + 1) * 10 }));
   const phaseIdByName = new Map<string, string>();
   if (phaseRows.length) {
     const { data: phs } = await supabase.from('pm_project_phases').insert(phaseRows as any).select();
@@ -171,7 +156,7 @@ export const createProjectFromTemplate = async (params: {
   const taskRows = previewTasks.map(pt => {
     const placed = placement.get(pt.temp_id);
     return {
-      project_id: proj.id,
+      project_id: projectId,
       phase_id: pt.phase_name ? phaseIdByName.get(pt.phase_name) ?? null : null,
       title: pt.title,
       type: pt.type,
@@ -184,16 +169,18 @@ export const createProjectFromTemplate = async (params: {
       locked_to_go_live: !!pt.locked_to_go_live,
       start_date: placed ? fmt(placed.start) : null,
       due_date: placed ? fmt(placed.end) : null,
-      sort_order: pt.sort_order,
+      sort_order: pt.sort_order + sortOffset,
     };
   });
   const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();
   if (te) throw te;
 
-  // Map temp_id -> real task id (by sort_order + title — match exactly)
+  // Map temp_id -> real task id
   const idByTemp = new Map<string, string>();
   for (const pt of previewTasks) {
-    const match = (insertedTasks || []).find((it: any) => it.title === pt.title && it.sort_order === pt.sort_order);
+    const match = (insertedTasks || []).find((it: any) =>
+      it.title === pt.title && it.sort_order === pt.sort_order + sortOffset,
+    );
     if (match) idByTemp.set(pt.temp_id, (match as any).id);
   }
 
@@ -207,9 +194,70 @@ export const createProjectFromTemplate = async (params: {
     }))
     .filter(d => d.task_id && d.depends_on_task_id);
   if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
+};
+
+/** Create a project from template + scheduled placement (already computed). */
+export const createProjectFromTemplate = async (params: {
+  template: any;
+  previewTasks: PreviewTask[];
+  previewDeps: ScheduleDep[];
+  placement: Map<string, { start: Date; end: Date; duration: number }>;
+  kickoff: string;
+  goLive: string;
+  title?: string;
+  client_id?: string | null;
+}) => {
+  const { template, previewTasks, previewDeps, placement, kickoff, goLive, title, client_id } = params;
+
+  const { data: proj, error: pe } = await supabase.from('pm_projects').insert({
+    title: title || `${template.name} — ${new Date().toLocaleDateString()}`,
+    type: template.type,
+    work_type: 'project',
+    status: 'active',
+    template_id: template.id,
+    client_id: client_id ?? null,
+    kickoff_date: kickoff,
+    start_date: kickoff,
+    go_live_date: goLive,
+  } as any).select().single();
+  if (pe || !proj) throw pe;
+
+  await instantiateTemplateIntoProject({
+    projectId: (proj as any).id,
+    previewTasks, previewDeps, placement,
+  });
 
   emitTasksChanged();
   return proj as unknown as PmProject;
+};
+
+/** Convert a request project into a full project by applying a template. */
+export const convertRequestToProject = async (params: {
+  projectId: string;
+  template: any;
+  previewTasks: PreviewTask[];
+  previewDeps: ScheduleDep[];
+  placement: Map<string, { start: Date; end: Date; duration: number }>;
+  kickoff: string;
+  goLive: string;
+}) => {
+  const { projectId, template, previewTasks, previewDeps, placement, kickoff, goLive } = params;
+
+  await supabase.from('pm_projects').update({
+    work_type: 'project',
+    type: template.type,
+    template_id: template.id,
+    kickoff_date: kickoff,
+    start_date: kickoff,
+    go_live_date: goLive,
+  } as any).eq('id', projectId);
+
+  await instantiateTemplateIntoProject({
+    projectId, previewTasks, previewDeps, placement,
+    sortOffset: 1000, // existing request tasks keep their sort order at top
+  });
+
+  emitTasksChanged();
 };
 
 /** Apply scheduler diffs to live tasks. */

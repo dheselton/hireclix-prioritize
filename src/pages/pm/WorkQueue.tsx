@@ -114,7 +114,13 @@ export default function WorkQueue() {
   ).length;
   const blockedCount = filtered.filter(t => t.status === "blocked").length;
 
-  // Sections per role
+  // Sections per role — split by parent project work_type.
+  const isRequestTask = (t: PmTask) => (projById.get(t.project_id) as any)?.work_type === "request";
+  const isProjectTask = (t: PmTask) => {
+    const wt = (projById.get(t.project_id) as any)?.work_type;
+    return wt === "project" || wt == null;
+  };
+
   const sections = useMemo(() => {
     const list: { key: string; title: string; subtitle?: string; tasks: PmTask[]; emptyHint?: string }[] = [];
 
@@ -122,19 +128,21 @@ export default function WorkQueue() {
       filtered.filter(t => t.assignee_id === meId && extra(t));
 
     if (role === "pm") {
-      // 1) Unclaimed Requests
       list.push({
-        key: "unclaimed",
+        key: "unclaimed-requests",
         title: "Unclaimed Requests",
-        tasks: filtered.filter(t => t.status === "unclaimed"),
+        tasks: filtered.filter(t => t.status === "unclaimed" && isRequestTask(t)),
       });
-      // 2) My Active Projects & Tasks
       list.push({
-        key: "my-active",
-        title: "My Active Projects & Tasks",
+        key: "active-projects",
+        title: "Active Projects",
+        tasks: filtered.filter(t => active(t) && isProjectTask(t)),
+      });
+      list.push({
+        key: "my-work",
+        title: "My Work",
         tasks: minePred(active),
       });
-      // 3) Approvals Waiting on Me — in_review on projects where I'm the PM
       list.push({
         key: "approvals",
         title: "Approvals Waiting on Me",
@@ -143,46 +151,32 @@ export default function WorkQueue() {
           (pmProjectIds.size === 0 ? true : pmProjectIds.has(t.project_id))
         ),
       });
-    } else if (role === "designer") {
-      const designLane = (t: PmTask) => t.type === "design";
-      // 1) Unclaimed Design Requests
+    } else if (role === "designer" || role === "developer") {
+      const laneType = role === "designer" ? "design" : "dev";
+      const inMyLane = (t: PmTask) => t.type === laneType;
       list.push({
-        key: "unclaimed",
-        title: "Unclaimed Design Requests",
-        tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed ? true : designLane(t))),
+        key: "quick-tasks",
+        title: "Quick Tasks (Requests)",
+        tasks: filtered.filter(t => isRequestTask(t) && (t.assignee_id === meId || t.status === "unclaimed")),
       });
-      // 2) My Design Work
       list.push({
-        key: "my-design",
-        title: "My Design Work",
-        tasks: minePred(t => active(t) && designLane(t)),
+        key: "project-work",
+        title: "Project Work",
+        tasks: minePred(t => active(t) && isProjectTask(t) && inMyLane(t)),
       });
-      // 3) In Review — Needs My Attention
-      list.push({
-        key: "in-review",
-        title: "In Review — Needs My Attention",
-        tasks: filtered.filter(t => t.status === "in_review" && t.assignee_id === meId),
-      });
-    } else if (role === "developer") {
-      const devLane = (t: PmTask) => t.type === "dev";
-      // 1) Unclaimed Dev Tasks
-      list.push({
-        key: "unclaimed",
-        title: "Unclaimed Dev Tasks",
-        tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed ? true : devLane(t))),
-      });
-      // 2) My Dev Tasks
-      list.push({
-        key: "my-dev",
-        title: "My Dev Tasks",
-        tasks: minePred(t => active(t) && devLane(t)),
-      });
-      // 3) Blocked — Needs Resolution
-      list.push({
-        key: "blocked",
-        title: "Blocked — Needs Resolution",
-        tasks: filtered.filter(t => t.status === "blocked" && t.assignee_id === meId),
-      });
+      if (role === "designer") {
+        list.push({
+          key: "in-review",
+          title: "In Review — Needs My Attention",
+          tasks: filtered.filter(t => t.status === "in_review" && t.assignee_id === meId),
+        });
+      } else {
+        list.push({
+          key: "blocked",
+          title: "Blocked — Needs Resolution",
+          tasks: filtered.filter(t => t.status === "blocked" && t.assignee_id === meId),
+        });
+      }
     } else if (role === "strategist" || role === "analyst") {
       const teamLabel = role === "strategist" ? "strategy" : "analytics";
       list.push({
@@ -196,7 +190,6 @@ export default function WorkQueue() {
         tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed || inLane(t))),
       });
     } else {
-      // submitter — single section
       list.push({
         key: "mine",
         title: "Requests I've Submitted",
@@ -204,7 +197,7 @@ export default function WorkQueue() {
       });
     }
     return list;
-  }, [filtered, role, meId, lane, showAllUnclaimed, pmProjectIds]);
+  }, [filtered, role, meId, lane, showAllUnclaimed, pmProjectIds, projById]);
 
   const isSubmitter = role === "submitter";
 

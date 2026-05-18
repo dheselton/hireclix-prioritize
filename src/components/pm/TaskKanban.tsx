@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -75,6 +76,7 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
                   >
                     <CardContent className="p-2.5 space-y-1.5">
                       <div className="flex items-center gap-1">
+                        <WorkTypeBadge workType={(proj as any)?.work_type} compact />
                         <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
                         <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
                         <SubtaskBadge count={subCounts.get(t.id)} />

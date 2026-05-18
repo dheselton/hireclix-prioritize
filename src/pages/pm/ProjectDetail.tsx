@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Calendar as CalIcon, Pin, PinOff, Send } from "lucide-react";
+import { Plus, ArrowLeft, Calendar as CalIcon, Pin, PinOff, Send, Rocket } from "lucide-react";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
@@ -55,6 +57,7 @@ export default function ProjectDetail() {
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [configOpen, setConfigOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
 
   const reload = async () => {
     if (!id) return;
@@ -163,6 +166,7 @@ export default function ProjectDetail() {
 
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
+  const isRequest = (p.work_type ?? "project") === "request";
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
@@ -175,20 +179,31 @@ export default function ProjectDetail() {
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold font-unbounded">{project.title}</h1>
+              <div className="flex items-center gap-2">
+                <WorkTypeBadge workType={p.work_type ?? "project"} />
+                <h1 className="text-2xl font-bold font-unbounded">{project.title}</h1>
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline">{project.type}</Badge>
                 <Badge variant="outline">{project.status}</Badge>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-                <Settings2 className="h-4 w-4 mr-1" /> Configure Timeline
-              </Button>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">Go-Live</div>
-                <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
-              </div>
+              {isRequest ? (
+                <Button size="sm" onClick={() => setConvertOpen(true)}>
+                  <Rocket className="h-4 w-4 mr-1" /> Convert to Project
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
+                    <Settings2 className="h-4 w-4 mr-1" /> Configure Timeline
+                  </Button>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Go-Live</div>
+                    <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -204,7 +219,7 @@ export default function ProjectDetail() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          {!isRequest && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
           <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="forms">Forms</TabsTrigger>
@@ -221,22 +236,24 @@ export default function ProjectDetail() {
               placeholder="Project brief…"
             />
           </CardContent></Card>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Card><CardContent className="p-4 space-y-2">
-              <div className="text-xs uppercase text-muted-foreground mb-1">Key Dates</div>
-              <div className="text-sm flex items-center justify-between gap-2">
-                <span>Kickoff</span>
-                <DatePicker value={p.kickoff_date ?? null} onChange={v => updateProject(project.id, { kickoff_date: v ?? null } as any).then(reload)} className="w-36 h-8" />
-              </div>
-              <div className="text-sm flex items-center justify-between gap-2">
-                <span>Start</span>
-                <DatePicker value={project.start_date} onChange={v => updateProject(project.id, { start_date: v ?? null }).then(reload)} className="w-36 h-8" />
-              </div>
-              <div className="text-sm flex items-center justify-between gap-2">
-                <span>Go-Live</span>
-                <span className="text-muted-foreground">{fmtDate(project.go_live_date)}</span>
-              </div>
-            </CardContent></Card>
+          <div className={`grid grid-cols-1 ${isRequest ? "md:grid-cols-2" : "md:grid-cols-3"} gap-3`}>
+            {!isRequest && (
+              <Card><CardContent className="p-4 space-y-2">
+                <div className="text-xs uppercase text-muted-foreground mb-1">Key Dates</div>
+                <div className="text-sm flex items-center justify-between gap-2">
+                  <span>Kickoff</span>
+                  <DatePicker value={p.kickoff_date ?? null} onChange={v => updateProject(project.id, { kickoff_date: v ?? null } as any).then(reload)} className="w-36 h-8" />
+                </div>
+                <div className="text-sm flex items-center justify-between gap-2">
+                  <span>Start</span>
+                  <DatePicker value={project.start_date} onChange={v => updateProject(project.id, { start_date: v ?? null }).then(reload)} className="w-36 h-8" />
+                </div>
+                <div className="text-sm flex items-center justify-between gap-2">
+                  <span>Go-Live</span>
+                  <span className="text-muted-foreground">{fmtDate(project.go_live_date)}</span>
+                </div>
+              </CardContent></Card>
+            )}
             <TeamCard projectId={project.id} />
             <ClientCard project={p} onChange={reload} />
           </div>
@@ -276,14 +293,17 @@ export default function ProjectDetail() {
             userRole={user?.role}
             meId={user?.id ?? null}
             projectId={project.id}
+            flat={isRequest}
           />
         </TabsContent>
 
-        <TabsContent value="timeline">
-          <GanttChart tasks={tasks} deps={deps} onTaskClick={drawer.open}
-            onProposeReschedule={(diffs) => { setPendingDiffs(diffs); setPendingGoLive(project.go_live_date); }} />
-          <p className="text-xs text-muted-foreground mt-2">Drag a bar to propose a reschedule. Bold outline = critical path. Dashed line = today.</p>
-        </TabsContent>
+        {!isRequest && (
+          <TabsContent value="timeline">
+            <GanttChart tasks={tasks} deps={deps} onTaskClick={drawer.open}
+              onProposeReschedule={(diffs) => { setPendingDiffs(diffs); setPendingGoLive(project.go_live_date); }} />
+            <p className="text-xs text-muted-foreground mt-2">Drag a bar to propose a reschedule. Bold outline = critical path. Dashed line = today.</p>
+          </TabsContent>
+        )}
 
         <TabsContent value="files">
           <FilesTab projectId={project.id} tasks={tasks} onOpenTask={drawer.open} />
@@ -385,6 +405,7 @@ export default function ProjectDetail() {
         onConfirm={applyCascade}
       />
       <ConfigureTimelinePanel project={project} open={configOpen} onOpenChange={setConfigOpen} onApplied={reload} />
+      <ConvertToProjectModal open={convertOpen} onOpenChange={setConvertOpen} projectId={project.id} userId={user?.id ?? null} onConverted={reload} />
     </div>
   );
 }
@@ -412,7 +433,7 @@ function dimsForRole(role?: string | null): Set<string> | null {
 }
 
 function TaskTabContent({
-  phases, tasksByPhase, onOpen, onAdd, userRole, meId, projectId,
+  phases, tasksByPhase, onOpen, onAdd, userRole, meId, projectId, flat = false,
 }: {
   phases: PmPhase[];
   tasksByPhase: Map<string | null, PmTask[]>;
@@ -421,6 +442,7 @@ function TaskTabContent({
   userRole?: string | null;
   meId: string | null;
   projectId: string;
+  flat?: boolean;
 }) {
   const lsKey = `pm.projectTasksPill.${projectId}.${meId ?? "anon"}`;
   const [pill, setPillState] = useState<TaskPill>(() => {
@@ -453,15 +475,22 @@ function TaskTabContent({
   const pills: TaskPill[] = ["all", "pm", "design", "dev", "review"];
   const filtersActive = isMe || pill !== defaultPillForRole(userRole);
 
-  // Build list of phase entries (including null). Hide empty ones when a filter is active.
+  // Build list of phase entries. In flat mode, collapse everything into one bucket.
   const phaseEntries: { phase: PmPhase | null; tasks: PmTask[] }[] = [];
-  for (const ph of phases) {
-    const t = filterPhaseTasks(tasksByPhase.get(ph.id) || []);
-    if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: ph, tasks: t });
-  }
-  if (tasksByPhase.has(null)) {
-    const t = filterPhaseTasks(tasksByPhase.get(null)!);
-    if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: null, tasks: t });
+  if (flat) {
+    const all: PmTask[] = [];
+    for (const list of tasksByPhase.values()) all.push(...list);
+    all.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+    phaseEntries.push({ phase: null, tasks: filterPhaseTasks(all) });
+  } else {
+    for (const ph of phases) {
+      const t = filterPhaseTasks(tasksByPhase.get(ph.id) || []);
+      if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: ph, tasks: t });
+    }
+    if (tasksByPhase.has(null)) {
+      const t = filterPhaseTasks(tasksByPhase.get(null)!);
+      if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: null, tasks: t });
+    }
   }
 
   // Flat task list for kanban view.

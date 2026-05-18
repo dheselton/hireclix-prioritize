@@ -11,6 +11,7 @@ import { type PmTask, type PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
@@ -137,7 +138,12 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       <ClaimButton task={t} onChanged={onChanged} />
                     </div>
                   </td>
-                  <td className="p-2 text-muted-foreground hidden md:table-cell truncate max-w-[200px]">{proj?.title ?? "—"}</td>
+                  <td className="p-2 text-muted-foreground hidden md:table-cell truncate max-w-[200px]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <WorkTypeBadge workType={(proj as any)?.work_type} compact />
+                      {proj?.title ?? "—"}
+                    </span>
+                  </td>
                   <td className="p-2 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></td>
                   <td className="p-2"><StatusPill status={t.status} /></td>
                   <td className="p-2 hidden md:table-cell"><UserAvatar userId={t.assignee_id} size="xs" /></td>
