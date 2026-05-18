@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
+import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 
 const PRIORITY_DOT: Record<string, string> = {
   urgent: "bg-red-500", high: "bg-orange-500", medium: "bg-amber-400", low: "bg-emerald-500",
@@ -23,6 +24,8 @@ interface Props {
 
 export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const subCounts = useSubtaskCounts(tasks.map(t => t.id));
+
 
   function toggle(id: string, checked: boolean) {
     const s = new Set(selected);
@@ -68,6 +71,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                   <div className="flex items-center gap-1.5">
                     <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
                     <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
+                    <SubtaskBadge count={subCounts.get(t.id)} />
                   </div>
                   <span className={cn("inline-block h-2.5 w-2.5 rounded-full", PRIORITY_DOT[t.priority] ?? "bg-muted")} />
                 </div>

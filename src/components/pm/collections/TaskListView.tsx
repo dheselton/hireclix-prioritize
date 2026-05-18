@@ -10,6 +10,7 @@ import { useMockUsers } from "@/lib/pm/mockUser";
 import { type PmTask, type PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
+import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
@@ -31,6 +32,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const users = useMockUsers();
+  const subCounts = useSubtaskCounts(tasks.map(t => t.id));
 
   const sorted = useMemo(() => {
     const arr = [...tasks];
@@ -131,6 +133,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   <td className="p-2 font-medium">
                     <div className="flex items-center gap-2">
                       <span>{t.title}</span>
+                      <SubtaskBadge count={subCounts.get(t.id)} />
                       <ClaimButton task={t} onChanged={onChanged} />
                     </div>
                   </td>
