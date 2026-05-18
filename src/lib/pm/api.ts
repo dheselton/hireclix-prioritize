@@ -14,9 +14,13 @@ export const fetchProject = async (id: string) => {
   return data as unknown as PmProject | null;
 };
 
-export const fetchTasks = async (projectId?: string) => {
+export const fetchTasks = async (
+  projectId?: string,
+  opts?: { types?: string[] },
+) => {
   let q = supabase.from('pm_tasks').select('*').order('sort_order');
   if (projectId) q = q.eq('project_id', projectId);
+  if (opts?.types && opts.types.length) q = q.in('type', opts.types);
   const { data, error } = await q;
   if (error) throw error;
   return (data || []) as unknown as PmTask[];
