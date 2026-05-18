@@ -45,9 +45,15 @@ function useUnclaimedCount() {
   }, [tasks, role]);
 }
 
+const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "projects", "forms"]);
+
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
+  const { role } = useCurrentUser();
+  const items = role === "submitter"
+    ? pmItems.filter(i => SUBMITTER_ITEM_KEYS.has(i.key))
+    : pmItems;
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>
@@ -62,7 +68,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <nav className="space-y-1 px-2">
-              {pmItems.map((item) => {
+              {items.map((item) => {
                 const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
                 const showBadge = item.key === "queue" && unclaimed > 0;
                 return (
