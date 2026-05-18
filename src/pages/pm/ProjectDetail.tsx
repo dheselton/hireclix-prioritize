@@ -166,6 +166,7 @@ export default function ProjectDetail() {
 
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
+  const isRequest = (p.work_type ?? "project") === "request";
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
@@ -178,20 +179,31 @@ export default function ProjectDetail() {
         <CardContent className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold font-unbounded">{project.title}</h1>
+              <div className="flex items-center gap-2">
+                <WorkTypeBadge workType={p.work_type ?? "project"} />
+                <h1 className="text-2xl font-bold font-unbounded">{project.title}</h1>
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline">{project.type}</Badge>
                 <Badge variant="outline">{project.status}</Badge>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-                <Settings2 className="h-4 w-4 mr-1" /> Configure Timeline
-              </Button>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground">Go-Live</div>
-                <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
-              </div>
+              {isRequest ? (
+                <Button size="sm" onClick={() => setConvertOpen(true)}>
+                  <Rocket className="h-4 w-4 mr-1" /> Convert to Project
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
+                    <Settings2 className="h-4 w-4 mr-1" /> Configure Timeline
+                  </Button>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Go-Live</div>
+                    <DatePicker value={project.go_live_date} onChange={v => handleGoLiveChange(v ?? "")} className="w-44" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -207,7 +219,7 @@ export default function ProjectDetail() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          {!isRequest && <TabsTrigger value="timeline">Timeline</TabsTrigger>}
           <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="forms">Forms</TabsTrigger>
