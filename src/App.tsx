@@ -30,6 +30,8 @@ import Integrations from "./pages/pm/Integrations";
 
 const queryClient = new QueryClient();
 
+import { SubmitterRouteGuard } from "@/components/pm/SubmitterRouteGuard";
+
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
@@ -37,7 +39,9 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col">
           <TopBar />
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="flex-1 overflow-auto">
+            <SubmitterRouteGuard>{children}</SubmitterRouteGuard>
+          </main>
         </div>
       </div>
     </SidebarProvider>
