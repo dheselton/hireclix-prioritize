@@ -25,15 +25,15 @@ export default function GlobalTimeline() {
   const { isMe } = useMeMode();
   const { user } = useCurrentUser();
   const chips = useChipFilters("globalTimeline");
+  const { types } = useTypeFilter("globalTimeline");
+  const typesKey = useMemo(() => [...types].sort().join(","), [types]);
 
   const reload = async () => {
-    const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
+    const [t, p] = await Promise.all([fetchTasks(undefined, { types: [...types] }), fetchProjects()]);
     setTasks(t); setProjects(p);
   };
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
   useTasksChanged(reload);
-
-  const { types } = useTypeFilter("globalTimeline");
 
   const visible = useMemo(() => {
     let v = filter === "all" ? tasks : tasks.filter(t => t.project_id === filter);

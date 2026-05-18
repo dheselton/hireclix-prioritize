@@ -71,13 +71,19 @@ export default function Board() {
   const [boardMode, setBoardMode] = useViewMode("board", "projects");
   const changeMode = (m: typeof boardMode) => setBoardMode(m);
 
-  const reload = async () => { setTasks(await fetchTasks()); setProjects(await fetchProjects()); };
-  useEffect(() => { reload(); }, []);
+  const { types } = useTypeFilter("board");
+  const typesKey = useMemo(() => [...types].sort().join(","), [types]);
+
+  const reload = async () => {
+    setTasks(await fetchTasks(undefined, { types: [...types] }));
+    setProjects(await fetchProjects());
+  };
+  useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
   useTasksChanged(reload);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
-  const { types } = useTypeFilter("board");
+  // types now sourced above
 
   const visible = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
