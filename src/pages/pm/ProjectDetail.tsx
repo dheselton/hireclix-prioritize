@@ -433,7 +433,7 @@ function dimsForRole(role?: string | null): Set<string> | null {
 }
 
 function TaskTabContent({
-  phases, tasksByPhase, onOpen, onAdd, userRole, meId, projectId,
+  phases, tasksByPhase, onOpen, onAdd, userRole, meId, projectId, flat = false,
 }: {
   phases: PmPhase[];
   tasksByPhase: Map<string | null, PmTask[]>;
@@ -442,6 +442,7 @@ function TaskTabContent({
   userRole?: string | null;
   meId: string | null;
   projectId: string;
+  flat?: boolean;
 }) {
   const lsKey = `pm.projectTasksPill.${projectId}.${meId ?? "anon"}`;
   const [pill, setPillState] = useState<TaskPill>(() => {
@@ -474,15 +475,22 @@ function TaskTabContent({
   const pills: TaskPill[] = ["all", "pm", "design", "dev", "review"];
   const filtersActive = isMe || pill !== defaultPillForRole(userRole);
 
-  // Build list of phase entries (including null). Hide empty ones when a filter is active.
+  // Build list of phase entries. In flat mode, collapse everything into one bucket.
   const phaseEntries: { phase: PmPhase | null; tasks: PmTask[] }[] = [];
-  for (const ph of phases) {
-    const t = filterPhaseTasks(tasksByPhase.get(ph.id) || []);
-    if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: ph, tasks: t });
-  }
-  if (tasksByPhase.has(null)) {
-    const t = filterPhaseTasks(tasksByPhase.get(null)!);
-    if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: null, tasks: t });
+  if (flat) {
+    const all: PmTask[] = [];
+    for (const list of tasksByPhase.values()) all.push(...list);
+    all.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+    phaseEntries.push({ phase: null, tasks: filterPhaseTasks(all) });
+  } else {
+    for (const ph of phases) {
+      const t = filterPhaseTasks(tasksByPhase.get(ph.id) || []);
+      if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: ph, tasks: t });
+    }
+    if (tasksByPhase.has(null)) {
+      const t = filterPhaseTasks(tasksByPhase.get(null)!);
+      if (t.length > 0 || !filtersActive) phaseEntries.push({ phase: null, tasks: t });
+    }
   }
 
   // Flat task list for kanban view.
