@@ -1,34 +1,77 @@
-## Goal
+# Task Drawer Completion — Plan
 
-Across all PM main views (Work Queue, Board, Projects), default to the **Projects** view (project-first cards with inline next-up/resume indicators). Users can still toggle to List, Grid, or Kanban via the existing `ViewToggle`.
+Goal: extend `src/components/pm/TaskDrawer.tsx` with 9 fully-functional sections beneath the existing fields. Drawer shell, header, layout grid, and current fields stay untouched.
 
-## Changes
+## Schema reuse vs. new
 
-### 1. `src/pages/pm/ProjectList.tsx` (Projects page)
-- Switch default mode from `"grid"` to `"projects"`: `useViewMode("projects", "projects")`.
-- Add `"projects"` to the toolbar `modes` array (currently uses default `["list","grid"]`); pass `modes={["projects","list","grid"]}`.
-- Render branch: when `mode === "projects"`, render `<ProjectWorkGrid tasks={tasksScopedToVisibleProjects} projects={projectsMap} meId={user?.id ?? null} onOpenTask={drawer.open} />`. Need to add a `TaskDrawer` mount + `useTaskDrawerLink()` here (currently absent) so opening a "next up" task from a project card works. Keep existing `ProjectListView` / `ProjectGridView` for other modes.
-- Scope tasks passed to `ProjectWorkGrid` to only those whose `project_id` is in `visible` (so chip/Me-mode filtering on projects still narrows the set). Pass `hideLoose` since the Projects page should not show the "Loose tasks" group (loose tasks belong to Work Queue).
+The DB already has most of what's needed. Mapping spec → existing schema:
 
-### 2. `src/pages/pm/Board.tsx`
-- Replace local `boardMode` useState/localStorage with `useViewMode("board", "projects")` so it integrates with the same default-mode system used elsewhere.
-- Extend modes to `["projects","kanban","list","grid"]` in `CollectionToolbar`.
-- Add a new render branch: when `mode === "projects"`, render `<ProjectWorkGrid tasks={visible} projects={projById} meId={user?.id ?? null} onOpenTask={drawer.open} onChanged={reload} />`. Hide the Columns popover unless `mode === "kanban"` (already conditional on kanban — keep).
-- Subtitle: when projects mode, show "Projects with active work — open a card to drill in."
+| Spec name | Existing table | Notes |
+|---|---|---|
+| `pm_subtasks` | **pm_subtasks** | columns differ: `complete` (not completed), `sort_order` (not position). Use as-is. |
+| `pm_checklists` | **pm_checklist_items** | columns: `label`, `checked`, `sort_order`. Use as-is. |
+| `pm_task_attachments` | **pm_attachments** | needs new columns: `type` ('file'|'link'), `label`, `file_size`. Add via migration. |
+| `pm_task_dependencies` | **pm_task_dependencies** | already exists, fully usable. |
+| `pm_time_entries` | **pm_time_entries** | already used. |
+| `pm_design_rounds` | NEW | create table. |
+| `pm_dev_status_log` | NEW dedicated table | currently `dev_status_log` jsonb on pm_tasks; migrate writes to new table, keep reading legacy jsonb as fallback. |
+| `pm_notifications` | **pm_notifications** | already exists. |
+| comments | **pm_comments** | already exists with `mentions uuid[]`. Use it. |
 
-### 3. `src/pages/pm/WorkQueue.tsx`
-- Already defaults to `"projects"` and includes `"projects"` in modes — no change needed beyond confirming behavior. (No edits.)
+Storage bucket `task-attachments` (private) to create with public-read RLS suitable for app context.
 
-### 4. `src/hooks/useViewMode.ts`
-- No changes — `"projects"` is already a valid `ViewMode`.
+## Migration (single call)
 
-### 5. `src/components/pm/ViewToggle.tsx`
-- No changes — already renders the `FolderKanban` icon for `"projects"` when included in `modes`.
+1. `ALTER TABLE pm_attachments ADD COLUMN type text DEFAULT 'file'`, `label text`, `file_size bigint`.
+2. `CREATE TABLE pm_design_rounds (id, task_id, round_number int, submitted_date date, feedback_notes text, status text default 'pending', created_at)` + permissive RLS (matches sibling pm_ tables).
+3. `CREATE TABLE pm_dev_status_log (id, task_id, note text, author_id uuid, created_at)` + permissive RLS.
+4. Create storage bucket `task-attachments` with permissive public RLS (auth is currently off).
 
-## Out of scope
-- No schema changes.
-- No changes to `ProjectWorkCard` / `ProjectWorkGrid` internals.
-- No changes to `/pm/workload`, `/pm/timeline`, `/pm/forms`, `/pm/templates`, `/pm/integrations` — those are not card-collection views and don't have a meaningful "projects vs tasks" toggle. (Confirm: the user said "Work Queue, Board, Projects, etc." — interpreting "etc." as "anywhere a list of tasks is presented." If they want it in Workload too, we can extend in a follow-up.)
+## Component structure
 
-## Open question
-Should the Board page persist mode under the shared default-mode system (`useViewMode`), replacing its bespoke `pm.viewMode.board` storage? Plan above assumes **yes** — this gives users one consistent "set my default view everywhere" behavior. Existing localStorage value migrates implicitly (key happens to match `pm.viewMode.board`).
+Refactor `TaskDrawer.tsx` to render the existing top grid, then a vertical stack of section components below. Move out into `src/components/pm/drawer/`:
+
+```
+drawer/
+  BlockerBanner.tsx          // red if status==='blocked'
+  BlockedByBanner.tsx        // yellow if has incomplete blocked_by deps
+  SubtasksSection.tsx
+  ChecklistSection.tsx
+  AttachmentsSection.tsx
+  DependenciesSection.tsx
+  TimeTrackingSection.tsx    // replaces inline quick-add; keeps +15/+30/+1h
+  DesignRoundsSection.tsx    // only when task.type==='design'
+  DevStatusLogSection.tsx    // only when task.type==='dev'
+  CommentsThread.tsx
+  MentionTextarea.tsx        // shared @mention input
+  TaskPicker.tsx             // searchable picker for dependency adds
+```
+
+Each section: collapsible `<details>`-style header with title + count/total badge, loads its own data via supabase, optimistic updates, emits `emitTasksChanged()` on count-affecting mutations.
+
+## Section behavior details
+
+- **Subtasks / Checklist** — identical UX: list rows with checkbox, inline-edit title (click to edit, blur to save), trash icon on hover, drag handle (use `@dnd-kit/sortable`, already in deps if present — otherwise simple ↑↓ buttons), inline "Add…" input at bottom. Header badge `done/total`. Checklist also shows green "All done" pill when total>0 && done===total.
+- **Attachments** — drop zone (HTML5 drag events) + Browse button → `supabase.storage.from('task-attachments').upload(\`${task_id}/${crypto.randomUUID()}-${filename}\`)` → insert row in pm_attachments with `type:'file'`, `name`, `url` (public URL), `file_size`, `uploaded_by`. Link form: URL + label → insert `type:'link'`. Row: image thumb when name matches image ext, else file icon, name, size, uploader name (lookup mock_users), uploaded_at, download (anchor) + delete (own only).
+- **Dependencies** — query pm_task_dependencies where task_id=current ("Blocked by") and where depends_on_task_id=current ("Blocking"). Render rows with title + project name + status pill, clicking opens that task via `useTaskDrawerLink().open(id)`. Add button opens TaskPicker (search pm_tasks by title, optional project filter dropdown). BlockedByBanner renders at top if any blocked-by dep's task.status not in done/approved.
+- **Time tracking** — keep current +15/+30/+1h. Below: total = sum(minutes) formatted h/m. Then scrollable log list (avatar/name from mock_users join, fmtDate, duration, note). Manual entry row: number inputs h+m + note textarea + Save. All inserts to pm_time_entries.
+- **Design Rounds** — vertical list of `pm_design_rounds` rows ordered by round_number. Each row: label, DatePicker (submitted_date), expandable Textarea (feedback_notes), status Select with colored Badge (pending=muted, approved=green check, needs_revision=amber). "+ Add round" button auto-increments round_number.
+- **Dev Status Log** — read from new `pm_dev_status_log` table merged with legacy `task.dev_status_log` jsonb (read-only for legacy entries). Monospace font, muted bg. Append-only input at bottom. No edit/delete affordances.
+- **Blocker** — verify existing wiring. Add a useRef to remember previous status so clearing blocker reverts to it; if no previous status known, revert to `in_progress`. Red banner above all sections when status==='blocked'.
+- **Comments** — list pm_comments where task_id=current, oldest→newest. MentionTextarea: detects `@` then shows popover of project members (from pm_project_members joined with mock_users; if none, fall back to all mock_users), insert renders `@firstname` styled span backed by stored uuid in `mentions[]`. Send on Enter, newline on Shift+Enter. On submit: insert pm_comments row; for each mention insert pm_notifications row with `type:'mention'`, `user_id`=mentioned, `title`="@X mentioned you in {task.title}", `link`=`?task={id}`. Edit allowed if `user_id===current && now-created_at<15min`. Delete allowed if own. Render saved `@name` tokens with `text-primary bg-primary/10 rounded px-1`.
+
+## Card badge
+
+Update task card components (Kanban card, list rows, ProjectWorkCard) to show subtask completion badge `✓ 2/5` when subtasks exist. Single shared helper `useSubtaskCount(taskId)` or aggregate via a single query in card lists.
+
+## Files to add / edit
+
+- New: 11 files under `src/components/pm/drawer/`
+- Edit: `src/components/pm/TaskDrawer.tsx` (compose new sections, remove inline design/dev/time blocks that are now sectioned)
+- Edit: `src/components/pm/TaskKanban.tsx`, card components in `src/components/pm/collections/*` (subtask badge)
+- Migration: schema + storage bucket
+- Lib: `src/lib/pm/api.ts` helpers for each new entity (CRUD wrappers) and `formatDuration(minutes)`
+
+## Open questions
+
+None blocking — proceeding will reuse existing tables as mapped above. If you prefer the spec's exact table names (`pm_checklists`, `pm_task_attachments`, `pm_dev_status_log` only, etc.) I'll rename in the migration; otherwise I'll keep the existing `pm_checklist_items` / `pm_attachments` to avoid data loss.
