@@ -12,8 +12,11 @@ import { toast } from "sonner";
 import { useViewMode } from "@/hooks/useViewMode";
 import { fmtDate } from "@/lib/pm/format";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
+import { useCurrentUser } from "@/lib/pm/mockUser";
 
 export default function Forms() {
+  const { role } = useCurrentUser();
+  const isSubmitter = role === "submitter";
   const [forms, setForms] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -46,7 +49,7 @@ export default function Forms() {
         title="Forms"
         mode={mode}
         onModeChange={(m) => setMode(m as any)}
-        actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Form</Button>}
+        actions={isSubmitter ? null : <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Form</Button>}
       />
 
       {!forms.length && <div className="text-sm text-muted-foreground italic py-8 text-center">No forms yet.</div>}
@@ -62,7 +65,7 @@ export default function Forms() {
                 </div>
                 <div className="text-xs text-muted-foreground break-all">/f/{f.shareable_slug}</div>
                 <div className="flex gap-2">
-                  <Button asChild size="sm" variant="outline"><Link to={`/pm/forms/${f.id}/edit`}>Edit</Link></Button>
+                  {!isSubmitter && <Button asChild size="sm" variant="outline"><Link to={`/pm/forms/${f.id}/edit`}>Edit</Link></Button>}
                   <Button size="sm" variant="ghost" onClick={() => copyLink(f.shareable_slug)}>
                     <Copy className="h-3 w-3 mr-1" /> Copy link
                   </Button>
@@ -89,7 +92,7 @@ export default function Forms() {
             <tbody>
               {forms.map(f => (
                 <tr key={f.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                  <td className="p-3"><Link to={`/pm/forms/${f.id}/edit`} className="font-medium hover:underline">{f.name}</Link></td>
+                  <td className="p-3">{isSubmitter ? <span className="font-medium">{f.name}</span> : <Link to={`/pm/forms/${f.id}/edit`} className="font-medium hover:underline">{f.name}</Link>}</td>
                   <td className="p-3 text-muted-foreground hidden md:table-cell">/f/{f.shareable_slug}</td>
                   <td className="p-3"><Badge variant="outline">{(f.submit_action?.creates) || "task"}</Badge></td>
                   <td className="p-3 text-muted-foreground hidden md:table-cell">{fmtDate(f.created_at?.slice(0,10))}</td>

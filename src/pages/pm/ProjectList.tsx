@@ -76,7 +76,7 @@ export default function ProjectList() {
         onModeChange={(m) => setMode(m as any)}
         modes={["projects", "list", "grid"]}
         chipState={{ ...chips, hide: ["watching"] }}
-        actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>}
+        actions={user?.role === "submitter" ? null : <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Project</Button>}
       />
 
       {mode === "projects" ? (
