@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ArrowLeft, Calendar as CalIcon, Pin, PinOff, Send } from "lucide-react";
+import { Plus, ArrowLeft, Calendar as CalIcon, Pin, PinOff, Send, Rocket } from "lucide-react";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
@@ -55,6 +57,7 @@ export default function ProjectDetail() {
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [configOpen, setConfigOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
 
   const reload = async () => {
     if (!id) return;
