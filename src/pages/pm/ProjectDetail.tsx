@@ -412,7 +412,7 @@ function dimsForRole(role?: string | null): Set<string> | null {
 }
 
 function TaskTabContent({
-  phases, tasksByPhase, onOpen, onAdd, userRole, meId,
+  phases, tasksByPhase, onOpen, onAdd, userRole, meId, projectId,
 }: {
   phases: PmPhase[];
   tasksByPhase: Map<string | null, PmTask[]>;
@@ -420,10 +420,23 @@ function TaskTabContent({
   onAdd: (phaseId: string | null, title: string) => void;
   userRole?: string | null;
   meId: string | null;
+  projectId: string;
 }) {
-  const [pill, setPill] = useState<TaskPill>(() => defaultPillForRole(userRole));
-  // Re-seed when role changes (user switched in TopBar).
-  useEffect(() => { setPill(defaultPillForRole(userRole)); }, [userRole]);
+  const lsKey = `pm.projectTasksPill.${projectId}.${meId ?? "anon"}`;
+  const [pill, setPillState] = useState<TaskPill>(() => {
+    if (typeof window === "undefined") return defaultPillForRole(userRole);
+    const v = window.localStorage.getItem(lsKey);
+    return (v as TaskPill) || defaultPillForRole(userRole);
+  });
+  const setPill = (p: TaskPill) => {
+    setPillState(p);
+    try { window.localStorage.setItem(lsKey, p); } catch {}
+  };
+  // Re-seed when key (project/user) changes and nothing stored yet.
+  useEffect(() => {
+    const v = window.localStorage.getItem(lsKey);
+    setPillState((v as TaskPill) || defaultPillForRole(userRole));
+  }, [lsKey, userRole]);
   const { isMe, setMode: setMeMode } = useMeMode();
   const [view, setView] = useViewMode("project.tasks", "list");
 
