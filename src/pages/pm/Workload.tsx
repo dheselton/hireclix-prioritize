@@ -27,9 +27,13 @@ export default function Workload() {
   const { isMe } = useMeMode();
   const chips = useChipFilters("workload");
   const { types } = useTypeFilter("workload");
+  const typesKey = useMemo(() => [...types].sort().join(","), [types]);
 
-  const reloadAll = () => { fetchTasks().then(setTasks); fetchProjects().then(setProjects); };
-  useEffect(() => { reloadAll(); }, []);
+  const reloadAll = () => {
+    fetchTasks(undefined, { types: [...types] }).then(setTasks);
+    fetchProjects().then(setProjects);
+  };
+  useEffect(() => { reloadAll(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
   useTasksChanged(reloadAll);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const trackedTasks = useMemo(() => applyTaskTypes(tasks, types), [tasks, types]);
