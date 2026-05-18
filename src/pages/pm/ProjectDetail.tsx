@@ -214,15 +214,33 @@ export default function ProjectDetail() {
         <TabsContent value="overview" className="space-y-4">
           <Card><CardContent className="p-4 space-y-2">
             <div className="text-xs uppercase text-muted-foreground">Brief</div>
-            <Textarea rows={4} value={project.description ?? ""} onChange={e => setProject({ ...project, description: e.target.value })}
-              onBlur={e => updateProject(project.id, { description: e.target.value })} />
+            <RichTextEditor
+              value={project.description ?? ""}
+              onChange={(html) => setProject({ ...project, description: html })}
+              onBlur={() => updateProject(project.id, { description: project.description ?? "" })}
+              placeholder="Project brief…"
+            />
           </CardContent></Card>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Card><CardContent className="p-4">
-              <div className="text-xs uppercase text-muted-foreground mb-2">Key Dates</div>
-              <div className="text-sm flex justify-between"><span>Start</span><span>{fmtDate(project.start_date)}</span></div>
-              <div className="text-sm flex justify-between"><span>Go-Live</span><span>{fmtDate(project.go_live_date)}</span></div>
+            <Card><CardContent className="p-4 space-y-2">
+              <div className="text-xs uppercase text-muted-foreground mb-1">Key Dates</div>
+              <div className="text-sm flex items-center justify-between gap-2">
+                <span>Kickoff</span>
+                <DatePicker value={p.kickoff_date ?? null} onChange={v => updateProject(project.id, { kickoff_date: v ?? null } as any).then(reload)} className="w-36 h-8" />
+              </div>
+              <div className="text-sm flex items-center justify-between gap-2">
+                <span>Start</span>
+                <DatePicker value={project.start_date} onChange={v => updateProject(project.id, { start_date: v ?? null }).then(reload)} className="w-36 h-8" />
+              </div>
+              <div className="text-sm flex items-center justify-between gap-2">
+                <span>Go-Live</span>
+                <span className="text-muted-foreground">{fmtDate(project.go_live_date)}</span>
+              </div>
             </CardContent></Card>
+            <TeamCard projectId={project.id} />
+            <ClientCard project={p} onChange={reload} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Card><CardContent className="p-4">
               <div className="text-xs uppercase text-muted-foreground mb-2">Stats</div>
               <div className="text-sm flex justify-between"><span>Total tasks</span><span>{tasks.length}</span></div>
@@ -257,6 +275,7 @@ export default function ProjectDetail() {
             onAdd={addTask}
             userRole={user?.role}
             meId={user?.id ?? null}
+            projectId={project.id}
           />
         </TabsContent>
 
@@ -267,29 +286,80 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="files">
-          <Card><CardContent className="p-6 text-sm text-muted-foreground">
-            Attachments live on individual tasks. Open a task to upload or link assets.
-          </CardContent></Card>
+          <FilesTab projectId={project.id} tasks={tasks} onOpenTask={drawer.open} />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-3">
-          <Card><CardContent className="p-4 space-y-3">
+          <Card><CardContent className="p-4 space-y-2">
             <div className="text-xs uppercase text-muted-foreground">Add comment</div>
-            <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Use @name to mention a teammate" />
-            <Button onClick={postComment} disabled={!newComment.trim()}>Post</Button>
+            <MentionTextarea
+              value={newComment}
+              onChange={setNewComment}
+              onSubmit={postComment}
+              onMentionsChange={setCommentMentions}
+              users={allUsers}
+              placeholder="Write a comment… use @ to mention someone"
+            />
+            <div className="flex justify-between items-center">
+              <div className="text-[11px] text-muted-foreground">
+                {commentMentions.length > 0 && `Mentions: ${commentMentions.length} · `}
+                Enter to send · Shift+Enter for newline
+              </div>
+              <Button size="sm" onClick={postComment} disabled={!newComment.trim()}>
+                <Send className="h-3 w-3 mr-1" /> Post
+              </Button>
+            </div>
           </CardContent></Card>
+
+          <div className="flex gap-1">
+            {(["all", "comments", "activity"] as const).map(f => (
+              <button key={f} type="button" onClick={() => setActivityFilter(f)}
+                className={`h-7 px-3 rounded-full text-xs border transition-colors ${activityFilter === f ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}>
+                {f === "all" ? "All" : f === "comments" ? "Comments only" : "Activity only"}
+              </button>
+            ))}
+          </div>
+
           <Card><CardContent className="p-4 space-y-2">
             <div className="text-xs uppercase text-muted-foreground">Feed</div>
-            {[...comments.map(c => ({ ...c, _kind: "comment" })), ...activity.map(a => ({ ...a, _kind: "activity" }))]
-              .sort((a, b) => (b.created_at > a.created_at ? 1 : -1))
-              .slice(0, 50)
-              .map(item => (
-                <div key={item.id} className="text-sm border-b border-border/50 pb-2">
-                  {item._kind === "comment"
-                    ? <><div>{item.body}</div><div className="text-xs text-muted-foreground">{fmtDate(item.created_at?.slice(0,10))}</div></>
-                    : <div className="text-xs text-muted-foreground">· {item.action} ({fmtDate(item.created_at?.slice(0,10))})</div>}
-                </div>
-              ))}
+            {(() => {
+              const isPM = user?.role === "pm";
+              const cItems = activityFilter !== "activity" ? comments.map(c => ({ ...c, _kind: "comment" as const })) : [];
+              const aItems = activityFilter !== "comments" ? activity.map(a => ({ ...a, _kind: "activity" as const })) : [];
+              const all = [...cItems, ...aItems];
+              const pinned = all.filter(x => x._kind === "comment" && x.pinned)
+                .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+              const rest = all.filter(x => !(x._kind === "comment" && x.pinned))
+                .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+              const ordered = [...pinned, ...rest].slice(0, 100);
+              if (!ordered.length) return <div className="text-xs text-muted-foreground italic">Nothing to show.</div>;
+              return ordered.map(item => {
+                if (item._kind === "comment") {
+                  const u = allUsers.find(x => x.id === item.user_id);
+                  return (
+                    <div key={item.id} className="text-sm border-b border-border/50 pb-2">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <UserAvatar userId={item.user_id} size="sm" />
+                        <span className="text-sm font-medium">{u?.name ?? "Unknown"}</span>
+                        <span className="text-[11px] text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span>
+                        {item.pinned && <Badge variant="secondary" className="text-[10px]">📌 Pinned</Badge>}
+                        {isPM && (
+                          <Button size="icon" variant="ghost" className="h-6 w-6 ml-auto" onClick={() => togglePin(item)} title={item.pinned ? "Unpin" : "Pin"}>
+                            {item.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                          </Button>
+                        )}
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap pl-8"><MentionText text={item.body} /></div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={item.id} className="text-xs text-muted-foreground border-b border-border/50 pb-2">
+                    · {item.action} ({fmtDate(item.created_at?.slice(0, 10))})
+                  </div>
+                );
+              });
+            })()}
           </CardContent></Card>
         </TabsContent>
 
