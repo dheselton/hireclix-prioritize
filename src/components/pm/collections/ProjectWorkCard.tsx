@@ -8,6 +8,7 @@ import { fmtDate } from "@/lib/pm/format";
 import { fmtAgo, getResumeForProject, onActivityChanged } from "@/lib/pm/activity";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -117,6 +118,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
           >
             <div className="font-semibold leading-tight group-hover:underline">{project.title}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+              <WorkTypeBadge workType={(project as any).work_type ?? "project"} />
               <Badge variant="outline" className="text-[10px] capitalize">{project.type.replace(/_/g," ")}</Badge>
               {project.go_live_date && (
                 <span className="inline-flex items-center gap-1">
