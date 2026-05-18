@@ -913,6 +913,42 @@ export type Database = {
           },
         ]
       }
+      pm_project_attachments: {
+        Row: {
+          created_at: string
+          file_size: number | null
+          id: string
+          label: string | null
+          name: string
+          project_id: string
+          type: string
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          file_size?: number | null
+          id?: string
+          label?: string | null
+          name: string
+          project_id: string
+          type?: string
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          file_size?: number | null
+          id?: string
+          label?: string | null
+          name?: string
+          project_id?: string
+          type?: string
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       pm_project_members: {
         Row: {
           id: string
@@ -1007,6 +1043,8 @@ export type Database = {
       }
       pm_projects: {
         Row: {
+          client_contact_email: string | null
+          client_contact_name: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -1024,6 +1062,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_contact_email?: string | null
+          client_contact_name?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1041,6 +1081,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_contact_email?: string | null
+          client_contact_name?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
