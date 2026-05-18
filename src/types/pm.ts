@@ -20,11 +20,15 @@ export interface MockUser {
 
 export type Track = 'pm' | 'production' | 'strategy' | 'analytics';
 
+export type WorkType = 'request' | 'project';
+export const WORK_TYPES: WorkType[] = ['request', 'project'];
+
 export interface PmProject {
   id: string;
   title: string;
   client_id: string | null;
   type: ProjectType;
+  work_type: WorkType;
   status: ProjectStatus;
   go_live_date: string | null;
   start_date: string | null;
