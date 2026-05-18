@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_projects ADD COLUMN work_type text NOT NULL DEFAULT 'project' CHECK (work_type IN ('request','project'));
