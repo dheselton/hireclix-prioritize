@@ -236,22 +236,24 @@ export default function ProjectDetail() {
               placeholder="Project brief…"
             />
           </CardContent></Card>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Card><CardContent className="p-4 space-y-2">
-              <div className="text-xs uppercase text-muted-foreground mb-1">Key Dates</div>
-              <div className="text-sm flex items-center justify-between gap-2">
-                <span>Kickoff</span>
-                <DatePicker value={p.kickoff_date ?? null} onChange={v => updateProject(project.id, { kickoff_date: v ?? null } as any).then(reload)} className="w-36 h-8" />
-              </div>
-              <div className="text-sm flex items-center justify-between gap-2">
-                <span>Start</span>
-                <DatePicker value={project.start_date} onChange={v => updateProject(project.id, { start_date: v ?? null }).then(reload)} className="w-36 h-8" />
-              </div>
-              <div className="text-sm flex items-center justify-between gap-2">
-                <span>Go-Live</span>
-                <span className="text-muted-foreground">{fmtDate(project.go_live_date)}</span>
-              </div>
-            </CardContent></Card>
+          <div className={`grid grid-cols-1 ${isRequest ? "md:grid-cols-2" : "md:grid-cols-3"} gap-3`}>
+            {!isRequest && (
+              <Card><CardContent className="p-4 space-y-2">
+                <div className="text-xs uppercase text-muted-foreground mb-1">Key Dates</div>
+                <div className="text-sm flex items-center justify-between gap-2">
+                  <span>Kickoff</span>
+                  <DatePicker value={p.kickoff_date ?? null} onChange={v => updateProject(project.id, { kickoff_date: v ?? null } as any).then(reload)} className="w-36 h-8" />
+                </div>
+                <div className="text-sm flex items-center justify-between gap-2">
+                  <span>Start</span>
+                  <DatePicker value={project.start_date} onChange={v => updateProject(project.id, { start_date: v ?? null }).then(reload)} className="w-36 h-8" />
+                </div>
+                <div className="text-sm flex items-center justify-between gap-2">
+                  <span>Go-Live</span>
+                  <span className="text-muted-foreground">{fmtDate(project.go_live_date)}</span>
+                </div>
+              </CardContent></Card>
+            )}
             <TeamCard projectId={project.id} />
             <ClientCard project={p} onChange={reload} />
           </div>
@@ -291,14 +293,17 @@ export default function ProjectDetail() {
             userRole={user?.role}
             meId={user?.id ?? null}
             projectId={project.id}
+            flat={isRequest}
           />
         </TabsContent>
 
-        <TabsContent value="timeline">
-          <GanttChart tasks={tasks} deps={deps} onTaskClick={drawer.open}
-            onProposeReschedule={(diffs) => { setPendingDiffs(diffs); setPendingGoLive(project.go_live_date); }} />
-          <p className="text-xs text-muted-foreground mt-2">Drag a bar to propose a reschedule. Bold outline = critical path. Dashed line = today.</p>
-        </TabsContent>
+        {!isRequest && (
+          <TabsContent value="timeline">
+            <GanttChart tasks={tasks} deps={deps} onTaskClick={drawer.open}
+              onProposeReschedule={(diffs) => { setPendingDiffs(diffs); setPendingGoLive(project.go_live_date); }} />
+            <p className="text-xs text-muted-foreground mt-2">Drag a bar to propose a reschedule. Bold outline = critical path. Dashed line = today.</p>
+          </TabsContent>
+        )}
 
         <TabsContent value="files">
           <FilesTab projectId={project.id} tasks={tasks} onOpenTask={drawer.open} />
