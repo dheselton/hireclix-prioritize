@@ -485,28 +485,37 @@ export type Database = {
       }
       pm_attachments: {
         Row: {
+          file_size: number | null
           id: string
+          label: string | null
           name: string
           project_id: string | null
           task_id: string | null
+          type: string
           uploaded_at: string
           uploaded_by: string | null
           url: string
         }
         Insert: {
+          file_size?: number | null
           id?: string
+          label?: string | null
           name: string
           project_id?: string | null
           task_id?: string | null
+          type?: string
           uploaded_at?: string
           uploaded_by?: string | null
           url: string
         }
         Update: {
+          file_size?: number | null
           id?: string
+          label?: string | null
           name?: string
           project_id?: string | null
           task_id?: string | null
+          type?: string
           uploaded_at?: string
           uploaded_by?: string | null
           url?: string
@@ -662,6 +671,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pm_design_rounds: {
+        Row: {
+          created_at: string
+          feedback_notes: string | null
+          id: string
+          round_number: number
+          status: string
+          submitted_date: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_notes?: string | null
+          id?: string
+          round_number?: number
+          status?: string
+          submitted_date?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_notes?: string | null
+          id?: string
+          round_number?: number
+          status?: string
+          submitted_date?: string | null
+          task_id?: string
+        }
+        Relationships: []
+      }
+      pm_dev_status_log: {
+        Row: {
+          author_id: string | null
+          created_at: string
+          id: string
+          note: string
+          task_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          note: string
+          task_id: string
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string
+          task_id?: string
+        }
+        Relationships: []
       }
       pm_form_fields: {
         Row: {
