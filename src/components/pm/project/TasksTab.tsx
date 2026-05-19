@@ -293,21 +293,47 @@ export function TasksTab({ tasks, projectId, meId }: {
 
       {/* Board */}
       {view === "kanban" && (
-        <div className="grid grid-cols-4 gap-3">
-          {STATUS_GROUPS.map(g => (
-            <div key={g.id} className="space-y-2">
-              <div className="flex items-center gap-2 px-1">
-                <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
-                <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{byGroup[g.id].length}</span>
-              </div>
-              <div className="space-y-2 min-h-[80px]">
-                {byGroup[g.id].map(t => (
-                  <TaskCard key={t.id} task={t} count={counts.get(t.id)} onClick={() => openTask(t.id)} />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            if (snapshotRef.current) setBoardTasks(snapshotRef.current);
+            snapshotRef.current = null;
+            setActiveId(null);
+          }}
+        >
+          <div className="grid grid-cols-4 gap-3">
+            {STATUS_GROUPS.map(g => (
+              <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
+                {boardByGroup[g.id].map(t => (
+                  <BoardTaskCard
+                    key={t.id}
+                    task={t}
+                    count={counts.get(t.id)}
+                    onClick={() => openTask(t.id)}
+                    onStatusChange={(gid) => changeStatus(t.id, gid)}
+                    onDateChange={(iso) => changeDate(t.id, iso)}
+                  />
                 ))}
-              </div>
-            </div>
-          ))}
-        </div>
+              </BoardColumn>
+            ))}
+          </div>
+          <DragOverlay>
+            {activeTask ? (
+              <BoardTaskCard
+                task={activeTask}
+                count={counts.get(activeTask.id)}
+                onClick={() => {}}
+                onStatusChange={() => {}}
+                onDateChange={() => {}}
+                overlay
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );
