@@ -372,28 +372,3 @@ function TaskRow({ task, groupColorBg, count, onClick }: {
   );
 }
 
-function TaskCard({ task, count, onClick }: { task: PmTask; count?: SubtaskCount; onClick: () => void }) {
-  const preview = stripHtml(task.description);
-  return (
-    <Card onClick={onClick} className="cursor-pointer transition hover:border-info">
-      <CardContent className="p-3 space-y-2 min-h-[110px] flex flex-col">
-        <div className="text-[12px] font-bold leading-snug line-clamp-2">{task.title}</div>
-        {preview && (
-          <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
-        )}
-        <span className={`inline-block self-start text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
-          {task.type}
-        </span>
-        <div className="flex items-center justify-between pt-1 mt-auto">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>{fmtDate(task.due_date) || "—"}</span>
-            {count && count.total > 0 && (
-              <span>· {count.done}/{count.total} subtasks</span>
-            )}
-          </div>
-          <UserAvatar userId={task.assignee_id} size="xs" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
