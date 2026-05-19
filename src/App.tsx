@@ -27,6 +27,9 @@ import PublicForm from "./pages/pm/PublicForm";
 import Templates from "./pages/pm/Templates";
 import TemplateBuilder from "./pages/pm/TemplateBuilder";
 import Integrations from "./pages/pm/Integrations";
+import TaskWorkspace from "./pages/pm/TaskWorkspace";
+import { ActiveTimerProvider } from "@/components/pm/timer/ActiveTimerProvider";
+import { FloatingTimerTray } from "@/components/pm/timer/FloatingTimerTray";
 
 const queryClient = new QueryClient();
 
