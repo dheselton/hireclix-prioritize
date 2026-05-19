@@ -68,20 +68,20 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         start_date: new Date().toISOString().slice(0, 10),
         created_by: user?.id ?? null,
       } as any);
-      const titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
-      if (titles.length) {
-        await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
-          project_id: proj.id,
-          title,
-          type: "design",
-          status: user?.id ? "claimed" : "unclaimed",
-          priority: "medium",
-          duration_days: 1,
-          sort_order: i * 10,
-          created_by: user?.id ?? null,
-          assignee_id: user?.id ?? null,
-        })) as any);
-      }
+      let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
+      // Always create at least one task so the request shows up in the creator's queue.
+      if (!titles.length) titles = [reqForm.title.trim()];
+      await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
+        project_id: proj.id,
+        title,
+        type: "design",
+        status: user?.id ? "claimed" : "unclaimed",
+        priority: "medium",
+        duration_days: 1,
+        sort_order: i * 10,
+        created_by: user?.id ?? null,
+        assignee_id: user?.id ?? null,
+      })) as any);
       toast.success("Request created");
       onOpenChange(false);
       onCreated?.();
