@@ -90,7 +90,12 @@ export default function ProjectList() {
         <ProjectGridView projects={visible} tasks={tasks} />
       )}
 
-      <CreateWorkDialog open={open} onOpenChange={setOpen} onCreated={reload} />
+      <CreateWorkDialog
+        open={open !== null}
+        onOpenChange={(v) => { if (!v) setOpen(null); }}
+        initialStep={open ?? "select"}
+        onCreated={reload}
+      />
       <TaskDrawer />
     </div>
   );
