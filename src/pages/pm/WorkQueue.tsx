@@ -222,6 +222,24 @@ export default function WorkQueue() {
 
   const isSubmitter = role === "submitter";
 
+  // Scroll to the section specified by ?section= once data has loaded.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("section");
+    if (!target || !sections.length) return;
+    const el = document.getElementById(`section-${target}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-primary/40", "rounded-md");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary/40", "rounded-md"), 1800);
+    }
+    params.delete("section");
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
+  }, [sections.length]);
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {!isSubmitter && <UnclaimedBanner hideCta />}
