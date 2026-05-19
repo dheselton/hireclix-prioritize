@@ -43,11 +43,14 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
 
   const teamLabel = role === "pm" ? "team" : TEAM_LABEL[myTeam].toLowerCase();
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
+  const queueLink = projectId
+    ? `/pm/projects/${projectId}`
+    : (role === "pm" ? "/pm?section=unclaimed-projects" : "/pm?section=unclaimed-lane");
 
   return (
     <div className="sticky top-0 z-30 -mx-6 -mt-6 mb-2 px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/40 backdrop-blur">
       <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto">
-        <div className="flex items-center gap-2.5 text-sm">
+        <Link to={queueLink} className="flex items-center gap-2.5 text-sm flex-1 hover:underline underline-offset-2">
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white unclaimed-pulse">
             <Inbox className="h-3.5 w-3.5" />
           </span>
@@ -55,11 +58,11 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
             <strong>{unclaimed.length}</strong>{" "}
             unclaimed {teamLabel} {unclaimed.length === 1 ? "task" : "tasks"} waiting to be grabbed.
           </span>
-        </div>
+        </Link>
         <div className="flex items-center gap-1">
           {!hideCta && (
             <Button asChild size="sm" variant="outline" className="h-7">
-              <Link to="/pm">View queue →</Link>
+              <Link to={queueLink}>View queue →</Link>
             </Button>
           )}
           <Button
