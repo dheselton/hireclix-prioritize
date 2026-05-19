@@ -143,6 +143,11 @@ export default function WorkQueue() {
         tasks: filtered.filter(t => t.status === "unclaimed" && isRequestTask(t)),
       });
       list.push({
+        key: "unclaimed-projects",
+        title: "Unclaimed Project Tasks",
+        tasks: filtered.filter(t => t.status === "unclaimed" && isProjectTask(t)),
+      });
+      list.push({
         key: "active-projects",
         title: "Active Projects",
         tasks: filtered.filter(t => active(t) && isProjectTask(t)),
@@ -163,6 +168,11 @@ export default function WorkQueue() {
     } else if (role === "designer" || role === "developer") {
       const laneType = role === "designer" ? "design" : "dev";
       const inMyLane = (t: PmTask) => t.type === laneType;
+      list.push({
+        key: "unclaimed-lane",
+        title: "Unclaimed in my lane",
+        tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed || inMyLane(t))),
+      });
       list.push({
         key: "quick-tasks",
         title: "Quick Tasks (Requests)",
