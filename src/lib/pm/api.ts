@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { emitTasksChanged } from '@/lib/pm/refresh';
+import { getCurrentUserId } from '@/lib/pm/mockUser';
 import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
 
 export const fetchProjects = async () => {
