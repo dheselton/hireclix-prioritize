@@ -1,86 +1,75 @@
-# Manual requests + embeddable intake forms
+# Plan — Updated Build Review v2
 
-## 1. Manual "New Request" — make it obvious
+Refresh `/mnt/documents/review/REVIEW.md` and the `screens/` folder so it reflects every change shipped since the May 13 review, and add a proper end-to-end **workflow + user-flow diagram** alongside the screenshots.
 
-Today: only `+ New` → dialog → pick Quick Request. Fine but buried.
+## What's new since the last review (will be folded in)
 
-Changes:
-- **WorkQueue header**: split the single `+ New` into two buttons — `+ Quick Request` (opens dialog pre-stepped to `request`) and `+ Project` (pre-stepped to `project`). Keeps one combined dialog under the hood.
-- **CreateWorkDialog**: accept an optional `initialStep` prop so callers can skip the chooser.
-- **Empty states** in Unclaimed sections: add a "Add a request manually" inline CTA that opens the dialog in request mode.
-- **Keyboard shortcut**: `N` anywhere in `/pm/*` opens the dialog (request step by default).
+1. **Clickable-callout rule** — every CTA / alert / stat tile is now a deep link into its filtered view via `buildQueueLink()` + URL-driven chip filters.
+2. **Unclaimed banner ↔ lane reconciliation** — banner and "Unclaimed in my lane" both use the team concept (designer sees design + content, dev sees dev) so counts match.
+3. **Quick Request vs Project split** — Work Queue + Projects headers now expose two distinct CTAs (`+ Quick Request`, `+ Project`) wired through `CreateWorkDialog`'s new `initialStep` prop.
+4. **Embeddable Forms** — `/pm/forms/:id/edit` now has a Share & Embed panel (Direct link / Iframe / auto-resizing JS snippet via `public/embed/pm-form.js`). `PublicForm` supports `?embed=1` (transparent, no chrome, `postMessage` resize beacon).
+5. **Seeded HireClix intake forms** — *General Creative* (`/f/creative-request-general`) and *Web / Email* (`/f/creative-request-web-email`) modeled on the HireClix Wix forms.
+6. **Role-switcher / dev-mode caveats** still apply — auth disabled, PM tables permissive RLS.
 
-## 2. Embeddable public forms
+## Deliverables
 
-`pm_forms` already has `shareable_slug` and `/f/:slug` (`PublicForm.tsx`) renders the public form. We extend this surface with embed options.
+### 1. New screenshots (replace + add)
+Re-capture at 1440×900 from the live preview, save to `/mnt/documents/review/screens/`:
 
-### A. Iframe embed (no code changes needed on host page)
+- `01-work-queue-pm.png` — Work Queue showing the new split `+ Quick Request` / `+ Project` buttons, clickable stat tiles, unclaimed banner.
+- `02-board-projects.png`, `03-board-kanban.png` — refresh.
+- `04-projects.png` — show split create buttons.
+- `05-project-detail-overview.png`, `06-project-detail-timeline.png`, `07-project-detail-tasks.png`, `08-task-drawer.png` — refresh.
+- `09-team-workload.png`, `10-global-timeline.png` — refresh.
+- `11-forms.png` — now populated with the 3 forms (Creative Request, General, Web/Email).
+- `11b-form-builder-embed.png` — **new**: FormBuilder showing the Share & Embed panel (3 cards).
+- `11c-public-form-general.png` — **new**: `/f/creative-request-general` rendered standalone.
+- `11d-public-form-web-email.png` — **new**: `/f/creative-request-web-email` rendered standalone.
+- `12-templates.png`, `13-template-builder.png`, `14-integrations.png` — refresh.
+- `15-roadmap-dashboard.png`, `16-product-roadmap.png` — refresh (legacy section).
 
-In `FormBuilder.tsx` add an **Embed** panel that generates:
+Capture via headed browser tool against the preview URL, using the TopBar role switcher to take the Work Queue shot as the **PM** role.
 
-```html
-<iframe
-  src="https://<app-host>/f/<slug>?embed=1"
-  width="100%"
-  height="720"
-  style="border:0;max-width:640px;"
-  loading="lazy"
-  title="<Form name>"
-></iframe>
+### 2. End-to-end flow diagram (new)
+Add `/mnt/documents/review/flow.mmd` (Mermaid) referenced from REVIEW.md as a `lov-artifact`. Two sub-diagrams in one file:
+
+- **User flow** — Submitter (public form) → Unclaimed queue → PM triage → Designer/Dev claim → Review → Approved → Go-Live.
+- **System flow** — Form submit → `pm_form_submissions` + auto-create `pm_tasks` / `pm_projects` → activity log → webhooks (`pm_webhook_deliveries`) → realtime → UI.
+
+### 3. Rewritten `REVIEW.md`
+Same structure as v1, but:
+
+- New **"What changed since v1"** section at the top.
+- New **§7. Forms & Embeds** section covering the embed panel, JS snippet, iframe snippet, and the two seeded HireClix forms (with their public slugs).
+- New **§2.1 Clickable callouts** callout block documenting the project-wide rule + `buildQueueLink` helper.
+- Updated **§2 Work Queue** copy describing the split `+ Quick Request` / `+ Project` buttons and the lane-aligned unclaimed counts.
+- New **§11. End-to-end workflow diagram** section embedding the Mermaid artifact.
+- Updated **End-to-end user flow** narrative to include the embed/form intake path and the manual-create path.
+- Functional-notes section updated: `pm_forms` slugs seeded, `public/embed/pm-form.js` loader, `?embed=1` `postMessage` contract (`{type:"lovable-pm-form", event:"resize", slug, height}`).
+
+### 4. File layout after the refresh
+
+```text
+/mnt/documents/review/
+  REVIEW.md            (rewritten)
+  flow.mmd             (new mermaid artifact)
+  screens/
+    01..16 ...png      (refreshed)
+    11b-form-builder-embed.png
+    11c-public-form-general.png
+    11d-public-form-web-email.png
 ```
 
-`PublicForm.tsx` reads `?embed=1` and:
-- hides the page chrome (header, footer, background gradients)
-- uses transparent background
-- posts a `postMessage({ type: 'lovable-pm-form', event: 'resize', height })` on mount + on resize so a companion JS snippet (below) can auto-size
+## Technical notes
 
-### B. JS snippet embed (auto-resizing, no fixed height)
-
-```html
-<div data-pmform="<slug>"></div>
-<script async src="https://<app-host>/embed/pm-form.js"></script>
-```
-
-Add a tiny static script at `public/embed/pm-form.js` that:
-- finds every `[data-pmform]`
-- injects an iframe pointing at `/f/<slug>?embed=1`
-- listens for the `resize` postMessage and updates iframe height
-- supports `data-pmform-theme="light|dark"` passed via query string
-
-### C. Direct link + QR
-
-Already have the link; add a "Copy link" button and a small QR (use `qrcode` lib, ~3kb) for printable handoffs.
-
-### D. Embed panel UI
-
-New tab in `FormBuilder.tsx` → **Share & Embed** with three cards:
-1. **Direct link** — copy button + Open
-2. **Iframe** — code block + copy
-3. **JS snippet** — code block + copy
-
-All snippets use the project's preview/published origin (`window.location.origin`).
-
-## 3. Security / hygiene
-
-- Public form submits already work via anon key against `pm_form_submissions` (permissive RLS). Keep as-is.
-- Add basic per-slug rate limiting later (out of scope here).
-- `?embed=1` only changes presentation; no auth bypass.
-
-## Files
-
-**New**
-- `public/embed/pm-form.js` — auto-resize loader script
-
-**Modified**
-- `src/components/pm/CreateWorkDialog.tsx` — add `initialStep` prop
-- `src/pages/pm/WorkQueue.tsx` — split header CTAs, wire empty-state CTA, keyboard shortcut
-- `src/pages/pm/ProjectList.tsx` — same dual-CTA treatment
-- `src/pages/pm/PublicForm.tsx` — `?embed=1` mode + postMessage resize beacon
-- `src/pages/pm/FormBuilder.tsx` — new "Share & Embed" panel with iframe/JS/link snippets + copy buttons
+- Screenshots: use `browser--navigate_to_url` + `browser--set_viewport_size 1440×900` + `browser--screenshot` per route. Where the role matters (Work Queue), use `browser--act` to flip the TopBar role switcher to PM, then Designer for one alt shot (`01b-work-queue-designer.png`) so reviewers can see the lane logic.
+- Mermaid: write to `/mnt/documents/review/flow.mmd`; render inline in chat via `<lov-artifact url="/__l5e/documents/review/flow.mmd" mime_type="text/vnd.mermaid"></lov-artifact>`.
+- No source-code edits — this is pure documentation + screenshots.
 
 ## Out of scope
-- Hosted form themes / custom CSS
-- Captcha / spam protection
-- Webhook signing for form submissions (already partially in `pm_webhooks`)
 
-Want me to ship all of this, or just the embed pieces first?
+- Any UI/UX changes (this is a review, not a build).
+- Tightening RLS or re-enabling auth.
+- New embed themes / captcha / webhook signing (already noted as future work).
+
+Reply **"go"** (or hit Implement) and I'll capture the screenshots, render the diagram, and publish the new `REVIEW.md`.
