@@ -283,7 +283,7 @@ export default function WorkQueue() {
           key={s.key}
           title={s.title}
           count={s.tasks.length}
-          extra={s.key === "unclaimed" && lane.length > 0 && (role === "designer" || role === "developer") ? (
+          extra={s.key === "unclaimed-lane" && (role === "designer" || role === "developer") ? (
             <Button size="sm" variant="ghost" className="h-7 text-xs"
               onClick={() => setShowAllUnclaimed(v => !v)}>
               {showAllUnclaimed ? "Show only my lane" : "Show all unclaimed"}
