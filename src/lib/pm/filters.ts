@@ -48,6 +48,8 @@ export function applyTaskChips(
         }
         case "blocked":
           if (t.status !== "blocked") return false; break;
+        case "unclaimed":
+          if (t.status !== "unclaimed") return false; break;
       }
     }
     return true;
