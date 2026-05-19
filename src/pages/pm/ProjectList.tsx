@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function ProjectList() {
   const [projects, setProjects] = useState<PmProject[]>([]);
   const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<null | "select" | "request" | "project">(null);
   const { user } = useCurrentUser();
   const [mode, setMode] = useViewMode("projects", "projects");
   const drawer = useTaskDrawerLink();
