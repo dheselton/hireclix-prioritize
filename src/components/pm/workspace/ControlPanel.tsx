@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
-  if (s === "done") return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+  if (s === "complete" || s === "approved") return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
   if (s === "in_progress" || s === "in_review") return "bg-primary/15 text-primary border-primary/30";
   if (s === "claimed") return "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30";
   return "bg-muted text-muted-foreground border-border";
