@@ -48,6 +48,7 @@ export default function WorkQueue() {
   const { types } = useTypeFilter("workQueue");
   const typesKey = useMemo(() => [...types].sort().join(","), [types]);
   const [showAllUnclaimed, setShowAllUnclaimed] = useState(false);
+  const [createOpen, setCreateOpen] = useState<null | "request" | "project">(null);
 
   const reload = async () => {
     const [t, p] = await Promise.all([
