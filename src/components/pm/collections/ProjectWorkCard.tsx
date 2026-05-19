@@ -104,26 +104,33 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
   const top = expanded ? visibleTop : visibleTop.slice(0, 3);
   const hidden = visibleTop.length - top.length;
 
+  const isRequest = ((project as any).work_type ?? "project") === "request";
+
   return (
     <Card className={cn(
       "relative overflow-hidden transition hover:shadow-md",
       counts.unclaimed > 0 && "ring-1 ring-amber-400/40",
     )}>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className={cn("space-y-3", isRequest ? "p-3" : "p-4")}>
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <button
             className="text-left flex-1 group"
             onClick={() => onOpenProject(project.id)}
           >
-            <div className="font-semibold leading-tight group-hover:underline">{project.title}</div>
+            <div className={cn("font-semibold leading-tight group-hover:underline", isRequest && "text-sm")}>{project.title}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
               <WorkTypeBadge workType={(project as any).work_type ?? "project"} />
-              <Badge variant="outline" className="text-[10px] capitalize">{project.type.replace(/_/g," ")}</Badge>
-              {project.go_live_date && (
+              {!isRequest && (
+                <Badge variant="outline" className="text-[10px] capitalize">{project.type.replace(/_/g," ")}</Badge>
+              )}
+              {!isRequest && project.go_live_date && (
                 <span className="inline-flex items-center gap-1">
                   <Calendar className="h-3 w-3" /> Go-live {fmtDate(project.go_live_date)}
                 </span>
+              )}
+              {isRequest && counts.total > 0 && (
+                <span>{counts.total} task{counts.total === 1 ? "" : "s"}</span>
               )}
             </div>
           </button>
