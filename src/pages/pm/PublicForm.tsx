@@ -3,11 +3,10 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
@@ -96,22 +95,12 @@ export default function PublicForm() {
             <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
           </div>
           {fields.map(f => (
-            <div key={f.id}>
-              <Label>{f.label}{f.required && <span className="text-red-500"> *</span>}</Label>
-              {f.type === "textarea" ? (
-                <Textarea value={values[f.id] ?? ""} onChange={e => setValues({ ...values, [f.id]: e.target.value })} />
-              ) : f.type === "dropdown" ? (
-                <Select value={values[f.id] ?? ""} onValueChange={v => setValues({ ...values, [f.id]: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent className="z-50 bg-popover">
-                    {(f.options || []).map((o: string) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input type={f.type === "email" ? "email" : f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
-                  value={values[f.id] ?? ""} onChange={e => setValues({ ...values, [f.id]: e.target.value })} />
-              )}
-            </div>
+            <FormFieldRenderer
+              key={f.id}
+              field={f}
+              value={values[f.id]}
+              onChange={(v) => setValues({ ...values, [f.id]: v })}
+            />
           ))}
           <Button className="w-full" onClick={submit}>Submit</Button>
         </CardContent></Card>

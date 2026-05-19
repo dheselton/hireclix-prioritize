@@ -227,6 +227,33 @@ export default function ProjectDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
+          {isRequest && project.custom_fields && Object.keys(project.custom_fields).filter(k => k !== "request_type").length > 0 && (
+            <Card><CardContent className="p-4 space-y-2">
+              <div className="text-xs uppercase text-muted-foreground flex items-center gap-2">
+                Request details
+                {project.custom_fields.request_type && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted">
+                    {String(project.custom_fields.request_type).replace(/_/g, " ")}
+                  </span>
+                )}
+              </div>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                {Object.entries(project.custom_fields)
+                  .filter(([k]) => k !== "request_type")
+                  .map(([k, v]: [string, any]) => {
+                    const label = v?.label ?? k;
+                    const value = v?.value ?? v;
+                    const display = Array.isArray(value) ? value.join(", ") : String(value);
+                    return (
+                      <div key={k} className="flex flex-col">
+                        <dt className="text-xs text-muted-foreground">{label}</dt>
+                        <dd className="break-words">{display || <span className="text-muted-foreground italic">—</span>}</dd>
+                      </div>
+                    );
+                  })}
+              </dl>
+            </CardContent></Card>
+          )}
           <Card><CardContent className="p-4 space-y-2">
             <div className="text-xs uppercase text-muted-foreground">Brief</div>
             <RichTextEditor
