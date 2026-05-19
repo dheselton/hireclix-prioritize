@@ -59,6 +59,9 @@ All colors MUST be HSL.
     /* Radius */
     --radius: 0.75rem;
 
+    /* Code block background (dark, intentional) */
+    --code-bg: 0 0% 12%;
+
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 13%;

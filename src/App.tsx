@@ -28,6 +28,7 @@ import Templates from "./pages/pm/Templates";
 import TemplateBuilder from "./pages/pm/TemplateBuilder";
 import Integrations from "./pages/pm/Integrations";
 import TaskWorkspace from "./pages/pm/TaskWorkspace";
+import Snippets from "./pages/pm/Snippets";
 import { ActiveTimerProvider } from "@/components/pm/timer/ActiveTimerProvider";
 import { FloatingTimerTray } from "@/components/pm/timer/FloatingTimerTray";
 
@@ -78,6 +79,7 @@ function App() {
                 <Route path="/pm/templates" element={<AppLayout><Templates /></AppLayout>} />
                 <Route path="/pm/templates/:id/edit" element={<AppLayout><TemplateBuilder /></AppLayout>} />
                 <Route path="/pm/integrations" element={<AppLayout><Integrations /></AppLayout>} />
+                <Route path="/snippets" element={<AppLayout><Snippets /></AppLayout>} />
 
                 {/* Legacy roadmap */}
                 <Route path="/roadmap" element={<AppLayout><ProductRoadmap /></AppLayout>} />

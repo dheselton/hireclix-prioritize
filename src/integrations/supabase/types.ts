@@ -1153,6 +1153,109 @@ export type Database = {
           },
         ]
       }
+      pm_snippet_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      pm_snippet_variations: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          snippet_id: string
+          sort_order: number
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          snippet_id: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          snippet_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_snippet_variations_snippet_id_fkey"
+            columns: ["snippet_id"]
+            isOneToOne: false
+            referencedRelation: "pm_snippets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_snippets: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          language: string | null
+          project_ids: string[] | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string | null
+          project_ids?: string[] | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string | null
+          project_ids?: string[] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_snippets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "pm_snippet_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_subtasks: {
         Row: {
           complete: boolean
