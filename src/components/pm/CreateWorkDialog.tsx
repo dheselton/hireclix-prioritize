@@ -74,11 +74,12 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           project_id: proj.id,
           title,
           type: "design",
-          status: "unclaimed",
+          status: user?.id ? "claimed" : "unclaimed",
           priority: "medium",
           duration_days: 1,
           sort_order: i * 10,
           created_by: user?.id ?? null,
+          assignee_id: user?.id ?? null,
         })) as any);
       }
       toast.success("Request created");
