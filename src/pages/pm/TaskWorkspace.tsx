@@ -19,6 +19,7 @@ import { CollabHub } from "@/components/pm/workspace/CollabHub";
 import { QuickChecklist } from "@/components/pm/workspace/QuickChecklist";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
 import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
+import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
@@ -156,6 +157,7 @@ export default function TaskWorkspace() {
         <div className="grid gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
           {/* LEFT */}
           <div className="space-y-6 min-w-0">
+            <DescriptionSection task={task} patch={patch} />
             {task.status === "blocked" && <BlockerBanner />}
             <AssetHub taskId={task.id} projectId={task.project_id} />
             <LinksSection taskId={task.id} />
