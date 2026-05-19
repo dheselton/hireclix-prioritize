@@ -50,7 +50,17 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
 };
 
 export const createTask = async (task: Partial<PmTask>) => {
-  const { data, error } = await supabase.from('pm_tasks').insert(task as any).select().single();
+  const uid = getCurrentUserId();
+  const payload: any = { ...task };
+  if (uid) {
+    if (payload.created_by === undefined) payload.created_by = uid;
+    // Auto-assign creator to the task they create (any role, incl. submitter/PM).
+    if (payload.assignee_id === undefined || payload.assignee_id === null) {
+      payload.assignee_id = uid;
+      if (!payload.status || payload.status === 'unclaimed') payload.status = 'claimed';
+    }
+  }
+  const { data, error } = await supabase.from('pm_tasks').insert(payload).select().single();
   if (error) throw error;
   emitTasksChanged();
   return data as unknown as PmTask;
@@ -69,8 +79,19 @@ export const updateProject = async (id: string, patch: Partial<PmProject>) => {
 };
 
 export const createProject = async (p: Partial<PmProject>) => {
-  const { data, error } = await supabase.from('pm_projects').insert(p as any).select().single();
+  const uid = getCurrentUserId();
+  const payload: any = { ...p };
+  if (uid && payload.created_by === undefined) payload.created_by = uid;
+  const { data, error } = await supabase.from('pm_projects').insert(payload).select().single();
   if (error) throw error;
+  // Ensure creator is a project member so they're "assigned" to the project.
+  if (uid && (data as any)?.id) {
+    await supabase.from('pm_project_members').insert({
+      project_id: (data as any).id,
+      user_id: uid,
+      role: 'creator',
+    } as any);
+  }
   return data as unknown as PmProject;
 };
 
