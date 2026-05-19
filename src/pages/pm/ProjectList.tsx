@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Zap, FolderKanban } from "lucide-react";
 import { fetchProjects, fetchTasks } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function ProjectList() {
   const [projects, setProjects] = useState<PmProject[]>([]);
   const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<null | "select" | "request" | "project">(null);
   const { user } = useCurrentUser();
   const [mode, setMode] = useViewMode("projects", "projects");
   const drawer = useTaskDrawerLink();
@@ -56,7 +56,16 @@ export default function ProjectList() {
         modes={["projects", "list", "grid"]}
         chipState={{ ...chips, hide: ["watching"] }}
         extraControls={<WorkTypeFilterToggle value={wt.value} onChange={wt.set} />}
-        actions={user?.role === "submitter" ? null : <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New</Button>}
+        actions={user?.role === "submitter" ? null : (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setOpen("request")}>
+              <Zap className="h-4 w-4 mr-1" /> Quick Request
+            </Button>
+            <Button size="sm" onClick={() => setOpen("project")}>
+              <FolderKanban className="h-4 w-4 mr-1" /> Project
+            </Button>
+          </div>
+        )}
       />
 
       {mode === "projects" ? (
@@ -81,7 +90,12 @@ export default function ProjectList() {
         <ProjectGridView projects={visible} tasks={tasks} />
       )}
 
-      <CreateWorkDialog open={open} onOpenChange={setOpen} onCreated={reload} />
+      <CreateWorkDialog
+        open={open !== null}
+        onOpenChange={(v) => { if (!v) setOpen(null); }}
+        initialStep={open ?? "select"}
+        onCreated={reload}
+      />
       <TaskDrawer />
     </div>
   );

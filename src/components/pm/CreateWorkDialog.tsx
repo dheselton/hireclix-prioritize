@@ -18,13 +18,14 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated?: () => void;
+  initialStep?: "select" | "request" | "project";
 }
 
 type Step = "select" | "request" | "project";
 
-export function CreateWorkDialog({ open, onOpenChange, onCreated }: Props) {
+export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
   const { user } = useCurrentUser();
-  const [step, setStep] = useState<Step>("select");
+  const [step, setStep] = useState<Step>(initialStep);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -40,7 +41,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    setStep("select");
+    setStep(initialStep);
     setReqForm({ title: "", client_id: "", description: "" });
     setQuickTasks([""]);
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
@@ -48,7 +49,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated }: Props) {
       const { data } = await supabase.from("clients").select("id,name").order("name");
       setClients(data || []);
     })();
-  }, [open]);
+  }, [open, initialStep]);
 
   async function submitRequest() {
     if (!reqForm.title.trim() || !reqForm.client_id) {

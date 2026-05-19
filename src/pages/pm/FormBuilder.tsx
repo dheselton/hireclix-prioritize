@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -129,6 +129,84 @@ export default function FormBuilder() {
           </div>
         </CardContent></Card>
       </div>
+
+      <EmbedPanel form={form} />
     </div>
+  );
+}
+
+function EmbedPanel({ form }: { form: any }) {
+  const slug = form?.shareable_slug;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  if (!slug) {
+    return (
+      <Card><CardContent className="p-4 text-sm text-muted-foreground">
+        This form has no public slug yet — save the form to generate one.
+      </CardContent></Card>
+    );
+  }
+  const publicUrl = `${origin}/f/${slug}`;
+  const iframeSnippet = `<iframe
+  src="${publicUrl}?embed=1"
+  width="100%"
+  height="720"
+  style="border:0;max-width:640px;background:transparent;"
+  loading="lazy"
+  title="${(form.name || "Request form").replace(/"/g, "&quot;")}"
+></iframe>`;
+  const jsSnippet = `<div data-pmform="${slug}"></div>
+<script async src="${origin}/embed/pm-form.js"></script>`;
+
+  const copy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  };
+
+  return (
+    <Card><CardContent className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">Share &amp; Embed</div>
+          <div className="text-xs text-muted-foreground">Use the public link, drop in an iframe, or use the auto-resizing JS snippet on any website.</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="border border-border rounded p-3 space-y-2">
+          <div className="text-xs font-semibold uppercase text-muted-foreground">Direct link</div>
+          <Input readOnly value={publicUrl} onClick={(e: any) => e.currentTarget.select()} />
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => copy(publicUrl, "Link")}>
+              <Copy className="h-3 w-3 mr-1" /> Copy
+            </Button>
+            <Button size="sm" variant="ghost" asChild>
+              <a href={publicUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3 mr-1" /> Open</a>
+            </Button>
+          </div>
+        </div>
+
+        <div className="border border-border rounded p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">Iframe embed</div>
+            <Button size="sm" variant="outline" onClick={() => copy(iframeSnippet, "Iframe snippet")}>
+              <Copy className="h-3 w-3 mr-1" /> Copy
+            </Button>
+          </div>
+          <pre className="text-[11px] bg-muted/40 rounded p-2 overflow-auto whitespace-pre-wrap break-all max-h-40">{iframeSnippet}</pre>
+          <p className="text-[11px] text-muted-foreground">Fixed-height iframe. Works anywhere HTML is allowed.</p>
+        </div>
+
+        <div className="border border-border rounded p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">JS snippet (auto-resize)</div>
+            <Button size="sm" variant="outline" onClick={() => copy(jsSnippet, "JS snippet")}>
+              <Copy className="h-3 w-3 mr-1" /> Copy
+            </Button>
+          </div>
+          <pre className="text-[11px] bg-muted/40 rounded p-2 overflow-auto whitespace-pre-wrap break-all max-h-40">{jsSnippet}</pre>
+          <p className="text-[11px] text-muted-foreground">Loader script auto-sizes the iframe as the form grows.</p>
+        </div>
+      </div>
+    </CardContent></Card>
   );
 }

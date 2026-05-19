@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Inbox, Clock, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Inbox, Clock, AlertTriangle, CheckCircle2, ArrowRight, Zap, FolderKanban } from "lucide-react";
+import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
@@ -47,6 +48,7 @@ export default function WorkQueue() {
   const { types } = useTypeFilter("workQueue");
   const typesKey = useMemo(() => [...types].sort().join(","), [types]);
   const [showAllUnclaimed, setShowAllUnclaimed] = useState(false);
+  const [createOpen, setCreateOpen] = useState<null | "request" | "project">(null);
 
   const reload = async () => {
     const [t, p] = await Promise.all([
@@ -253,7 +255,17 @@ export default function WorkQueue() {
         modes={["projects", "list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
-        actions={!isSubmitter ? <WorkTypeFilterToggle value={workType.value} onChange={workType.set} /> : undefined}
+        actions={!isSubmitter ? (
+          <div className="flex items-center gap-2">
+            <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+            <Button size="sm" variant="outline" onClick={() => setCreateOpen("request")}>
+              <Zap className="h-4 w-4 mr-1" /> Quick Request
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen("project")}>
+              <FolderKanban className="h-4 w-4 mr-1" /> Project
+            </Button>
+          </div>
+        ) : undefined}
       />
 
       {isSubmitter && (
@@ -336,6 +348,12 @@ export default function WorkQueue() {
       ))}
 
       <TaskDrawer />
+      <CreateWorkDialog
+        open={createOpen !== null}
+        onOpenChange={(v) => { if (!v) setCreateOpen(null); }}
+        initialStep={createOpen ?? "select"}
+        onCreated={reload}
+      />
     </div>
   );
 }
