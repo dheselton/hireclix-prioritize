@@ -15,6 +15,8 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
+import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 
 export default function GlobalTimeline() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
