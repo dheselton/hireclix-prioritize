@@ -260,19 +260,27 @@ export default function WorkQueue() {
       {!isSubmitter && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard icon={<Clock className="h-4 w-4" />} label="My active" value={myActiveCount} />
-            <StatCard icon={<Inbox className="h-4 w-4" />} label="Unclaimed" value={unclaimedCount} />
-            <StatCard icon={<AlertTriangle className="h-4 w-4 text-red-500" />} label="Overdue (mine)" value={overdueMine} />
-            <StatCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label="Blocked" value={blockedCount} />
+            <StatCard to={buildQueueLink({ chips: ["assigned_to_me"] })} icon={<Clock className="h-4 w-4" />} label="My active" value={myActiveCount} />
+            <StatCard to={buildQueueLink({ section: role === "pm" ? "unclaimed-projects" : "unclaimed-lane" })} icon={<Inbox className="h-4 w-4" />} label="Unclaimed" value={unclaimedCount} />
+            <StatCard to={buildQueueLink({ chips: ["assigned_to_me", "overdue"] })} icon={<AlertTriangle className="h-4 w-4 text-red-500" />} label="Overdue (mine)" value={overdueMine} />
+            <StatCard to={buildQueueLink({ chips: ["blocked"] })} icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label="Blocked" value={blockedCount} />
           </div>
 
           {(overdueMine > 0 || blockedCount > 0) && (
             <Card className="border-red-500/30 bg-red-500/5">
               <CardContent className="p-3 flex items-center gap-3 text-sm">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
-                <div>
-                  {overdueMine > 0 && <span className="mr-3"><strong>{overdueMine}</strong> overdue</span>}
-                  {blockedCount > 0 && <span><strong>{blockedCount}</strong> blocked across all projects</span>}
+                <div className="flex items-center gap-3">
+                  {overdueMine > 0 && (
+                    <Link to={buildQueueLink({ chips: ["assigned_to_me", "overdue"] })} className="hover:underline">
+                      <strong>{overdueMine}</strong> overdue
+                    </Link>
+                  )}
+                  {blockedCount > 0 && (
+                    <Link to={buildQueueLink({ chips: ["blocked"] })} className="hover:underline">
+                      <strong>{blockedCount}</strong> blocked across all projects
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>
