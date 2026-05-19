@@ -56,7 +56,16 @@ export default function ProjectList() {
         modes={["projects", "list", "grid"]}
         chipState={{ ...chips, hide: ["watching"] }}
         extraControls={<WorkTypeFilterToggle value={wt.value} onChange={wt.set} />}
-        actions={user?.role === "submitter" ? null : <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New</Button>}
+        actions={user?.role === "submitter" ? null : (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setOpen("request")}>
+              <Zap className="h-4 w-4 mr-1" /> Quick Request
+            </Button>
+            <Button size="sm" onClick={() => setOpen("project")}>
+              <FolderKanban className="h-4 w-4 mr-1" /> Project
+            </Button>
+          </div>
+        )}
       />
 
       {mode === "projects" ? (
