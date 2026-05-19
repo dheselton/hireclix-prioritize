@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
@@ -8,7 +8,18 @@ import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { STATUS_GROUPS, groupForStatus, typeBadgeClass, priorityDotClass, type StatusGroupId } from "@/lib/pm/statusGroups";
-import type { PmTask } from "@/types/pm";
+import type { PmTask, TaskStatus } from "@/types/pm";
+import {
+  DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor,
+  useSensor, useSensors, closestCenter,
+  type DragStartEvent, type DragOverEvent, type DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { BoardColumn } from "./board/BoardColumn";
+import { BoardTaskCard } from "./board/BoardTaskCard";
+import { GROUP_PRIMARY_STATUS } from "./board/boardStyles";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
@@ -48,6 +59,166 @@ export function TasksTab({ tasks, projectId, meId }: {
   }, [filtered]);
 
   const counts = useSubtaskCounts(filtered.map(t => t.id));
+
+  // Board-only local state for optimistic D&D + inline edits
+  const [boardTasks, setBoardTasks] = useState<PmTask[]>(filtered);
+  const snapshotRef = useRef<PmTask[] | null>(null);
+  useEffect(() => {
+    setBoardTasks(prev => {
+      // Preserve local ordering when possible; sync identity + fields from incoming `filtered`.
+      const byId = new Map(filtered.map(t => [t.id, t]));
+      const kept = prev.filter(t => byId.has(t.id)).map(t => byId.get(t.id)!);
+      const keptIds = new Set(kept.map(t => t.id));
+      const added = filtered.filter(t => !keptIds.has(t.id));
+      return [...kept, ...added];
+    });
+  }, [filtered]);
+
+  const boardByGroup = useMemo(() => {
+    const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
+    for (const t of boardTasks) m[groupForStatus(t.status).id].push(t);
+    return m;
+  }, [boardTasks]);
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeTask = activeId ? boardTasks.find(t => t.id === activeId) ?? null : null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function findContainer(id: string): StatusGroupId | null {
+    if (id.startsWith("col:")) return id.slice(4) as StatusGroupId;
+    const t = boardTasks.find(x => x.id === id);
+    return t ? groupForStatus(t.status).id : null;
+  }
+
+  function handleDragStart(e: DragStartEvent) {
+    snapshotRef.current = boardTasks;
+    setActiveId(String(e.active.id));
+  }
+
+  function handleDragOver(e: DragOverEvent) {
+    const { active, over } = e;
+    if (!over) return;
+    const activeContainer = findContainer(String(active.id));
+    const overContainer = findContainer(String(over.id));
+    if (!activeContainer || !overContainer || activeContainer === overContainer) return;
+    setBoardTasks(prev => {
+      const activeTask = prev.find(t => t.id === active.id);
+      if (!activeTask) return prev;
+      const targetGroup = STATUS_GROUPS.find(g => g.id === overContainer)!;
+      const newStatus: TaskStatus = targetGroup.statuses.includes(activeTask.status)
+        ? activeTask.status
+        : GROUP_PRIMARY_STATUS[overContainer];
+      const updated = prev.map(t => t.id === active.id ? { ...t, status: newStatus } : t);
+      // Move to end of new container
+      const without = updated.filter(t => t.id !== active.id);
+      const moved = updated.find(t => t.id === active.id)!;
+      const targetList = updated.filter(t => groupForStatus(t.status).id === overContainer && t.id !== active.id);
+      const lastTargetId = targetList[targetList.length - 1]?.id;
+      const insertIdx = lastTargetId
+        ? without.findIndex(t => t.id === lastTargetId) + 1
+        : without.length;
+      const next = [...without];
+      next.splice(insertIdx, 0, moved);
+      return next;
+    });
+  }
+
+  async function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    setActiveId(null);
+    if (!over) { snapshotRef.current = null; return; }
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    let nextTasks = boardTasks;
+    const activeContainer = findContainer(activeId);
+    const overContainer = findContainer(overId);
+    if (!activeContainer || !overContainer) { snapshotRef.current = null; return; }
+
+    // Reorder within the same column
+    if (!overId.startsWith("col:") && activeId !== overId) {
+      const containerIds = boardTasks.filter(t => groupForStatus(t.status).id === overContainer).map(t => t.id);
+      const oldIdx = containerIds.indexOf(activeId);
+      const newIdx = containerIds.indexOf(overId);
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        const reorderedIds = arrayMove(containerIds, oldIdx, newIdx);
+        // Rebuild boardTasks preserving other columns' order
+        const others = boardTasks.filter(t => groupForStatus(t.status).id !== overContainer);
+        const reordered = reorderedIds.map(id => boardTasks.find(t => t.id === id)!);
+        // splice back in original relative position by walking original order
+        const next: PmTask[] = [];
+        let rIdx = 0;
+        for (const t of boardTasks) {
+          if (groupForStatus(t.status).id === overContainer) {
+            next.push(reordered[rIdx++]);
+          } else {
+            next.push(t);
+          }
+        }
+        nextTasks = next;
+        setBoardTasks(next);
+      }
+    }
+
+    // Persist: update moved task's status (if changed) + re-number sort_order for affected column(s)
+    const original = snapshotRef.current ?? [];
+    const movedTask = nextTasks.find(t => t.id === activeId);
+    const originalTask = original.find(t => t.id === activeId);
+    const statusChanged = movedTask && originalTask && movedTask.status !== originalTask.status;
+
+    const affectedGroups = new Set<StatusGroupId>([overContainer]);
+    if (statusChanged && originalTask) affectedGroups.add(groupForStatus(originalTask.status).id);
+
+    try {
+      const updates: Promise<unknown>[] = [];
+      for (const gid of affectedGroups) {
+        const list = nextTasks.filter(t => groupForStatus(t.status).id === gid);
+        list.forEach((t, idx) => {
+          const patch: Record<string, unknown> = { sort_order: idx };
+          if (t.id === activeId && statusChanged) patch.status = movedTask!.status;
+          updates.push(Promise.resolve(supabase.from("pm_tasks").update(patch).eq("id", t.id)));
+        });
+      }
+      const results = await Promise.all(updates);
+      const firstErr = (results as Array<{ error?: unknown }>).find(r => r && r.error);
+      if (firstErr) throw firstErr.error;
+    } catch {
+      if (snapshotRef.current) setBoardTasks(snapshotRef.current);
+      toast.error("Couldn't move task");
+    } finally {
+      snapshotRef.current = null;
+    }
+  }
+
+  async function changeStatus(taskId: string, gid: StatusGroupId) {
+    const task = boardTasks.find(t => t.id === taskId);
+    if (!task) return;
+    const targetGroup = STATUS_GROUPS.find(g => g.id === gid)!;
+    if (targetGroup.statuses.includes(task.status)) return;
+    const newStatus = GROUP_PRIMARY_STATUS[gid];
+    const prev = boardTasks;
+    setBoardTasks(boardTasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    const { error } = await supabase.from("pm_tasks").update({ status: newStatus }).eq("id", taskId);
+    if (error) {
+      setBoardTasks(prev);
+      toast.error("Couldn't update status");
+    }
+  }
+
+  async function changeDate(taskId: string, iso: string | null) {
+    const prev = boardTasks;
+    setBoardTasks(boardTasks.map(t => t.id === taskId ? { ...t, due_date: iso } : t));
+    const { error } = await supabase.from("pm_tasks").update({ due_date: iso }).eq("id", taskId);
+    if (error) {
+      setBoardTasks(prev);
+      toast.error("Couldn't update date");
+    }
+  }
 
   const pills: { id: TypePill | "me"; label: string }[] = [
     { id: "all", label: "All" },
@@ -122,21 +293,47 @@ export function TasksTab({ tasks, projectId, meId }: {
 
       {/* Board */}
       {view === "kanban" && (
-        <div className="grid grid-cols-4 gap-3">
-          {STATUS_GROUPS.map(g => (
-            <div key={g.id} className="space-y-2">
-              <div className="flex items-center gap-2 px-1">
-                <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
-                <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{byGroup[g.id].length}</span>
-              </div>
-              <div className="space-y-2 min-h-[80px]">
-                {byGroup[g.id].map(t => (
-                  <TaskCard key={t.id} task={t} count={counts.get(t.id)} onClick={() => openTask(t.id)} />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            if (snapshotRef.current) setBoardTasks(snapshotRef.current);
+            snapshotRef.current = null;
+            setActiveId(null);
+          }}
+        >
+          <div className="grid grid-cols-4 gap-3">
+            {STATUS_GROUPS.map(g => (
+              <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
+                {boardByGroup[g.id].map(t => (
+                  <BoardTaskCard
+                    key={t.id}
+                    task={t}
+                    count={counts.get(t.id)}
+                    onClick={() => openTask(t.id)}
+                    onStatusChange={(gid) => changeStatus(t.id, gid)}
+                    onDateChange={(iso) => changeDate(t.id, iso)}
+                  />
                 ))}
-              </div>
-            </div>
-          ))}
-        </div>
+              </BoardColumn>
+            ))}
+          </div>
+          <DragOverlay>
+            {activeTask ? (
+              <BoardTaskCard
+                task={activeTask}
+                count={counts.get(activeTask.id)}
+                onClick={() => {}}
+                onStatusChange={() => {}}
+                onDateChange={() => {}}
+                overlay
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );
@@ -175,28 +372,3 @@ function TaskRow({ task, groupColorBg, count, onClick }: {
   );
 }
 
-function TaskCard({ task, count, onClick }: { task: PmTask; count?: SubtaskCount; onClick: () => void }) {
-  const preview = stripHtml(task.description);
-  return (
-    <Card onClick={onClick} className="cursor-pointer transition hover:border-info">
-      <CardContent className="p-3 space-y-2 min-h-[110px] flex flex-col">
-        <div className="text-[12px] font-bold leading-snug line-clamp-2">{task.title}</div>
-        {preview && (
-          <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
-        )}
-        <span className={`inline-block self-start text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
-          {task.type}
-        </span>
-        <div className="flex items-center justify-between pt-1 mt-auto">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>{fmtDate(task.due_date) || "—"}</span>
-            {count && count.total > 0 && (
-              <span>· {count.done}/{count.total} subtasks</span>
-            )}
-          </div>
-          <UserAvatar userId={task.assignee_id} size="xs" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
