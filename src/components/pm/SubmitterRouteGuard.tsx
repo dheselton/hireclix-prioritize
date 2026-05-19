@@ -8,6 +8,7 @@ const BLOCKED_PREFIXES = [
   "/pm/templates",
   "/pm/integrations",
   "/pm/forms/", // form builder (public /f/:slug routes are outside /pm)
+  "/snippets",
 ];
 
 /** Redirects submitters away from pages they shouldn't see. */

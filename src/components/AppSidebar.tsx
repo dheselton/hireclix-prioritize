@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, LayoutGrid, FolderKanban, Users, Calendar, FileText,
-  LayoutTemplate, Plug, Map, BarChart3,
+  LayoutTemplate, Plug, Map, BarChart3, Code,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -47,13 +47,18 @@ function useUnclaimedCount() {
 
 const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "projects", "forms"]);
 
+const snippetsItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" as const };
+
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
   const { role } = useCurrentUser();
-  const items = role === "submitter"
+  const baseItems = role === "submitter"
     ? pmItems.filter(i => SUBMITTER_ITEM_KEYS.has(i.key))
     : pmItems;
+  const items = role === "developer" || role === "designer"
+    ? [...baseItems, snippetsItem as any]
+    : baseItems;
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>
