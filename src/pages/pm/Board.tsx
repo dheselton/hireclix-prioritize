@@ -130,38 +130,41 @@ export default function Board() {
         chipState={chips}
         typeFilterPage="board"
         actions={
-          boardMode === "kanban" ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8">
-                  <Columns3 className="h-4 w-4 mr-1" /> Columns
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 z-50 bg-popover" align="end">
-                <div className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Show columns</div>
-                <div className="space-y-1.5">
-                  {TASK_STATUSES.map(s => (
-                    <label key={s} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={cols.includes(s)}
-                        onCheckedChange={(checked) => {
-                          if (checked) persistCols(TASK_STATUSES.filter(x => cols.includes(x) || x === s));
-                          else persistCols(cols.filter(x => x !== s));
-                        }}
-                      />
-                      {COL_LABELS[s]}
-                    </label>
-                  ))}
-                </div>
-                <Button
-                  size="sm" variant="ghost" className="w-full mt-2 h-7 text-xs"
-                  onClick={() => persistCols(DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"])}
-                >
-                  Reset to default
-                </Button>
-              </PopoverContent>
-            </Popover>
-          ) : null
+          <div className="flex items-center gap-2">
+            <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+            {boardMode === "kanban" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8">
+                    <Columns3 className="h-4 w-4 mr-1" /> Columns
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 z-50 bg-popover" align="end">
+                  <div className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Show columns</div>
+                  <div className="space-y-1.5">
+                    {TASK_STATUSES.map(s => (
+                      <label key={s} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={cols.includes(s)}
+                          onCheckedChange={(checked) => {
+                            if (checked) persistCols(TASK_STATUSES.filter(x => cols.includes(x) || x === s));
+                            else persistCols(cols.filter(x => x !== s));
+                          }}
+                        />
+                        {COL_LABELS[s]}
+                      </label>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm" variant="ghost" className="w-full mt-2 h-7 text-xs"
+                    onClick={() => persistCols(DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"])}
+                  >
+                    Reset to default
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         }
       />
 
