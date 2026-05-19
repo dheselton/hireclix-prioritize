@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import type { PmProject, PmTask } from "@/types/pm";
 
 type SortKey = "title" | "type" | "status" | "go_live_date" | "progress";
