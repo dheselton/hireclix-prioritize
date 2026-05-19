@@ -18,6 +18,8 @@ import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
+import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
