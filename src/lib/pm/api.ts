@@ -114,6 +114,7 @@ import { scheduleForwardFromKickoff, fitToWindow, type ScheduleTask, type Schedu
 
 export interface PreviewTask extends ScheduleTask {
   temp_id: string;
+  template_task_id?: string;
   phase_name: string | null;
   type: string;
   assignee_role: string | null;
@@ -134,6 +135,7 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
   const previewTasks: PreviewTask[] = tasks.map(t => ({
     id: t.temp_id,
     temp_id: t.temp_id,
+    template_task_id: t.id,
     title: t.title,
     duration_days: t.duration_days,
     min_duration_days: t.min_duration_days,
