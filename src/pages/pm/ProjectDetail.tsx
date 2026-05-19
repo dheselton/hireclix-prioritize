@@ -24,6 +24,7 @@ import { KpiStrip } from "@/components/pm/project/KpiStrip";
 import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
 import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
+import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -98,12 +99,16 @@ export default function ProjectDetail() {
   const isRequest = (p.work_type ?? "project") === "request";
   const isPM = user?.role === "pm";
 
+  const canSeeSnippets = user?.role === "developer" || user?.role === "designer";
+
   const tabs: { id: ProjectTabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(!isRequest ? [{ id: "timeline" as const, label: "Timeline" }] : []),
     { id: "files", label: "Files" },
+    ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
   ];
+
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
@@ -184,6 +189,10 @@ export default function ProjectDetail() {
           <p className="text-xs text-muted-foreground">All files attached to this project and its tasks, in one place.</p>
           <FilesTab projectId={project.id} tasks={tasks} onOpenTask={drawer.open} />
         </div>
+      )}
+
+      {tab === "snippets" && canSeeSnippets && (
+        <SnippetsTab projectId={project.id} tasks={tasks} />
       )}
 
       <TaskDrawer />
