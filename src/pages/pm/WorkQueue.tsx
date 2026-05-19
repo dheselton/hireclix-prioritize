@@ -284,20 +284,22 @@ export default function WorkQueue() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
               to={isPM
-                ? buildQueueLink({ section: "inbox-requests" })
-                : buildQueueLink({ chips: ["assigned_to_me"] })}
+                ? buildQueueLink({ chips: ["unclaimed"], workType: "request", section: "inbox-requests" })
+                : buildQueueLink({ chips: ["assigned_to_me"], workType: "request", section: "quick-hits" })}
               icon={<Zap className="h-4 w-4" />}
               label={isPM ? "Unclaimed Requests" : "Active Requests"}
               value={stats.activeRequests}
             />
             <StatCard
-              to={buildQueueLink({ section: "project-work" })}
+              to={isPM
+                ? buildQueueLink({ workType: "project", section: "project-health" })
+                : buildQueueLink({ chips: ["assigned_to_me"], workType: "project", section: "project-work" })}
               icon={<FolderOpen className="h-4 w-4" />}
               label="Active Projects"
               value={stats.activeProjects}
             />
             <StatCard
-              to={buildQueueLink({ section: "inbox-projects" })}
+              to={buildQueueLink({ chips: ["unclaimed"], section: "inbox" })}
               icon={<Inbox className="h-4 w-4" />}
               label="Total Unclaimed"
               value={stats.unclaimed}
@@ -308,6 +310,7 @@ export default function WorkQueue() {
               label="Blockers"
               value={stats.blockers}
             />
+
           </div>
 
           {/* BAND 1 — INBOX */}
