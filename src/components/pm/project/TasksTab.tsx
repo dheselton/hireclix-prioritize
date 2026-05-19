@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
@@ -16,6 +17,11 @@ const TYPE_FILTER: Record<Exclude<TypePill, "all">, string[]> = {
   dev: ["dev"],
   qa: ["qa"],
 };
+
+function stripHtml(html?: string | null): string {
+  if (!html) return "";
+  return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
 
 export function TasksTab({ tasks, projectId, meId }: {
   tasks: PmTask[]; projectId: string; meId: string | null;
@@ -40,6 +46,8 @@ export function TasksTab({ tasks, projectId, meId }: {
     for (const t of filtered) m[groupForStatus(t.status).id].push(t);
     return m;
   }, [filtered]);
+
+  const counts = useSubtaskCounts(filtered.map(t => t.id));
 
   const pills: { id: TypePill | "me"; label: string }[] = [
     { id: "all", label: "All" },
@@ -101,7 +109,7 @@ export function TasksTab({ tasks, projectId, meId }: {
                         <div className="px-3 py-2 text-xs text-muted-foreground italic">No tasks</div>
                       )}
                       {list.map(t => (
-                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} onClick={() => openTask(t.id)} />
+                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} />
                       ))}
                     </div>
                   )}
@@ -123,7 +131,7 @@ export function TasksTab({ tasks, projectId, meId }: {
               </div>
               <div className="space-y-2 min-h-[80px]">
                 {byGroup[g.id].map(t => (
-                  <TaskCard key={t.id} task={t} onClick={() => openTask(t.id)} />
+                  <TaskCard key={t.id} task={t} count={counts.get(t.id)} onClick={() => openTask(t.id)} />
                 ))}
               </div>
             </div>
@@ -134,16 +142,29 @@ export function TasksTab({ tasks, projectId, meId }: {
   );
 }
 
-function TaskRow({ task, groupColorBg, onClick }: {
-  task: PmTask; groupColorBg: string; onClick: () => void;
+function TaskRow({ task, groupColorBg, count, onClick }: {
+  task: PmTask; groupColorBg: string; count?: SubtaskCount; onClick: () => void;
 }) {
+  const preview = stripHtml(task.description);
   return (
     <div
       onClick={onClick}
       className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info"
     >
       <div className={`w-[3px] self-stretch rounded-full ${groupColorBg}`} />
-      <span className="flex-1 text-[13px] font-medium truncate">{task.title}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-medium truncate">{task.title}</span>
+          {count && count.total > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium shrink-0">
+              {count.done}/{count.total}
+            </span>
+          )}
+        </div>
+        {preview && (
+          <p className="text-[11px] text-muted-foreground truncate">{preview}</p>
+        )}
+      </div>
       <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
         {task.type}
       </span>
@@ -154,16 +175,25 @@ function TaskRow({ task, groupColorBg, onClick }: {
   );
 }
 
-function TaskCard({ task, onClick }: { task: PmTask; onClick: () => void }) {
+function TaskCard({ task, count, onClick }: { task: PmTask; count?: SubtaskCount; onClick: () => void }) {
+  const preview = stripHtml(task.description);
   return (
     <Card onClick={onClick} className="cursor-pointer transition hover:border-info">
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-3 space-y-2 min-h-[110px] flex flex-col">
         <div className="text-[12px] font-bold leading-snug line-clamp-2">{task.title}</div>
-        <span className={`inline-block text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
+        {preview && (
+          <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
+        )}
+        <span className={`inline-block self-start text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
           {task.type}
         </span>
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-muted-foreground">{fmtDate(task.due_date) || "—"}</span>
+        <div className="flex items-center justify-between pt-1 mt-auto">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span>{fmtDate(task.due_date) || "—"}</span>
+            {count && count.total > 0 && (
+              <span>· {count.done}/{count.total} subtasks</span>
+            )}
+          </div>
           <UserAvatar userId={task.assignee_id} size="xs" />
         </div>
       </CardContent>
