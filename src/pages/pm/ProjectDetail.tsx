@@ -559,15 +559,15 @@ function TaskTabContent({
   );
 }
 
-function PhaseGroup({ phase, tasks, onOpen, onAdd, dimSet, allowAdd = true }: {
+function PhaseGroup({ phase, tasks, onOpen, onAdd, dimSet, allowAdd = true, hideHeader = false }: {
   phase: PmPhase | null; tasks: PmTask[]; onOpen: (id: string) => void;
-  onAdd: (title: string) => void; dimSet?: Set<string> | null; allowAdd?: boolean;
+  onAdd: (title: string) => void; dimSet?: Set<string> | null; allowAdd?: boolean; hideHeader?: boolean;
 }) {
   const [adding, setAdding] = useState("");
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="font-semibold text-sm mb-2">{phase?.name ?? "No phase"}</div>
+        {!hideHeader && <div className="font-semibold text-sm mb-2">{phase?.name ?? "No phase"}</div>}
         <div className="space-y-1">
           {tasks.map(t => {
             const dim = dimSet?.has(t.type);
