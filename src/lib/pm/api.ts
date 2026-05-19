@@ -218,6 +218,33 @@ const instantiateTemplateIntoProject = async (params: {
     }))
     .filter(d => d.task_id && d.depends_on_task_id);
   if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
+
+  // Snippet links — copy template_task_snippets to live task_snippets
+  const tempTaskIds = previewTasks
+    .map(p => p.template_task_id)
+    .filter((x): x is string => !!x);
+  if (tempTaskIds.length) {
+    const { data: snipLinks } = await supabase
+      .from('pm_template_task_snippets')
+      .select('template_task_id, snippet_id')
+      .in('template_task_id', tempTaskIds);
+    const realIdByTempTaskId = new Map<string, string>();
+    for (const pt of previewTasks) {
+      const realId = idByTemp.get(pt.temp_id);
+      if (pt.template_task_id && realId) realIdByTempTaskId.set(pt.template_task_id, realId);
+    }
+    const uid = getCurrentUserId();
+    const snippetRows = (snipLinks ?? [])
+      .map((l: any) => ({
+        task_id: realIdByTempTaskId.get(l.template_task_id),
+        snippet_id: l.snippet_id,
+        linked_by: uid ?? null,
+      }))
+      .filter(r => r.task_id);
+    if (snippetRows.length) {
+      await supabase.from('pm_task_snippets').insert(snippetRows as any);
+    }
+  }
 };
 
 /** Create a project from template + scheduled placement (already computed). */
