@@ -77,7 +77,10 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                   <span className={cn("inline-block h-2.5 w-2.5 rounded-full", PRIORITY_DOT[t.priority] ?? "bg-muted")} />
                 </div>
                 <div className="font-medium leading-tight">{t.title}</div>
-                <div className="text-xs text-muted-foreground truncate">{proj?.title ?? "—"}</div>
+                <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+                  {proj && <WorkTypeBadge workType={(proj as any).work_type ?? "project"} />}
+                  <span className="truncate">{proj?.title ?? "—"}</span>
+                </div>
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
                     <UserAvatar userId={t.assignee_id} size="xs" />
