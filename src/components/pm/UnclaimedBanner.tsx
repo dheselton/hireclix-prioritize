@@ -46,7 +46,7 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
     ? `/pm/projects/${projectId}`
-    : (role === "pm" ? "/pm?section=unclaimed-projects" : "/pm?section=unclaimed-lane");
+    : buildQueueLink({ chips: ["unclaimed"], section: "inbox" });
 
   return (
     <div className="sticky top-0 z-30 -mx-6 -mt-6 mb-2 px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/40 backdrop-blur">
