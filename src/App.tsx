@@ -59,30 +59,34 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/f/:slug" element={<PublicForm />} />
+            <ActiveTimerProvider>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/f/:slug" element={<PublicForm />} />
 
-              <Route path="/" element={<Navigate to="/pm" replace />} />
+                <Route path="/" element={<Navigate to="/pm" replace />} />
 
-              <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
-              <Route path="/pm/board" element={<AppLayout><Board /></AppLayout>} />
-              <Route path="/pm/projects" element={<AppLayout><ProjectList /></AppLayout>} />
-              <Route path="/pm/projects/:id" element={<AppLayout><ProjectDetail /></AppLayout>} />
-              <Route path="/pm/workload" element={<AppLayout><Workload /></AppLayout>} />
-              <Route path="/pm/timeline" element={<AppLayout><GlobalTimeline /></AppLayout>} />
-              <Route path="/pm/forms" element={<AppLayout><Forms /></AppLayout>} />
-              <Route path="/pm/forms/:id/edit" element={<AppLayout><FormBuilder /></AppLayout>} />
-              <Route path="/pm/templates" element={<AppLayout><Templates /></AppLayout>} />
-              <Route path="/pm/templates/:id/edit" element={<AppLayout><TemplateBuilder /></AppLayout>} />
-              <Route path="/pm/integrations" element={<AppLayout><Integrations /></AppLayout>} />
+                <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
+                <Route path="/pm/board" element={<AppLayout><Board /></AppLayout>} />
+                <Route path="/pm/projects" element={<AppLayout><ProjectList /></AppLayout>} />
+                <Route path="/pm/projects/:id" element={<AppLayout><ProjectDetail /></AppLayout>} />
+                <Route path="/pm/tasks/:id" element={<AppLayout><TaskWorkspace /></AppLayout>} />
+                <Route path="/pm/workload" element={<AppLayout><Workload /></AppLayout>} />
+                <Route path="/pm/timeline" element={<AppLayout><GlobalTimeline /></AppLayout>} />
+                <Route path="/pm/forms" element={<AppLayout><Forms /></AppLayout>} />
+                <Route path="/pm/forms/:id/edit" element={<AppLayout><FormBuilder /></AppLayout>} />
+                <Route path="/pm/templates" element={<AppLayout><Templates /></AppLayout>} />
+                <Route path="/pm/templates/:id/edit" element={<AppLayout><TemplateBuilder /></AppLayout>} />
+                <Route path="/pm/integrations" element={<AppLayout><Integrations /></AppLayout>} />
 
-              {/* Legacy roadmap */}
-              <Route path="/roadmap" element={<AppLayout><ProductRoadmap /></AppLayout>} />
-              <Route path="/roadmap/dashboard" element={<AppLayout><RoadmapDashboard /></AppLayout>} />
+                {/* Legacy roadmap */}
+                <Route path="/roadmap" element={<AppLayout><ProductRoadmap /></AppLayout>} />
+                <Route path="/roadmap/dashboard" element={<AppLayout><RoadmapDashboard /></AppLayout>} />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <FloatingTimerTray />
+            </ActiveTimerProvider>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
