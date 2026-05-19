@@ -11,11 +11,28 @@ import { toast } from "sonner";
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
+  const [params] = useSearchParams();
+  const embed = params.get("embed") === "1";
   const [form, setForm] = useState<any>(null);
   const [fields, setFields] = useState<any[]>([]);
   const [values, setValues] = useState<Record<string, any>>({});
   const [name, setName] = useState(""); const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Post height to parent so embedding pages can auto-size the iframe.
+  useEffect(() => {
+    if (!embed) return;
+    const post = () => {
+      const h = rootRef.current?.scrollHeight ?? document.body.scrollHeight;
+      window.parent?.postMessage({ type: "lovable-pm-form", event: "resize", slug, height: h }, "*");
+    };
+    post();
+    const ro = new ResizeObserver(post);
+    if (rootRef.current) ro.observe(rootRef.current);
+    window.addEventListener("load", post);
+    return () => { ro.disconnect(); window.removeEventListener("load", post); };
+  }, [embed, slug, fields.length, submitted]);
 
   useEffect(() => {
     (async () => {
