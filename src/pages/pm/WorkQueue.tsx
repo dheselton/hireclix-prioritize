@@ -63,29 +63,29 @@ export default function WorkQueue() {
 
   // Lookup tables for cards
   useEffect(() => {
-    let active = true;
+    let cancelled = false;
     (async () => {
       const [{ data: cs }, { data: ph }] = await Promise.all([
         supabase.from("clients").select("id, name"),
         supabase.from("pm_project_phases").select("id, name"),
       ]);
-      if (!active) return;
+      if (cancelled) return;
       setClientNames(new Map((cs ?? []).map((r: any) => [r.id, r.name])));
       setPhaseNames(new Map((ph ?? []).map((r: any) => [r.id, r.name])));
     })();
-    return () => { active = false; };
+    return () => { cancelled = true; };
   }, []);
 
   // PMs: find projects where I'm the PM
   useEffect(() => {
     if (role !== "pm" || !user?.id) { setPmProjectIds(new Set()); return; }
-    let active = true;
+    let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("pm_project_members")
         .select("project_id, role")
         .eq("user_id", user.id);
-      if (!active) return;
+      if (cancelled) return;
       const ids = new Set(
         (data || [])
           .filter((r: any) => String(r.role).toLowerCase() === "pm")
@@ -93,7 +93,7 @@ export default function WorkQueue() {
       );
       setPmProjectIds(ids);
     })();
-    return () => { active = false; };
+    return () => { cancelled = true; };
   }, [role, user?.id]);
 
   // Submitters: latest form for banner
