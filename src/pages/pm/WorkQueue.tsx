@@ -291,6 +291,7 @@ export default function WorkQueue() {
       {sections.map(s => (
         <Section
           key={s.key}
+          id={`section-${s.key}`}
           title={s.title}
           count={s.tasks.length}
           extra={s.key === "unclaimed-lane" && (role === "designer" || role === "developer") ? (
@@ -316,6 +317,21 @@ export default function WorkQueue() {
       ))}
 
       <TaskDrawer />
+    </div>
+  );
+}
+
+function Section({ title, count, children, extra, id }:
+  { title: string; count: number; children: React.ReactNode; extra?: React.ReactNode; id?: string }) {
+  return (
+    <div id={id} className="scroll-mt-24">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {title} <span className="text-foreground/50">({count})</span>
+        </h2>
+        {extra}
+      </div>
+      {children}
     </div>
   );
 }
