@@ -1,21 +1,36 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, PRIORITIES, type PmTask, type TaskStatus, type TaskPriority } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
-import { emitTaskDateProposed } from "@/lib/pm/refresh";
-import { Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-function fmtDur(m: number) {
-  const h = Math.floor(m / 60), mm = m % 60;
-  if (h && mm) return `${h}h ${mm}m`;
-  if (h) return `${h}h`;
-  return `${mm}m`;
+function statusClass(s: TaskStatus) {
+  if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
+  if (s === "complete" || s === "approved") return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+  if (s === "in_progress" || s === "in_review") return "bg-primary/15 text-primary border-primary/30";
+  if (s === "claimed") return "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30";
+  return "bg-muted text-muted-foreground border-border";
+}
+function priorityClass(p: TaskPriority) {
+  if (p === "urgent") return "bg-destructive/15 text-destructive border-destructive/30";
+  if (p === "high") return "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30";
+  if (p === "medium") return "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30";
+  return "bg-muted text-muted-foreground border-border";
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2 border-b border-border/60 last:border-0">
+      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <div className="text-[13px] font-semibold text-right min-w-0">{children}</div>
+    </div>
+  );
 }
 
 export function ControlPanel({
@@ -28,101 +43,97 @@ export function ControlPanel({
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
   const users = useMockUsers();
-  const [client, setClient] = useState<string>("");
-  const [totalMinutes, setTotalMinutes] = useState<number>(0);
-
-  useEffect(() => {
-    (async () => {
-      const { data: proj } = await supabase
-        .from("pm_projects")
-        .select("client_id, clients(name)")
-        .eq("id", task.project_id)
-        .maybeSingle();
-      setClient((proj as any)?.clients?.name ?? "—");
-    })();
-  }, [task.project_id]);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("pm_time_entries").select("minutes").eq("task_id", task.id);
-      setTotalMinutes((data || []).reduce((s: number, e: any) => s + (e.minutes || 0), 0));
-    })();
-  }, [task.id]);
+  const assignee = users.find(u => u.id === task.assignee_id);
+  const showEnv = task.type === "dev" || !!task.dev_environment;
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-3">
-        <div>
-          <Label className="text-xs">Status</Label>
-          <Select value={task.status} onValueChange={(v: TaskStatus) => patch({ status: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent className="z-50 bg-popover">
-              {TASK_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Assignee</Label>
-          <Select value={task.assignee_id ?? "none"} onValueChange={v => patch({ assignee_id: v === "none" ? null : v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent className="z-50 bg-popover">
-              <SelectItem value="none">Unassigned</SelectItem>
-              {users.filter(u => u.role !== "submitter").map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs">Priority</Label>
-          <Select value={task.priority} onValueChange={(v: TaskPriority) => patch({ priority: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent className="z-50 bg-popover">
-              {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-xs">Start</Label>
-            <DatePicker value={task.start_date} onChange={v => {
-              if (!v) { patch({ start_date: v }); return; }
-              const dur = Math.max(1, task.duration_days || 1);
-              const startD = new Date(v + "T00:00:00");
-              const endD = new Date(startD.getTime() + (dur - 1) * 86400000);
-              const end = endD.toISOString().slice(0, 10);
-              setTask({ ...task, start_date: v, due_date: end });
-              emitTaskDateProposed({ taskId: task.id, start: v, end });
-            }} />
-          </div>
-          <div>
-            <Label className="text-xs">Due</Label>
-            <DatePicker value={task.due_date} onChange={v => {
-              if (!v) { patch({ due_date: v }); return; }
-              const dur = Math.max(1, task.duration_days || 1);
-              const endD = new Date(v + "T00:00:00");
-              const startD = new Date(endD.getTime() - (dur - 1) * 86400000);
-              const start = startD.toISOString().slice(0, 10);
-              setTask({ ...task, start_date: start, due_date: v });
-              emitTaskDateProposed({ taskId: task.id, start, end: v });
-            }} />
-          </div>
-        </div>
-        <div>
-          <Label className="text-xs">Duration (days)</Label>
-          <Input type="number" min={1} value={task.duration_days}
-            onChange={e => setTask({ ...task, duration_days: Number(e.target.value) })}
-            onBlur={e => patch({ duration_days: Number(e.target.value) })} />
-        </div>
+    <div className="rounded-lg border border-border bg-card p-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+        Control Panel
+      </h3>
 
-        <div className="border-t border-border pt-3 space-y-2 text-xs">
-          <div className="flex justify-between"><span className="text-muted-foreground">Client</span><span className="font-medium">{client}</span></div>
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Time logged</span>
-            <span className="font-medium tabular-nums">{fmtDur(totalMinutes)}</span>
-          </div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Created</span><span>{fmtDate(task.created_at?.slice(0, 10))}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Updated</span><span>{fmtDate(task.updated_at?.slice(0, 10))}</span></div>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Status */}
+      <Row label="Status">
+        <Select value={task.status} onValueChange={(v: TaskStatus) => patch({ status: v })}>
+          <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5", statusClass(task.status))}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-50 bg-popover">
+            {TASK_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Row>
+
+      {/* Priority */}
+      <Row label="Priority">
+        <Select value={task.priority} onValueChange={(v: TaskPriority) => patch({ priority: v })}>
+          <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5 capitalize", priorityClass(task.priority))}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-50 bg-popover">
+            {PRIORITIES.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Row>
+
+      {/* Assignee */}
+      <Row label="Assignee">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="inline-flex items-center gap-1.5 hover:underline">
+              {assignee ? (
+                <>
+                  <UserAvatar userId={assignee.id} size="xs" />
+                  <span>{assignee.name}</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground italic font-normal">Unassigned</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-1 z-50 bg-popover">
+            <button
+              type="button"
+              className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded text-muted-foreground"
+              onClick={() => patch({ assignee_id: null })}
+            >
+              Unassigned
+            </button>
+            {users.filter(u => u.role !== "submitter").map(u => (
+              <button
+                key={u.id}
+                type="button"
+                className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex items-center gap-2"
+                onClick={() => patch({ assignee_id: u.id })}
+              >
+                <UserAvatar userId={u.id} size="xs" />
+                {u.name}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      </Row>
+
+      {/* Due Date */}
+      <Row label="Due Date">
+        <DatePicker
+          value={task.due_date}
+          onChange={v => patch({ due_date: v ?? null })}
+          className="h-7 w-32 text-xs"
+        />
+      </Row>
+
+      {showEnv && (
+        <Row label="Environment">
+          <Input
+            value={task.dev_environment ?? ""}
+            onChange={e => setTask({ ...task, dev_environment: e.target.value })}
+            onBlur={e => patch({ dev_environment: e.target.value })}
+            placeholder="staging.acme.com"
+            className="h-7 w-36 text-xs text-right"
+          />
+        </Row>
+      )}
+    </div>
   );
 }

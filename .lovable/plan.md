@@ -1,95 +1,107 @@
 ## Goal
 
-1. **Quick Request** creation gets a "Request Type" selector (Web edit, Banner ads, Social, Email, General) that conditionally shows the right fields — same UX as the public creative request form.
-2. **Full Project** creation surfaces three paths up front: pick a Template, start Blank, or build a New Template.
-3. Conditional field sets are stored as internal `pm_forms` rows so admins can edit them in Form Builder later.
+Replace the current `TaskWorkspace` layout (`/pm/tasks/:id`) with a focused full-page work surface that matches the spec exactly: header with breadcrumb + colored title + monospace timer pill, two-column body (1fr / 300px), and a precise section order. No side drawer for this view — `?task=` Quick Edit drawer continues to exist separately for inline edits.
 
 ---
 
-## Part 1 — Quick Request: conditional fields
-
-### Data approach
-
-Use the existing `pm_forms` / `pm_form_fields` / `pm_form_submissions` tables. Seed five internal forms (one per request type), tagged as internal so they don't appear in the public Forms list:
-
-- `internal_web_edit` — Page URL, Change description, Asset link, Priority
-- `internal_banner_ads` — Sizes (multi), Ad copy, Landing URL, Brand assets link, Run dates
-- `internal_social` — Platform(s), Caption, Asset link, Post date
-- `internal_email` — Subject, Audience, Send date, Asset link
-- `internal_general` — Notes only (fallback)
-
-Each `pm_form_fields` row already supports `conditionals` JSON, but for this round we don't need cross-field conditionals — selecting the type swaps the whole field set.
-
-**Schema additions:**
-- `pm_forms.kind text default 'public'` — values: `'public' | 'internal_request'`
-- `pm_forms.request_type text` — `'web_edit' | 'banner_ads' | 'social' | 'email' | 'general'` (null for public)
-- Filter `Forms` page to `kind='public'`.
-
-### UI changes — `CreateWorkDialog.tsx`, Quick Request step
+## New header
 
 ```text
-[ Title * ]
-[ Client * ]
-[ Request Type * ]  ← new selector (Web edit / Banner ads / Social / Email / General)
-─── conditional fields rendered from the matching internal pm_form ───
-[ Description ]     ← always shown, optional
-[ Quick tasks (0–3) ] ← keep existing
+[← Back]   Projects / [Client] / [Phase]                            [01:24:42  ■]
+[●] Task title (20px, color from task type)                         [Quick edit]
 ```
 
-- On type change, load fields for that internal form (cache by type).
-- Render fields with the same input switch already used in `PublicForm.tsx` (extract into a shared `<FormFieldRenderer/>` component in `src/components/pm/forms/`).
-- On submit:
-  - Create the request `pm_project` (`work_type=request`, `type=quick_request`) as today.
-  - Store field answers in `pm_projects.custom_fields` JSON keyed by field label slug, **and** also write a `pm_form_submissions` row referencing the internal form + new project for auditability.
-  - Auto-create one task (existing behavior — uses title if no quick tasks).
-
-### Display on the request workspace
-
-`TaskWorkspace` / project detail already shows description. Add a small "Request details" section that pretty-prints `custom_fields` (label → value). No layout overhaul.
+- **Breadcrumb** (small muted): `Projects / {Client name} / {Phase name}`. Load `pm_projects.client_id → clients.name` and `pm_tasks.phase_id → pm_project_phases.name` (already have project; fetch client + phase in the same effect). Project name links to `/pm/projects/:id`.
+- **Title row**: colored dot/icon (existing track/type color tokens from `src/index.css` — `--track-production`, `--track-pm`, etc., or task-type colors), then editable 20px title (inline edit on blur, same patch flow as today).
+- **Timer pill** (right, persistent on this page): pill-shaped container with
+  - monospace `tabular-nums` running clock `HH:MM:SS`
+  - red square Stop button (icon-only, white Square fill)
+  - When no active timer for this task → show a slim Play button inside the same pill shell so layout doesn't jump.
+  - Reuses `useActiveTimer()` from `ActiveTimerProvider`; rewrite `TimerControls` styling to the pill design, keep behavior.
 
 ---
 
-## Part 2 — Full Project entry: Template / Blank / New Template
+## Body: two-column grid `1fr 300px`
 
-### `CreateWorkDialog`, Project step
+Use `grid-template-columns: minmax(0,1fr) 300px` at `lg+`, stack on mobile.
 
-Replace the current single form with three primary cards at the top of the project step:
+### Left column (in this exact order)
 
-```text
-┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
-│ From Template│ │ Blank Project│ │ New Template…    │
-│ (cards list) │ │ (manual)     │ │ (opens builder)  │
-└──────────────┘ └──────────────┘ └──────────────────┘
-```
+1. **Asset Hub (Uploads)**
+   - Header: `ASSET HUB (UPLOADS)` muted uppercase + right-aligned `+ Upload assets` link button (triggers existing file picker).
+   - Grid: `repeat(auto-fill, minmax(120px, 1fr))`, square cards (`aspect-square`), subtle border, muted bg, filename as placeholder centered when no thumb; filename label below with `truncate`.
+   - Image-type files render a thumbnail (uses `pm_attachments.url`, already public via `task-attachments` bucket); others show extension text.
+   - Final cell: dashed-border drop zone with `+` icon and "Drop files" label; drag-and-drop handlers reuse the existing upload pipeline in `AttachmentsSection`.
+   - Built as `AssetHub.tsx`, extracted from `AttachmentsSection.tsx` (keep `AttachmentsSection` for the project detail page, share an `uploadFiles()` helper).
 
-- **From Template** — render list of `pm_project_templates` (same data as `Templates.tsx`). Selecting one launches the existing `TimelineSetupWizard` inline inside the dialog (or closes dialog and opens wizard, matching today's behavior on `/pm/templates`).
-- **Blank Project** — current form (title, client, type, status, kickoff, go-live). Auto-assigns creator (already wired).
-- **New Template** — closes the dialog and routes to `/pm/templates` with the "New Template" modal pre-opened (reuse the existing `setOpen(true)` flow via a query param like `?new=1`).
+2. **Reference Links**
+   - Header: `REFERENCE LINKS`.
+   - Each row: 32px colored icon square left (provider-derived from URL — Figma `#F24E1E "F"`, GitHub `#24292F "G"`, Loom `#625DF5 "L"`, default neutral `🔗`), then title + URL muted small, external-link icon right. Whole row links out (new tab). Hover: border tints `hsl(var(--info))`.
+   - Add-link inline form at bottom (label + url + add).
+   - Built by restyling existing `LinksSection.tsx` — keep data layer, swap presentation. Add provider detection helper `getLinkProvider(url)`.
 
-The current "Tip: use Templates → Use template" helper line is removed since these paths are now first-class.
+3. **Collab Hub** (comments)
+   - Header: `COLLAB HUB`.
+   - Reuse `CommentsThread.tsx` data; restyle to: avatar circle + bubble (`bg-muted rounded-lg p-3`), header row `<b>Name</b> · timestamp (muted, right)`, body text below.
+   - Composer at bottom: current user avatar + textarea (`Write a comment or tag @team…`) + right-aligned `Post Comment` primary button.
+
+### Right column — sticky `300px` sidebar
+
+1. **Control Panel** card
+   - Header `CONTROL PANEL`.
+   - Rows separated by `border-b border-border/60`, last row no border. Each row: muted 12px label left, 13px bold value right.
+   - Fields: Status (badge — info color), Priority (badge — warning for High), Assignee (avatar + name), Due Date (mm/dd/yyyy), Environment (`task.dev_environment` shown for dev tasks, hidden otherwise).
+   - Refactor existing `ControlPanel.tsx` to this row layout. Inline editors still trigger on click (popover/select) — keep current edit affordances.
+
+2. **Quick Checklist** card
+   - Slightly different bg: `bg-secondary/40` with `border-2 border-border`.
+   - Header `QUICK CHECKLIST`.
+   - Reuse `ChecklistSection.tsx` data; restyle to compact checkbox rows; completed items get `line-through text-muted-foreground`.
+   - Inline "+ Add item" input at bottom.
+
+3. **Collapsed sections** (accordion, closed by default)
+   - `Show Dependencies` → expands `DependenciesSection`.
+   - `Show Design Rounds` → expands `DesignRoundsSection` (only when `task.type === "design"`).
+   - Row design: full-width button, label left, `ChevronDown` right; rotates 180° when open. Use Radix `Accordion`.
 
 ---
 
-## Part 3 — Files to touch
+## Sections that get removed/moved
+
+The spec explicitly lists what shows on the page. To match exactly:
+
+- **Description, Subtasks, FormSubmissionBlock, TimeTrackingSection, separate Dev Status Log, separate Blocker editor** → removed from this page. Description, subtasks, dev blocker, and dev environment remain editable via the existing **Quick edit** drawer (`?task=` route on Work Queue/Board) and the project detail view. `FormSubmissionBlock` content (if the task came from a public form) moves into a small **"From form"** badge in the breadcrumb area — clicking it opens the submission in the Quick edit drawer.
+- **`BlockerBanner`** stays at the very top of the left column when `status === "blocked"` (it's a passive alert, not a section).
+- **`TimeTrackingSection`** is fully removed — the header timer pill is the time tracking UI per the spec. Logged time entries are still queryable elsewhere (Workload/reports) and still written by the existing stop-timer flow.
+
+---
+
+## Files
 
 **New**
-- `src/components/pm/forms/FormFieldRenderer.tsx` — shared field renderer (extracted from `PublicForm`).
-- `src/components/pm/forms/useInternalRequestForm.ts` — hook that loads fields for a `request_type`.
-- `supabase/migrations/<ts>_internal_request_forms.sql` — adds `kind`, `request_type` columns; seeds 5 internal forms with their fields.
+- `src/components/pm/workspace/AssetHub.tsx`
+- `src/components/pm/workspace/CollabHub.tsx`
+- `src/components/pm/workspace/QuickChecklist.tsx`
+- `src/components/pm/workspace/CollapsedSections.tsx`
+- `src/components/pm/workspace/TimerPill.tsx`
+- `src/lib/pm/linkProvider.ts` (`getLinkProvider(url)` → `{ initial, color, label }`)
 
 **Edited**
-- `src/components/pm/CreateWorkDialog.tsx` — Quick Request step gets type selector + dynamic fields; Project step gets 3-card entry UI.
-- `src/pages/pm/PublicForm.tsx` — swap inline switch for `<FormFieldRenderer/>`.
-- `src/pages/pm/Forms.tsx` — filter list to `kind='public'`; add small "Internal request forms" section linking to their builders (so they're discoverable + editable).
-- `src/pages/pm/Templates.tsx` — read `?new=1` query param to auto-open the New Template modal.
-- `src/integrations/supabase/types.ts` — regenerated automatically by the migration.
+- `src/pages/pm/TaskWorkspace.tsx` — new layout, fetch client+phase, remove old sections.
+- `src/components/pm/workspace/ControlPanel.tsx` — row-style refactor.
+- `src/components/pm/workspace/LinksSection.tsx` — restyle to colored icon rows.
+- `src/components/pm/drawer/CommentsThread.tsx` — minor styling pass to match Collab Hub bubble design (keeps drawer use intact via a `variant` prop).
+- `src/components/pm/drawer/ChecklistSection.tsx` — add `variant="quick"` prop for the secondary-bg compact look.
+
+**Unchanged**
+- `ActiveTimerProvider`, `FloatingTimerTray` (still floats on other routes), Quick edit drawer.
 
 ---
 
 ## Technical notes
 
-- Internal form field labels become keys in `pm_projects.custom_fields` (use a slugified label for stable keys).
-- The `pm_form_submissions` insert mirrors what `PublicForm.submit()` does today — keeps audit + Form Builder analytics consistent.
-- `FormFieldRenderer` should accept `{ field, value, onChange }` and handle: text, textarea, email, number, date, dropdown, checkbox-group (multi). Add `checkbox_group` to support Banner ad "Sizes" and Social "Platforms".
-- Conditional logic on individual fields (`field.conditionals`) is out of scope for v1 — the type selector already gives us per-type field sets. We can layer field-level conditionals later using the existing JSON column.
-- No changes to RLS (tables remain permissive while auth is off).
+- Colored title icon uses the existing track color token mapped from `task.track` (or fallback to type color). Component: a 10px circle.
+- Timer pill: persistent only on this page; `FloatingTimerTray` is suppressed when the route is `/pm/tasks/:id AND the active timer is this task` to avoid duplication (check current pathname inside `FloatingTimerTray`).
+- Breadcrumb fetch adds two extra queries on mount; batched in `Promise.all` with the existing project lookup.
+- Drop zone uses the existing `pm_attachments` insert path and `task-attachments` storage bucket — no new buckets or RLS.
+- All colors via semantic tokens (`--info`, `--warning`, `--muted`, `--border`); provider-icon background colors are inline hex per the spec (Figma `#F24E1E`, GitHub `#24292F`, etc.) but the icon-square component is themed.
