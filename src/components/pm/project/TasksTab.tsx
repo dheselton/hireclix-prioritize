@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight } from "lucide-react";
@@ -8,7 +8,18 @@ import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { STATUS_GROUPS, groupForStatus, typeBadgeClass, priorityDotClass, type StatusGroupId } from "@/lib/pm/statusGroups";
-import type { PmTask } from "@/types/pm";
+import type { PmTask, TaskStatus } from "@/types/pm";
+import {
+  DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor,
+  useSensor, useSensors, closestCenter,
+  type DragStartEvent, type DragOverEvent, type DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { BoardColumn } from "./board/BoardColumn";
+import { BoardTaskCard } from "./board/BoardTaskCard";
+import { GROUP_PRIMARY_STATUS } from "./board/boardStyles";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
