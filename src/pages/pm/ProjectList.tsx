@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Zap, FolderKanban } from "lucide-react";
 import { fetchProjects, fetchTasks } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmProject, PmTask } from "@/types/pm";
