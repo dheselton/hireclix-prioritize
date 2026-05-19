@@ -87,12 +87,20 @@ export default function Board() {
 
   // types now sourced above
 
+  const workType = useWorkTypeFilter("board");
+
   const visible = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
+    if (workType.value !== "all") {
+      v = v.filter(t => {
+        const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
+        return wt === workType.value;
+      });
+    }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById]);
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visible.filter(t => t.status === s).length }));
