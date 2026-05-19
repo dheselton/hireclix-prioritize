@@ -348,6 +348,12 @@ export default function WorkQueue() {
       ))}
 
       <TaskDrawer />
+      <CreateWorkDialog
+        open={createOpen !== null}
+        onOpenChange={(v) => { if (!v) setCreateOpen(null); }}
+        initialStep={createOpen ?? "select"}
+        onCreated={reload}
+      />
     </div>
   );
 }
