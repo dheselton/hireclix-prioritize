@@ -37,15 +37,22 @@ export default function GlobalTimeline() {
   useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
   useTasksChanged(reload);
 
+  const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const workType = useWorkTypeFilter("globalTimeline");
+
   const visible = useMemo(() => {
     let v = filter === "all" ? tasks : tasks.filter(t => t.project_id === filter);
     v = applyTaskTypes(v, types);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
+    if (workType.value !== "all") {
+      v = v.filter(t => {
+        const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
+        return wt === workType.value;
+      });
+    }
     return v;
-  }, [tasks, filter, isMe, user?.id, chips.active, types]);
-
-  const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  }, [tasks, filter, isMe, user?.id, chips.active, types, workType.value, projById]);
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
@@ -55,6 +62,7 @@ export default function GlobalTimeline() {
         onModeChange={(m) => setMode(m as any)}
         chipState={chips}
         typeFilterPage="globalTimeline"
+        actions={<WorkTypeFilterToggle value={workType.value} onChange={workType.set} />}
         extraControls={
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-64 h-8"><SelectValue /></SelectTrigger>
