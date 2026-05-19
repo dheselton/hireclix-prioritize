@@ -75,9 +75,9 @@ export default function PublicForm() {
     toast.success("Submitted!");
   }
 
-  if (!form) return <div className="p-6 max-w-xl mx-auto">Form not found.</div>;
+  if (!form) return <div ref={rootRef} className="p-6 max-w-xl mx-auto">Form not found.</div>;
   if (submitted) return (
-    <div className="p-6 max-w-xl mx-auto">
+    <div ref={rootRef} className={embed ? "p-4" : "p-6 max-w-xl mx-auto"}>
       <Card><CardContent className="p-8 text-center space-y-2">
         <h1 className="text-xl font-bold">Thanks!</h1>
         <p className="text-sm text-muted-foreground">Your request was received and added to the queue.</p>
@@ -86,10 +86,11 @@ export default function PublicForm() {
   );
 
   return (
-    <div className="min-h-screen bg-muted/20 py-10">
-      <div className="max-w-2xl mx-auto px-4">
+    <div ref={rootRef} className={embed ? "bg-transparent" : "min-h-screen bg-muted/20 py-10"}>
+      <div className={embed ? "px-2" : "max-w-2xl mx-auto px-4"}>
         <Card><CardContent className="p-6 space-y-4">
-          <h1 className="text-xl font-bold font-unbounded">{form.name}</h1>
+          {!embed && <h1 className="text-xl font-bold font-unbounded">{form.name}</h1>}
+          {embed && <h2 className="text-lg font-semibold">{form.name}</h2>}
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Your name</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
             <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
