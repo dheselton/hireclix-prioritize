@@ -72,7 +72,12 @@ export function ProjectListView({ projects, tasks }: Props) {
         <tbody>
           {sorted.map(({ p, pct }) => (
             <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-              <td className="p-3"><Link to={`/pm/projects/${p.id}`} className="font-medium hover:underline">{p.title}</Link></td>
+              <td className="p-3">
+                <div className="flex items-center gap-2">
+                  <WorkTypeBadge workType={(p as any).work_type ?? "project"} />
+                  <Link to={`/pm/projects/${p.id}`} className="font-medium hover:underline">{p.title}</Link>
+                </div>
+              </td>
               <td className="p-3"><Badge variant="outline">{p.type}</Badge></td>
               <td className="p-3"><Badge variant="outline">{p.status}</Badge></td>
               <td className="p-3 text-muted-foreground">{fmtDate(p.go_live_date)}</td>
