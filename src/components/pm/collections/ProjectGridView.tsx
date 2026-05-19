@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtAgo, getResumeForProject, onActivityChanged } from "@/lib/pm/activity";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
