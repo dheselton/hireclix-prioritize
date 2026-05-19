@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Inbox, Clock, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
@@ -20,6 +21,7 @@ import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
+import { buildQueueLink } from "@/lib/pm/links";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
@@ -220,6 +222,24 @@ export default function WorkQueue() {
 
   const isSubmitter = role === "submitter";
 
+  // Scroll to the section specified by ?section= once data has loaded.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("section");
+    if (!target || !sections.length) return;
+    const el = document.getElementById(`section-${target}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-primary/40", "rounded-md");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary/40", "rounded-md"), 1800);
+    }
+    params.delete("section");
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
+  }, [sections.length]);
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {!isSubmitter && <UnclaimedBanner hideCta />}
@@ -258,19 +278,27 @@ export default function WorkQueue() {
       {!isSubmitter && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard icon={<Clock className="h-4 w-4" />} label="My active" value={myActiveCount} />
-            <StatCard icon={<Inbox className="h-4 w-4" />} label="Unclaimed" value={unclaimedCount} />
-            <StatCard icon={<AlertTriangle className="h-4 w-4 text-red-500" />} label="Overdue (mine)" value={overdueMine} />
-            <StatCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label="Blocked" value={blockedCount} />
+            <StatCard to={buildQueueLink({ chips: ["assigned_to_me"] })} icon={<Clock className="h-4 w-4" />} label="My active" value={myActiveCount} />
+            <StatCard to={buildQueueLink({ section: role === "pm" ? "unclaimed-projects" : "unclaimed-lane" })} icon={<Inbox className="h-4 w-4" />} label="Unclaimed" value={unclaimedCount} />
+            <StatCard to={buildQueueLink({ chips: ["assigned_to_me", "overdue"] })} icon={<AlertTriangle className="h-4 w-4 text-red-500" />} label="Overdue (mine)" value={overdueMine} />
+            <StatCard to={buildQueueLink({ chips: ["blocked"] })} icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label="Blocked" value={blockedCount} />
           </div>
 
           {(overdueMine > 0 || blockedCount > 0) && (
             <Card className="border-red-500/30 bg-red-500/5">
               <CardContent className="p-3 flex items-center gap-3 text-sm">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
-                <div>
-                  {overdueMine > 0 && <span className="mr-3"><strong>{overdueMine}</strong> overdue</span>}
-                  {blockedCount > 0 && <span><strong>{blockedCount}</strong> blocked across all projects</span>}
+                <div className="flex items-center gap-3">
+                  {overdueMine > 0 && (
+                    <Link to={buildQueueLink({ chips: ["assigned_to_me", "overdue"] })} className="hover:underline">
+                      <strong>{overdueMine}</strong> overdue
+                    </Link>
+                  )}
+                  {blockedCount > 0 && (
+                    <Link to={buildQueueLink({ chips: ["blocked"] })} className="hover:underline">
+                      <strong>{blockedCount}</strong> blocked across all projects
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -281,6 +309,7 @@ export default function WorkQueue() {
       {sections.map(s => (
         <Section
           key={s.key}
+          id={`section-${s.key}`}
           title={s.title}
           count={s.tasks.length}
           extra={s.key === "unclaimed-lane" && (role === "designer" || role === "developer") ? (
@@ -310,21 +339,10 @@ export default function WorkQueue() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function Section({ title, count, children, extra, id }:
+  { title: string; count: number; children: React.ReactNode; extra?: React.ReactNode; id?: string }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
-        <div className="text-2xl font-bold mt-1">{value}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Section({ title, count, children, extra }:
-  { title: string; count: number; children: React.ReactNode; extra?: React.ReactNode }) {
-  return (
-    <div>
+    <div id={id} className="scroll-mt-24">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {title} <span className="text-foreground/50">({count})</span>
@@ -335,3 +353,17 @@ function Section({ title, count, children, extra }:
     </div>
   );
 }
+
+function StatCard({ icon, label, value, to }: { icon: React.ReactNode; label: string; value: number; to?: string }) {
+  const body = (
+    <Card className={to ? "hover:shadow-md hover:border-foreground/20 transition cursor-pointer h-full" : "h-full"}>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
+        <div className="text-2xl font-bold mt-1">{value}</div>
+      </CardContent>
+    </Card>
+  );
+  if (!to) return body;
+  return <Link to={to} className="block">{body}</Link>;
+}
+
