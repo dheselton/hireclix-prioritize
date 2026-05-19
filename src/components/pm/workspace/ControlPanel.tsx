@@ -119,7 +119,7 @@ export function ControlPanel({
         <DatePicker
           value={task.due_date}
           onChange={v => patch({ due_date: v ?? null })}
-          className="h-7 w-32 text-xs"
+          size="sm"
         />
       </Row>
 
