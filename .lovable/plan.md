@@ -1,72 +1,136 @@
-## Snippets Library — Plan
+## Goal
 
-A new role-gated page at `/snippets` for Developers and Designers to browse, search, and copy reusable code snippets, with multi-variation support and syntax highlighting.
+Build snippet ↔ task linking in two layers:
+1. **Prompt C** — link snippets to live tasks (Task Workspace), with a reusable search popover.
+2. **This prompt** — link snippets to template tasks, propagate to live tasks on project creation, and surface a template-level snippet summary.
 
-### 1. Database (single migration)
+---
 
-Three new tables, permissive RLS to match existing `pm_*` pattern (auth is disabled in dev):
+## Part 1 — Prompt C (live task ↔ snippet linking)
 
-- `pm_snippet_categories` — id, name, color, created_at
-- `pm_snippets` — id, title, description, category_id → categories, language, tags[], project_ids[], created_by, created_at, updated_at
-- `pm_snippet_variations` — id, snippet_id → snippets (cascade), name, code, sort_order, created_at
+### Database (single migration)
 
-Seed `pm_snippet_categories` with: Webflow, Custom JS, CSS Utilities, HTML Components, Animations, Forms, API / Integrations (each with a distinct color token).
+```sql
+create table public.pm_task_snippets (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references public.pm_tasks(id) on delete cascade,
+  snippet_id uuid not null references public.pm_snippets(id) on delete cascade,
+  linked_by uuid references public.mock_users(id),
+  linked_at timestamptz not null default now(),
+  unique(task_id, snippet_id)
+);
+alter table public.pm_task_snippets enable row level security;
+create policy "public read"   on public.pm_task_snippets for select using (true);
+create policy "public insert" on public.pm_task_snippets for insert with check (true);
+create policy "public delete" on public.pm_task_snippets for delete using (true);
+create index on public.pm_task_snippets(task_id);
+create index on public.pm_task_snippets(snippet_id);
+```
 
-Add `updated_at` trigger on `pm_snippets` using existing `update_updated_at_column()`.
+### Reusable popover
 
-### 2. Role gating
+New `src/components/pm/snippets/SnippetSearchPopover.tsx`:
+- Controlled `open`, `onOpenChange`, `linkedSnippetIds`, `onToggle(snippetId)`.
+- Trigger slot via `children` (so it can wrap a badge, button, etc.).
+- Body: search input (title / tag / category match), category filter chips, scrollable result list (title, category badge, language). Selected rows show a check; clicking toggles link via `onToggle`.
+- Loads all snippets + categories once on first open, caches in component state.
 
-- Add `/snippets` route in `src/App.tsx` wrapped in `AppLayout`.
-- In `AppSidebar.tsx`, add a new nav item "Snippets" (Code icon) shown only when `role === 'developer' || role === 'designer'`.
-- Add `/snippets` to `SubmitterRouteGuard` blocked prefixes as a safety net, plus a redirect in the page itself if the role isn't allowed (covers PM/strategist/analyst too).
+### Task Workspace integration
 
-### 3. Data layer
+- New section `src/components/pm/workspace/SnippetsSection.tsx` rendered in `TaskWorkspace.tsx` under `LinksSection`.
+- Header: "Snippets" + "+ Link snippet" button that opens `SnippetSearchPopover`.
+- Body: card list of linked snippets (title, category badge, language, copy button → uses first variation, unlink ✕). Empty state: "No snippets linked yet."
+- Data lives in `src/lib/pm/taskSnippets.ts` (list/link/unlink helpers).
 
-New `src/lib/pm/snippets.ts` with:
-- `fetchCategories()`, `createCategory()`, `renameCategory()`, `deleteCategory()`
-- `fetchSnippets()` joining variations
-- `createSnippet()`, `updateSnippet()`, `deleteSnippet()`, `duplicateSnippet()`
-- Variation CRUD batched inside save (delete-then-insert by snippet_id for simplicity)
+---
 
-### 4. Page composition
+## Part 2 — Template ↔ snippet linking & propagation
 
-`src/pages/pm/Snippets.tsx` — top bar (title, subtitle, "+ New Snippet"), two-column grid `240px 1fr`.
+### Database (same migration)
 
-Components under `src/components/pm/snippets/`:
-- `SnippetsSidebar.tsx` — search input, category list with counts + "Manage Categories", tag filter pills
-- `SnippetsToolbar.tsx` — result count, sort dropdown (Newest | A–Z | Most Used), grid/list view toggle (reuse `useViewMode`)
-- `SnippetCard.tsx` — grid card: header (title, category badge, ⋯ menu), description, tag pills (+N more), variation segmented control (hidden if 1), code preview (collapsed at 6–8 lines with "Show more"), footer with "Used in X projects" + Copy button (2s "Copied ✓" state)
-- `SnippetRow.tsx` — list row that expands inline to the same code+variations block
-- `CodeBlock.tsx` — dark `#1e1e1e` block, language label, highlight.js highlighting
-- `SnippetEditorDialog.tsx` — modal with Title, Category, Description (textarea), Tags input w/ autocomplete + inline create, Language dropdown, Variations repeater (name + code textarea, add/remove/reorder, ≥1 required), Used In Projects multi-select
-- `ManageCategoriesDialog.tsx` — list with click-to-rename, delete (confirm if snippets exist), add new at bottom
+```sql
+create table public.pm_template_task_snippets (
+  id uuid primary key default gen_random_uuid(),
+  template_task_id uuid not null references public.pm_template_tasks(id) on delete cascade,
+  snippet_id uuid not null references public.pm_snippets(id) on delete cascade,
+  unique(template_task_id, snippet_id)
+);
+alter table public.pm_template_task_snippets enable row level security;
+create policy "public read"   on public.pm_template_task_snippets for select using (true);
+create policy "public insert" on public.pm_template_task_snippets for insert with check (true);
+create policy "public delete" on public.pm_template_task_snippets for delete using (true);
+create index on public.pm_template_task_snippets(template_task_id);
+```
 
-### 5. Syntax highlighting
+### Template editor UI (`src/pages/pm/TemplateBuilder.tsx`)
 
-Load highlight.js from cdnjs on first mount of `CodeBlock` (script + CSS, atom-one-dark theme), register `javascript`, `css`, xml/html, `json`, and a small `liquid` rules fallback. Cache the load promise so multiple cards share one script tag.
+- Add a **Snippets** cell to each task row (shrink Title to col-span-3, add col-span-1 Snippets between Type and Phase, or place after delete — final grid retuned to 13 cols or by trimming existing column widths).
+- Cell renders only when `task.type` ∈ {`design`, `development`, `dev`} (Dev/Design only — hide for PM/QA/strategy/analytics/research/review/approval/reporting).
+- Component `TemplateTaskSnippetCell`:
+  - Loads snippet count for that `template_task_id`.
+  - Renders pill: `<Code2/> 2 snippets` when count > 0, `<Code2/> Link snippets` when 0.
+  - Clicking opens `SnippetSearchPopover` with `linkedSnippetIds` for this template task; `onToggle` inserts/deletes in `pm_template_task_snippets`, then refreshes count.
 
-### 6. Filtering behavior
+### Template summary panel
 
-All filters combine with AND:
-- Live search on title + description + tags (lowercased contains)
-- Selected category (or "All")
-- Selected tag pills (every selected tag must be on the snippet)
+Below the tasks Card in `TemplateBuilder.tsx`, new Card "Snippets in this template":
+- Query: `pm_template_task_snippets` joined to `pm_snippets` + `pm_snippet_categories` for this template (via template_task_id IN tasks).
+- Aggregate by snippet_id → row: title, category badge, `Used in N tasks`.
+- Empty state: "No snippets linked to any task yet."
 
-Sort applied after filter; "Most Used" = `project_ids.length` desc.
+### Propagation in `createProjectFromTemplate`
 
-### 7. Copy behavior
+Inside `instantiateTemplateIntoProject` (`src/lib/pm/api.ts`), after dependency insert:
+```ts
+// Fetch all template→snippet links for these template tasks
+const tempTaskIds = previewTasks.map(p => /* original template_task.id, NOT temp_id */);
+```
+Issue: `previewTasks` currently carries `temp_id` (string) but not the original `pm_template_tasks.id`. Fix by either:
+- Extending `PreviewTask` with `template_task_id?: string` and populating it in `buildPreviewFromTemplate` (preferred — single line change), **or**
+- Refetching `pm_template_tasks` by `temp_id` set inside the instantiator.
 
-Copy button uses the currently selected variation's `code`, calls `navigator.clipboard.writeText`, swaps label to "Copied ✓" for 2s. If only one variation, segmented control is hidden and copy uses that variation directly.
+Plan uses option 1. Then:
+```ts
+const { data: links } = await supabase
+  .from('pm_template_task_snippets')
+  .select('template_task_id, snippet_id')
+  .in('template_task_id', tempTaskIds);
 
-### 8. Reuse / styling
+const realIdByTempTaskId = new Map<string,string>();
+for (const pt of previewTasks) {
+  const realId = idByTemp.get(pt.temp_id);
+  if (pt.template_task_id && realId) realIdByTempTaskId.set(pt.template_task_id, realId);
+}
+const snippetRows = (links ?? [])
+  .map(l => ({ task_id: realIdByTempTaskId.get(l.template_task_id), snippet_id: l.snippet_id, linked_by: getCurrentUserId() ?? null }))
+  .filter(r => r.task_id);
+if (snippetRows.length) await supabase.from('pm_task_snippets').insert(snippetRows as any);
+```
 
-- Reuse existing `Button`, `Input`, `Textarea`, `Badge`, `Card`, `Dialog`, `Select`, `DropdownMenu`, `Tabs` (for variation switcher) from `src/components/ui/*`.
-- Use only semantic tokens (`info`, `muted`, `border`, etc.) — no raw colors except the spec-mandated `#1e1e1e` code background, which will be added as a `--code-bg` token in `index.css` and used via `bg-[hsl(var(--code-bg))]`.
-- Date display follows existing `mm/dd/yyyy` convention.
+---
 
-### Technical notes
+## Constraints honored
 
-- Variations: on save, replace all rows for the snippet in one transaction-like sequence (`delete where snippet_id = …` then bulk insert). Sort preserved by `sort_order` from drag order.
-- Category color: store HSL string in `color` column; render badge via inline `style={{ background: hsl(var) }}` fallback to `bg-muted`.
-- `created_by`: use `getCurrentUserId()` from `mockUser` (auth disabled).
-- Add `/snippets` and a "Snippets" Core memory line noting the role gate, since the rule is universal.
+- Template and live snippet links are independent tables — editing one does not affect the other.
+- Both join tables `ON DELETE CASCADE` from `pm_snippets`, so library deletes clean up automatically.
+- Snippet column hidden for non Dev/Design template tasks.
+- Single reusable `SnippetSearchPopover` used by Task Workspace and Template editor.
+- No new routes.
+
+---
+
+## File-level changes
+
+**New**
+- `supabase/migrations/<ts>_task_and_template_snippet_links.sql`
+- `src/components/pm/snippets/SnippetSearchPopover.tsx`
+- `src/components/pm/workspace/SnippetsSection.tsx`
+- `src/lib/pm/taskSnippets.ts`
+- `src/components/pm/snippets/TemplateTaskSnippetCell.tsx`
+- `src/components/pm/snippets/TemplateSnippetSummary.tsx`
+
+**Edited**
+- `src/pages/pm/TaskWorkspace.tsx` — mount `SnippetsSection`.
+- `src/pages/pm/TemplateBuilder.tsx` — snippet cell per row (Dev/Design only) + summary card.
+- `src/lib/pm/api.ts` — extend `PreviewTask` with `template_task_id`, populate it in `buildPreviewFromTemplate`, add snippet propagation in `instantiateTemplateIntoProject`.
+- `mem://index.md` — add a note about the two snippet-link tables.
