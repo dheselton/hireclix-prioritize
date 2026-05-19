@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Inbox, Clock, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
@@ -20,6 +21,7 @@ import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
+import { buildQueueLink } from "@/lib/pm/links";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
