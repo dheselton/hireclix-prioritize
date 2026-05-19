@@ -60,15 +60,16 @@ export function ProjectGridView({ projects, tasks, onChanged }: Props) {
           const done = projTasks.filter(t => t.status === "complete" || t.status === "approved").length;
           const pct = projTasks.length ? Math.round((done / projTasks.length) * 100) : 0;
           const checked = selected.has(p.id);
+          const isRequest = ((p as any).work_type ?? "project") === "request";
           return (
             <Card
               key={p.id}
               className={cn("relative hover:shadow-md transition cursor-pointer h-full", checked && "ring-2 ring-primary")}
               onClick={() => navigate(`/pm/projects/${p.id}`)}
             >
-              <CardContent className="p-4 pl-9 space-y-3">
+              <CardContent className={cn("pl-9 space-y-3", isRequest ? "p-3" : "p-4")}>
                 <div
-                  className="absolute left-2.5 top-4"
+                  className={cn("absolute left-2.5", isRequest ? "top-3" : "top-4")}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Checkbox
@@ -78,22 +79,31 @@ export function ProjectGridView({ projects, tasks, onChanged }: Props) {
                   />
                 </div>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold leading-tight">{p.title}</div>
-                  <Badge variant="outline" className="text-[10px]">{p.status}</Badge>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <WorkTypeBadge workType={(p as any).work_type ?? "project"} />
+                    <div className={cn("font-semibold leading-tight truncate", isRequest && "text-sm")}>{p.title}</div>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0">{p.status}</Badge>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{p.type}</Badge>
-                <div className="text-xs text-muted-foreground">Go-live: {fmtDate(p.go_live_date)}</div>
+                {!isRequest && <Badge variant="outline" className="text-[10px]">{p.type}</Badge>}
+                {!isRequest && (
+                  <div className="text-xs text-muted-foreground">Go-live: {fmtDate(p.go_live_date)}</div>
+                )}
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span>{pct}%</span>
+                    <span className="text-muted-foreground">{isRequest ? "Tasks" : "Progress"}</span>
+                    <span>{isRequest ? `${done}/${projTasks.length}` : `${pct}%`}</span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-1">{done} of {projTasks.length} tasks complete</div>
+                  {!isRequest && (
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  )}
+                  {!isRequest && (
+                    <div className="text-[11px] text-muted-foreground mt-1">{done} of {projTasks.length} tasks complete</div>
+                  )}
                 </div>
-                {(() => {
+                {!isRequest && (() => {
                   const resume = getResumeForProject(user?.id, p.id);
                   const t = resume ? projTasks.find(x => x.id === resume.taskId && x.status !== "complete" && x.status !== "approved") : null;
                   if (!t || !resume) return null;
