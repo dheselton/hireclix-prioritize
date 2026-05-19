@@ -855,8 +855,10 @@ export type Database = {
           client_id: string | null
           created_at: string
           id: string
+          kind: string
           name: string
           notify_emails: string[] | null
+          request_type: string | null
           shareable_slug: string | null
           submit_action: Json | null
           webhook_url: string | null
@@ -866,8 +868,10 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          kind?: string
           name: string
           notify_emails?: string[] | null
+          request_type?: string | null
           shareable_slug?: string | null
           submit_action?: Json | null
           webhook_url?: string | null
@@ -877,8 +881,10 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          kind?: string
           name?: string
           notify_emails?: string[] | null
+          request_type?: string | null
           shareable_slug?: string | null
           submit_action?: Json | null
           webhook_url?: string | null
