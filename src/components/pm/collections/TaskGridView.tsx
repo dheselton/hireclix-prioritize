@@ -10,6 +10,7 @@ import type { PmTask, PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
+import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 
 const PRIORITY_DOT: Record<string, string> = {
   urgent: "bg-red-500", high: "bg-orange-500", medium: "bg-amber-400", low: "bg-emerald-500",
