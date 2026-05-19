@@ -95,13 +95,20 @@ export default function WorkQueue() {
   }, [role]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const workType = useWorkTypeFilter("workQueue");
 
-  // Pipeline: type-filter (role default) -> chips, then sectioning. Me Mode is applied within each section.
+  // Pipeline: type-filter (role default) -> chips -> work-type, then sectioning. Me Mode is applied within each section.
   const filtered = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskChips(v, chips.active, user?.id);
+    if (workType.value !== "all") {
+      v = v.filter(t => {
+        const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
+        return wt === workType.value;
+      });
+    }
     return v;
-  }, [tasks, types, chips.active, user?.id]);
+  }, [tasks, types, chips.active, user?.id, workType.value, projById]);
 
   const meId = user?.id ?? null;
   const lane = ROLE_LANE[role ?? "submitter"] ?? [];
