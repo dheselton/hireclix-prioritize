@@ -231,6 +231,7 @@ export const createProjectFromTemplate = async (params: {
 }) => {
   const { template, previewTasks, previewDeps, placement, kickoff, goLive, title, client_id } = params;
 
+  const uid = getCurrentUserId();
   const { data: proj, error: pe } = await supabase.from('pm_projects').insert({
     title: title || `${template.name} — ${new Date().toLocaleDateString()}`,
     type: template.type,
@@ -241,8 +242,15 @@ export const createProjectFromTemplate = async (params: {
     kickoff_date: kickoff,
     start_date: kickoff,
     go_live_date: goLive,
+    created_by: uid ?? null,
   } as any).select().single();
   if (pe || !proj) throw pe;
+
+  if (uid) {
+    await supabase.from('pm_project_members').insert({
+      project_id: (proj as any).id, user_id: uid, role: 'creator',
+    } as any);
+  }
 
   await instantiateTemplateIntoProject({
     projectId: (proj as any).id,
