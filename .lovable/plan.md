@@ -1,113 +1,99 @@
-# Task Workspace Refactor (Execution-First)
+## Work Queue Refactor — The Clarity Layer
 
-Turn the Task Drawer into a lightweight Quick Edit, and introduce a Full Task Workspace as the primary task experience. Add a real Links section, rebuild Time Tracking with a global running-timer tray, and demote structural sections.
+Rebuild `/pm` (WorkQueue.tsx) around a three-band story: **Inbox (unclaimed) → My Active Work → Blocked & Review**, with Requests and Projects visually and structurally separated. Role drives which bands render.
 
-## 1. Routing & entry points
+### 1. New page structure
 
-- Add new route `/pm/tasks/:id` → `TaskWorkspace.tsx` page (full screen, app shell visible).
-- Update `useTaskDrawerLink` consumers: clicking a task row/card now navigates to `/pm/tasks/:id`. The drawer (`?task=`) is reserved for **Quick Edit** (opened from a "Quick edit" affordance such as ⋯ menu or shift-click; default click = open workspace).
-- Workspace has a back button (returns to previous list/board) and a "Quick edit" toggle that opens the existing drawer in-place.
-
-## 2. Full Task Workspace layout
-
-Two-column at ≥lg, stacked on mobile. Header bar spans full width.
-
-### Header (sticky)
-- Title (inline-editable), breadcrumb (Project → Task), status pill.
-- Right: **Start Timer / Pause / Stop** controls, "Quick edit", overflow menu.
-
-### Left column (~70%) — Execution
-Ordered top to bottom:
-
-1. **Attachments** — promoted to hero block. Grid of image thumbnails (square tiles) + file list below. Full-area drag-and-drop. Reuses `pm_attachments` + `task-attachments` bucket. Visual upgrade only — no schema change.
-2. **Links** (NEW) — favicon (via `https://www.google.com/s2/favicons?domain=…&sz=32`), editable label, URL, open-in-new, delete. Inline add row.
-3. **Description** — rich/markdown read view by default; edit on click. Form-submission payloads render here as a structured key/value block when present (see §5).
-4. **Checklist / Subtasks** — keep `ChecklistSection` + `SubtasksSection`, compact.
-5. **Comments** — `CommentsThread`, enlarged, primary collab surface.
-
-### Right column (~30%) — Control panel
-Compact card with:
-- Status, Assignee, Priority
-- Start / Due dates (with existing cascade behavior)
-- Client (read-only, from project)
-- Total time logged (live, sums `pm_time_entries`)
-- Tags
-
-Below, **collapsed by default** accordions:
-- Dependencies (`DependenciesSection`)
-- Design rounds (design tasks only)
-- Dev status log + blocker (dev tasks only)
-- Metadata (created/updated, IDs)
-
-## 3. Links (new feature)
-
-New table `pm_task_links`:
+```text
+┌─ Smart stats (4 tiles, role-aware) ────────────────────────┐
+├─ INBOX (Unclaimed)  — 2-column grid                        │
+│   • Quick Requests Inbox      • New Project Tasks          │
+│     (unclaimed requests, my   (unclaimed project tasks,    │
+│      lane)                     my lane)                    │
+├─ MY ACTIVE WORK — tabs or 2-col, collapsible per side      │
+│   • Quick Hits (my request tasks)                          │
+│   • Project Work (my project tasks, grouped by project)    │
+├─ BLOCKED & REVIEW                                          │
+│   • Blocked Work (mine, shows blocker text)                │
+│   • Waiting for Review (PM: in_review across their         │
+│     projects / Execution: my submitted in_review)          │
+└────────────────────────────────────────────────────────────┘
 ```
-id uuid pk, task_id uuid, url text, label text, created_by uuid, created_at timestamptz default now()
-```
-Permissive RLS to match other pm_* tables. New `LinksSection.tsx` component.
 
-## 4. Time Tracking rebuild
+Role variants:
+- **Designer / Developer**: all 3 bands as above, lane-filtered (designer = design+content, dev = dev+qa).
+- **PM**: Inbox shows Unclaimed Requests + Unclaimed Project Tasks (all lanes). Replace "Quick Hits" with **Project Health** (list of PM's projects flagged with overdue / blocked / at-risk counts, each row deep-links to the project). Keep "Project Work" (PM's own assigned tasks) and Blocked + Approvals Waiting on Me.
+- **Strategist / Analyst**: same as Designer/Developer but lane = their specialty.
+- **Submitter**: only **My Requests** (created_by = me) grouped by status — no inbox / blocked bands.
 
-### Active timer
-- One active timer per user, stored in:
-  - `localStorage` (`pm_active_timer = { taskId, taskTitle, startedAt }`) for instant resume.
-  - New table `pm_active_timers` (`user_id pk, task_id, started_at, note`) so it survives device switches.
-- New context `ActiveTimerProvider` mounted in `App.tsx`, exposing `start(taskId, title)`, `pause()`, `stop(note?)`, `current`.
-- Stop → insert into existing `pm_time_entries` with computed minutes (rounded up to nearest minute, min 1).
+### 2. Card design split
 
-### Floating tray (global)
-- `FloatingTimerTray.tsx` mounted globally (App level). Bottom-right, fixed, z-50.
-- Shows task title, live `HH:MM:SS`, Pause/Resume + Stop. Click body → navigates to `/pm/tasks/:id`.
-- Hidden when no active timer.
+Two new presentational components in `src/components/pm/collections/`:
 
-### Manual entry
-- Keep current manual hours/minutes + note in the Time section of the workspace, plus full log table below.
+- **`RequestTaskCard.tsx`** (compact): single row, thin border, `py-2 px-3`, no shadow.
+  - Line 1: title (sm font) + `Request` badge + `StatusPill`.
+  - Line 2 (muted, text-[11px]): client name · due date · assignee avatar.
+  - Inline `ClaimButton` when unclaimed.
 
-## 5. Form → Task connection
+- **`ProjectTaskCard.tsx`** (rich): standard card with subtle shadow, `p-4`.
+  - Line 1: **Project title** (bold) + `Project` badge + phase chip.
+  - Line 2: task title (medium) + `StatusPill` + priority dot.
+  - Line 3 (muted): client · due date · assignee · resume hint if applicable.
+  - Footer: "Open project" link + claim/open task buttons.
 
-- When `pm_form_submissions` creates a task, store the submission payload in `pm_tasks.custom_fields.form_submission = { form_name, fields: [{label, value}] }` (already JSONB, no migration).
-- Workspace Description block detects `custom_fields.form_submission` and renders it as a clean labeled block above the free-text description.
-- Backfill: read existing submissions and populate `custom_fields` for any task missing it (one-shot SQL via supabase--insert).
+Both render in a 1-col stack inside their section; project cards group by project_id with a tiny project header above consecutive cards from the same project (so we don't repeat the project line). The existing `ProjectWorkCard` keeps its role in `/pm/projects` views but is **not** used in the new WorkQueue bands except optionally inside "Project Health" for PMs.
 
-## 6. Quick Edit Drawer (simplified)
+### 3. Smart header stats (role-aware)
 
-Reduce `TaskDrawer` to: Title, Status, Assignee, Due date, single Quick Comment box, and a primary **"Open Full Task"** button (navigates to `/pm/tasks/:id`). Remove all heavy sections from the drawer.
+Replace the four `StatCard`s with:
 
-## 7. Files
+| Tile | Designer/Dev/Strategist/Analyst | PM |
+|------|---|---|
+| Active Requests | count of my active request tasks | count of unclaimed requests across all lanes |
+| Active Projects | distinct project_ids I have active tasks in | count of PM's active projects |
+| Total Unclaimed | unclaimed in my lane | unclaimed everywhere |
+| Blockers | my blocked tasks | tasks blocked across PM's projects |
+
+Each tile remains a deep-link via `buildQueueLink` (existing rule). Hide stats entirely for Submitters.
+
+### 4. Section controls
+
+- `CollapsibleSection` wrapper (uses existing `@radix-ui/react-collapsible`) for each band's left/right columns. State persisted in `localStorage` under `pm.workQueue.collapsed.<key>`.
+- "Me Mode" already filters tasks globally — keep behavior; sections continue to use the `filtered` pipeline.
+- Existing chip bar, type filter, work-type toggle, and view-mode toggle stay in the toolbar but the **view-mode dropdown is removed** for the new layout (the structure IS the view). Power users can still hit `/pm/board` for kanban.
+
+### 5. Data plumbing
+
+No schema changes. All segmentation is derived in WorkQueue from existing fields:
+
+- `isRequestTask(t)` = parent project `work_type === 'request'` (helper already present).
+- `isProjectTask(t)` = parent project `work_type === 'project'` or null.
+- `inLane(t)` from `ROLE_LANE` map (already present, kept).
+- `active(t)` = not complete/approved.
+- `blocker text` from `t.dev_blocker` (already on `pm_tasks`).
+- "Waiting for Review" for execution roles = tasks where `t.created_by === meId && t.status === 'in_review'`. For PMs = `t.status === 'in_review' && pmProjectIds.has(t.project_id)` (existing logic, kept).
+- "Project Health" for PMs uses `fetchTasks` + `fetchProjects` (already loaded) — group by project, compute overdue/blocked counts inline.
+
+### 6. Files
 
 **New**
-- `src/pages/pm/TaskWorkspace.tsx`
-- `src/components/pm/workspace/AttachmentsHero.tsx`
-- `src/components/pm/workspace/LinksSection.tsx`
-- `src/components/pm/workspace/FormSubmissionBlock.tsx`
-- `src/components/pm/workspace/ControlPanel.tsx`
-- `src/components/pm/timer/ActiveTimerProvider.tsx`
-- `src/components/pm/timer/FloatingTimerTray.tsx`
-- `src/components/pm/timer/TimerControls.tsx`
+- `src/components/pm/collections/RequestTaskCard.tsx`
+- `src/components/pm/collections/ProjectTaskCard.tsx`
+- `src/components/pm/CollapsibleSection.tsx` (small wrapper with persisted open state, count badge, optional right-side action slot)
+- `src/components/pm/workqueue/InboxBand.tsx` (renders the two unclaimed columns)
+- `src/components/pm/workqueue/ActiveWorkBand.tsx` (Quick Hits + Project Work, or Project Health for PMs)
+- `src/components/pm/workqueue/BlockedReviewBand.tsx`
+- `src/components/pm/workqueue/ProjectHealthList.tsx` (PM only)
 
 **Modified**
-- `src/App.tsx` — add route, mount `ActiveTimerProvider` + `FloatingTimerTray`.
-- `src/components/pm/TaskDrawer.tsx` — strip down to Quick Edit.
-- All task click handlers (`TaskKanban`, `TaskListView`, `TaskGridView`, `ProjectWorkCard`, `CommentsThread`, `DependenciesSection`) — default click = navigate to workspace; secondary action opens drawer.
-- `src/components/pm/drawer/TimeTrackingSection.tsx` — extend with Start Timer button wired to provider (kept for workspace reuse).
-- `src/lib/pm/links.ts` — add `taskWorkspaceLink(id)` helper.
+- `src/pages/pm/WorkQueue.tsx` — replace `sections.map` + ViewToggle modes with three band components. Keep toolbar, stats, banners, `CreateWorkDialog`, `TaskDrawer`, `?section=` scroll behavior (extend ids to new section keys: `inbox-requests`, `inbox-projects`, `quick-hits`, `project-work`, `blocked`, `review`, `project-health`).
+- `src/lib/pm/links.ts` — extend `buildQueueLink` `section` union with the new keys (no behavior change).
 
-**Migrations**
-- Create `pm_task_links` with permissive RLS.
-- Create `pm_active_timers` with permissive RLS.
+**Unchanged**: filters pipeline, `applyTaskChips`, `applyTaskTypes`, `ROLE_LANE`, `useMeMode`, `useChipFilters`, `useWorkTypeFilter`, `CreateWorkDialog`, `TaskDrawer`. The `ProjectWorkGrid` / `ProjectWorkCard` and other view modes (list/grid/kanban) remain in place for `/pm/board` and project detail.
 
-## 8. Out of scope (this round)
+### 7. Out of scope
 
-- Auth tightening on the new tables (matches current permissive PM RLS until auth re-enabled).
-- Rich text editor for description (keep textarea + markdown render).
-- Multi-user collaborative cursors / presence.
-- Timer idle detection / auto-pause.
-- Webhook events for timer start/stop.
-
-## Technical notes
-
-- Timer ticking uses a single `setInterval(1000)` in the provider; tray and header read from context to avoid duplicate intervals.
-- `pm_active_timers` upsert keyed on `user_id` ensures the "one active timer" rule.
-- `TaskWorkspace` reuses existing section components where possible (`ChecklistSection`, `SubtasksSection`, `CommentsThread`, `DependenciesSection`, `DesignRoundsSection`, `DevStatusLogSection`) — only layout changes.
-- Memory rule update after build: add Core line "Tasks open in full workspace at /pm/tasks/:id; drawer is Quick Edit only."
+- No DB migrations, RLS, or auth changes.
+- No edits to `/pm/board`, `/pm/projects`, project detail, templates, or scheduler.
+- No new task fields; "blocker text" uses existing `dev_blocker`.
+- No realtime additions beyond the existing `useTasksChanged` reload.
