@@ -61,3 +61,20 @@ export function useCurrentUser() {
   const user = users.find(u => u.id === currentId) ?? null;
   return { user, users, setCurrent, role: (user?.role ?? 'pm') as PmRole };
 }
+
+/** Non-hook accessor for the active mock user id (reads localStorage). */
+export function getCurrentUserId(): string | null {
+  if (currentId) return currentId;
+  if (typeof window !== 'undefined') {
+    try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
+  }
+  return null;
+}
+
+/** Role of the active mock user, if known in cache. */
+export function getCurrentUserRole(): PmRole | null {
+  const id = getCurrentUserId();
+  if (!id) return null;
+  const u = cachedUsers.find(x => x.id === id);
+  return (u?.role as PmRole) ?? null;
+}
