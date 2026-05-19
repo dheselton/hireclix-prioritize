@@ -6,12 +6,14 @@ export type ChipId =
   | "watching"
   | "overdue"
   | "due_this_week"
-  | "blocked";
+  | "blocked"
+  | "unclaimed";
 
 export const ALL_CHIPS: { id: ChipId; label: string }[] = [
   { id: "assigned_to_me", label: "Assigned to me" },
   { id: "created_by_me", label: "Created by me" },
   { id: "watching", label: "Watching" },
+  { id: "unclaimed", label: "Unclaimed" },
   { id: "overdue", label: "Overdue" },
   { id: "due_this_week", label: "Due this week" },
   { id: "blocked", label: "Blocked" },
@@ -20,7 +22,7 @@ export const ALL_CHIPS: { id: ChipId; label: string }[] = [
 const keyFor = (viewKey: string) => `pm.filters.${viewKey}`;
 
 const VALID_CHIPS = new Set<ChipId>([
-  "assigned_to_me", "created_by_me", "watching", "overdue", "due_this_week", "blocked",
+  "assigned_to_me", "created_by_me", "watching", "overdue", "due_this_week", "blocked", "unclaimed",
 ]);
 
 export function useChipFilters(viewKey: string) {
