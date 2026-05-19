@@ -24,7 +24,9 @@ export default function Forms() {
   const [mode, setMode] = useViewMode("forms", "grid");
 
   const reload = async () => {
-    const { data } = await supabase.from("pm_forms").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("pm_forms").select("*")
+      .or("kind.is.null,kind.eq.public")
+      .order("created_at", { ascending: false });
     setForms(data || []);
   };
   useEffect(() => { reload(); }, []);

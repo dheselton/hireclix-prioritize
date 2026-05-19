@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +7,16 @@ import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Zap, FolderKanban, X, Plus } from "lucide-react";
+import { Zap, FolderKanban, X, Plus, FileText, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { createProject } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
+import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
+import { useInternalRequestForm, slugifyLabel, type RequestType } from "@/components/pm/forms/useInternalRequestForm";
+import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 
 interface Props {
   open: boolean;
@@ -21,39 +25,86 @@ interface Props {
   initialStep?: "select" | "request" | "project";
 }
 
-type Step = "select" | "request" | "project";
+type Step = "select" | "request" | "project-entry" | "project-blank";
+
+const REQUEST_TYPES: { value: RequestType; label: string }[] = [
+  { value: "web_edit",   label: "Web edit" },
+  { value: "banner_ads", label: "Banner ads" },
+  { value: "social",     label: "Social post" },
+  { value: "email",      label: "Email" },
+  { value: "general",    label: "General" },
+];
 
 export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
   const { user } = useCurrentUser();
-  const [step, setStep] = useState<Step>(initialStep);
+  const navigate = useNavigate();
+  const [step, setStep] = useState<Step>(initialStep === "project" ? "project-entry" : (initialStep as Step));
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
 
-  // Request form
+  // Request
   const [reqForm, setReqForm] = useState({ title: "", client_id: "", description: "" });
+  const [requestType, setRequestType] = useState<RequestType>("web_edit");
+  const [reqFieldValues, setReqFieldValues] = useState<Record<string, any>>({});
   const [quickTasks, setQuickTasks] = useState<string[]>([""]);
+  const { formId: internalFormId, fields: internalFields } = useInternalRequestForm(requestType);
 
-  // Project form
+  // Project (blank)
   const [projForm, setProjForm] = useState({
     title: "", type: "career_site", status: "active", client_id: "",
     kickoff_date: "", go_live_date: "",
   });
 
+  // Wizard
+  const [wizardTemplateId, setWizardTemplateId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
-    setStep(initialStep);
+    setStep(initialStep === "project" ? "project-entry" : (initialStep as Step));
     setReqForm({ title: "", client_id: "", description: "" });
+    setRequestType("web_edit");
+    setReqFieldValues({});
     setQuickTasks([""]);
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
     (async () => {
-      const { data } = await supabase.from("clients").select("id,name").order("name");
-      setClients(data || []);
+      const [{ data: c }, { data: t }] = await Promise.all([
+        supabase.from("clients").select("id,name").order("name"),
+        supabase.from("pm_project_templates").select("id,name,type").order("created_at", { ascending: false }),
+      ]);
+      setClients(c || []);
+      setTemplates(t || []);
     })();
   }, [open, initialStep]);
+
+  // Reset answers when request type changes
+  useEffect(() => { setReqFieldValues({}); }, [requestType]);
+
+  const requestCustomFields = useMemo(() => {
+    const out: Record<string, any> = {};
+    internalFields.forEach((f) => {
+      const v = reqFieldValues[f.id];
+      if (v === undefined || v === null || v === "") return;
+      if (Array.isArray(v) && v.length === 0) return;
+      out[slugifyLabel(f.label)] = { label: f.label, type: f.type, value: v };
+    });
+    return out;
+  }, [internalFields, reqFieldValues]);
 
   async function submitRequest() {
     if (!reqForm.title.trim() || !reqForm.client_id) {
       toast.error("Title and client are required");
+      return;
+    }
+    // Required field validation
+    const missing = internalFields.filter((f) => {
+      if (!f.required) return false;
+      const v = reqFieldValues[f.id];
+      if (Array.isArray(v)) return v.length === 0;
+      return v === undefined || v === null || v === "";
+    });
+    if (missing.length) {
+      toast.error(`Missing required: ${missing.map(m => m.label).join(", ")}`);
       return;
     }
     setBusy(true);
@@ -67,9 +118,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         description: reqForm.description.trim() || null,
         start_date: new Date().toISOString().slice(0, 10),
         created_by: user?.id ?? null,
+        custom_fields: { request_type: requestType, ...requestCustomFields },
       } as any);
       let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
-      // Always create at least one task so the request shows up in the creator's queue.
       if (!titles.length) titles = [reqForm.title.trim()];
       await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
         project_id: proj.id,
@@ -82,6 +133,16 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         created_by: user?.id ?? null,
         assignee_id: user?.id ?? null,
       })) as any);
+      // Audit submission
+      if (internalFormId) {
+        await supabase.from("pm_form_submissions").insert({
+          form_id: internalFormId,
+          payload: { request_type: requestType, ...requestCustomFields, title: reqForm.title, description: reqForm.description },
+          submitter_name: user?.name ?? null,
+          submitter_email: user?.email ?? null,
+          created_project_id: proj.id,
+        } as any);
+      }
       toast.success("Request created");
       onOpenChange(false);
       onCreated?.();
@@ -117,12 +178,26 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     }
   }
 
+  function startWizard(templateId: string) {
+    onOpenChange(false);
+    setTimeout(() => setWizardTemplateId(templateId), 50);
+  }
+
+  function gotoNewTemplate() {
+    onOpenChange(false);
+    navigate("/pm/templates?new=1");
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {step === "select" ? "Create new work" : step === "request" ? "New Quick Request" : "New Full Project"}
+            {step === "select" ? "Create new work"
+              : step === "request" ? "New Quick Request"
+              : step === "project-entry" ? "New Full Project"
+              : "New Blank Project"}
           </DialogTitle>
         </DialogHeader>
 
@@ -139,7 +214,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 </CardContent>
               </Card>
             </button>
-            <button type="button" onClick={() => setStep("project")} className="text-left">
+            <button type="button" onClick={() => setStep("project-entry")} className="text-left">
               <Card className="h-full hover:border-primary transition cursor-pointer">
                 <CardContent className="p-5 space-y-2">
                   <div className="flex items-center gap-2">
@@ -156,6 +231,16 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         {step === "request" && (
           <div className="space-y-3">
             <div>
+              <Label>Request type *</Label>
+              <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="z-50 bg-popover">
+                  {REQUEST_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Fields below change based on the request type.</p>
+            </div>
+            <div>
               <Label>Title *</Label>
               <Input value={reqForm.title} onChange={e => setReqForm({ ...reqForm, title: e.target.value })} placeholder="What do you need?" />
             </div>
@@ -168,13 +253,31 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Conditional fields */}
+            {internalFields.length > 0 && (
+              <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {REQUEST_TYPES.find(t => t.value === requestType)?.label} details
+                </div>
+                {internalFields.map((f) => (
+                  <FormFieldRenderer
+                    key={f.id}
+                    field={f}
+                    value={reqFieldValues[f.id]}
+                    onChange={(v) => setReqFieldValues({ ...reqFieldValues, [f.id]: v })}
+                  />
+                ))}
+              </div>
+            )}
+
             <div>
               <Label>Description</Label>
               <textarea
-                className="w-full min-h-[80px] rounded-md border border-border bg-background p-2 text-sm"
+                className="w-full min-h-[60px] rounded-md border border-border bg-background p-2 text-sm"
                 value={reqForm.description}
                 onChange={e => setReqForm({ ...reqForm, description: e.target.value })}
-                placeholder="Optional details…"
+                placeholder="Optional extra context…"
               />
             </div>
             <div>
@@ -206,7 +309,65 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "project" && (
+        {step === "project-entry" && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Card className="border-primary/40">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <Rocket className="h-4 w-4 text-primary" /> From Template
+                  </div>
+                  <p className="text-xs text-muted-foreground">Start from a saved playbook.</p>
+                </CardContent>
+              </Card>
+              <button type="button" onClick={() => setStep("project-blank")} className="text-left">
+                <Card className="h-full hover:border-primary transition cursor-pointer">
+                  <CardContent className="p-4 space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-sm">
+                      <FileText className="h-4 w-4" /> Blank Project
+                    </div>
+                    <p className="text-xs text-muted-foreground">Manual setup, no template.</p>
+                  </CardContent>
+                </Card>
+              </button>
+              <button type="button" onClick={gotoNewTemplate} className="text-left">
+                <Card className="h-full hover:border-primary transition cursor-pointer">
+                  <CardContent className="p-4 space-y-1">
+                    <div className="flex items-center gap-2 font-semibold text-sm">
+                      <Sparkles className="h-4 w-4" /> New Template
+                    </div>
+                    <p className="text-xs text-muted-foreground">Build a reusable playbook.</p>
+                  </CardContent>
+                </Card>
+              </button>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Pick a template ({templates.length})
+              </div>
+              {!templates.length && (
+                <div className="text-sm text-muted-foreground italic border border-dashed border-border rounded-md p-4 text-center">
+                  No templates yet. Create one or start blank.
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto">
+                {templates.map(t => (
+                  <button key={t.id} type="button" onClick={() => startWizard(t.id)} className="text-left">
+                    <Card className="hover:border-primary transition cursor-pointer">
+                      <CardContent className="p-3 space-y-0.5">
+                        <div className="font-medium text-sm">{t.name}</div>
+                        <div className="text-xs text-muted-foreground">{t.type}</div>
+                      </CardContent>
+                    </Card>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === "project-blank" && (
           <div className="space-y-3">
             <div>
               <Label>Title *</Label>
@@ -253,21 +414,28 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 <DatePicker value={projForm.go_live_date} onChange={v => setProjForm({ ...projForm, go_live_date: v ?? "" })} />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Tip: to instantiate phases &amp; tasks from a template, use Templates → Use template.
-            </p>
           </div>
         )}
 
         {step !== "select" && (
           <DialogFooter className={cn("gap-2")}>
-            <Button variant="outline" onClick={() => setStep("select")} disabled={busy}>Back</Button>
-            <Button onClick={step === "request" ? submitRequest : submitProject} disabled={busy}>
-              Create
-            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setStep(step === "project-blank" ? "project-entry" : "select")}
+              disabled={busy}
+            >Back</Button>
+            {step === "request" && <Button onClick={submitRequest} disabled={busy}>Create Request</Button>}
+            {step === "project-blank" && <Button onClick={submitProject} disabled={busy}>Create Project</Button>}
           </DialogFooter>
         )}
       </DialogContent>
     </Dialog>
+
+    <TimelineSetupWizard
+      templateId={wizardTemplateId}
+      open={!!wizardTemplateId}
+      onOpenChange={(v) => { if (!v) { setWizardTemplateId(null); onCreated?.(); } }}
+    />
+    </>
   );
 }

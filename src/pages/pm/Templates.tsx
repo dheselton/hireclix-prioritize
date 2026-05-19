@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,12 +16,21 @@ export default function Templates() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(""); const [type, setType] = useState("career_site");
   const [wizardId, setWizardId] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
 
   const reload = async () => {
     const { data } = await supabase.from("pm_project_templates").select("*").order("created_at", { ascending: false });
     setItems(data || []);
   };
   useEffect(() => { reload(); }, []);
+
+  useEffect(() => {
+    if (params.get("new") === "1") {
+      setOpen(true);
+      params.delete("new");
+      setParams(params, { replace: true });
+    }
+  }, [params, setParams]);
 
   async function create() {
     const { data } = await supabase.from("pm_project_templates").insert({ name, type } as any).select().single();
