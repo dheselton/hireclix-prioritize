@@ -18,6 +18,8 @@ import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
+import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { supabase } from "@/integrations/supabase/client";
 
 // Tasks that are "naturally" in this role's lane, used for unclaimed buckets.
@@ -93,13 +95,20 @@ export default function WorkQueue() {
   }, [role]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const workType = useWorkTypeFilter("workQueue");
 
-  // Pipeline: type-filter (role default) -> chips, then sectioning. Me Mode is applied within each section.
+  // Pipeline: type-filter (role default) -> chips -> work-type, then sectioning. Me Mode is applied within each section.
   const filtered = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskChips(v, chips.active, user?.id);
+    if (workType.value !== "all") {
+      v = v.filter(t => {
+        const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
+        return wt === workType.value;
+      });
+    }
     return v;
-  }, [tasks, types, chips.active, user?.id]);
+  }, [tasks, types, chips.active, user?.id, workType.value, projById]);
 
   const meId = user?.id ?? null;
   const lane = ROLE_LANE[role ?? "submitter"] ?? [];
@@ -134,6 +143,11 @@ export default function WorkQueue() {
         tasks: filtered.filter(t => t.status === "unclaimed" && isRequestTask(t)),
       });
       list.push({
+        key: "unclaimed-projects",
+        title: "Unclaimed Project Tasks",
+        tasks: filtered.filter(t => t.status === "unclaimed" && isProjectTask(t)),
+      });
+      list.push({
         key: "active-projects",
         title: "Active Projects",
         tasks: filtered.filter(t => active(t) && isProjectTask(t)),
@@ -154,6 +168,11 @@ export default function WorkQueue() {
     } else if (role === "designer" || role === "developer") {
       const laneType = role === "designer" ? "design" : "dev";
       const inMyLane = (t: PmTask) => t.type === laneType;
+      list.push({
+        key: "unclaimed-lane",
+        title: "Unclaimed in my lane",
+        tasks: filtered.filter(t => t.status === "unclaimed" && (showAllUnclaimed || inMyLane(t))),
+      });
       list.push({
         key: "quick-tasks",
         title: "Quick Tasks (Requests)",
@@ -213,6 +232,7 @@ export default function WorkQueue() {
         modes={["projects", "list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
+        actions={!isSubmitter ? <WorkTypeFilterToggle value={workType.value} onChange={workType.set} /> : undefined}
       />
 
       {isSubmitter && (
@@ -263,7 +283,7 @@ export default function WorkQueue() {
           key={s.key}
           title={s.title}
           count={s.tasks.length}
-          extra={s.key === "unclaimed" && lane.length > 0 && (role === "designer" || role === "developer") ? (
+          extra={s.key === "unclaimed-lane" && (role === "designer" || role === "developer") ? (
             <Button size="sm" variant="ghost" className="h-7 text-xs"
               onClick={() => setShowAllUnclaimed(v => !v)}>
               {showAllUnclaimed ? "Show only my lane" : "Show all unclaimed"}
