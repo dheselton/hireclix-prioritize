@@ -76,7 +76,8 @@ export default function TemplateBuilder() {
           <div className="col-span-1">Days</div>
           <div className="col-span-1 text-center">Lock</div>
           <div className="col-span-1">Min</div>
-          <div className="col-span-2">Snippets</div>
+          <div className="col-span-1">Snippets</div>
+          <div className="col-span-1" />
         </div>
         {tasks.map(t => (
           <div key={t.id} className="grid grid-cols-12 gap-2 items-center border border-border rounded p-2">
