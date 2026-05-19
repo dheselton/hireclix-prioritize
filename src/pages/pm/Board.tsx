@@ -25,6 +25,8 @@ import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filter
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
+import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
+import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
