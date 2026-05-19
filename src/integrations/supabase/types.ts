@@ -450,7 +450,15 @@ export type Database = {
           task_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pm_active_timers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pm_activity_log: {
         Row: {
