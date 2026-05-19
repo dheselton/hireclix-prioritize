@@ -1354,6 +1354,52 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_task_snippets: {
+        Row: {
+          id: string
+          linked_at: string
+          linked_by: string | null
+          snippet_id: string
+          task_id: string
+        }
+        Insert: {
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          snippet_id: string
+          task_id: string
+        }
+        Update: {
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          snippet_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_task_snippets_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_task_snippets_snippet_id_fkey"
+            columns: ["snippet_id"]
+            isOneToOne: false
+            referencedRelation: "pm_snippets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_task_snippets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_tasks: {
         Row: {
           assignee_id: string | null
@@ -1520,6 +1566,39 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "pm_project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_template_task_snippets: {
+        Row: {
+          id: string
+          snippet_id: string
+          template_task_id: string
+        }
+        Insert: {
+          id?: string
+          snippet_id: string
+          template_task_id: string
+        }
+        Update: {
+          id?: string
+          snippet_id?: string
+          template_task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_template_task_snippets_snippet_id_fkey"
+            columns: ["snippet_id"]
+            isOneToOne: false
+            referencedRelation: "pm_snippets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_template_task_snippets_template_task_id_fkey"
+            columns: ["template_task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_template_tasks"
             referencedColumns: ["id"]
           },
         ]

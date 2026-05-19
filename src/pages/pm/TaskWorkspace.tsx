@@ -18,6 +18,7 @@ import { AssetHub } from "@/components/pm/workspace/AssetHub";
 import { CollabHub } from "@/components/pm/workspace/CollabHub";
 import { QuickChecklist } from "@/components/pm/workspace/QuickChecklist";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
+import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
@@ -158,6 +159,7 @@ export default function TaskWorkspace() {
             {task.status === "blocked" && <BlockerBanner />}
             <AssetHub taskId={task.id} projectId={task.project_id} />
             <LinksSection taskId={task.id} />
+            <SnippetsSection taskId={task.id} />
             <CollabHub taskId={task.id} projectId={task.project_id} taskTitle={task.title} />
           </div>
 

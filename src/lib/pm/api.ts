@@ -114,6 +114,7 @@ import { scheduleForwardFromKickoff, fitToWindow, type ScheduleTask, type Schedu
 
 export interface PreviewTask extends ScheduleTask {
   temp_id: string;
+  template_task_id?: string;
   phase_name: string | null;
   type: string;
   assignee_role: string | null;
@@ -134,6 +135,7 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
   const previewTasks: PreviewTask[] = tasks.map(t => ({
     id: t.temp_id,
     temp_id: t.temp_id,
+    template_task_id: t.id,
     title: t.title,
     duration_days: t.duration_days,
     min_duration_days: t.min_duration_days,
@@ -216,6 +218,33 @@ const instantiateTemplateIntoProject = async (params: {
     }))
     .filter(d => d.task_id && d.depends_on_task_id);
   if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
+
+  // Snippet links — copy template_task_snippets to live task_snippets
+  const tempTaskIds = previewTasks
+    .map(p => p.template_task_id)
+    .filter((x): x is string => !!x);
+  if (tempTaskIds.length) {
+    const { data: snipLinks } = await supabase
+      .from('pm_template_task_snippets')
+      .select('template_task_id, snippet_id')
+      .in('template_task_id', tempTaskIds);
+    const realIdByTempTaskId = new Map<string, string>();
+    for (const pt of previewTasks) {
+      const realId = idByTemp.get(pt.temp_id);
+      if (pt.template_task_id && realId) realIdByTempTaskId.set(pt.template_task_id, realId);
+    }
+    const uid = getCurrentUserId();
+    const snippetRows = (snipLinks ?? [])
+      .map((l: any) => ({
+        task_id: realIdByTempTaskId.get(l.template_task_id),
+        snippet_id: l.snippet_id,
+        linked_by: uid ?? null,
+      }))
+      .filter(r => r.task_id);
+    if (snippetRows.length) {
+      await supabase.from('pm_task_snippets').insert(snippetRows as any);
+    }
+  }
 };
 
 /** Create a project from template + scheduled placement (already computed). */

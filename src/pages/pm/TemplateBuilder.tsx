@@ -10,12 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_TYPES } from "@/types/pm";
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
+import {
+  TemplateTaskSnippetCell,
+  isSnippetEligibleType,
+} from "@/components/pm/snippets/TemplateTaskSnippetCell";
+import { TemplateSnippetSummary } from "@/components/pm/snippets/TemplateSnippetSummary";
 
 export default function TemplateBuilder() {
   const { id } = useParams<{ id: string }>();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [tpl, setTpl] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [snippetRefresh, setSnippetRefresh] = useState(0);
+  const bumpSnippets = () => setSnippetRefresh(n => n + 1);
   
 
   const reload = async () => {
@@ -63,16 +70,18 @@ export default function TemplateBuilder() {
           <Button size="sm" variant="outline" onClick={addTask}><Plus className="h-3 w-3 mr-1" /> Add</Button>
         </div>
         <div className="grid grid-cols-12 gap-2 px-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-          <div className="col-span-4">Title</div>
+          <div className="col-span-3">Title</div>
           <div className="col-span-2">Type</div>
           <div className="col-span-2">Phase</div>
           <div className="col-span-1">Days</div>
           <div className="col-span-1 text-center">Lock</div>
           <div className="col-span-1">Min</div>
+          <div className="col-span-1">Snippets</div>
+          <div className="col-span-1" />
         </div>
         {tasks.map(t => (
           <div key={t.id} className="grid grid-cols-12 gap-2 items-center border border-border rounded p-2">
-            <Input className="col-span-4" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
+            <Input className="col-span-3" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
             <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
               <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
               <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
@@ -88,11 +97,23 @@ export default function TemplateBuilder() {
             <Input type="number" className="col-span-1" value={t.min_duration_days ?? ""} placeholder="—" disabled={!t.locked}
               onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, min_duration_days: e.target.value ? Number(e.target.value) : null } : x))}
               onBlur={e => patchTask(t.id, { min_duration_days: e.target.value ? Number(e.target.value) : null })} />
+            <div className="col-span-1">
+              {isSnippetEligibleType(t.type) ? (
+                <TemplateTaskSnippetCell templateTaskId={t.id} onChange={bumpSnippets} />
+              ) : (
+                <span className="text-[11px] text-muted-foreground/60">—</span>
+              )}
+            </div>
             <Button size="icon" variant="ghost" className="col-span-1" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
           </div>
         ))}
         {!tasks.length && <div className="text-sm text-muted-foreground italic">No tasks yet.</div>}
       </CardContent></Card>
+
+      <TemplateSnippetSummary
+        templateTaskIds={tasks.map(t => t.id)}
+        refreshKey={snippetRefresh}
+      />
       <TimelineSetupWizard templateId={id || null} open={wizardOpen} onOpenChange={setWizardOpen} />
     </div>
   );
