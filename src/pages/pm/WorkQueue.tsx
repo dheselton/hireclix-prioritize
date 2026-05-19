@@ -232,6 +232,7 @@ export default function WorkQueue() {
         modes={["projects", "list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
+        actions={!isSubmitter ? <WorkTypeFilterToggle value={workType.value} onChange={workType.set} /> : undefined}
       />
 
       {isSubmitter && (
