@@ -3,6 +3,7 @@ import { Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { fetchTasks } from "@/lib/pm/api";
+import { buildQueueLink } from "@/lib/pm/links";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask, TEAM_LABEL } from "@/lib/pm/track";
