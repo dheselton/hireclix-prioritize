@@ -10,7 +10,7 @@ export function TimerPill({ taskId, taskTitle }: { taskId: string; taskTitle: st
   if (running) {
     return (
       <div className="inline-flex items-center gap-2 rounded-full bg-card border border-border pl-3 pr-1 py-1 shadow-sm">
-        <span className="font-mono tabular-nums text-base font-semibold text-foreground">
+        <span className="tabular-nums text-base font-semibold text-foreground">
           {formatHMS(elapsedMs)}
         </span>
         <button
