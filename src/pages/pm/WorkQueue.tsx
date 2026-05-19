@@ -320,15 +320,17 @@ export default function WorkQueue() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <Card>
+function StatCard({ icon, label, value, to }: { icon: React.ReactNode; label: string; value: number; to?: string }) {
+  const body = (
+    <Card className={to ? "hover:shadow-md hover:border-foreground/20 transition cursor-pointer h-full" : "h-full"}>
       <CardContent className="p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
         <div className="text-2xl font-bold mt-1">{value}</div>
       </CardContent>
     </Card>
   );
+  if (!to) return body;
+  return <Link to={to} className="block">{body}</Link>;
 }
 
 function Section({ title, count, children, extra }:
