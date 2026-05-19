@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SectionShell } from "@/components/pm/drawer/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Trash2, Plus, Link as LinkIcon } from "lucide-react";
+import { ExternalLink, Trash2, Plus } from "lucide-react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { getLinkProvider, hostnameOf } from "@/lib/pm/linkProvider";
 import { toast } from "sonner";
 
 interface TaskLink {
@@ -15,16 +14,6 @@ interface TaskLink {
   label: string | null;
   created_by: string | null;
   created_at: string;
-}
-
-function favicon(url: string) {
-  try {
-    const u = new URL(url);
-    return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
-  } catch { return null; }
-}
-function hostname(url: string) {
-  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
 }
 
 export function LinksSection({ taskId }: { taskId: string }) {
@@ -58,15 +47,16 @@ export function LinksSection({ taskId }: { taskId: string }) {
   }
 
   return (
-    <SectionShell
-      title="Links"
-      badge={<Badge variant="secondary" className="ml-1">{items.length}</Badge>}
-      right={
-        <Button size="sm" variant="ghost" onClick={() => setAdding(s => !s)}>
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Reference Links
+        </h3>
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAdding(s => !s)}>
           <Plus className="h-3 w-3 mr-1" /> Add link
         </Button>
-      }
-    >
+      </div>
+
       {adding && (
         <div className="mb-2 p-2 border border-border rounded-lg bg-muted/30 space-y-2">
           <Input placeholder="https://figma.com/…" value={url} onChange={e => setUrl(e.target.value)} className="h-8" autoFocus />
@@ -78,33 +68,44 @@ export function LinksSection({ taskId }: { taskId: string }) {
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {items.map(l => {
-          const fav = favicon(l.url);
+          const p = getLinkProvider(l.url);
           return (
-            <div key={l.id} className="group flex items-center gap-3 px-2 py-2 rounded hover:bg-muted/40 border border-transparent hover:border-border">
-              {fav ? (
-                <img src={fav} alt="" className="h-5 w-5 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              ) : (
-                <LinkIcon className="h-5 w-5 text-muted-foreground" />
-              )}
+            <a
+              key={l.id}
+              href={l.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 px-2 py-2 rounded-md border border-border bg-card hover:border-primary transition"
+            >
+              <span
+                className="h-8 w-8 rounded-md flex items-center justify-center font-semibold text-sm shrink-0"
+                style={{ backgroundColor: p.bg, color: p.fg }}
+                aria-label={p.label}
+              >
+                {p.initial}
+              </span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{l.label || hostname(l.url)}</div>
-                <div className="text-[11px] text-muted-foreground truncate">{l.url}</div>
+                <div className="text-sm font-medium truncate">{l.label || p.label}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{hostnameOf(l.url)}{l.url.replace(/^https?:\/\/[^/]+/, "")}</div>
               </div>
-              <a href={l.url} target="_blank" rel="noopener noreferrer">
-                <Button size="icon" variant="ghost" className="h-7 w-7"><ExternalLink className="h-3.5 w-3.5" /></Button>
-              </a>
-              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => remove(l.id)}>
+              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <button
+                type="button"
+                className="opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                onClick={e => { e.preventDefault(); e.stopPropagation(); remove(l.id); }}
+                aria-label="Remove link"
+              >
                 <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+              </button>
+            </a>
           );
         })}
         {!items.length && !adding && (
           <div className="text-xs text-muted-foreground italic py-2">No links yet. Add Figma files, GitHub PRs, Loom recordings, Docs…</div>
         )}
       </div>
-    </SectionShell>
+    </section>
   );
 }
