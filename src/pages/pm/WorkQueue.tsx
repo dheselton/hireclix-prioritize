@@ -255,7 +255,17 @@ export default function WorkQueue() {
         modes={["projects", "list", "grid", "kanban"]}
         chipState={chips}
         typeFilterPage="workQueue"
-        actions={!isSubmitter ? <WorkTypeFilterToggle value={workType.value} onChange={workType.set} /> : undefined}
+        actions={!isSubmitter ? (
+          <div className="flex items-center gap-2">
+            <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+            <Button size="sm" variant="outline" onClick={() => setCreateOpen("request")}>
+              <Zap className="h-4 w-4 mr-1" /> Quick Request
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen("project")}>
+              <FolderKanban className="h-4 w-4 mr-1" /> Project
+            </Button>
+          </div>
+        ) : undefined}
       />
 
       {isSubmitter && (
