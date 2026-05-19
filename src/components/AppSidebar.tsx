@@ -63,7 +63,7 @@ export function AppSidebar() {
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>
         <div className="p-4 border-b border-border/50">
-          <h1 className="font-unbounded font-bold text-primary text-lg">Agency PM</h1>
+          <h1 className="font-unbounded font-bold text-primary text-lg">HireClix</h1>
           <p className="text-[11px] text-muted-foreground mt-0.5">Project Management</p>
         </div>
 
