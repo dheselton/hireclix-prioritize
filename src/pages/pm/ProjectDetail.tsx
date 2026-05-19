@@ -552,6 +552,7 @@ function TaskTabContent({
           onAdd={(title) => onAdd(phase?.id ?? null, title)}
           dimSet={dimSet}
           allowAdd={!filtersActive}
+          hideHeader={flat}
         />
       ))}
     </>
