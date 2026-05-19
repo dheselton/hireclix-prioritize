@@ -1,99 +1,95 @@
-## Work Queue Refactor — The Clarity Layer
+## Goal
 
-Rebuild `/pm` (WorkQueue.tsx) around a three-band story: **Inbox (unclaimed) → My Active Work → Blocked & Review**, with Requests and Projects visually and structurally separated. Role drives which bands render.
+1. **Quick Request** creation gets a "Request Type" selector (Web edit, Banner ads, Social, Email, General) that conditionally shows the right fields — same UX as the public creative request form.
+2. **Full Project** creation surfaces three paths up front: pick a Template, start Blank, or build a New Template.
+3. Conditional field sets are stored as internal `pm_forms` rows so admins can edit them in Form Builder later.
 
-### 1. New page structure
+---
+
+## Part 1 — Quick Request: conditional fields
+
+### Data approach
+
+Use the existing `pm_forms` / `pm_form_fields` / `pm_form_submissions` tables. Seed five internal forms (one per request type), tagged as internal so they don't appear in the public Forms list:
+
+- `internal_web_edit` — Page URL, Change description, Asset link, Priority
+- `internal_banner_ads` — Sizes (multi), Ad copy, Landing URL, Brand assets link, Run dates
+- `internal_social` — Platform(s), Caption, Asset link, Post date
+- `internal_email` — Subject, Audience, Send date, Asset link
+- `internal_general` — Notes only (fallback)
+
+Each `pm_form_fields` row already supports `conditionals` JSON, but for this round we don't need cross-field conditionals — selecting the type swaps the whole field set.
+
+**Schema additions:**
+- `pm_forms.kind text default 'public'` — values: `'public' | 'internal_request'`
+- `pm_forms.request_type text` — `'web_edit' | 'banner_ads' | 'social' | 'email' | 'general'` (null for public)
+- Filter `Forms` page to `kind='public'`.
+
+### UI changes — `CreateWorkDialog.tsx`, Quick Request step
 
 ```text
-┌─ Smart stats (4 tiles, role-aware) ────────────────────────┐
-├─ INBOX (Unclaimed)  — 2-column grid                        │
-│   • Quick Requests Inbox      • New Project Tasks          │
-│     (unclaimed requests, my   (unclaimed project tasks,    │
-│      lane)                     my lane)                    │
-├─ MY ACTIVE WORK — tabs or 2-col, collapsible per side      │
-│   • Quick Hits (my request tasks)                          │
-│   • Project Work (my project tasks, grouped by project)    │
-├─ BLOCKED & REVIEW                                          │
-│   • Blocked Work (mine, shows blocker text)                │
-│   • Waiting for Review (PM: in_review across their         │
-│     projects / Execution: my submitted in_review)          │
-└────────────────────────────────────────────────────────────┘
+[ Title * ]
+[ Client * ]
+[ Request Type * ]  ← new selector (Web edit / Banner ads / Social / Email / General)
+─── conditional fields rendered from the matching internal pm_form ───
+[ Description ]     ← always shown, optional
+[ Quick tasks (0–3) ] ← keep existing
 ```
 
-Role variants:
-- **Designer / Developer**: all 3 bands as above, lane-filtered (designer = design+content, dev = dev+qa).
-- **PM**: Inbox shows Unclaimed Requests + Unclaimed Project Tasks (all lanes). Replace "Quick Hits" with **Project Health** (list of PM's projects flagged with overdue / blocked / at-risk counts, each row deep-links to the project). Keep "Project Work" (PM's own assigned tasks) and Blocked + Approvals Waiting on Me.
-- **Strategist / Analyst**: same as Designer/Developer but lane = their specialty.
-- **Submitter**: only **My Requests** (created_by = me) grouped by status — no inbox / blocked bands.
+- On type change, load fields for that internal form (cache by type).
+- Render fields with the same input switch already used in `PublicForm.tsx` (extract into a shared `<FormFieldRenderer/>` component in `src/components/pm/forms/`).
+- On submit:
+  - Create the request `pm_project` (`work_type=request`, `type=quick_request`) as today.
+  - Store field answers in `pm_projects.custom_fields` JSON keyed by field label slug, **and** also write a `pm_form_submissions` row referencing the internal form + new project for auditability.
+  - Auto-create one task (existing behavior — uses title if no quick tasks).
 
-### 2. Card design split
+### Display on the request workspace
 
-Two new presentational components in `src/components/pm/collections/`:
+`TaskWorkspace` / project detail already shows description. Add a small "Request details" section that pretty-prints `custom_fields` (label → value). No layout overhaul.
 
-- **`RequestTaskCard.tsx`** (compact): single row, thin border, `py-2 px-3`, no shadow.
-  - Line 1: title (sm font) + `Request` badge + `StatusPill`.
-  - Line 2 (muted, text-[11px]): client name · due date · assignee avatar.
-  - Inline `ClaimButton` when unclaimed.
+---
 
-- **`ProjectTaskCard.tsx`** (rich): standard card with subtle shadow, `p-4`.
-  - Line 1: **Project title** (bold) + `Project` badge + phase chip.
-  - Line 2: task title (medium) + `StatusPill` + priority dot.
-  - Line 3 (muted): client · due date · assignee · resume hint if applicable.
-  - Footer: "Open project" link + claim/open task buttons.
+## Part 2 — Full Project entry: Template / Blank / New Template
 
-Both render in a 1-col stack inside their section; project cards group by project_id with a tiny project header above consecutive cards from the same project (so we don't repeat the project line). The existing `ProjectWorkCard` keeps its role in `/pm/projects` views but is **not** used in the new WorkQueue bands except optionally inside "Project Health" for PMs.
+### `CreateWorkDialog`, Project step
 
-### 3. Smart header stats (role-aware)
+Replace the current single form with three primary cards at the top of the project step:
 
-Replace the four `StatCard`s with:
+```text
+┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
+│ From Template│ │ Blank Project│ │ New Template…    │
+│ (cards list) │ │ (manual)     │ │ (opens builder)  │
+└──────────────┘ └──────────────┘ └──────────────────┘
+```
 
-| Tile | Designer/Dev/Strategist/Analyst | PM |
-|------|---|---|
-| Active Requests | count of my active request tasks | count of unclaimed requests across all lanes |
-| Active Projects | distinct project_ids I have active tasks in | count of PM's active projects |
-| Total Unclaimed | unclaimed in my lane | unclaimed everywhere |
-| Blockers | my blocked tasks | tasks blocked across PM's projects |
+- **From Template** — render list of `pm_project_templates` (same data as `Templates.tsx`). Selecting one launches the existing `TimelineSetupWizard` inline inside the dialog (or closes dialog and opens wizard, matching today's behavior on `/pm/templates`).
+- **Blank Project** — current form (title, client, type, status, kickoff, go-live). Auto-assigns creator (already wired).
+- **New Template** — closes the dialog and routes to `/pm/templates` with the "New Template" modal pre-opened (reuse the existing `setOpen(true)` flow via a query param like `?new=1`).
 
-Each tile remains a deep-link via `buildQueueLink` (existing rule). Hide stats entirely for Submitters.
+The current "Tip: use Templates → Use template" helper line is removed since these paths are now first-class.
 
-### 4. Section controls
+---
 
-- `CollapsibleSection` wrapper (uses existing `@radix-ui/react-collapsible`) for each band's left/right columns. State persisted in `localStorage` under `pm.workQueue.collapsed.<key>`.
-- "Me Mode" already filters tasks globally — keep behavior; sections continue to use the `filtered` pipeline.
-- Existing chip bar, type filter, work-type toggle, and view-mode toggle stay in the toolbar but the **view-mode dropdown is removed** for the new layout (the structure IS the view). Power users can still hit `/pm/board` for kanban.
-
-### 5. Data plumbing
-
-No schema changes. All segmentation is derived in WorkQueue from existing fields:
-
-- `isRequestTask(t)` = parent project `work_type === 'request'` (helper already present).
-- `isProjectTask(t)` = parent project `work_type === 'project'` or null.
-- `inLane(t)` from `ROLE_LANE` map (already present, kept).
-- `active(t)` = not complete/approved.
-- `blocker text` from `t.dev_blocker` (already on `pm_tasks`).
-- "Waiting for Review" for execution roles = tasks where `t.created_by === meId && t.status === 'in_review'`. For PMs = `t.status === 'in_review' && pmProjectIds.has(t.project_id)` (existing logic, kept).
-- "Project Health" for PMs uses `fetchTasks` + `fetchProjects` (already loaded) — group by project, compute overdue/blocked counts inline.
-
-### 6. Files
+## Part 3 — Files to touch
 
 **New**
-- `src/components/pm/collections/RequestTaskCard.tsx`
-- `src/components/pm/collections/ProjectTaskCard.tsx`
-- `src/components/pm/CollapsibleSection.tsx` (small wrapper with persisted open state, count badge, optional right-side action slot)
-- `src/components/pm/workqueue/InboxBand.tsx` (renders the two unclaimed columns)
-- `src/components/pm/workqueue/ActiveWorkBand.tsx` (Quick Hits + Project Work, or Project Health for PMs)
-- `src/components/pm/workqueue/BlockedReviewBand.tsx`
-- `src/components/pm/workqueue/ProjectHealthList.tsx` (PM only)
+- `src/components/pm/forms/FormFieldRenderer.tsx` — shared field renderer (extracted from `PublicForm`).
+- `src/components/pm/forms/useInternalRequestForm.ts` — hook that loads fields for a `request_type`.
+- `supabase/migrations/<ts>_internal_request_forms.sql` — adds `kind`, `request_type` columns; seeds 5 internal forms with their fields.
 
-**Modified**
-- `src/pages/pm/WorkQueue.tsx` — replace `sections.map` + ViewToggle modes with three band components. Keep toolbar, stats, banners, `CreateWorkDialog`, `TaskDrawer`, `?section=` scroll behavior (extend ids to new section keys: `inbox-requests`, `inbox-projects`, `quick-hits`, `project-work`, `blocked`, `review`, `project-health`).
-- `src/lib/pm/links.ts` — extend `buildQueueLink` `section` union with the new keys (no behavior change).
+**Edited**
+- `src/components/pm/CreateWorkDialog.tsx` — Quick Request step gets type selector + dynamic fields; Project step gets 3-card entry UI.
+- `src/pages/pm/PublicForm.tsx` — swap inline switch for `<FormFieldRenderer/>`.
+- `src/pages/pm/Forms.tsx` — filter list to `kind='public'`; add small "Internal request forms" section linking to their builders (so they're discoverable + editable).
+- `src/pages/pm/Templates.tsx` — read `?new=1` query param to auto-open the New Template modal.
+- `src/integrations/supabase/types.ts` — regenerated automatically by the migration.
 
-**Unchanged**: filters pipeline, `applyTaskChips`, `applyTaskTypes`, `ROLE_LANE`, `useMeMode`, `useChipFilters`, `useWorkTypeFilter`, `CreateWorkDialog`, `TaskDrawer`. The `ProjectWorkGrid` / `ProjectWorkCard` and other view modes (list/grid/kanban) remain in place for `/pm/board` and project detail.
+---
 
-### 7. Out of scope
+## Technical notes
 
-- No DB migrations, RLS, or auth changes.
-- No edits to `/pm/board`, `/pm/projects`, project detail, templates, or scheduler.
-- No new task fields; "blocker text" uses existing `dev_blocker`.
-- No realtime additions beyond the existing `useTasksChanged` reload.
+- Internal form field labels become keys in `pm_projects.custom_fields` (use a slugified label for stable keys).
+- The `pm_form_submissions` insert mirrors what `PublicForm.submit()` does today — keeps audit + Form Builder analytics consistent.
+- `FormFieldRenderer` should accept `{ field, value, onChange }` and handle: text, textarea, email, number, date, dropdown, checkbox-group (multi). Add `checkbox_group` to support Banner ad "Sizes" and Social "Platforms".
+- Conditional logic on individual fields (`field.conditionals`) is out of scope for v1 — the type selector already gives us per-type field sets. We can layer field-level conditionals later using the existing JSON column.
+- No changes to RLS (tables remain permissive while auth is off).
