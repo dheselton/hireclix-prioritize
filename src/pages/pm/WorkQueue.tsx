@@ -349,17 +349,3 @@ function StatCard({ icon, label, value, to }: { icon: React.ReactNode; label: st
   return <Link to={to} className="block">{body}</Link>;
 }
 
-function Section({ title, count, children, extra }:
-  { title: string; count: number; children: React.ReactNode; extra?: React.ReactNode }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {title} <span className="text-foreground/50">({count})</span>
-        </h2>
-        {extra}
-      </div>
-      {children}
-    </div>
-  );
-}
