@@ -183,7 +183,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
                   key={t.id}
                   onClick={() => onOpenTask(t.id)}
                   className={cn(
-                    "w-full flex items-center gap-2 text-left rounded-md px-2 py-1.5 hover:bg-muted/50 transition border border-transparent",
+                    "w-full flex items-center gap-2 text-left rounded-md px-3 py-2 bg-card border border-border shadow-sm hover:bg-muted/40 hover:border-foreground/20 transition",
                     t.status === "unclaimed" && "unclaimed-row",
                     t.track === "pm" && "track-border-pm",
                     t.track === "production" && t.status !== "unclaimed" && "track-border-production",
