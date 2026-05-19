@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { emitTasksChanged } from '@/lib/pm/refresh';
+import { getCurrentUserId } from '@/lib/pm/mockUser';
 import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
 
 export const fetchProjects = async () => {
@@ -50,7 +51,17 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
 };
 
 export const createTask = async (task: Partial<PmTask>) => {
-  const { data, error } = await supabase.from('pm_tasks').insert(task as any).select().single();
+  const uid = getCurrentUserId();
+  const payload: any = { ...task };
+  if (uid) {
+    if (payload.created_by === undefined) payload.created_by = uid;
+    // Auto-assign creator to the task they create (any role, incl. submitter/PM).
+    if (payload.assignee_id === undefined || payload.assignee_id === null) {
+      payload.assignee_id = uid;
+      if (!payload.status || payload.status === 'unclaimed') payload.status = 'claimed';
+    }
+  }
+  const { data, error } = await supabase.from('pm_tasks').insert(payload).select().single();
   if (error) throw error;
   emitTasksChanged();
   return data as unknown as PmTask;
@@ -69,8 +80,19 @@ export const updateProject = async (id: string, patch: Partial<PmProject>) => {
 };
 
 export const createProject = async (p: Partial<PmProject>) => {
-  const { data, error } = await supabase.from('pm_projects').insert(p as any).select().single();
+  const uid = getCurrentUserId();
+  const payload: any = { ...p };
+  if (uid && payload.created_by === undefined) payload.created_by = uid;
+  const { data, error } = await supabase.from('pm_projects').insert(payload).select().single();
   if (error) throw error;
+  // Ensure creator is a project member so they're "assigned" to the project.
+  if (uid && (data as any)?.id) {
+    await supabase.from('pm_project_members').insert({
+      project_id: (data as any).id,
+      user_id: uid,
+      role: 'creator',
+    } as any);
+  }
   return data as unknown as PmProject;
 };
 
@@ -209,6 +231,7 @@ export const createProjectFromTemplate = async (params: {
 }) => {
   const { template, previewTasks, previewDeps, placement, kickoff, goLive, title, client_id } = params;
 
+  const uid = getCurrentUserId();
   const { data: proj, error: pe } = await supabase.from('pm_projects').insert({
     title: title || `${template.name} — ${new Date().toLocaleDateString()}`,
     type: template.type,
@@ -219,8 +242,15 @@ export const createProjectFromTemplate = async (params: {
     kickoff_date: kickoff,
     start_date: kickoff,
     go_live_date: goLive,
+    created_by: uid ?? null,
   } as any).select().single();
   if (pe || !proj) throw pe;
+
+  if (uid) {
+    await supabase.from('pm_project_members').insert({
+      project_id: (proj as any).id, user_id: uid, role: 'creator',
+    } as any);
+  }
 
   await instantiateTemplateIntoProject({
     projectId: (proj as any).id,
