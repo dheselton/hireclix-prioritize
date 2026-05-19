@@ -35,7 +35,7 @@ export function TimerPill({ taskId, taskTitle }: { taskId: string; taskTitle: st
       title={otherRunning ? `Will stop "${current?.taskTitle}"` : "Start timer"}
       className="inline-flex items-center gap-2 rounded-full bg-card border border-border pl-3 pr-1 py-1 shadow-sm hover:border-primary/60 transition"
     >
-      <span className="font-mono tabular-nums text-base font-semibold text-muted-foreground">
+      <span className="tabular-nums text-base font-semibold text-muted-foreground">
         00:00:00
       </span>
       <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary text-primary-foreground">
