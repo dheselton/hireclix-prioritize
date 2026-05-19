@@ -168,8 +168,9 @@ export default function WorkQueue() {
         ),
       });
     } else if (role === "designer" || role === "developer") {
-      const laneType = role === "designer" ? "design" : "dev";
-      const inMyLane = (t: PmTask) => t.type === laneType;
+      // Lane = whole team (e.g. designer covers design + content), matching the
+      // unclaimed banner and "Showing X + Y tasks" hint above.
+      const inMyLane = (t: PmTask) => inLane(t);
       list.push({
         key: "unclaimed-lane",
         title: "Unclaimed in my lane",
