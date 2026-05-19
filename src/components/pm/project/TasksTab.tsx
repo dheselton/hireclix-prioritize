@@ -181,7 +181,7 @@ export function TasksTab({ tasks, projectId, meId }: {
         list.forEach((t, idx) => {
           const patch: Record<string, unknown> = { sort_order: idx };
           if (t.id === activeId && statusChanged) patch.status = movedTask!.status;
-          updates.push(supabase.from("pm_tasks").update(patch).eq("id", t.id));
+          updates.push(Promise.resolve(supabase.from("pm_tasks").update(patch).eq("id", t.id)));
         });
       }
       const results = await Promise.all(updates);
