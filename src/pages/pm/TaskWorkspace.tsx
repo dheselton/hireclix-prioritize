@@ -151,42 +151,31 @@ export default function TaskWorkspace() {
       </div>
 
       {/* BODY: 1fr / 300px */}
-      <div
-        className="max-w-[1400px] mx-auto px-4 py-6 grid gap-6"
-        style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
-      >
-        <div
-          className="grid gap-6"
-          style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
-        >
-          <div
-            className="contents lg:grid lg:gap-6"
-            style={{ gridTemplateColumns: "minmax(0, 1fr) 300px" }}
-          >
-            {/* LEFT */}
-            <div className="space-y-6 min-w-0">
-              {task.status === "blocked" && <BlockerBanner />}
-              <AssetHub taskId={task.id} projectId={task.project_id} />
-              <LinksSection taskId={task.id} />
-              <CollabHub taskId={task.id} projectId={task.project_id} taskTitle={task.title} />
-            </div>
-
-            {/* RIGHT */}
-            <aside className="space-y-3">
-              <ControlPanel task={task} setTask={setTask} patch={patch} />
-              <QuickChecklist taskId={task.id} />
-
-              <CollapsedSection label="Show Dependencies">
-                <DependenciesSection taskId={task.id} />
-              </CollapsedSection>
-
-              {task.type === "design" && (
-                <CollapsedSection label="Show Design Rounds">
-                  <DesignRoundsSection taskId={task.id} />
-                </CollapsedSection>
-              )}
-            </aside>
+      <div className="max-w-[1400px] mx-auto px-4 py-6">
+        <div className="grid gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
+          {/* LEFT */}
+          <div className="space-y-6 min-w-0">
+            {task.status === "blocked" && <BlockerBanner />}
+            <AssetHub taskId={task.id} projectId={task.project_id} />
+            <LinksSection taskId={task.id} />
+            <CollabHub taskId={task.id} projectId={task.project_id} taskTitle={task.title} />
           </div>
+
+          {/* RIGHT */}
+          <aside className="space-y-3">
+            <ControlPanel task={task} setTask={setTask} patch={patch} />
+            <QuickChecklist taskId={task.id} />
+
+            <CollapsedSection label="Show Dependencies">
+              <DependenciesSection taskId={task.id} />
+            </CollapsedSection>
+
+            {task.type === "design" && (
+              <CollapsedSection label="Show Design Rounds">
+                <DesignRoundsSection taskId={task.id} />
+              </CollapsedSection>
+            )}
+          </aside>
         </div>
       </div>
     </div>
