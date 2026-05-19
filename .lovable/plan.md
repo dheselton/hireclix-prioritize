@@ -1,75 +1,113 @@
-# Plan — Updated Build Review v2
+# Task Workspace Refactor (Execution-First)
 
-Refresh `/mnt/documents/review/REVIEW.md` and the `screens/` folder so it reflects every change shipped since the May 13 review, and add a proper end-to-end **workflow + user-flow diagram** alongside the screenshots.
+Turn the Task Drawer into a lightweight Quick Edit, and introduce a Full Task Workspace as the primary task experience. Add a real Links section, rebuild Time Tracking with a global running-timer tray, and demote structural sections.
 
-## What's new since the last review (will be folded in)
+## 1. Routing & entry points
 
-1. **Clickable-callout rule** — every CTA / alert / stat tile is now a deep link into its filtered view via `buildQueueLink()` + URL-driven chip filters.
-2. **Unclaimed banner ↔ lane reconciliation** — banner and "Unclaimed in my lane" both use the team concept (designer sees design + content, dev sees dev) so counts match.
-3. **Quick Request vs Project split** — Work Queue + Projects headers now expose two distinct CTAs (`+ Quick Request`, `+ Project`) wired through `CreateWorkDialog`'s new `initialStep` prop.
-4. **Embeddable Forms** — `/pm/forms/:id/edit` now has a Share & Embed panel (Direct link / Iframe / auto-resizing JS snippet via `public/embed/pm-form.js`). `PublicForm` supports `?embed=1` (transparent, no chrome, `postMessage` resize beacon).
-5. **Seeded HireClix intake forms** — *General Creative* (`/f/creative-request-general`) and *Web / Email* (`/f/creative-request-web-email`) modeled on the HireClix Wix forms.
-6. **Role-switcher / dev-mode caveats** still apply — auth disabled, PM tables permissive RLS.
+- Add new route `/pm/tasks/:id` → `TaskWorkspace.tsx` page (full screen, app shell visible).
+- Update `useTaskDrawerLink` consumers: clicking a task row/card now navigates to `/pm/tasks/:id`. The drawer (`?task=`) is reserved for **Quick Edit** (opened from a "Quick edit" affordance such as ⋯ menu or shift-click; default click = open workspace).
+- Workspace has a back button (returns to previous list/board) and a "Quick edit" toggle that opens the existing drawer in-place.
 
-## Deliverables
+## 2. Full Task Workspace layout
 
-### 1. New screenshots (replace + add)
-Re-capture at 1440×900 from the live preview, save to `/mnt/documents/review/screens/`:
+Two-column at ≥lg, stacked on mobile. Header bar spans full width.
 
-- `01-work-queue-pm.png` — Work Queue showing the new split `+ Quick Request` / `+ Project` buttons, clickable stat tiles, unclaimed banner.
-- `02-board-projects.png`, `03-board-kanban.png` — refresh.
-- `04-projects.png` — show split create buttons.
-- `05-project-detail-overview.png`, `06-project-detail-timeline.png`, `07-project-detail-tasks.png`, `08-task-drawer.png` — refresh.
-- `09-team-workload.png`, `10-global-timeline.png` — refresh.
-- `11-forms.png` — now populated with the 3 forms (Creative Request, General, Web/Email).
-- `11b-form-builder-embed.png` — **new**: FormBuilder showing the Share & Embed panel (3 cards).
-- `11c-public-form-general.png` — **new**: `/f/creative-request-general` rendered standalone.
-- `11d-public-form-web-email.png` — **new**: `/f/creative-request-web-email` rendered standalone.
-- `12-templates.png`, `13-template-builder.png`, `14-integrations.png` — refresh.
-- `15-roadmap-dashboard.png`, `16-product-roadmap.png` — refresh (legacy section).
+### Header (sticky)
+- Title (inline-editable), breadcrumb (Project → Task), status pill.
+- Right: **Start Timer / Pause / Stop** controls, "Quick edit", overflow menu.
 
-Capture via headed browser tool against the preview URL, using the TopBar role switcher to take the Work Queue shot as the **PM** role.
+### Left column (~70%) — Execution
+Ordered top to bottom:
 
-### 2. End-to-end flow diagram (new)
-Add `/mnt/documents/review/flow.mmd` (Mermaid) referenced from REVIEW.md as a `lov-artifact`. Two sub-diagrams in one file:
+1. **Attachments** — promoted to hero block. Grid of image thumbnails (square tiles) + file list below. Full-area drag-and-drop. Reuses `pm_attachments` + `task-attachments` bucket. Visual upgrade only — no schema change.
+2. **Links** (NEW) — favicon (via `https://www.google.com/s2/favicons?domain=…&sz=32`), editable label, URL, open-in-new, delete. Inline add row.
+3. **Description** — rich/markdown read view by default; edit on click. Form-submission payloads render here as a structured key/value block when present (see §5).
+4. **Checklist / Subtasks** — keep `ChecklistSection` + `SubtasksSection`, compact.
+5. **Comments** — `CommentsThread`, enlarged, primary collab surface.
 
-- **User flow** — Submitter (public form) → Unclaimed queue → PM triage → Designer/Dev claim → Review → Approved → Go-Live.
-- **System flow** — Form submit → `pm_form_submissions` + auto-create `pm_tasks` / `pm_projects` → activity log → webhooks (`pm_webhook_deliveries`) → realtime → UI.
+### Right column (~30%) — Control panel
+Compact card with:
+- Status, Assignee, Priority
+- Start / Due dates (with existing cascade behavior)
+- Client (read-only, from project)
+- Total time logged (live, sums `pm_time_entries`)
+- Tags
 
-### 3. Rewritten `REVIEW.md`
-Same structure as v1, but:
+Below, **collapsed by default** accordions:
+- Dependencies (`DependenciesSection`)
+- Design rounds (design tasks only)
+- Dev status log + blocker (dev tasks only)
+- Metadata (created/updated, IDs)
 
-- New **"What changed since v1"** section at the top.
-- New **§7. Forms & Embeds** section covering the embed panel, JS snippet, iframe snippet, and the two seeded HireClix forms (with their public slugs).
-- New **§2.1 Clickable callouts** callout block documenting the project-wide rule + `buildQueueLink` helper.
-- Updated **§2 Work Queue** copy describing the split `+ Quick Request` / `+ Project` buttons and the lane-aligned unclaimed counts.
-- New **§11. End-to-end workflow diagram** section embedding the Mermaid artifact.
-- Updated **End-to-end user flow** narrative to include the embed/form intake path and the manual-create path.
-- Functional-notes section updated: `pm_forms` slugs seeded, `public/embed/pm-form.js` loader, `?embed=1` `postMessage` contract (`{type:"lovable-pm-form", event:"resize", slug, height}`).
+## 3. Links (new feature)
 
-### 4. File layout after the refresh
-
-```text
-/mnt/documents/review/
-  REVIEW.md            (rewritten)
-  flow.mmd             (new mermaid artifact)
-  screens/
-    01..16 ...png      (refreshed)
-    11b-form-builder-embed.png
-    11c-public-form-general.png
-    11d-public-form-web-email.png
+New table `pm_task_links`:
 ```
+id uuid pk, task_id uuid, url text, label text, created_by uuid, created_at timestamptz default now()
+```
+Permissive RLS to match other pm_* tables. New `LinksSection.tsx` component.
+
+## 4. Time Tracking rebuild
+
+### Active timer
+- One active timer per user, stored in:
+  - `localStorage` (`pm_active_timer = { taskId, taskTitle, startedAt }`) for instant resume.
+  - New table `pm_active_timers` (`user_id pk, task_id, started_at, note`) so it survives device switches.
+- New context `ActiveTimerProvider` mounted in `App.tsx`, exposing `start(taskId, title)`, `pause()`, `stop(note?)`, `current`.
+- Stop → insert into existing `pm_time_entries` with computed minutes (rounded up to nearest minute, min 1).
+
+### Floating tray (global)
+- `FloatingTimerTray.tsx` mounted globally (App level). Bottom-right, fixed, z-50.
+- Shows task title, live `HH:MM:SS`, Pause/Resume + Stop. Click body → navigates to `/pm/tasks/:id`.
+- Hidden when no active timer.
+
+### Manual entry
+- Keep current manual hours/minutes + note in the Time section of the workspace, plus full log table below.
+
+## 5. Form → Task connection
+
+- When `pm_form_submissions` creates a task, store the submission payload in `pm_tasks.custom_fields.form_submission = { form_name, fields: [{label, value}] }` (already JSONB, no migration).
+- Workspace Description block detects `custom_fields.form_submission` and renders it as a clean labeled block above the free-text description.
+- Backfill: read existing submissions and populate `custom_fields` for any task missing it (one-shot SQL via supabase--insert).
+
+## 6. Quick Edit Drawer (simplified)
+
+Reduce `TaskDrawer` to: Title, Status, Assignee, Due date, single Quick Comment box, and a primary **"Open Full Task"** button (navigates to `/pm/tasks/:id`). Remove all heavy sections from the drawer.
+
+## 7. Files
+
+**New**
+- `src/pages/pm/TaskWorkspace.tsx`
+- `src/components/pm/workspace/AttachmentsHero.tsx`
+- `src/components/pm/workspace/LinksSection.tsx`
+- `src/components/pm/workspace/FormSubmissionBlock.tsx`
+- `src/components/pm/workspace/ControlPanel.tsx`
+- `src/components/pm/timer/ActiveTimerProvider.tsx`
+- `src/components/pm/timer/FloatingTimerTray.tsx`
+- `src/components/pm/timer/TimerControls.tsx`
+
+**Modified**
+- `src/App.tsx` — add route, mount `ActiveTimerProvider` + `FloatingTimerTray`.
+- `src/components/pm/TaskDrawer.tsx` — strip down to Quick Edit.
+- All task click handlers (`TaskKanban`, `TaskListView`, `TaskGridView`, `ProjectWorkCard`, `CommentsThread`, `DependenciesSection`) — default click = navigate to workspace; secondary action opens drawer.
+- `src/components/pm/drawer/TimeTrackingSection.tsx` — extend with Start Timer button wired to provider (kept for workspace reuse).
+- `src/lib/pm/links.ts` — add `taskWorkspaceLink(id)` helper.
+
+**Migrations**
+- Create `pm_task_links` with permissive RLS.
+- Create `pm_active_timers` with permissive RLS.
+
+## 8. Out of scope (this round)
+
+- Auth tightening on the new tables (matches current permissive PM RLS until auth re-enabled).
+- Rich text editor for description (keep textarea + markdown render).
+- Multi-user collaborative cursors / presence.
+- Timer idle detection / auto-pause.
+- Webhook events for timer start/stop.
 
 ## Technical notes
 
-- Screenshots: use `browser--navigate_to_url` + `browser--set_viewport_size 1440×900` + `browser--screenshot` per route. Where the role matters (Work Queue), use `browser--act` to flip the TopBar role switcher to PM, then Designer for one alt shot (`01b-work-queue-designer.png`) so reviewers can see the lane logic.
-- Mermaid: write to `/mnt/documents/review/flow.mmd`; render inline in chat via `<lov-artifact url="/__l5e/documents/review/flow.mmd" mime_type="text/vnd.mermaid"></lov-artifact>`.
-- No source-code edits — this is pure documentation + screenshots.
-
-## Out of scope
-
-- Any UI/UX changes (this is a review, not a build).
-- Tightening RLS or re-enabling auth.
-- New embed themes / captcha / webhook signing (already noted as future work).
-
-Reply **"go"** (or hit Implement) and I'll capture the screenshots, render the diagram, and publish the new `REVIEW.md`.
+- Timer ticking uses a single `setInterval(1000)` in the provider; tray and header read from context to avoid duplicate intervals.
+- `pm_active_timers` upsert keyed on `user_id` ensures the "one active timer" rule.
+- `TaskWorkspace` reuses existing section components where possible (`ChecklistSection`, `SubtasksSection`, `CommentsThread`, `DependenciesSection`, `DesignRoundsSection`, `DevStatusLogSection`) — only layout changes.
+- Memory rule update after build: add Core line "Tasks open in full workspace at /pm/tasks/:id; drawer is Quick Edit only."

@@ -431,6 +431,27 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_active_timers: {
+        Row: {
+          note: string | null
+          started_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          note?: string | null
+          started_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          note?: string | null
+          started_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pm_activity_log: {
         Row: {
           action: string
@@ -1196,6 +1217,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pm_task_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          task_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          task_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          task_id?: string
+          url?: string
+        }
+        Relationships: []
       }
       pm_tasks: {
         Row: {
