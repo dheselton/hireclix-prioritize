@@ -119,7 +119,7 @@ export function ControlPanel({
         <DatePicker
           value={task.due_date}
           onChange={v => patch({ due_date: v ?? null })}
-          className="h-7 w-32 text-xs"
+          size="sm"
         />
       </Row>
 
@@ -130,7 +130,7 @@ export function ControlPanel({
             onChange={e => setTask({ ...task, dev_environment: e.target.value })}
             onBlur={e => patch({ dev_environment: e.target.value })}
             placeholder="staging.acme.com"
-            className="h-7 w-36 text-xs text-right"
+            className="h-7 w-40 text-xs text-right"
           />
         </Row>
       )}

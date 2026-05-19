@@ -48,17 +48,17 @@ export function DatePicker({
           variant="outline"
           disabled={disabled}
           className={cn(
-            "w-full justify-start text-left font-normal",
-            size === "sm" ? "h-8 px-2 text-xs" : "h-10",
+            "justify-start text-left font-normal",
+            size === "sm" ? "h-8 px-2 text-xs min-w-[8.5rem]" : "h-10 min-w-[10.5rem]",
             !date && "text-muted-foreground",
             className,
           )}
         >
-          <CalendarIcon className={cn("opacity-60", size === "sm" ? "h-3.5 w-3.5 mr-1.5" : "h-4 w-4 mr-2")} />
-          <span className="flex-1 truncate">{date ? format(date, "MM/dd/yyyy") : placeholder}</span>
+          <CalendarIcon className={cn("shrink-0 opacity-60", size === "sm" ? "h-3.5 w-3.5 mr-1.5" : "h-4 w-4 mr-2")} />
+          <span className="flex-1 whitespace-nowrap">{date ? format(date, "MM/dd/yyyy") : placeholder}</span>
           {allowClear && date && !disabled && (
             <X
-              className={cn("opacity-50 hover:opacity-100", size === "sm" ? "h-3 w-3 ml-1" : "h-3.5 w-3.5 ml-2")}
+              className={cn("shrink-0 opacity-50 hover:opacity-100", size === "sm" ? "h-3 w-3 ml-1" : "h-3.5 w-3.5 ml-2")}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange(null);

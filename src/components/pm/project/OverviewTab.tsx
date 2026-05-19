@@ -148,7 +148,7 @@ function KeyDateRow({ label, value, onChange, editable, warning }: {
     <div className={`flex items-center justify-between text-sm ${warning ? "text-warning" : ""}`}>
       <span>{label}</span>
       {editable ? (
-        <DatePicker value={value} onChange={(v) => onChange(v ?? null)} className="w-36 h-8" />
+        <DatePicker value={value} onChange={(v) => onChange(v ?? null)} size="sm" />
       ) : (
         <span className="text-muted-foreground">{fmtDate(value) || "—"}</span>
       )}
