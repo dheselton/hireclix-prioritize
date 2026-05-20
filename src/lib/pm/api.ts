@@ -119,6 +119,8 @@ export interface PreviewTask extends ScheduleTask {
   type: string;
   assignee_role: string | null;
   sort_order: number;
+  page_group_key?: string | null;
+  page_label?: string | null;
 }
 
 export const fetchTemplateBundle = async (templateId: string) => {
