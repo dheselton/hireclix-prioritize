@@ -187,6 +187,10 @@ export default function ProjectDetail() {
         </Card>
       )}
 
+      {tab === "pages" && !isRequest && hasTemplate && (
+        <PagesTab projectId={project.id} templateId={project.template_id} tasks={tasks} />
+      )}
+
       {tab === "files" && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">All files attached to this project and its tasks, in one place.</p>
