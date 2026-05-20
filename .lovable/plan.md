@@ -1,138 +1,104 @@
+# Handling Variable Per-Project Pages (Benefits, Life At, Locations, Personas…)
 
-## Goals
+## The Problem
 
-1. Make adding / changing / removing assignees fast from **task cards** (board) and **task rows** (list), with a **bulk "Assign to…"** action on the board.
-2. In **All mode**, every role sees every task — no more lane filtering for designers/devs/etc.
-3. Make the **Configure Timeline** buttons (Auto-link in order, Recalculate from kickoff, Fit to go-live) actually run and produce visible date changes, with clearer feedback when they no-op.
-4. Ship an **in-app Help page** at `/pm/help` with a step-by-step guide: finalize the Career Site template → start a new Career Site project → edit task dates so the rest of the schedule cascades.
+A Career Site project always has the same core spine (Discovery → Wireframes → Dev → QA → Launch), but the **content pages** vary wildly per client: one project needs 5 pages, the next needs 20. Today the template is a flat task list — you'd either:
+- Hard-code "Benefits page – Design / Dev / QA" once and manually duplicate it 5–20 times per project, or
+- Leave pages out of the template entirely and add them ad-hoc, which breaks the timeline.
 
-Scope is additive — no rebuild of existing screens. Project membership (TeamCard) already works and is unchanged.
+Neither scales. We need a first-class concept of **repeatable page bundles**.
 
----
+## The Model: Page Groups
 
-## 1 — Inline assignee picker
+Introduce a new template primitive called a **Page Group**: a small reusable bundle of tasks (e.g. Design → Dev → Content → QA → Approval) that gets instantiated **once per page** the client orders.
 
-New small component: `src/components/pm/AssigneePopover.tsx`
-- Trigger = `UserAvatar` (or "Unassigned" dot) — clicking opens a popover.
-- Searchable list of `mock_users`, with role chip on the right.
-- "Unassign" button at the bottom when a user is set.
-- On select: optimistic update, then `updateTask(id, { assignee_id })`, toast on error + revert.
-- `stopPropagation` on the trigger so it doesn't open the workspace.
-
-Wire it into:
-- `src/components/pm/project/board/BoardTaskCard.tsx` — replace the bare `UserAvatar` with `AssigneePopover`.
-- `src/components/pm/collections/TaskListView.tsx` — same swap on the assignee cell.
-- `src/components/pm/project/TasksTab.tsx` list rows (line ~368) — same swap.
-- `src/pages/pm/Board.tsx` kanban card — same swap.
-
-**Bulk assign on Board kanban:** extend the existing multi-select pattern in `BulkTaskActions.tsx`. Add an "Assign to…" button that reuses `AssigneePopover` in multi mode and calls `updateTask` for each selected id.
-
-Removal from a project is already in `TeamCard`; no change there.
-
----
-
-## 2 — Drop lane filter in All mode
-
-Today `WorkQueue.tsx` filters non-PM users to a `ROLE_LANE` allow-list:
-```
-inLane(t) → only design/content for designers, dev/qa for developers, etc.
+```text
+Template: Career Site
+├── Phase: Discovery          (1x – fixed)
+├── Phase: Foundation         (1x – fixed)
+├── Page Group: "Content Page" (Nx – per project)
+│     ├── Wireframe       (design, 2d)
+│     ├── Visual Design   (design, 3d)
+│     ├── Build           (dev,    3d)
+│     ├── Content Load    (content,1d)
+│     └── QA              (qa,     1d)
+├── Phase: Integration        (1x – fixed)
+└── Phase: Launch             (1x – fixed)
 ```
 
-Change:
-- Add a `useMeMode()` read to `WorkQueue.tsx`.
-- When `mode === "all"`, `inLane` becomes `() => true` for every role (PM behavior).
-- When `mode === "me"`, keep current lane gating (designers still see only their lanes for "their" view).
-- Same treatment for `UnclaimedBanner.tsx`: in All mode, count unclaimed across all teams for everyone.
+When a PM starts a new project from the template, the Timeline Wizard asks: **"Which pages?"** — they pick from a checklist (Home, Benefits, Life At, Locations, Personas, custom…) and set a count. The system stamps out a copy of the Page Group for each one, named e.g. *"Benefits – Wireframe", "Benefits – Visual Design"*, etc., and schedules them into the existing spine.
 
-No change to `Board.tsx` (it already uses `applyTaskMeMode` and ignores lanes).
+## How It Slots Into the Existing System
 
----
+### 1. Schema (small additions, no breaking changes)
 
-## 3 — Fix Configure Timeline panel
+- `pm_template_page_groups` — id, template_id, name, phase_name, sort_order
+- `pm_template_tasks.page_group_id` — nullable; when set, this task is a "slot" inside the group, not a real task
+- `pm_template_page_group_presets` — preset page names per template (Home, Benefits, Life At, Locations, Persona, Job Detail, Search Results, Contact, Privacy, etc.) so PMs aren't typing them every time
+- `pm_tasks.page_label` — nullable; on live tasks, stores which page this task belongs to ("Benefits"), so we can group them in views
+- `pm_tasks.page_group_key` — short id shared by all tasks for the same page instance, so reordering/deletion can act on the whole page
 
-`ConfigureTimelinePanel.tsx` exists but the buttons frequently appear to do nothing. Root causes to address:
+### 2. Template Builder UI
 
-a. **No diffs returned** when tasks already match the schedule → the cascade modal opens with zero rows and instantly closes, so the user thinks nothing happened. Fix: if `diffs.length === 0`, show a toast "Schedule already up to date" instead of opening the modal.
+In `TemplateBuilder.tsx`, add a third card: **Page Groups**.
+- Define a group once (name, list of slot tasks with type/duration/dependencies *within the group*).
+- Dependencies inside a group are relative ("Visual Design depends on Wireframe"); they get rewritten per page when stamped.
+- A group can also depend on a fixed phase ("all pages start after Foundation complete") and feed a fixed phase ("Launch waits for all page QA").
 
-b. **`recalcFromKickoff` runs but doesn't persist `kickoff_date` on the project** — only updates tasks. Add an `updateProject(project.id, { kickoff_date: kickoff, go_live_date: suggested })` write after apply.
+### 3. Timeline Setup Wizard (project creation)
 
-c. **`autoLinkInOrder` silently fails** when `pm_task_dependencies` insert is blocked by missing project_id linkage in some rows. Add per-row `project_id` to the insert payload (FK is via task), and surface the error toast.
+Add a **"Pages"** step after kickoff/go-live:
+- Checklist of preset pages + "Add custom page" input
+- Count badge per group (e.g. "Persona pages: 3")
+- Live preview of total task count and projected end date
+- "Apply default set" button (uses template's recommended starter set)
 
-d. **Tasks with `null` start/due dates** are skipped by `recalculateForward`. After a successful kickoff recalc, also write the freshly placed `start_date`/`due_date` for tasks that had `null` originally so future drags work.
+### 4. Scheduler
 
-e. Add a small **"Diagnose timeline"** button in the panel header that lists: # tasks, # tasks with no dates, # dependencies, whether kickoff is set — purely informational so the user can self-debug.
+`instantiateTemplateIntoProject` expands each selected page into real tasks before scheduling. The scheduler already handles N tasks with dependencies — it just sees more of them. Parallelism rule: pages of the same group run in parallel by default (capped by team capacity, optional toggle).
 
-No changes to scheduler math itself.
+### 5. Adding/Removing Pages Mid-Project
 
----
+On the project's Tasks tab, add an **"Add page"** button that:
+- Shows the same picker as the wizard
+- Stamps the group, links it to current dependencies
+- Runs cascade recalc so dates shift automatically
 
-## 4 — In-app Help page
+Removing a page deletes its `page_group_key` tasks and recalcs forward.
 
-New route `/pm/help`:
-- File: `src/pages/pm/Help.tsx`
-- Sidebar link in `AppSidebar.tsx` ("Help", `BookOpen` icon, visible to all roles).
-- Content: Markdown rendered with `react-markdown` (already a transitive dep — verify; otherwise render with prose-classed JSX directly).
+### 6. Views
 
-Sections (written as numbered checklists with screenshot-free, action-oriented steps that match the actual UI labels):
+- **Board / List**: group tasks by `page_label` when filtered to a page-heavy project — collapsible "Benefits (5)" row
+- **Gantt**: render each page as a swimlane under its phase
+- **Workload**: roll-up by page so a designer sees "5 wireframes due this week"
 
-1. **Finalize the Career Site template**
-   - Open Templates → Career Site → Edit.
-   - Confirm each phase exists, each task has `duration_days` and a `role`.
-   - Lock kickoff-anchored tasks (Kickoff Call) and go-live anchored tasks (Launch) using the lock toggles.
-   - Add dependencies in the template builder so each task lists what it depends on.
-   - Save.
+## What This Replaces / Avoids
 
-2. **Start a new Career Site project**
-   - Projects → New Project → pick Career Site template → set client + go-live date.
-   - This creates the project, copies tasks and dependencies, and seeds dates from the template's `default_go_live_offset_days`.
-   - Open the project → Tasks tab → confirm phases and tasks landed.
+- No more cloning the template and editing for every client
+- No more "forgot to add QA for the Locations page" — the group enforces completeness
+- Estimates stay honest: 12 pages = 12× the page-group duration, scheduled in parallel up to capacity
 
-3. **Set the real schedule**
-   - Project header → "Configure Timeline".
-   - Enter Kickoff date → "Recalculate from kickoff" → review cascade modal → Apply.
-   - Or set both kickoff + go-live → "Fit to window" to compress flexible tasks.
-   - If "Schedule already up to date" appears, dates are already valid.
+## Out of Scope (separate follow-ups)
 
-4. **Edit one task and let the rest move**
-   - Project → Timeline (Gantt) → drag a task's bar OR open the task workspace and change Start/Due dates.
-   - The Cascade Confirm modal shows every downstream task that will shift; Apply writes them all.
-   - Critical path is highlighted in red on the Gantt.
+- Auto-suggesting page sets from form submission answers (later, once the request form captures page lists)
+- Per-page checklists / acceptance criteria templates (extend `pm_template_tasks.checklist_items` — already supported)
+- Client-facing page approval portal
 
-5. **Add / remove people**
-   - Project Overview → Team card → "Add" to invite a workspace user with a project role; "✕" to remove.
-   - On any task card or row, click the avatar to assign/unassign inline.
-   - On the Board, select multiple cards → "Assign to…" for bulk reassignment.
+## Files to Touch (implementation phase, not this plan)
 
-6. **All mode vs Me mode**
-   - Top bar toggle. In **All** mode every user sees every project and task across teams. In **Me** mode, the view narrows to your assignments and projects.
+- **Migration**: new tables + columns above
+- **`src/types/pm.ts`**: `PmTemplatePageGroup`, page_label fields
+- **`src/lib/pm/api.ts`**: extend `fetchTemplateBundle`, `buildPreviewFromTemplate`, `instantiateTemplateIntoProject` to expand groups
+- **`src/lib/pm/scheduler.ts`**: no algorithm change, but accept expanded task list
+- **`src/pages/pm/TemplateBuilder.tsx`**: Page Groups card + preset manager
+- **`src/components/pm/TimelineSetupWizard.tsx`**: new "Pages" step
+- **`src/components/pm/project/TasksTab.tsx`** + Board/List: group-by-page rendering, "Add page" action
+- **`src/pages/pm/Help.tsx`**: walkthrough section for page groups
 
----
+## Decision Needed Before I Build
 
-## Files
+1. **Parallelism default**: should all pages of a group run **in parallel** (faster, needs capacity) or **sequential** (predictable, slower)? Recommendation: parallel with a per-template cap (e.g. "max 4 pages designed at once").
+2. **Where presets live**: per-template (Career Site has its own list) or global (one master list reused everywhere)? Recommendation: per-template, with a "copy from" shortcut.
+3. **Naming**: tasks named *"Benefits – Wireframe"* (page first) or *"Wireframe – Benefits"* (action first)? Recommendation: page first, so grouping in lists reads cleanly.
 
-**New**
-- `src/components/pm/AssigneePopover.tsx`
-- `src/pages/pm/Help.tsx`
-
-**Modified**
-- `src/components/pm/project/board/BoardTaskCard.tsx`
-- `src/components/pm/collections/TaskListView.tsx`
-- `src/components/pm/collections/BulkTaskActions.tsx`
-- `src/components/pm/project/TasksTab.tsx`
-- `src/pages/pm/Board.tsx`
-- `src/pages/pm/WorkQueue.tsx`
-- `src/components/pm/UnclaimedBanner.tsx`
-- `src/components/pm/ConfigureTimelinePanel.tsx`
-- `src/components/AppSidebar.tsx`
-- `src/App.tsx` (route)
-
-**DB:** none. Schema already supports everything.
-
----
-
-## Out of scope
-
-- Real admin role on `mock_users` (current PM role + "All mode" = admin behavior).
-- Auth changes.
-- Reworking the scheduler algorithms.
-- Per-task assignment from the Gantt bars.
+Once you confirm those three, I'll build it end-to-end.
