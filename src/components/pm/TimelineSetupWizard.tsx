@@ -154,14 +154,15 @@ export function TimelineSetupWizard({
     }
   }
 
-  // Step ordering: 1=kickoff, 2=pages(if any), 3=goLive, 4=review
+  // Step ordering: 1=kickoff, 2=pages info OR picker, 3=goLive, 4=review
   // When no page groups: 1=kickoff, 2=goLive, 3=review
-  const showPagesStep = step === 2 && hasPageGroups;
+  const showPagesInfo = step === 2 && hasPageGroups;
+  const showPagesStep = showPagesInfo && pickPagesNow;
   const showGoLive = (hasPageGroups && step === 3) || (!hasPageGroups && step === 2);
   const showReview = (hasPageGroups && step === 4) || (!hasPageGroups && step === 3);
 
   const canAdvance = step === 1 ? !!kickoff
-    : showPagesStep ? true
+    : showPagesInfo ? true
     : showGoLive ? !!goLive
     : true;
 
