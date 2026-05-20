@@ -258,11 +258,69 @@ export function TasksTab({ tasks, projectId, meId, templateId }: {
             </button>
           );
         })}
+        {templateId && (
+          <Button size="sm" variant="outline" onClick={() => setAddPageOpen(true)} className="h-7">
+            <Plus className="h-3 w-3 mr-1" /> Add page
+          </Button>
+        )}
         <div className="ml-auto flex gap-1">
           <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
           <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
         </div>
       </div>
+
+      {/* Pages (grouped) */}
+      {view === "list" && (() => {
+        const pageMap = new Map<string, { label: string; tasks: PmTask[] }>();
+        for (const t of filtered) {
+          if (!t.page_group_key) continue;
+          if (!pageMap.has(t.page_group_key)) pageMap.set(t.page_group_key, { label: t.page_label || "Page", tasks: [] });
+          pageMap.get(t.page_group_key)!.tasks.push(t);
+        }
+        if (!pageMap.size) return null;
+        return (
+          <Card>
+            <CardContent className="p-2 space-y-1">
+              <div className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                <FileText className="h-3 w-3" /> Pages ({pageMap.size})
+              </div>
+              {Array.from(pageMap.entries()).map(([key, { label, tasks: pageTasks }]) => {
+                const done = pageTasks.filter(t => t.status === "complete" || t.status === "approved").length;
+                const isC = !!collapsedPages[key];
+                return (
+                  <div key={key} className="border border-border rounded">
+                    <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted/30">
+                      <button type="button" onClick={() => setCollapsedPages(c => ({ ...c, [key]: !c[key] }))}
+                        className="flex items-center gap-2 flex-1">
+                        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isC ? "" : "rotate-90"}`} />
+                        <span className="text-sm font-medium">{label}</span>
+                        <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{done}/{pageTasks.length}</span>
+                      </button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6"
+                        onClick={async () => {
+                          if (!confirm(`Remove "${label}" and its ${pageTasks.length} task(s)?`)) return;
+                          await removePageFromProject(projectId, key);
+                          emitTasksChanged();
+                          toast.success(`Removed ${label}`);
+                        }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    {!isC && (
+                      <div className="px-2 pb-2 space-y-1">
+                        {pageTasks.map(t => {
+                          const g = groupForStatus(t.status);
+                          return <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} />;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* List */}
       {view === "list" && (
