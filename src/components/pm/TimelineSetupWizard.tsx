@@ -4,14 +4,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Lock, AlertTriangle, ArrowRight, Rocket } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Lock, AlertTriangle, ArrowRight, Rocket, Plus, X } from "lucide-react";
 import { fetchTemplateBundle, buildPreviewFromTemplate, createProjectFromTemplate, type PreviewTask } from "@/lib/pm/api";
+import { fetchPageGroups, fetchPagePresets, expandPageGroupsInTemplate, type PageGroup, type PagePreset, type SelectedPage } from "@/lib/pm/pageGroups";
 import { scheduleForwardFromKickoff, fitToWindow, type ScheduleDep } from "@/lib/pm/scheduler";
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export function TimelineSetupWizard({
   templateId, open, onOpenChange,
@@ -19,6 +20,12 @@ export function TimelineSetupWizard({
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
   const [template, setTemplate] = useState<any>(null);
+  const [rawTasks, setRawTasks] = useState<any[]>([]);
+  const [rawDeps, setRawDeps] = useState<any[]>([]);
+  const [pageGroups, setPageGroups] = useState<PageGroup[]>([]);
+  const [presets, setPresets] = useState<PagePreset[]>([]);
+  const [selectedPages, setSelectedPages] = useState<SelectedPage[]>([]);
+  const [customName, setCustomName] = useState<Record<string, string>>({});
   const [tasks, setTasks] = useState<PreviewTask[]>([]);
   const [deps, setDeps] = useState<ScheduleDep[]>([]);
   const [kickoff, setKickoff] = useState<string>("");
@@ -26,20 +33,44 @@ export function TimelineSetupWizard({
   const [goLiveTouched, setGoLiveTouched] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const hasPageGroups = pageGroups.length > 0;
+  const totalSteps: 3 | 4 = hasPageGroups ? 4 : 3;
+
   useEffect(() => {
     if (!open || !templateId) return;
     setStep(1); setGoLiveTouched(false);
     setKickoff(new Date().toISOString().slice(0, 10));
+    setSelectedPages([]);
+    setCustomName({});
     (async () => {
-      const b = await fetchTemplateBundle(templateId);
+      const [b, pg, pp] = await Promise.all([
+        fetchTemplateBundle(templateId),
+        fetchPageGroups(templateId),
+        fetchPagePresets(templateId),
+      ]);
       setTemplate(b.template);
-      const built = buildPreviewFromTemplate(b.tasks, b.deps);
-      setTasks(built.previewTasks);
-      setDeps(built.previewDeps);
+      setRawTasks(b.tasks);
+      setRawDeps(b.deps);
+      setPageGroups(pg);
+      setPresets(pp);
+      // Pre-select defaults
+      const def: SelectedPage[] = [];
+      for (const p of pp.filter(x => x.is_default && x.page_group_id)) {
+        def.push({ key: `${p.page_group_id}_${p.id}`, page_group_id: p.page_group_id!, page_label: p.name });
+      }
+      setSelectedPages(def);
     })();
   }, [open, templateId]);
 
-  // Suggested go-live whenever kickoff changes (only auto-fill if user hasn't touched it)
+  // Rebuild preview whenever selection changes
+  useEffect(() => {
+    if (!rawTasks.length) { setTasks([]); setDeps([]); return; }
+    const expanded = expandPageGroupsInTemplate({ templateTasks: rawTasks, templateDeps: rawDeps, selectedPages });
+    const built = buildPreviewFromTemplate(expanded.tasks, expanded.deps);
+    setTasks(built.previewTasks);
+    setDeps(built.previewDeps);
+  }, [rawTasks, rawDeps, selectedPages]);
+
   const suggested = useMemo(() => {
     if (!kickoff || !tasks.length) return null;
     return scheduleForwardFromKickoff(kickoff, tasks as any, deps);
@@ -49,7 +80,6 @@ export function TimelineSetupWizard({
     if (suggested && !goLiveTouched) setGoLive(suggested.suggestedGoLive);
   }, [suggested, goLiveTouched]);
 
-  // Fit-to-window placement based on current kickoff + goLive
   const fit = useMemo(() => {
     if (!kickoff || !goLive || !tasks.length) return null;
     return fitToWindow(kickoff, goLive, tasks as any, deps);
@@ -58,7 +88,6 @@ export function TimelineSetupWizard({
   const placement = fit?.placement ?? suggested?.placement ?? new Map();
   const warning = fit?.warning;
 
-  // Group preview tasks by phase for the mini Gantt
   const phases = useMemo(() => {
     const out = new Map<string, PreviewTask[]>();
     for (const t of tasks) {
@@ -83,6 +112,27 @@ export function TimelineSetupWizard({
   }, [placement]);
   const totalDays = minDate && maxDate ? Math.max(1, Math.round((maxDate.getTime() - minDate.getTime()) / 86400000) + 1) : 1;
 
+  function togglePreset(groupId: string, preset: PagePreset) {
+    const key = `${groupId}_${preset.id}`;
+    setSelectedPages(prev => {
+      const exists = prev.find(p => p.key === key);
+      if (exists) return prev.filter(p => p.key !== key);
+      return [...prev, { key, page_group_id: groupId, page_label: preset.name }];
+    });
+  }
+
+  function addCustomPage(groupId: string) {
+    const name = (customName[groupId] || "").trim();
+    if (!name) return;
+    const key = `${groupId}_custom_${Date.now()}`;
+    setSelectedPages(prev => [...prev, { key, page_group_id: groupId, page_label: name }]);
+    setCustomName(c => ({ ...c, [groupId]: "" }));
+  }
+
+  function removePage(key: string) {
+    setSelectedPages(prev => prev.filter(p => p.key !== key));
+  }
+
   async function confirm() {
     if (!template || !fit) return;
     setLoading(true);
@@ -105,25 +155,99 @@ export function TimelineSetupWizard({
     }
   }
 
+  // Step ordering: 1=kickoff, 2=pages(if any), 3=goLive, 4=review
+  // When no page groups: 1=kickoff, 2=goLive, 3=review
+  const showPagesStep = step === 2 && hasPageGroups;
+  const showGoLive = (hasPageGroups && step === 3) || (!hasPageGroups && step === 2);
+  const showReview = (hasPageGroups && step === 4) || (!hasPageGroups && step === 3);
+
+  const canAdvance = step === 1 ? !!kickoff
+    : showPagesStep ? true
+    : showGoLive ? !!goLive
+    : true;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Create project from {template?.name || "template"} — Step {step} of 3</DialogTitle>
+          <DialogTitle>Create project from {template?.name || "template"} — Step {step} of {totalSteps}</DialogTitle>
         </DialogHeader>
 
         {step === 1 && (
           <div className="space-y-3">
             <Label>Kickoff date</Label>
             <Input type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} className="w-56" />
-            <p className="text-xs text-muted-foreground">All tasks will be scheduled forward from this date using template durations.</p>
+            <p className="text-xs text-muted-foreground">All tasks will be scheduled forward from this date.</p>
           </div>
         )}
 
-        {step === 2 && (
+        {showPagesStep && (
+          <div className="space-y-4 max-h-[460px] overflow-auto">
+            <p className="text-xs text-muted-foreground">
+              Pick which pages this project needs. Each selected page stamps out the full task bundle (design, dev, QA, etc.) and schedules them in parallel.
+            </p>
+            {pageGroups.map(g => {
+              const groupPresets = presets.filter(p => p.page_group_id === g.id);
+              const selectedHere = selectedPages.filter(s => s.page_group_id === g.id);
+              return (
+                <div key={g.id} className="border border-border rounded p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">{g.name}</div>
+                    <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                      {selectedHere.length} selected
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {groupPresets.map(p => {
+                      const key = `${g.id}_${p.id}`;
+                      const on = selectedPages.some(s => s.key === key);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => togglePreset(g.id, p)}
+                          className={`h-7 px-2.5 rounded-full text-xs border transition ${on ? "bg-info/10 text-info border-info" : "bg-background border-border text-muted-foreground hover:bg-muted"}`}
+                        >
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedHere.filter(s => !groupPresets.some(p => `${g.id}_${p.id}` === s.key)).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {selectedHere.filter(s => !groupPresets.some(p => `${g.id}_${p.id}` === s.key)).map(s => (
+                        <span key={s.key} className="h-7 inline-flex items-center gap-1 px-2.5 rounded-full text-xs bg-info/10 text-info border border-info">
+                          {s.page_label}
+                          <button type="button" onClick={() => removePage(s.key)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Input
+                      placeholder="Custom page name…"
+                      value={customName[g.id] || ""}
+                      onChange={e => setCustomName(c => ({ ...c, [g.id]: e.target.value }))}
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomPage(g.id); } }}
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" variant="outline" onClick={() => addCustomPage(g.id)}>
+                      <Plus className="h-3 w-3 mr-1" /> Add
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="text-xs text-muted-foreground border-t border-border pt-2">
+              Total pages selected: <strong className="text-foreground">{selectedPages.length}</strong> · Total tasks in project: <strong className="text-foreground">{tasks.length}</strong>
+            </div>
+          </div>
+        )}
+
+        {showGoLive && (
           <div className="space-y-4">
             <div className="rounded border border-border p-3 bg-muted/30">
-              <div className="text-xs text-muted-foreground">Based on your kickoff date of {fmtDate(kickoff)}</div>
+              <div className="text-xs text-muted-foreground">Based on your kickoff date of {fmtDate(kickoff)} and {selectedPages.length} page(s)</div>
               <div className="text-base font-medium mt-1">Suggested go-live: {fmtDate(suggested?.suggestedGoLive)}</div>
             </div>
             <div>
@@ -146,10 +270,10 @@ export function TimelineSetupWizard({
           </div>
         )}
 
-        {step === 3 && (
+        {showReview && (
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
-              Kickoff <strong className="text-foreground">{fmtDate(kickoff)}</strong> → Go-live <strong className="text-foreground">{fmtDate(goLive)}</strong> ({totalDays} days)
+              Kickoff <strong className="text-foreground">{fmtDate(kickoff)}</strong> → Go-live <strong className="text-foreground">{fmtDate(goLive)}</strong> ({totalDays} days) · {tasks.length} tasks
             </div>
             <div className="max-h-[420px] overflow-auto border border-border rounded">
               {phases.map(([phaseName, phaseTasks]) => (
@@ -169,9 +293,8 @@ export function TimelineSetupWizard({
                         </div>
                         <div className="relative h-5 bg-muted/30 rounded">
                           <div
-                            className={`absolute h-full rounded ${t.locked ? "bg-primary/60 [background-image:repeating-linear-gradient(45deg,transparent,transparent_3px,hsl(var(--background)/0.25)_3px,hsl(var(--background)/0.25)_5px)]" : "bg-primary/80"}`}
+                            className={`absolute h-full rounded ${t.locked ? "bg-primary/60" : "bg-primary/80"}`}
                             style={{ left: `${left}%`, width: `${w}%` }}
-                            title={`${fmtDate(p.start.toISOString().slice(0,10))} → ${fmtDate(p.end.toISOString().slice(0,10))} (${p.duration}d)`}
                           />
                         </div>
                       </div>
@@ -180,24 +303,17 @@ export function TimelineSetupWizard({
                 </div>
               ))}
             </div>
-            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-              <div className="flex gap-3">
-                <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Locked</span>
-                <span>Diagonal pattern = locked task at minimum duration</span>
-              </div>
-              <div>Gaps between bars include realistic client-scheduling time (typically 3–5 days). Adjust per-task in Configure Timeline after creating the project.</div>
-            </div>
           </div>
         )}
 
         <DialogFooter className="gap-2">
           {step > 1 && <Button variant="outline" onClick={() => setStep((s) => (s - 1) as Step)}>Back</Button>}
-          {step < 3 && (
-            <Button onClick={() => setStep((s) => (s + 1) as Step)} disabled={step === 1 ? !kickoff : !goLive}>
+          {!showReview && (
+            <Button onClick={() => setStep((s) => (s + 1) as Step)} disabled={!canAdvance}>
               Next <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           )}
-          {step === 3 && (
+          {showReview && (
             <Button onClick={confirm} disabled={loading || !fit}>
               <Rocket className="h-4 w-4 mr-1" /> Confirm & Create
             </Button>
