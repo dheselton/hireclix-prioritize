@@ -1088,6 +1088,8 @@ export type Database = {
           go_live_date: string | null
           id: string
           kickoff_date: string | null
+          page_group_overrides: Json
+          pages_locked_at: string | null
           start_date: string | null
           status: string
           tags: string[] | null
@@ -1108,6 +1110,8 @@ export type Database = {
           go_live_date?: string | null
           id?: string
           kickoff_date?: string | null
+          page_group_overrides?: Json
+          pages_locked_at?: string | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
@@ -1128,6 +1132,8 @@ export type Database = {
           go_live_date?: string | null
           id?: string
           kickoff_date?: string | null
+          page_group_overrides?: Json
+          pages_locked_at?: string | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
@@ -1586,29 +1592,44 @@ export type Database = {
       }
       pm_template_page_groups: {
         Row: {
+          allow_late_definition: boolean
           created_at: string
+          discovery_task_temp_id: string | null
+          expected_page_count: number
           id: string
           name: string
           parallel: boolean
+          parallel_cap: number
           phase_name: string | null
+          reserved_by_phase: Json
           sort_order: number
           template_id: string
         }
         Insert: {
+          allow_late_definition?: boolean
           created_at?: string
+          discovery_task_temp_id?: string | null
+          expected_page_count?: number
           id?: string
           name: string
           parallel?: boolean
+          parallel_cap?: number
           phase_name?: string | null
+          reserved_by_phase?: Json
           sort_order?: number
           template_id: string
         }
         Update: {
+          allow_late_definition?: boolean
           created_at?: string
+          discovery_task_temp_id?: string | null
+          expected_page_count?: number
           id?: string
           name?: string
           parallel?: boolean
+          parallel_cap?: number
           phase_name?: string | null
+          reserved_by_phase?: Json
           sort_order?: number
           template_id?: string
         }
