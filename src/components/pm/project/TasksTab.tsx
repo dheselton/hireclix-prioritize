@@ -399,6 +399,10 @@ export function TasksTab({ tasks, projectId, meId, templateId }: {
           </DragOverlay>
         </DndContext>
       )}
+
+      {templateId && (
+        <AddPageDialog projectId={projectId} templateId={templateId} open={addPageOpen} onOpenChange={setAddPageOpen} />
+      )}
     </div>
   );
 }
