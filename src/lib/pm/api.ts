@@ -198,6 +198,8 @@ const instantiateTemplateIntoProject = async (params: {
       start_date: placed ? fmt(placed.start) : null,
       due_date: placed ? fmt(placed.end) : null,
       sort_order: pt.sort_order + sortOffset,
+      page_label: pt.page_label ?? null,
+      page_group_key: pt.page_group_key ?? null,
     };
   });
   const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();
