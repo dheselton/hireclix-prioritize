@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, Plus, Trash2, FileText } from "lucide-react";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
@@ -20,6 +21,9 @@ import { BoardTaskCard } from "./board/BoardTaskCard";
 import { GROUP_PRIMARY_STATUS } from "./board/boardStyles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AddPageDialog } from "./AddPageDialog";
+import { removePageFromProject } from "@/lib/pm/pageGroups";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
