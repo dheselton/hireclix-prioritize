@@ -87,16 +87,23 @@ export default function Help() {
             </p>
           </Section>
 
-          <Section title="7 · Page groups (Benefits, Life At, Locations…)">
+          <Section title="7 · Page groups & reserved time (Benefits, Life At, Locations…)">
             <p>
-              Career site projects vary in page count (5–20+). Define a <strong>Page Group</strong> once in the template (e.g. "Content Page" → Wireframe → Design → Build → QA), then assign template tasks to that group. Add <strong>page presets</strong> (Home, Benefits, Life At, Locations, Persona…) so PMs can one-click them.
+              Most career site projects don't know their final page list until Discovery wraps. The platform handles that by
+              <strong> reserving time across every phase your page tasks touch </strong>
+              (Design, Build, QA, etc.) at project creation, then <strong>consuming</strong> that reservation as you add real pages.
             </p>
             <ol>
-              <li><strong>In the template editor</strong>: add a Page Group, then in the Tasks list set the <em>Page Group</em> column on each slot task.</li>
-              <li><strong>When creating a project</strong>: the wizard adds a "Pages" step — pick presets and/or add custom names. Each page stamps out the full bundle and parallel-schedules them.</li>
-              <li><strong>Mid-project</strong>: on the Tasks tab click <strong>+ Add page</strong> to stamp another page anytime. The trash icon next to a page header removes all its tasks at once.</li>
-              <li>Page tasks appear under a <strong>Pages</strong> section grouped by page name, in addition to their normal status columns.</li>
+              <li><strong>In the template editor</strong>: define one or more Page Groups (e.g. "Content Page"). Assign the slot tasks (Wireframe, Design, Build, QA) to that group. Set the group's <em>Expected pages</em> (default 5) and <em>Parallel cap</em> (default 3 — how many pages your team can work on at once in a single phase).</li>
+              <li><strong>Per-phase reserved days</strong> auto-compute as <em>(sum of slot task days in that phase × expected pages ÷ parallel cap)</em>. Override any phase manually in the template editor if your team works differently.</li>
+              <li><strong>Creating a project</strong>: the wizard skips the Pages step by default and shows a reservation summary. The schedule includes one <em>reservation placeholder task per group per phase</em>, sized to your formula — so Go-Live already accounts for the work.</li>
+              <li>If you already know the pages, tick <strong>"I already know the pages"</strong> in the wizard and pick them — the system stamps them immediately and skips reservations.</li>
+              <li><strong>After Discovery</strong>: open the project's <strong>Pages</strong> tab, click <strong>Add pages</strong>, paste your page list (one per line), and pick the group. Each page stamps the full bundle and <strong>shrinks the matching reservation tasks</strong> in each phase. If you go over the reservation, normal cascade rules push downstream tasks (Go-Live moves with confirmation).</li>
+              <li>Remove a page anytime from the Pages tab — all its tasks delete together; reserved time is <em>not</em> auto-refunded so the schedule stays stable.</li>
             </ol>
+            <p className="text-muted-foreground text-xs">
+              Tip: the Pages tab shows defined-vs-expected count and remaining reserved days per group, so you can see at a glance whether your group is still within budget.
+            </p>
           </Section>
 
         </CardContent>

@@ -34,6 +34,7 @@ export function TimelineSetupWizard({
   const [loading, setLoading] = useState(false);
 
   const hasPageGroups = pageGroups.length > 0;
+  const [pickPagesNow, setPickPagesNow] = useState(false);
   const totalSteps: 3 | 4 = hasPageGroups ? 4 : 3;
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function TimelineSetupWizard({
     setKickoff(new Date().toISOString().slice(0, 10));
     setSelectedPages([]);
     setCustomName({});
+    setPickPagesNow(false);
     (async () => {
       const [b, pg, pp] = await Promise.all([
         fetchTemplateBundle(templateId),
@@ -53,23 +55,19 @@ export function TimelineSetupWizard({
       setRawDeps(b.deps);
       setPageGroups(pg);
       setPresets(pp);
-      // Pre-select defaults
-      const def: SelectedPage[] = [];
-      for (const p of pp.filter(x => x.is_default && x.page_group_id)) {
-        def.push({ key: `${p.page_group_id}_${p.id}`, page_group_id: p.page_group_id!, page_label: p.name });
-      }
-      setSelectedPages(def);
     })();
   }, [open, templateId]);
 
-  // Rebuild preview whenever selection changes
+  // Rebuild preview whenever selection changes — pass groups so reservations get stamped
   useEffect(() => {
     if (!rawTasks.length) { setTasks([]); setDeps([]); return; }
-    const expanded = expandPageGroupsInTemplate({ templateTasks: rawTasks, templateDeps: rawDeps, selectedPages });
+    const expanded = expandPageGroupsInTemplate({
+      templateTasks: rawTasks, templateDeps: rawDeps, selectedPages, groups: pageGroups,
+    });
     const built = buildPreviewFromTemplate(expanded.tasks, expanded.deps);
     setTasks(built.previewTasks);
     setDeps(built.previewDeps);
-  }, [rawTasks, rawDeps, selectedPages]);
+  }, [rawTasks, rawDeps, selectedPages, pageGroups]);
 
   const suggested = useMemo(() => {
     if (!kickoff || !tasks.length) return null;
@@ -155,14 +153,15 @@ export function TimelineSetupWizard({
     }
   }
 
-  // Step ordering: 1=kickoff, 2=pages(if any), 3=goLive, 4=review
+  // Step ordering: 1=kickoff, 2=pages info OR picker, 3=goLive, 4=review
   // When no page groups: 1=kickoff, 2=goLive, 3=review
-  const showPagesStep = step === 2 && hasPageGroups;
+  const showPagesInfo = step === 2 && hasPageGroups;
+  const showPagesStep = showPagesInfo && pickPagesNow;
   const showGoLive = (hasPageGroups && step === 3) || (!hasPageGroups && step === 2);
   const showReview = (hasPageGroups && step === 4) || (!hasPageGroups && step === 3);
 
   const canAdvance = step === 1 ? !!kickoff
-    : showPagesStep ? true
+    : showPagesInfo ? true
     : showGoLive ? !!goLive
     : true;
 
@@ -181,6 +180,29 @@ export function TimelineSetupWizard({
           </div>
         )}
 
+        {showPagesInfo && !pickPagesNow && (
+          <div className="space-y-4">
+            <div className="rounded border border-info/40 bg-info/5 p-4 space-y-2">
+              <div className="text-sm font-semibold text-foreground">Pages will be defined after Discovery</div>
+              <p className="text-xs text-muted-foreground">
+                We'll reserve time across <strong>every phase your page tasks touch</strong> (Design, Build, QA, etc.)
+                based on each group's expected page count and parallel cap. Once Discovery wraps and you know the real pages,
+                add them from the project's <strong>Pages</strong> tab — added tasks consume the reserved time automatically.
+              </p>
+              <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 pt-1">
+                {pageGroups.map(g => (
+                  <li key={g.id}>
+                    <strong className="text-foreground">{g.name}</strong> — reserving for ~{g.expected_page_count ?? 5} page(s), {g.parallel_cap ?? 3} in parallel
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={pickPagesNow} onCheckedChange={(v) => setPickPagesNow(!!v)} />
+              I already know the pages — let me pick them now
+            </label>
+          </div>
+        )}
         {showPagesStep && (
           <div className="space-y-4 max-h-[460px] overflow-auto">
             <p className="text-xs text-muted-foreground">

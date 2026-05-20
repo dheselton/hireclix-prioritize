@@ -106,7 +106,7 @@ export default function TemplateBuilder() {
         {!groups.length && <div className="text-sm text-muted-foreground italic">No page groups yet.</div>}
         {groups.map(g => (
           <PageGroupCard key={g.id} group={g} presets={presets.filter(p => p.page_group_id === g.id)}
-            taskCount={tasks.filter(t => t.page_group_id === g.id).length}
+            slotTasks={tasks.filter(t => t.page_group_id === g.id)}
             onPatch={(p) => patchGroup(g.id, p)} onDelete={() => delGroup(g.id)}
             onAddPreset={(n) => addPreset(g.id, n)}
             onPatchPreset={patchPreset} onDelPreset={delPreset} />
@@ -171,30 +171,85 @@ export default function TemplateBuilder() {
   );
 }
 
-function PageGroupCard({ group, presets, taskCount, onPatch, onDelete, onAddPreset, onPatchPreset, onDelPreset }: {
-  group: any; presets: any[]; taskCount: number;
+function PageGroupCard({ group, presets, slotTasks, onPatch, onDelete, onAddPreset, onPatchPreset, onDelPreset }: {
+  group: any; presets: any[]; slotTasks: any[];
   onPatch: (p: any) => void; onDelete: () => void;
   onAddPreset: (name: string) => void;
   onPatchPreset: (id: string, p: any) => void; onDelPreset: (id: string) => void;
 }) {
   const [newPreset, setNewPreset] = useState("");
+  const expected = group.expected_page_count ?? 5;
+  const cap = group.parallel_cap ?? 3;
+  const override: Record<string, number> = group.reserved_by_phase || {};
+
+  // Compute default reserved per phase
+  const sumByPhase: Record<string, number> = {};
+  for (const s of slotTasks) {
+    const ph = s.phase_name || "Other";
+    sumByPhase[ph] = (sumByPhase[ph] || 0) + (s.duration_days || 0);
+  }
+  const phases = Object.keys(sumByPhase);
+
   return (
     <div className="border border-border rounded p-3 space-y-2">
       <div className="flex items-center gap-2">
         <Input className="flex-1" value={group.name} onBlur={e => onPatch({ name: e.target.value })}
           onChange={e => onPatch({ name: e.target.value })} />
-        <Input className="w-40" placeholder="Phase (optional)" value={group.phase_name ?? ""}
-          onBlur={e => onPatch({ phase_name: e.target.value || null })}
-          onChange={e => onPatch({ phase_name: e.target.value })} />
-        <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap">{taskCount} task slot(s)</span>
+        <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap">{slotTasks.length} task slot(s)</span>
         <Button size="icon" variant="ghost" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
       </div>
-      <div className="space-y-1">
-        <div className="text-[11px] uppercase text-muted-foreground">Page presets</div>
+
+      <div className="grid grid-cols-3 gap-2 pt-1">
+        <div>
+          <Label className="text-[11px] uppercase text-muted-foreground">Expected pages</Label>
+          <Input type="number" min={1} value={expected}
+            onChange={e => onPatch({ expected_page_count: Math.max(1, Number(e.target.value) || 1) })} />
+        </div>
+        <div>
+          <Label className="text-[11px] uppercase text-muted-foreground">Parallel cap</Label>
+          <Input type="number" min={1} value={cap}
+            onChange={e => onPatch({ parallel_cap: Math.max(1, Number(e.target.value) || 1) })} />
+        </div>
+        <div>
+          <Label className="text-[11px] uppercase text-muted-foreground">Discovery gate (temp_id)</Label>
+          <Input placeholder="e.g. t_sitemap_approval" value={group.discovery_task_temp_id ?? ""}
+            onChange={e => onPatch({ discovery_task_temp_id: e.target.value || null })} />
+        </div>
+      </div>
+
+      {phases.length > 0 && (
+        <div className="space-y-1 pt-1">
+          <div className="text-[11px] uppercase text-muted-foreground">Reserved time per phase (days)</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {phases.map(ph => {
+              const def = Math.max(1, Math.ceil((sumByPhase[ph] * expected) / cap));
+              const cur = override[ph];
+              return (
+                <div key={ph} className="flex items-center gap-1.5">
+                  <div className="text-xs flex-1 truncate" title={ph}>{ph}</div>
+                  <Input type="number" min={0} className="h-7 w-16 text-xs"
+                    placeholder={String(def)}
+                    value={cur ?? ""}
+                    onChange={e => {
+                      const v = e.target.value;
+                      const next = { ...override };
+                      if (v === "") delete next[ph]; else next[ph] = Math.max(0, Number(v) || 0);
+                      onPatch({ reserved_by_phase: next });
+                    }} />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">def {def}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">Blank uses the default formula: phase task days × expected pages ÷ parallel cap.</p>
+        </div>
+      )}
+
+      <div className="space-y-1 pt-2">
+        <div className="text-[11px] uppercase text-muted-foreground">Page presets (optional quick-picks)</div>
         <div className="flex flex-wrap gap-1.5">
           {presets.map(p => (
             <span key={p.id} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs bg-muted border border-border">
-              <Checkbox checked={!!p.is_default} onCheckedChange={(v) => onPatchPreset(p.id, { is_default: !!v })} className="h-3 w-3" />
               {p.name}
               <button onClick={() => onDelPreset(p.id)} className="text-muted-foreground hover:text-foreground"><Trash2 className="h-3 w-3" /></button>
             </span>
@@ -209,7 +264,6 @@ function PageGroupCard({ group, presets, taskCount, onPatch, onDelete, onAddPres
             <Plus className="h-3 w-3 mr-1" /> Add preset
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground">Check the box to make a preset selected by default in new projects.</p>
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectT
 import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
+import { PagesTab } from "@/components/pm/project/PagesTab";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -101,10 +102,12 @@ export default function ProjectDetail() {
 
   const canSeeSnippets = user?.role === "developer" || user?.role === "designer";
 
+  const hasTemplate = !!project.template_id;
   const tabs: { id: ProjectTabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(!isRequest ? [{ id: "timeline" as const, label: "Timeline" }] : []),
+    ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
   ];
@@ -182,6 +185,10 @@ export default function ProjectDetail() {
             Timeline view — tasks plotted against go-live date with locked milestones (Phase 2)
           </CardContent>
         </Card>
+      )}
+
+      {tab === "pages" && !isRequest && hasTemplate && (
+        <PagesTab projectId={project.id} templateId={project.template_id} tasks={tasks} />
       )}
 
       {tab === "files" && (
