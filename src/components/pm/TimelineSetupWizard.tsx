@@ -204,8 +204,7 @@ export function TimelineSetupWizard({
             </label>
           </div>
         )}
-
-
+        {showPagesStep && (
           <div className="space-y-4 max-h-[460px] overflow-auto">
             <p className="text-xs text-muted-foreground">
               Pick which pages this project needs. Each selected page stamps out the full task bundle (design, dev, QA, etc.) and schedules them in parallel.
