@@ -106,7 +106,7 @@ export default function TemplateBuilder() {
         {!groups.length && <div className="text-sm text-muted-foreground italic">No page groups yet.</div>}
         {groups.map(g => (
           <PageGroupCard key={g.id} group={g} presets={presets.filter(p => p.page_group_id === g.id)}
-            taskCount={tasks.filter(t => t.page_group_id === g.id).length}
+            slotTasks={tasks.filter(t => t.page_group_id === g.id)}
             onPatch={(p) => patchGroup(g.id, p)} onDelete={() => delGroup(g.id)}
             onAddPreset={(n) => addPreset(g.id, n)}
             onPatchPreset={patchPreset} onDelPreset={delPreset} />
