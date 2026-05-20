@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { ScheduleDep } from '@/lib/pm/scheduler';
 
 export interface PageGroup {
   id: string;
@@ -8,6 +7,11 @@ export interface PageGroup {
   phase_name: string | null;
   sort_order: number;
   parallel: boolean;
+  expected_page_count?: number;
+  parallel_cap?: number;
+  reserved_by_phase?: Record<string, number>; // override map: { phaseName: days }
+  discovery_task_temp_id?: string | null;
+  allow_late_definition?: boolean;
 }
 
 export interface PagePreset {
@@ -19,12 +23,13 @@ export interface PagePreset {
   sort_order: number;
 }
 
-/** A page the PM chose to include in this project. */
 export interface SelectedPage {
-  key: string;            // unique key for this page instance (stable per pick)
+  key: string;
   page_group_id: string;
-  page_label: string;     // e.g. "Benefits"
+  page_label: string;
 }
+
+export const RESERVED_PREFIX = 'reserved:';
 
 export const fetchPageGroups = async (templateId: string): Promise<PageGroup[]> => {
   const { data } = await supabase
@@ -45,18 +50,44 @@ export const fetchPagePresets = async (templateId: string): Promise<PagePreset[]
 };
 
 /**
- * Expand a flat list of template tasks (some marked as group slots) into per-page copies.
- * - Tasks with no page_group_id are kept as-is.
- * - Tasks with page_group_id are duplicated once per selected page in that group.
- * - Intra-group dependencies are rewritten per page.
- * - Cross dependencies (slot → fixed or fixed → slot) fan out: every page copy inherits them.
+ * Compute default per-phase reservation days for a group:
+ *   for each phase that has slot tasks, days = ceil(sum(slot_duration) * expected_count / parallel_cap)
+ * Honors override in `group.reserved_by_phase` per phase when set (> 0).
+ */
+export function computeReservedByPhase(
+  group: PageGroup,
+  slotTasks: { phase_name: string | null; duration_days: number }[],
+): Record<string, number> {
+  const expected = Math.max(1, group.expected_page_count ?? 5);
+  const cap = Math.max(1, group.parallel_cap ?? 3);
+  const override = group.reserved_by_phase || {};
+  const byPhase: Record<string, number> = {};
+  for (const s of slotTasks) {
+    const ph = s.phase_name || 'Other';
+    byPhase[ph] = (byPhase[ph] || 0) + (s.duration_days || 0);
+  }
+  const out: Record<string, number> = {};
+  for (const ph of Object.keys(byPhase)) {
+    const o = override[ph];
+    out[ph] = o && o > 0 ? o : Math.max(1, Math.ceil((byPhase[ph] * expected) / cap));
+  }
+  return out;
+}
+
+/**
+ * Expand template tasks. For each page group:
+ *  - If selectedPages has entries for that group → duplicate slots per page (original behavior).
+ *  - Else → emit ONE reservation placeholder per phase that has slot tasks for that group.
+ *    Cross-group deps wire to the reservation task in the correct phase.
  */
 export function expandPageGroupsInTemplate(params: {
-  templateTasks: any[];                        // pm_template_tasks rows
-  templateDeps: any[];                         // pm_template_dependencies rows
+  templateTasks: any[];
+  templateDeps: any[];
   selectedPages: SelectedPage[];
+  groups?: PageGroup[];
 }) {
-  const { templateTasks, templateDeps, selectedPages } = params;
+  const { templateTasks, templateDeps, selectedPages, groups = [] } = params;
+  const groupById = new Map(groups.map(g => [g.id, g]));
 
   const pagesByGroup = new Map<string, SelectedPage[]>();
   for (const p of selectedPages) {
@@ -65,44 +96,102 @@ export function expandPageGroupsInTemplate(params: {
   }
 
   const outTasks: any[] = [];
-  // Map: original temp_id -> array of { temp_id, page_key, page_label }
-  // For non-group tasks, array has one entry with the original.
+  // temp_id → list of expanded { temp_id, page_key, page_label }
   const expansion = new Map<string, { temp_id: string; page_key: string | null; page_label: string | null }[]>();
 
+  // Pre-create reservation tasks per group/phase for groups without selected pages
+  // Map: groupId → phase → reservation temp_id
+  const resTempByGroupPhase = new Map<string, Map<string, string>>();
   let sortCounter = 0;
+
+  // First pass — non-group tasks AND record group slots for later
+  const groupSlotsByGroup = new Map<string, any[]>();
   for (const t of templateTasks) {
     if (!t.page_group_id) {
-      const copy = { ...t, _page_group_key: null, _page_label: null, sort_order: sortCounter++ };
-      outTasks.push(copy);
+      outTasks.push({ ...t, _page_group_key: null, _page_label: null, sort_order: sortCounter++ });
       expansion.set(t.temp_id, [{ temp_id: t.temp_id, page_key: null, page_label: null }]);
-      continue;
+    } else {
+      if (!groupSlotsByGroup.has(t.page_group_id)) groupSlotsByGroup.set(t.page_group_id, []);
+      groupSlotsByGroup.get(t.page_group_id)!.push(t);
     }
-    const pages = pagesByGroup.get(t.page_group_id) || [];
-    const fanout: { temp_id: string; page_key: string; page_label: string }[] = [];
-    for (const page of pages) {
-      const newTempId = `${t.temp_id}__${page.key}`;
-      fanout.push({ temp_id: newTempId, page_key: page.key, page_label: page.page_label });
-      outTasks.push({
-        ...t,
-        temp_id: newTempId,
-        title: `${page.page_label} — ${t.title}`,
-        _page_group_key: page.key,
-        _page_label: page.page_label,
-        sort_order: sortCounter++,
-      });
+  }
+
+  // Second pass — for each group, either expand per page OR emit reservation tasks
+  for (const [groupId, slots] of groupSlotsByGroup) {
+    const pages = pagesByGroup.get(groupId) || [];
+    const group = groupById.get(groupId);
+
+    if (pages.length > 0) {
+      // Existing behavior: stamp per page
+      for (const t of slots) {
+        const fanout: { temp_id: string; page_key: string; page_label: string }[] = [];
+        for (const page of pages) {
+          const newTempId = `${t.temp_id}__${page.key}`;
+          fanout.push({ temp_id: newTempId, page_key: page.key, page_label: page.page_label });
+          outTasks.push({
+            ...t,
+            temp_id: newTempId,
+            title: `${page.page_label} — ${t.title}`,
+            _page_group_key: page.key,
+            _page_label: page.page_label,
+            sort_order: sortCounter++,
+          });
+        }
+        expansion.set(t.temp_id, fanout);
+      }
+    } else if (group) {
+      // Reservation mode: one placeholder per phase
+      const reserved = computeReservedByPhase(group, slots.map(s => ({ phase_name: s.phase_name, duration_days: s.duration_days })));
+      const phaseToRes = new Map<string, string>();
+      for (const phase of Object.keys(reserved)) {
+        const resTempId = `${RESERVED_PREFIX}${groupId}:${phase}`;
+        phaseToRes.set(phase, resTempId);
+        // pick a representative slot for type/etc
+        const rep = slots.find(s => (s.phase_name || 'Other') === phase) || slots[0];
+        outTasks.push({
+          ...rep,
+          temp_id: resTempId,
+          title: `${group.name} pages — reserved (${phase})`,
+          phase_name: rep.phase_name,
+          duration_days: reserved[phase],
+          min_duration_days: 1,
+          locked: false,
+          page_group_id: groupId,
+          _page_group_key: `${RESERVED_PREFIX}${groupId}`,
+          _page_label: `[Reserved] ${group.name}`,
+          _reserved: true,
+          _reserved_phase: phase,
+          _reserved_group_id: groupId,
+          sort_order: sortCounter++,
+        });
+      }
+      resTempByGroupPhase.set(groupId, phaseToRes);
+      // Map every slot temp_id to its reservation task in the matching phase
+      for (const t of slots) {
+        const ph = t.phase_name || 'Other';
+        const resId = phaseToRes.get(ph);
+        if (resId) expansion.set(t.temp_id, [{ temp_id: resId, page_key: null, page_label: null }]);
+        else expansion.set(t.temp_id, []);
+      }
+    } else {
+      // Group missing (orphan slots) — drop
+      for (const t of slots) expansion.set(t.temp_id, []);
     }
-    expansion.set(t.temp_id, fanout);
   }
 
   // Rewrite deps
   const outDeps: any[] = [];
+  const seen = new Set<string>();
   for (const d of templateDeps) {
     const fromList = expansion.get(d.from_temp_id) || [];
     const toList = expansion.get(d.to_temp_id) || [];
     for (const from of fromList) {
       for (const to of toList) {
-        // If both are page slots of the same group → only link within same page instance
+        if (from.temp_id === to.temp_id) continue;
         if (from.page_key && to.page_key && from.page_key !== to.page_key) continue;
+        const sig = `${from.temp_id}->${to.temp_id}:${d.type}:${d.lag_days || 0}`;
+        if (seen.has(sig)) continue;
+        seen.add(sig);
         outDeps.push({ ...d, from_temp_id: from.temp_id, to_temp_id: to.temp_id });
       }
     }
@@ -112,8 +201,10 @@ export function expandPageGroupsInTemplate(params: {
 }
 
 /**
- * Mid-project: add a single page to a project that was created from a template.
- * Inserts new tasks (with page_label + page_group_key) and intra-group deps.
+ * Add a page to a project mid-flight. Stamps per-slot tasks, copies intra-group deps,
+ * AND shrinks any active reservation placeholders for that group/phase by the new page's
+ * per-phase duration / parallel_cap (clamped to 0). When a reservation drops to 0, it stays
+ * as a 0-day marker so deps remain valid.
  */
 export const addPageToProject = async (params: {
   projectId: string;
@@ -123,43 +214,49 @@ export const addPageToProject = async (params: {
 }): Promise<{ insertedCount: number }> => {
   const { projectId, templateId, pageGroupId, pageLabel } = params;
 
-  const [{ data: slots }, { data: deps }, { data: phases }] = await Promise.all([
+  const [{ data: slots }, { data: deps }, { data: phases }, { data: groupRow }] = await Promise.all([
     supabase.from('pm_template_tasks').select('*').eq('template_id', templateId).eq('page_group_id', pageGroupId).order('sort_order'),
     supabase.from('pm_template_dependencies').select('*').eq('template_id', templateId),
     supabase.from('pm_project_phases').select('*').eq('project_id', projectId),
+    supabase.from('pm_template_page_groups').select('*').eq('id', pageGroupId).maybeSingle(),
   ]);
 
   if (!slots || !slots.length) return { insertedCount: 0 };
+  const group = groupRow as any as PageGroup | null;
+  const cap = Math.max(1, group?.parallel_cap ?? 3);
 
   const pageKey = `${pageGroupId.slice(0, 6)}_${Date.now().toString(36)}`;
   const phaseIdByName = new Map<string, string>();
   for (const p of phases || []) phaseIdByName.set((p as any).name, (p as any).id);
 
-  // Compute starting sort_order
   const { data: maxSort } = await supabase.from('pm_tasks').select('sort_order').eq('project_id', projectId).order('sort_order', { ascending: false }).limit(1);
   let nextSort = (maxSort?.[0]?.sort_order ?? 0) + 10;
 
   const tempToReal = new Map<string, string>();
-  for (const s of slots) {
+  // Sum new-page duration per phase
+  const addedByPhase: Record<string, number> = {};
+  for (const s of slots as any[]) {
+    const phName = s.phase_name || 'Other';
+    addedByPhase[phName] = (addedByPhase[phName] || 0) + (s.duration_days || 0);
     const { data: inserted } = await supabase.from('pm_tasks').insert({
       project_id: projectId,
-      phase_id: (s as any).phase_name ? phaseIdByName.get((s as any).phase_name) ?? null : null,
-      title: `${pageLabel} — ${(s as any).title}`,
-      type: (s as any).type,
+      phase_id: s.phase_name ? phaseIdByName.get(s.phase_name) ?? null : null,
+      title: `${pageLabel} — ${s.title}`,
+      type: s.type,
       status: 'unclaimed',
       priority: 'medium',
-      duration_days: (s as any).duration_days,
-      min_duration_days: (s as any).min_duration_days,
-      locked: !!(s as any).locked,
+      duration_days: s.duration_days,
+      min_duration_days: s.min_duration_days,
+      locked: !!s.locked,
       sort_order: nextSort++,
       page_label: pageLabel,
       page_group_key: pageKey,
     } as any).select().single();
-    if (inserted) tempToReal.set((s as any).temp_id, (inserted as any).id);
+    if (inserted) tempToReal.set(s.temp_id, (inserted as any).id);
   }
 
-  // Intra-group deps only
-  const slotTempIds = new Set(slots.map((s: any) => s.temp_id));
+  // Intra-group deps
+  const slotTempIds = new Set((slots as any[]).map(s => s.temp_id));
   const intra = (deps || []).filter((d: any) => slotTempIds.has(d.from_temp_id) && slotTempIds.has(d.to_temp_id));
   const depRows = intra
     .map((d: any) => ({
@@ -171,10 +268,33 @@ export const addPageToProject = async (params: {
     .filter(r => r.task_id && r.depends_on_task_id);
   if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
 
+  // Shrink reservation placeholders for this group, per phase
+  const reservedKey = `${RESERVED_PREFIX}${pageGroupId}`;
+  const { data: resTasks } = await supabase
+    .from('pm_tasks').select('id, duration_days, phase_id, title')
+    .eq('project_id', projectId).eq('page_group_key', reservedKey);
+  for (const r of resTasks || []) {
+    // Find the phase name for this reservation task
+    const phaseRow = (phases || []).find((p: any) => p.id === (r as any).phase_id) as any;
+    const phName = phaseRow?.name || 'Other';
+    const consumed = Math.ceil((addedByPhase[phName] || 0) / cap);
+    if (!consumed) continue;
+    const newDur = Math.max(0, ((r as any).duration_days || 0) - consumed);
+    await supabase.from('pm_tasks').update({ duration_days: newDur } as any).eq('id', (r as any).id);
+  }
+
   return { insertedCount: slots.length };
 };
 
-/** Delete every task tied to a page_group_key for a project. */
 export const removePageFromProject = async (projectId: string, pageGroupKey: string) => {
   await supabase.from('pm_tasks').delete().eq('project_id', projectId).eq('page_group_key', pageGroupKey);
+};
+
+/** Fetch live reservation tasks + their page group for a project. */
+export const fetchProjectReservations = async (projectId: string) => {
+  const { data } = await supabase
+    .from('pm_tasks').select('*')
+    .eq('project_id', projectId)
+    .like('page_group_key', `${RESERVED_PREFIX}%`);
+  return (data || []) as any[];
 };
