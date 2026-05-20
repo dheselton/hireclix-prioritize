@@ -181,7 +181,31 @@ export function TimelineSetupWizard({
           </div>
         )}
 
-        {showPagesStep && (
+        {showPagesInfo && !pickPagesNow && (
+          <div className="space-y-4">
+            <div className="rounded border border-info/40 bg-info/5 p-4 space-y-2">
+              <div className="text-sm font-semibold text-foreground">Pages will be defined after Discovery</div>
+              <p className="text-xs text-muted-foreground">
+                We'll reserve time across <strong>every phase your page tasks touch</strong> (Design, Build, QA, etc.)
+                based on each group's expected page count and parallel cap. Once Discovery wraps and you know the real pages,
+                add them from the project's <strong>Pages</strong> tab — added tasks consume the reserved time automatically.
+              </p>
+              <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5 pt-1">
+                {pageGroups.map(g => (
+                  <li key={g.id}>
+                    <strong className="text-foreground">{g.name}</strong> — reserving for ~{g.expected_page_count ?? 5} page(s), {g.parallel_cap ?? 3} in parallel
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={pickPagesNow} onCheckedChange={(v) => setPickPagesNow(!!v)} />
+              I already know the pages — let me pick them now
+            </label>
+          </div>
+        )}
+
+
           <div className="space-y-4 max-h-[460px] overflow-auto">
             <p className="text-xs text-muted-foreground">
               Pick which pages this project needs. Each selected page stamps out the full task bundle (design, dev, QA, etc.) and schedules them in parallel.
