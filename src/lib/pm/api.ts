@@ -119,6 +119,8 @@ export interface PreviewTask extends ScheduleTask {
   type: string;
   assignee_role: string | null;
   sort_order: number;
+  page_group_key?: string | null;
+  page_label?: string | null;
 }
 
 export const fetchTemplateBundle = async (templateId: string) => {
@@ -146,6 +148,8 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
     type: t.type,
     assignee_role: t.assignee_role,
     sort_order: t.sort_order,
+    page_group_key: t._page_group_key ?? null,
+    page_label: t._page_label ?? null,
   }));
   const previewDeps: ScheduleDep[] = deps.map(d => ({
     task_id: d.to_temp_id,
@@ -194,6 +198,8 @@ const instantiateTemplateIntoProject = async (params: {
       start_date: placed ? fmt(placed.start) : null,
       due_date: placed ? fmt(placed.end) : null,
       sort_order: pt.sort_order + sortOffset,
+      page_label: pt.page_label ?? null,
+      page_group_key: pt.page_group_key ?? null,
     };
   });
   const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();

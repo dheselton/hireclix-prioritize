@@ -78,6 +78,8 @@ export interface PmTask {
   dev_environment: string | null;
   track?: Track;
   parent_task_id?: string | null;
+  page_label?: string | null;
+  page_group_key?: string | null;
   created_at: string;
   updated_at: string;
 }

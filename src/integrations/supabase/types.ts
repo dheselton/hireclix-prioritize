@@ -1428,6 +1428,8 @@ export type Database = {
           locked_to_go_live: boolean
           locked_to_kickoff: boolean
           min_duration_days: number | null
+          page_group_key: string | null
+          page_label: string | null
           parent_task_id: string | null
           phase_id: string | null
           priority: string
@@ -1460,6 +1462,8 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          page_group_key?: string | null
+          page_label?: string | null
           parent_task_id?: string | null
           phase_id?: string | null
           priority?: string
@@ -1492,6 +1496,8 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          page_group_key?: string | null
+          page_label?: string | null
           parent_task_id?: string | null
           phase_id?: string | null
           priority?: string
@@ -1578,6 +1584,66 @@ export type Database = {
           },
         ]
       }
+      pm_template_page_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parallel: boolean
+          phase_name: string | null
+          sort_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parallel?: boolean
+          phase_name?: string | null
+          sort_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parallel?: boolean
+          phase_name?: string | null
+          sort_order?: number
+          template_id?: string
+        }
+        Relationships: []
+      }
+      pm_template_page_presets: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          page_group_id: string | null
+          sort_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          page_group_id?: string | null
+          sort_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          page_group_id?: string | null
+          sort_order?: number
+          template_id?: string
+        }
+        Relationships: []
+      }
       pm_template_task_snippets: {
         Row: {
           id: string
@@ -1621,6 +1687,7 @@ export type Database = {
           locked_to_go_live: boolean
           locked_to_kickoff: boolean
           min_duration_days: number | null
+          page_group_id: string | null
           parallel_with_temp_id: string | null
           phase_name: string | null
           role: string | null
@@ -1640,6 +1707,7 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          page_group_id?: string | null
           parallel_with_temp_id?: string | null
           phase_name?: string | null
           role?: string | null
@@ -1659,6 +1727,7 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          page_group_id?: string | null
           parallel_with_temp_id?: string | null
           phase_name?: string | null
           role?: string | null
