@@ -8,7 +8,6 @@ import { Columns3 } from "lucide-react";
 import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
-import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtDateShort } from "@/lib/pm/format";
