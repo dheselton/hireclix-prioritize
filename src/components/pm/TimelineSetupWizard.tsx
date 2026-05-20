@@ -35,8 +35,7 @@ export function TimelineSetupWizard({
 
   const hasPageGroups = pageGroups.length > 0;
   const [pickPagesNow, setPickPagesNow] = useState(false);
-  const showPagesPicker = hasPageGroups && pickPagesNow;
-  const totalSteps: 3 | 4 = showPagesPicker ? 4 : 3;
+  const totalSteps: 3 | 4 = hasPageGroups ? 4 : 3;
 
   useEffect(() => {
     if (!open || !templateId) return;
