@@ -102,10 +102,12 @@ export default function ProjectDetail() {
 
   const canSeeSnippets = user?.role === "developer" || user?.role === "designer";
 
+  const hasTemplate = !!project.template_id;
   const tabs: { id: ProjectTabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(!isRequest ? [{ id: "timeline" as const, label: "Timeline" }] : []),
+    ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
   ];
