@@ -148,6 +148,8 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
     type: t.type,
     assignee_role: t.assignee_role,
     sort_order: t.sort_order,
+    page_group_key: t._page_group_key ?? null,
+    page_label: t._page_label ?? null,
   }));
   const previewDeps: ScheduleDep[] = deps.map(d => ({
     task_id: d.to_temp_id,
