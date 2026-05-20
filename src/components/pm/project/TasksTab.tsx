@@ -38,13 +38,15 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function TasksTab({ tasks, projectId, meId }: {
-  tasks: PmTask[]; projectId: string; meId: string | null;
+export function TasksTab({ tasks, projectId, meId, templateId }: {
+  tasks: PmTask[]; projectId: string; meId: string | null; templateId?: string | null;
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
   const [pill, setPill] = useState<TypePill>("all");
   const { isMe, setMode: setMeMode } = useMeMode();
+  const [addPageOpen, setAddPageOpen] = useState(false);
+  const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, in_progress: false, in_review: false, complete: true,
   });
