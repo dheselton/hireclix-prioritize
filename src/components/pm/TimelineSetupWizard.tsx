@@ -34,7 +34,9 @@ export function TimelineSetupWizard({
   const [loading, setLoading] = useState(false);
 
   const hasPageGroups = pageGroups.length > 0;
-  const totalSteps: 3 | 4 = hasPageGroups ? 4 : 3;
+  const [pickPagesNow, setPickPagesNow] = useState(false);
+  const showPagesPicker = hasPageGroups && pickPagesNow;
+  const totalSteps: 3 | 4 = showPagesPicker ? 4 : 3;
 
   useEffect(() => {
     if (!open || !templateId) return;
@@ -42,6 +44,7 @@ export function TimelineSetupWizard({
     setKickoff(new Date().toISOString().slice(0, 10));
     setSelectedPages([]);
     setCustomName({});
+    setPickPagesNow(false);
     (async () => {
       const [b, pg, pp] = await Promise.all([
         fetchTemplateBundle(templateId),
@@ -53,23 +56,19 @@ export function TimelineSetupWizard({
       setRawDeps(b.deps);
       setPageGroups(pg);
       setPresets(pp);
-      // Pre-select defaults
-      const def: SelectedPage[] = [];
-      for (const p of pp.filter(x => x.is_default && x.page_group_id)) {
-        def.push({ key: `${p.page_group_id}_${p.id}`, page_group_id: p.page_group_id!, page_label: p.name });
-      }
-      setSelectedPages(def);
     })();
   }, [open, templateId]);
 
-  // Rebuild preview whenever selection changes
+  // Rebuild preview whenever selection changes — pass groups so reservations get stamped
   useEffect(() => {
     if (!rawTasks.length) { setTasks([]); setDeps([]); return; }
-    const expanded = expandPageGroupsInTemplate({ templateTasks: rawTasks, templateDeps: rawDeps, selectedPages });
+    const expanded = expandPageGroupsInTemplate({
+      templateTasks: rawTasks, templateDeps: rawDeps, selectedPages, groups: pageGroups,
+    });
     const built = buildPreviewFromTemplate(expanded.tasks, expanded.deps);
     setTasks(built.previewTasks);
     setDeps(built.previewDeps);
-  }, [rawTasks, rawDeps, selectedPages]);
+  }, [rawTasks, rawDeps, selectedPages, pageGroups]);
 
   const suggested = useMemo(() => {
     if (!kickoff || !tasks.length) return null;
