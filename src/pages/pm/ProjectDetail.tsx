@@ -25,6 +25,7 @@ import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectT
 import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
+import { PagesTab } from "@/components/pm/project/PagesTab";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
