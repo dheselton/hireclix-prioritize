@@ -167,7 +167,7 @@ export default function ProjectDetail() {
 
       {tab === "tasks" && (
         <div className="space-y-3">
-          <TasksTab tasks={tasks} projectId={project.id} meId={user?.id ?? null} />
+          <TasksTab tasks={tasks} projectId={project.id} meId={user?.id ?? null} templateId={project.template_id} />
           <div className="flex gap-2 pt-2 max-w-md">
             <Input value={quickAdd} onChange={e => setQuickAdd(e.target.value)} placeholder="Quick add task…"
               onKeyDown={e => { if (e.key === "Enter") quickAddTask(); }} className="h-8 text-sm" />
