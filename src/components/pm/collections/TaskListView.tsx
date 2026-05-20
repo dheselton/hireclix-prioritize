@@ -3,6 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
@@ -146,7 +147,9 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   </td>
                   <td className="p-2 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></td>
                   <td className="p-2"><StatusPill status={t.status} /></td>
-                  <td className="p-2 hidden md:table-cell"><UserAvatar userId={t.assignee_id} size="xs" /></td>
+                  <td className="p-2 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
+                    <AssigneePopover taskId={t.id} assigneeId={t.assignee_id} size="xs" onChanged={onChanged} />
+                  </td>
                   <td className="p-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.due_date)}</td>
                   <td className="p-2 text-center">
                     <span className={cn("inline-block h-2.5 w-2.5 rounded-full", PRIORITY_DOT[t.priority] ?? "bg-muted")} title={t.priority} />

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
 import { groupForStatus } from "@/lib/pm/statusGroups";
 import type { PmTask } from "@/types/pm";
@@ -67,7 +67,7 @@ export function BoardTaskCard({
             <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} />
             <div className="flex items-center gap-2">
               <InlineDatePopover value={task.due_date} onChange={onDateChange} />
-              <UserAvatar userId={task.assignee_id} size="xs" />
+              <AssigneePopover taskId={task.id} assigneeId={task.assignee_id} size="xs" />
             </div>
           </div>
         </CardContent>

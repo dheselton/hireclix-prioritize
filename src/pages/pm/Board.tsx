@@ -9,6 +9,7 @@ import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtDateShort } from "@/lib/pm/format";
 import { useCurrentUser } from "@/lib/pm/mockUser";
@@ -233,7 +234,9 @@ export default function Board() {
                           <div className="text-[11px] text-muted-foreground">{proj?.title}</div>
                           {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
                           <div className="flex items-center justify-between pt-1">
-                            <UserAvatar userId={t.assignee_id} size="xs" />
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <AssigneePopover taskId={t.id} assigneeId={t.assignee_id} size="xs" onChanged={reload} />
+                            </span>
                             <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
                           </div>
                         </CardContent>
