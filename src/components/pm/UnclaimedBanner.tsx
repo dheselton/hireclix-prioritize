@@ -7,6 +7,7 @@ import { buildQueueLink } from "@/lib/pm/links";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask, TEAM_LABEL } from "@/lib/pm/track";
+import { useMeMode } from "@/hooks/useMeMode";
 import type { PmTask } from "@/types/pm";
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
  */
 export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const { user, role } = useCurrentUser();
+  const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [dismissedAt, setDismissedAt] = useState<number>(0);
 
@@ -35,14 +37,15 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const unclaimed = useMemo(() => {
     return tasks.filter(t => {
       if (t.status !== "unclaimed") return false;
-      if (role === "pm") return true; // PM sees all teams
+      // In "All" mode everyone sees every team's unclaimed work.
+      if (!isMe || role === "pm") return true;
       return teamForTask(t) === myTeam;
     });
-  }, [tasks, role, myTeam]);
+  }, [tasks, role, myTeam, isMe]);
 
   if (!unclaimed.length || unclaimed.length <= dismissedAt) return null;
 
-  const teamLabel = role === "pm" ? "team" : TEAM_LABEL[myTeam].toLowerCase();
+  const teamLabel = (!isMe || role === "pm") ? "team" : TEAM_LABEL[myTeam].toLowerCase();
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
     ? `/pm/projects/${projectId}`

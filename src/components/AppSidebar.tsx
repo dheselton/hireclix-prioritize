@@ -11,6 +11,7 @@ import { fetchTasks } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
+import { useMeMode } from "@/hooks/useMeMode";
 import type { PmTask } from "@/types/pm";
 
 const pmItems = [
@@ -31,6 +32,7 @@ const roadmapItems = [
 
 function useUnclaimedCount() {
   const { role } = useCurrentUser();
+  const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const reload = async () => setTasks(await fetchTasks());
   useEffect(() => { reload(); }, []);
@@ -39,10 +41,10 @@ function useUnclaimedCount() {
     const myTeam = teamForRole(role);
     return tasks.filter(t => {
       if (t.status !== "unclaimed") return false;
-      if (role === "pm") return true;
+      if (!isMe || role === "pm") return true;
       return teamForTask(t) === myTeam;
     }).length;
-  }, [tasks, role]);
+  }, [tasks, role, isMe]);
 }
 
 const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "projects", "forms"]);

@@ -15,6 +15,7 @@ import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { useMeMode } from "@/hooks/useMeMode";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { buildQueueLink } from "@/lib/pm/links";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,7 @@ export default function WorkQueue() {
   const typesKey = useMemo(() => [...types].sort().join(","), [types]);
   const [createOpen, setCreateOpen] = useState<null | "request" | "project">(null);
   const workType = useWorkTypeFilter("workQueue");
+  const { isMe } = useMeMode();
 
   const reload = async () => {
     const [t, p] = await Promise.all([
@@ -135,7 +137,8 @@ export default function WorkQueue() {
 
   const meId = user?.id ?? null;
   const lane = ROLE_LANE[role ?? "submitter"] ?? [];
-  const inLane = (t: PmTask) => lane.length === 0 || lane.includes(t.type);
+  // In "All" mode every role sees every lane (admin behavior); lanes only restrict in "Me" mode.
+  const inLane = (t: PmTask) => !isMe || lane.length === 0 || lane.includes(t.type);
 
   const isSubmitter = role === "submitter";
   const isPM = role === "pm";
