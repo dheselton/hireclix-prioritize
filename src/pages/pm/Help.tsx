@@ -86,6 +86,19 @@ export default function Help() {
               The toggle in the top bar controls visibility. In <strong>All</strong> mode every user sees every project and task across all teams — designers, devs, strategists, analysts, and PMs. In <strong>Me</strong> mode the view narrows to tasks assigned to you and projects you belong to, filtered by your team lane.
             </p>
           </Section>
+
+          <Section title="7 · Page groups (Benefits, Life At, Locations…)">
+            <p>
+              Career site projects vary in page count (5–20+). Define a <strong>Page Group</strong> once in the template (e.g. "Content Page" → Wireframe → Design → Build → QA), then assign template tasks to that group. Add <strong>page presets</strong> (Home, Benefits, Life At, Locations, Persona…) so PMs can one-click them.
+            </p>
+            <ol>
+              <li><strong>In the template editor</strong>: add a Page Group, then in the Tasks list set the <em>Page Group</em> column on each slot task.</li>
+              <li><strong>When creating a project</strong>: the wizard adds a "Pages" step — pick presets and/or add custom names. Each page stamps out the full bundle and parallel-schedules them.</li>
+              <li><strong>Mid-project</strong>: on the Tasks tab click <strong>+ Add page</strong> to stamp another page anytime. The trash icon next to a page header removes all its tasks at once.</li>
+              <li>Page tasks appear under a <strong>Pages</strong> section grouped by page name, in addition to their normal status columns.</li>
+            </ol>
+          </Section>
+
         </CardContent>
       </Card>
     </div>
