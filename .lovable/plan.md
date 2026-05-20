@@ -1,79 +1,138 @@
-Add drag-and-drop, inline status pill, and inline date picker to the **Board view only** of Project Detail → Tasks. List view is untouched.
 
-`pm_tasks.sort_order` already exists, so no DB migration is needed.
+## Goals
 
-### Dependencies
-Install `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` (not currently in `package.json`).
+1. Make adding / changing / removing assignees fast from **task cards** (board) and **task rows** (list), with a **bulk "Assign to…"** action on the board.
+2. In **All mode**, every role sees every task — no more lane filtering for designers/devs/etc.
+3. Make the **Configure Timeline** buttons (Auto-link in order, Recalculate from kickoff, Fit to go-live) actually run and produce visible date changes, with clearer feedback when they no-op.
+4. Ship an **in-app Help page** at `/pm/help` with a step-by-step guide: finalize the Career Site template → start a new Career Site project → edit task dates so the rest of the schedule cascades.
 
-### File changes
-- Edit `src/components/pm/project/TasksTab.tsx` — replace the board section with a dnd-kit `DndContext`.
-- New `src/components/pm/project/board/BoardColumn.tsx` — droppable column wrapper.
-- New `src/components/pm/project/board/BoardTaskCard.tsx` — the existing `TaskCard` with new footer + sortable wiring.
-- New `src/components/pm/project/board/StatusPickerPopover.tsx` — small popover with 4 group options.
+Scope is additive — no rebuild of existing screens. Project membership (TeamCard) already works and is unchanged.
 
-### Group → primary status mapping
+---
+
+## 1 — Inline assignee picker
+
+New small component: `src/components/pm/AssigneePopover.tsx`
+- Trigger = `UserAvatar` (or "Unassigned" dot) — clicking opens a popover.
+- Searchable list of `mock_users`, with role chip on the right.
+- "Unassign" button at the bottom when a user is set.
+- On select: optimistic update, then `updateTask(id, { assignee_id })`, toast on error + revert.
+- `stopPropagation` on the trigger so it doesn't open the workspace.
+
+Wire it into:
+- `src/components/pm/project/board/BoardTaskCard.tsx` — replace the bare `UserAvatar` with `AssigneePopover`.
+- `src/components/pm/collections/TaskListView.tsx` — same swap on the assignee cell.
+- `src/components/pm/project/TasksTab.tsx` list rows (line ~368) — same swap.
+- `src/pages/pm/Board.tsx` kanban card — same swap.
+
+**Bulk assign on Board kanban:** extend the existing multi-select pattern in `BulkTaskActions.tsx`. Add an "Assign to…" button that reuses `AssigneePopover` in multi mode and calls `updateTask` for each selected id.
+
+Removal from a project is already in `TeamCard`; no change there.
+
+---
+
+## 2 — Drop lane filter in All mode
+
+Today `WorkQueue.tsx` filters non-PM users to a `ROLE_LANE` allow-list:
 ```
-ready       → "unclaimed"
-in_progress → "in_progress"
-in_review   → "in_review"
-complete    → "complete"
+inLane(t) → only design/content for designers, dev/qa for developers, etc.
 ```
-When moving a card to a column whose `statuses` already includes the task's current status (e.g. dragging a `blocked` card within "In Progress"), keep the status. Otherwise set to the column's primary status.
 
-### Drag & drop (CHANGE 1)
-- `TasksTab` keeps a local `boardTasks` state seeded from `filtered`, used only by the board so optimistic moves are instant.
-- `DndContext` with `PointerSensor` + `TouchSensor` (activation distance 6px) + `KeyboardSensor`. Each column wraps its items in `SortableContext` (vertical strategy).
-- On `onDragStart`: record `activeId` for the overlay.
-- On `onDragOver`: if hovering over a column the active task isn't in, move it locally into that column at the end.
-- On `onDragEnd`: compute new column + new index, update local state, then:
-  - `supabase.from("pm_tasks").update({ status, sort_order }).eq("id", id)` and re-number sort_order for the affected column(s).
-  - On error: revert `boardTasks` to the snapshot taken on drag start, `toast.error("Couldn't move task")`.
-- `DragOverlay` renders the card at `opacity-80`; original slot stays in place (sortable shows a translucent placeholder via `useSortable` + `isDragging` → `opacity-40`).
-- Column droppable styling while a drag is active and id matches `over.id`: `bg-info/5 border-dashed border-info` (transparent border otherwise to avoid layout shift).
+Change:
+- Add a `useMeMode()` read to `WorkQueue.tsx`.
+- When `mode === "all"`, `inLane` becomes `() => true` for every role (PM behavior).
+- When `mode === "me"`, keep current lane gating (designers still see only their lanes for "their" view).
+- Same treatment for `UnclaimedBanner.tsx`: in All mode, count unclaimed across all teams for everyone.
 
-### Inline status pill (CHANGE 2)
-- New `StatusPickerPopover` using shadcn `Popover`. Trigger = a small pill: `<span class="text-[10px] uppercase font-medium px-2 py-0.5 rounded-full {colorClasses}">{groupLabel}</span>`.
-- Color tokens by group:
-  - ready: `bg-muted text-muted-foreground`
-  - in_progress: `bg-info/15 text-info`
-  - in_review: `bg-warning/15 text-warning`
-  - complete: `bg-success/15 text-success`
-- Popover content: vertical list of 4 buttons, each with a colored dot (`bg-muted-foreground`, `bg-info`, `bg-warning`, `bg-success`) + label.
-- On select: same status-mapping rule, optimistic local update, persist via supabase, toast on failure. Popover closes via `onOpenChange(false)`; outside click + Escape come free with shadcn Popover.
-- `e.stopPropagation()` on the pill + popover so dnd-kit doesn't start a drag and the card's own click (open workspace) doesn't fire.
+No change to `Board.tsx` (it already uses `applyTaskMeMode` and ignores lanes).
 
-### Inline date picker (CHANGE 3)
-- Reuse `DatePicker` from `@/components/ui/date-picker.tsx` directly is overkill (it has its own button styling). Instead use the same `Popover` + `Calendar` primitives:
-  - Trigger when date set: `<button class="text-[11px] text-muted-foreground hover:text-foreground">{fmtDate(due_date)}</button>`
-  - Trigger when null: `<button class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"><CalendarIcon h-3 w-3/> Set date</button>`
-  - Popover content uses `<Calendar mode="single" selected={…} onSelect={…} className="p-3 pointer-events-auto" />`.
-- On select: optimistic update of local `boardTasks`, then `supabase.from("pm_tasks").update({ due_date }).eq("id", id)`, revert + toast on failure. Close popover.
-- Wrap trigger in `e.stopPropagation()` so clicking the date doesn't navigate to the workspace and doesn't begin drag.
+---
 
-### Card footer layout
-```
-┌────────────────────────────────────────────┐
-│ Title (line-clamp-2)                       │
-│ description preview (line-clamp-2)         │  (existing)
-│ [TYPE]                                     │
-│                                            │
-│ [status pill]      [date]   [avatar]       │
-│ subtasks "2/5"  (kept on its own row above │
-│                  footer if present, small) │
-└────────────────────────────────────────────┘
-```
-- Footer: `flex items-center justify-between` with left = status pill, right = date + avatar (gap-2).
-- Subtasks line stays inline above footer in muted 11px (kept from previous change but moved out of the footer).
-- Keep card padding `p-3`, no min-height bump.
+## 3 — Fix Configure Timeline panel
 
-### Click vs drag vs inline controls
-- Card click (anywhere not on status pill / date trigger) navigates via `onClick` — already exists. Wrap pill + date trigger with `onPointerDown={e => e.stopPropagation()}` and `onClick={e => e.stopPropagation()}` so dnd-kit's listeners (attached to the card wrapper via `useSortable`) and the navigation handler both ignore them.
-- The `useSortable` `listeners`/`attributes` are spread on a drag handle area — simplest: spread on the whole card, but the inline controls stop propagation as above. PointerSensor activation distance of 6px prevents accidental drags on click.
+`ConfigureTimelinePanel.tsx` exists but the buttons frequently appear to do nothing. Root causes to address:
 
-### Constants exported
-`STATUS_PILL_CLASS: Record<StatusGroupId, string>` and `STATUS_DOT_CLASS: Record<StatusGroupId, string>` defined in `BoardTaskCard.tsx` (or a small `boardStyles.ts`) and reused by `StatusPickerPopover`.
+a. **No diffs returned** when tasks already match the schedule → the cascade modal opens with zero rows and instantly closes, so the user thinks nothing happened. Fix: if `diffs.length === 0`, show a toast "Schedule already up to date" instead of opening the modal.
 
-### Files
-- New: `src/components/pm/project/board/BoardColumn.tsx`, `BoardTaskCard.tsx`, `StatusPickerPopover.tsx`
-- Edited: `src/components/pm/project/TasksTab.tsx`
-- Dependency: install `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+b. **`recalcFromKickoff` runs but doesn't persist `kickoff_date` on the project** — only updates tasks. Add an `updateProject(project.id, { kickoff_date: kickoff, go_live_date: suggested })` write after apply.
+
+c. **`autoLinkInOrder` silently fails** when `pm_task_dependencies` insert is blocked by missing project_id linkage in some rows. Add per-row `project_id` to the insert payload (FK is via task), and surface the error toast.
+
+d. **Tasks with `null` start/due dates** are skipped by `recalculateForward`. After a successful kickoff recalc, also write the freshly placed `start_date`/`due_date` for tasks that had `null` originally so future drags work.
+
+e. Add a small **"Diagnose timeline"** button in the panel header that lists: # tasks, # tasks with no dates, # dependencies, whether kickoff is set — purely informational so the user can self-debug.
+
+No changes to scheduler math itself.
+
+---
+
+## 4 — In-app Help page
+
+New route `/pm/help`:
+- File: `src/pages/pm/Help.tsx`
+- Sidebar link in `AppSidebar.tsx` ("Help", `BookOpen` icon, visible to all roles).
+- Content: Markdown rendered with `react-markdown` (already a transitive dep — verify; otherwise render with prose-classed JSX directly).
+
+Sections (written as numbered checklists with screenshot-free, action-oriented steps that match the actual UI labels):
+
+1. **Finalize the Career Site template**
+   - Open Templates → Career Site → Edit.
+   - Confirm each phase exists, each task has `duration_days` and a `role`.
+   - Lock kickoff-anchored tasks (Kickoff Call) and go-live anchored tasks (Launch) using the lock toggles.
+   - Add dependencies in the template builder so each task lists what it depends on.
+   - Save.
+
+2. **Start a new Career Site project**
+   - Projects → New Project → pick Career Site template → set client + go-live date.
+   - This creates the project, copies tasks and dependencies, and seeds dates from the template's `default_go_live_offset_days`.
+   - Open the project → Tasks tab → confirm phases and tasks landed.
+
+3. **Set the real schedule**
+   - Project header → "Configure Timeline".
+   - Enter Kickoff date → "Recalculate from kickoff" → review cascade modal → Apply.
+   - Or set both kickoff + go-live → "Fit to window" to compress flexible tasks.
+   - If "Schedule already up to date" appears, dates are already valid.
+
+4. **Edit one task and let the rest move**
+   - Project → Timeline (Gantt) → drag a task's bar OR open the task workspace and change Start/Due dates.
+   - The Cascade Confirm modal shows every downstream task that will shift; Apply writes them all.
+   - Critical path is highlighted in red on the Gantt.
+
+5. **Add / remove people**
+   - Project Overview → Team card → "Add" to invite a workspace user with a project role; "✕" to remove.
+   - On any task card or row, click the avatar to assign/unassign inline.
+   - On the Board, select multiple cards → "Assign to…" for bulk reassignment.
+
+6. **All mode vs Me mode**
+   - Top bar toggle. In **All** mode every user sees every project and task across teams. In **Me** mode, the view narrows to your assignments and projects.
+
+---
+
+## Files
+
+**New**
+- `src/components/pm/AssigneePopover.tsx`
+- `src/pages/pm/Help.tsx`
+
+**Modified**
+- `src/components/pm/project/board/BoardTaskCard.tsx`
+- `src/components/pm/collections/TaskListView.tsx`
+- `src/components/pm/collections/BulkTaskActions.tsx`
+- `src/components/pm/project/TasksTab.tsx`
+- `src/pages/pm/Board.tsx`
+- `src/pages/pm/WorkQueue.tsx`
+- `src/components/pm/UnclaimedBanner.tsx`
+- `src/components/pm/ConfigureTimelinePanel.tsx`
+- `src/components/AppSidebar.tsx`
+- `src/App.tsx` (route)
+
+**DB:** none. Schema already supports everything.
+
+---
+
+## Out of scope
+
+- Real admin role on `mock_users` (current PM role + "All mode" = admin behavior).
+- Auth changes.
+- Reworking the scheduler algorithms.
+- Per-task assignment from the Gantt bars.

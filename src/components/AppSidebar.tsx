@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, LayoutGrid, FolderKanban, Users, Calendar, FileText,
-  LayoutTemplate, Plug, Map, BarChart3, Code,
+  LayoutTemplate, Plug, Map, BarChart3, Code, BookOpen,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -11,6 +11,7 @@ import { fetchTasks } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
+import { useMeMode } from "@/hooks/useMeMode";
 import type { PmTask } from "@/types/pm";
 
 const pmItems = [
@@ -31,6 +32,7 @@ const roadmapItems = [
 
 function useUnclaimedCount() {
   const { role } = useCurrentUser();
+  const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const reload = async () => setTasks(await fetchTasks());
   useEffect(() => { reload(); }, []);
@@ -39,15 +41,16 @@ function useUnclaimedCount() {
     const myTeam = teamForRole(role);
     return tasks.filter(t => {
       if (t.status !== "unclaimed") return false;
-      if (role === "pm") return true;
+      if (!isMe || role === "pm") return true;
       return teamForTask(t) === myTeam;
     }).length;
-  }, [tasks, role]);
+  }, [tasks, role, isMe]);
 }
 
 const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "projects", "forms"]);
 
 const snippetsItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" as const };
+const helpItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" as const };
 
 export function AppSidebar() {
   const { pathname } = useLocation();
@@ -56,9 +59,10 @@ export function AppSidebar() {
   const baseItems = role === "submitter"
     ? pmItems.filter(i => SUBMITTER_ITEM_KEYS.has(i.key))
     : pmItems;
-  const items = role === "developer" || role === "designer"
+  const withSnippets = role === "developer" || role === "designer"
     ? [...baseItems, snippetsItem as any]
     : baseItems;
+  const items = [...withSnippets, helpItem as any];
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>

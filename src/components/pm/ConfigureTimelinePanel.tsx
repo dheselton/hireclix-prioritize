@@ -89,18 +89,39 @@ export function ConfigureTimelinePanel({
 
   function recalcFromKickoff() {
     if (!kickoff) return toast.error("Set a kickoff date first");
+    if (!deps.length) {
+      toast.error("No dependencies yet — click \"Auto-link tasks in order\" first, or add dependencies in the task editor.");
+      return;
+    }
     const r = scheduleForwardFromKickoff(kickoff, tasks, deps);
     setGoLive(r.suggestedGoLive);
     setWarning(null);
+    if (!r.diffs.length) { toast.success("Schedule already up to date"); return; }
     setPendingDiffs(r.diffs);
     setConfirmOpen(true);
   }
   function recalcFromGoLive() {
     if (!kickoff || !goLive) return toast.error("Set both kickoff and go-live dates");
+    if (!deps.length) {
+      toast.error("No dependencies yet — click \"Auto-link tasks in order\" first, or add dependencies in the task editor.");
+      return;
+    }
     const r = fitToWindow(kickoff, goLive, tasks, deps);
     setWarning(r.warning ?? null);
+    if (!r.diffs.length) { toast.success("Schedule already fits the window"); return; }
     setPendingDiffs(r.diffs);
     setConfirmOpen(true);
+  }
+
+  function diagnose() {
+    const noDates = tasks.filter(t => !t.start_date || !t.due_date).length;
+    toast.message("Timeline diagnosis", {
+      description:
+        `Tasks: ${tasks.length} (${noDates} missing dates) · ` +
+        `Dependencies: ${deps.length} · ` +
+        `Kickoff: ${kickoff || "not set"} · ` +
+        `Go-live: ${goLive || "not set"}`,
+    });
   }
 
   async function onConfirm() {
@@ -195,6 +216,9 @@ export function ConfigureTimelinePanel({
               <Button onClick={recalcFromGoLive}>Recalculate from Go-Live</Button>
               <Button variant="ghost" onClick={autoLinkInOrder} title="Create finish→start dependencies in current sort order. Useful for legacy projects that have no dependency graph.">
                 Auto-link tasks in order
+              </Button>
+              <Button variant="ghost" size="sm" onClick={diagnose} className="ml-auto">
+                Diagnose timeline
               </Button>
             </div>
           </div>
