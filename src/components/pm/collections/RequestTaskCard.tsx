@@ -28,7 +28,11 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
   const overdue = isOverdue(task);
   const team = useProjectTeam(task.project_id);
   const internalProjects = useInternalProjectIds();
+  const careersiteProjects = useCareerSiteProjects();
   const isInternal = internalProjects.has(task.project_id);
+  const csRequestType = careersiteProjects.get(task.project_id) ?? null;
+  const isCareerSite = !!csRequestType;
+  const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
   return (
     <button
@@ -37,8 +41,9 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       className={cn(
         "card-lift group w-full text-left rounded-md border border-border bg-card px-3 py-2",
         "flex items-center gap-3",
-        unclaimed && !isInternal && "border-l-4 border-l-amber-500",
-        isInternal && "internal-border-l",
+        unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
+        isInternal && !isCareerSite && "internal-border-l",
+        isCareerSite && "careersite-border-l",
       )}
     >
       <div className="flex-1 min-w-0">
@@ -47,6 +52,12 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
           <span className="text-sm font-medium truncate">{task.title}</span>
           <WorkTypeBadge workType="request" compact />
           {isInternal && <span className="internal-pill shrink-0">Internal</span>}
+          {isCareerSite && (
+            <span className="careersite-pill shrink-0">Career Site{csLabel ? ` · ${csLabel}` : ""}</span>
+          )}
+          {unclaimed && isCareerSite && (
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" title="Unclaimed" />
+          )}
         </div>
         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground truncate">
           {clientName && <span className="truncate">{clientName}</span>}
