@@ -31,7 +31,7 @@ export function QuickTasksColumn({ tasks, totalCount }: Props) {
   const remaining = Math.max(0, totalCount - tasks.length);
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 flex flex-col min-h-0 max-h-[55vh]">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
           <Zap className="h-3.5 w-3.5" /> QUICK TASKS
