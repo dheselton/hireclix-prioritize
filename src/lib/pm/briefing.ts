@@ -17,10 +17,16 @@ export interface BriefingCounts {
   blocked: number;
 }
 
+export type EnrichedQuickTask = PmTask & {
+  project_title: string | null;
+  client_name: string | null;
+  request_type: string | null;
+};
+
 interface BriefingData {
   counts: BriefingCounts;
-  quickTasks: (PmTask & { project_title: string | null })[];
-  unclaimedQuickTasks: (PmTask & { project_title: string | null })[];
+  quickTasks: EnrichedQuickTask[];
+  unclaimedQuickTasks: EnrichedQuickTask[];
   projects: (PmProject & {
     total_tasks: number;
     completed_tasks: number;
