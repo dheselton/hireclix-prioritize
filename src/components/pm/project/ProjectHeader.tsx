@@ -80,3 +80,15 @@ export function ProjectHeader({ project, onAddTask }: {
     </header>
   );
 }
+
+function RequesterBadge({ requestedBy }: { requestedBy: string | null }) {
+  const users = useMockUsers();
+  if (!requestedBy) return null;
+  const u = users.find(x => x.id === requestedBy);
+  if (!u) return null;
+  return (
+    <Badge variant="outline" className="bg-info/10 text-info border-info/30 gap-1">
+      <UserCheck className="h-3 w-3" /> Requested by {u.name}
+    </Badge>
+  );
+}
