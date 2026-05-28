@@ -5,6 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { fmtDate } from "@/lib/pm/format";
+import { useInternalClientIds } from "@/lib/pm/clients";
+import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 
 type ProjectWithMeta = PmProject & {
@@ -31,6 +33,8 @@ function taskUrgency(t: PmTask): "overdue" | "today" | "upcoming" | "none" {
 
 export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
   const drawer = useTaskDrawerLink();
+  const internalIds = useInternalClientIds();
+  const isInternal = !!project.client_id && internalIds.has(project.client_id);
   const today = todayIso();
   const pct = project.total_tasks > 0
     ? Math.round((project.completed_tasks / project.total_tasks) * 100)
@@ -55,7 +59,7 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
   const remaining = Math.max(0, project.my_total - project.my_top_tasks.length);
 
   return (
-    <Card className="p-4">
+    <Card className={cn("p-4", isInternal && "internal-border-l")}>
       {/* Header */}
       <div className="pb-2 mb-2 border-b border-border/60">
         <div className="flex items-center gap-2 mb-1.5">
@@ -65,6 +69,7 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
           >
             {project.title}
           </Link>
+          {isInternal && <span className="internal-pill shrink-0">Internal</span>}
           {project.team.length > 0 && (
             <AvatarStack userIds={project.team} max={4} size="xs" />
           )}

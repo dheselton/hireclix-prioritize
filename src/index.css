@@ -98,6 +98,10 @@ All colors MUST be HSL.
     --role-developer-foreground: 0 0% 100%;
     --role-submitter: 210 9% 46%;      /* neutral grey */
     --role-submitter-foreground: 0 0% 100%;
+
+    /* Internal (HireClix) accent — distinguishes internal work from client work */
+    --internal: 270 70% 55%;
+    --internal-foreground: 0 0% 100%;
   }
 }
 
@@ -130,6 +134,17 @@ All colors MUST be HSL.
   .health-dot-violet { background: hsl(270 70% 60%); }
   .health-dot-emerald { background: hsl(152 65% 45%); }
   .health-dot-slate { background: hsl(215 16% 55%); }
+
+  /* Internal (HireClix) accent treatment for cards/headers */
+  .internal-border-l { border-left-width: 4px !important; border-left-color: hsl(var(--internal)) !important; }
+  .internal-pill {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0 0.5rem; height: 1.125rem; border-radius: 9999px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+    background: hsl(var(--internal) / 0.12);
+    color: hsl(var(--internal));
+    border: 1px solid hsl(var(--internal) / 0.3);
+  }
 }
 
 @layer base {

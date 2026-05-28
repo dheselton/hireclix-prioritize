@@ -2,7 +2,25 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { FormFieldRow } from "./FormFieldRenderer";
 
-export type RequestType = "web_edit" | "banner_ads" | "social" | "email" | "general";
+export type RequestType =
+  | "web_edit"
+  | "banner_ads"
+  | "social"
+  | "email"
+  | "general"
+  | "landing_page"
+  | "careersite_update"
+  | "job_description"
+  | "recruiter_collateral"
+  | "event_collateral"
+  | "presentation"
+  | "video_edit"
+  | "photo_retouch"
+  | "print_collateral"
+  | "swag_apparel"
+  | "infographic"
+  | "brand_assets"
+  | "copywriting";
 
 const cache = new Map<RequestType, { formId: string; fields: FormFieldRow[] }>();
 

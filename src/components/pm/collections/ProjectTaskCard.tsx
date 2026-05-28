@@ -10,6 +10,7 @@ import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
+import { useInternalProjectIds } from "@/lib/pm/clients";
 import type { PmProject, PmTask, TaskPriority } from "@/types/pm";
 
 interface Props {
@@ -41,9 +42,15 @@ export function ProjectTaskCard({
 }: Props) {
   const overdue = isOverdue(task);
   const team = useProjectTeam(task.project_id);
+  const internalProjects = useInternalProjectIds();
+  const isInternal = internalProjects.has(task.project_id);
   const unclaimed = task.status === "unclaimed";
   return (
-    <Card className={cn("hover:shadow-md hover:border-foreground/20 transition", unclaimed && "border-l-4 border-l-amber-500")}>
+    <Card className={cn(
+      "hover:shadow-md hover:border-foreground/20 transition",
+      unclaimed && !isInternal && "border-l-4 border-l-amber-500",
+      isInternal && "internal-border-l",
+    )}>
       <CardContent className="p-4 space-y-2">
         {showProjectHeader && project && (
           <div className="flex items-center justify-between gap-2 min-w-0">
@@ -54,6 +61,7 @@ export function ProjectTaskCard({
             >
               <span className="font-bold text-sm truncate">{project.title}</span>
               <WorkTypeBadge workType="project" compact />
+              {isInternal && <span className="internal-pill">Internal</span>}
             </Link>
             {phaseName && (
               <Badge variant="outline" className="text-[10px] capitalize shrink-0">

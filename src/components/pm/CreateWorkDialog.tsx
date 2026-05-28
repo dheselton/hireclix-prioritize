@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Zap, FolderKanban, X, Plus, FileText, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,8 @@ import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
+import { useInternalClientIds } from "@/lib/pm/clients";
+import { Sparkle } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -30,19 +32,43 @@ interface Props {
 
 type Step = "select" | "request" | "project-entry" | "project-blank";
 
-const REQUEST_TYPES: { value: RequestType; label: string }[] = [
-  { value: "web_edit",   label: "Web edit" },
-  { value: "banner_ads", label: "Banner ads" },
-  { value: "social",     label: "Social post" },
-  { value: "email",      label: "Email" },
-  { value: "general",    label: "General" },
+const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
+  web_edit: "Web edit",
+  landing_page: "New landing page",
+  careersite_update: "Career site update",
+  banner_ads: "Banner ads",
+  social: "Social post",
+  email: "Email",
+  copywriting: "Copywriting",
+  job_description: "Job description",
+  infographic: "Infographic",
+  recruiter_collateral: "Recruiter collateral",
+  event_collateral: "Event collateral",
+  print_collateral: "Print collateral",
+  swag_apparel: "Swag / apparel",
+  video_edit: "Video edit",
+  photo_retouch: "Photo retouch",
+  presentation: "Presentation",
+  brand_assets: "Brand assets",
+  general: "General",
+};
+
+const REQUEST_TYPE_GROUPS: { label: string; types: RequestType[] }[] = [
+  { label: "Web",                types: ["web_edit", "landing_page", "careersite_update"] },
+  { label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
+  { label: "Content",            types: ["copywriting", "job_description", "infographic"] },
+  { label: "Print & Collateral", types: ["recruiter_collateral", "event_collateral", "print_collateral", "swag_apparel"] },
+  { label: "Media",              types: ["video_edit", "photo_retouch", "presentation"] },
+  { label: "Brand",              types: ["brand_assets"] },
+  { label: "Other",              types: ["general"] },
 ];
 
 export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
   const { user } = useCurrentUser();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(initialStep === "project" ? "project-entry" : (initialStep as Step));
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; is_internal?: boolean }[]>([]);
+  const internalIds = useInternalClientIds();
   const [templates, setTemplates] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -82,7 +108,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setProjFiles([]); setProjLinks([]);
     (async () => {
       const [{ data: c }, { data: t }] = await Promise.all([
-        supabase.from("clients").select("id,name").order("name"),
+        supabase.from("clients").select("id,name,is_internal").order("name"),
         supabase.from("pm_project_templates").select("id,name,type").order("created_at", { ascending: false }),
       ]);
       setClients(c || []);
@@ -266,14 +292,33 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "request" && (
+        {step === "request" && (() => {
+          const selectedClient = clients.find(c => c.id === reqForm.client_id);
+          const isInternal = !!selectedClient && (selectedClient.is_internal || internalIds.has(selectedClient.id));
+          return (
           <div className="space-y-3">
+            {isInternal && (
+              <div className="rounded-md border internal-border-l bg-[hsl(var(--internal)/0.06)] px-3 py-2 flex items-center gap-2">
+                <Sparkle className="h-4 w-4 text-[hsl(var(--internal))]" />
+                <div className="text-xs">
+                  <span className="font-semibold text-[hsl(var(--internal))]">Internal HireClix Request</span>
+                  <span className="text-muted-foreground"> — will be color-coded for internal team visibility.</span>
+                </div>
+              </div>
+            )}
             <div>
               <Label>Request type *</Label>
               <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {REQUEST_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                <SelectContent className="z-50 bg-popover max-h-[60vh]">
+                  {REQUEST_TYPE_GROUPS.map(g => (
+                    <SelectGroup key={g.label}>
+                      <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{g.label}</SelectLabel>
+                      {g.types.map(t => (
+                        <SelectItem key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">Fields below change based on the request type.</p>
@@ -302,7 +347,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             {internalFields.length > 0 && (
               <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {REQUEST_TYPES.find(t => t.value === requestType)?.label} details
+                  {REQUEST_TYPE_LABELS[requestType]} details
                 </div>
                 {internalFields.map((f) => (
                   <FormFieldRenderer
@@ -355,7 +400,8 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
               links={reqLinks} onLinksChange={setReqLinks}
             />
           </div>
-        )}
+          );
+        })()}
 
         {step === "project-entry" && (
           <div className="space-y-4">
