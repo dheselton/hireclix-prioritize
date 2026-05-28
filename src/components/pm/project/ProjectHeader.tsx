@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus } from "lucide-react";
+import { Share2, Plus, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { useMockUsers } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus } from "@/types/pm";
 
