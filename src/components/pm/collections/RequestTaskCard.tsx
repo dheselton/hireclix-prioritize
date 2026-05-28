@@ -7,6 +7,7 @@ import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
+import { useInternalProjectIds } from "@/lib/pm/clients";
 import type { PmTask } from "@/types/pm";
 
 interface Props {
@@ -26,6 +27,8 @@ function isOverdue(t: PmTask) {
 export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) {
   const overdue = isOverdue(task);
   const team = useProjectTeam(task.project_id);
+  const internalProjects = useInternalProjectIds();
+  const isInternal = internalProjects.has(task.project_id);
   const unclaimed = task.status === "unclaimed";
   return (
     <button
@@ -34,7 +37,8 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       className={cn(
         "group w-full text-left rounded-md border bg-card hover:border-foreground/30 hover:bg-muted/40 transition px-3 py-2",
         "flex items-center gap-3",
-        unclaimed && "border-l-4 border-l-amber-500",
+        unclaimed && !isInternal && "border-l-4 border-l-amber-500",
+        isInternal && "internal-border-l",
       )}
     >
       <div className="flex-1 min-w-0">
@@ -42,6 +46,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
           {overdue && <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
           <span className="text-sm font-medium truncate">{task.title}</span>
           <WorkTypeBadge workType="request" compact />
+          {isInternal && <span className="internal-pill shrink-0">Internal</span>}
         </div>
         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground truncate">
           {clientName && <span className="truncate">{clientName}</span>}

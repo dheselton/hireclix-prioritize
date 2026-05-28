@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
+import { useInternalProjectIds } from "@/lib/pm/clients";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
 import { groupForStatus } from "@/lib/pm/statusGroups";
 import type { PmTask } from "@/types/pm";
@@ -40,6 +41,8 @@ export function BoardTaskCard({
   const preview = stripHtml(task.description);
   const group = groupForStatus(task.status);
   const team = useProjectTeam(task.project_id);
+  const internalProjects = useInternalProjectIds();
+  const isInternal = internalProjects.has(task.project_id);
   const unclaimed = task.status === "unclaimed";
 
   return (
@@ -52,10 +55,13 @@ export function BoardTaskCard({
     >
       <Card
         onClick={onClick}
-        className={`cursor-pointer transition hover:border-info ${overlay ? "opacity-80 shadow-lg" : ""} ${unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
+        className={`cursor-pointer transition hover:border-info ${overlay ? "opacity-80 shadow-lg" : ""} ${isInternal ? "internal-border-l" : unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
       >
         <CardContent className="p-3 space-y-2 flex flex-col">
-          <div className="text-[12px] font-bold leading-snug line-clamp-2">{task.title}</div>
+          <div className="flex items-start gap-2">
+            <div className="text-[12px] font-bold leading-snug line-clamp-2 flex-1">{task.title}</div>
+            {isInternal && <span className="internal-pill shrink-0">Internal</span>}
+          </div>
           {preview && (
             <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
           )}
