@@ -20,12 +20,14 @@ export interface BriefingCounts {
 interface BriefingData {
   counts: BriefingCounts;
   quickTasks: (PmTask & { project_title: string | null })[];
+  unclaimedQuickTasks: (PmTask & { project_title: string | null })[];
   projects: (PmProject & {
     total_tasks: number;
     completed_tasks: number;
     overdue_tasks: number;
     my_top_tasks: PmTask[];
     my_total: number;
+    team: string[];
   })[];
   loading: boolean;
 }
