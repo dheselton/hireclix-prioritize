@@ -44,7 +44,7 @@ export function QuickTasksColumn({ tasks, totalCount }: Props) {
           No quick tasks. Nice work.
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5">
           {tasks.map((t) => {
             const u = urgency(t);
             const dot =
