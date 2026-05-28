@@ -20,7 +20,7 @@ import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
 import { Sparkle } from "lucide-react";
 
 interface Props {
@@ -206,6 +206,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           submitter_email: user?.email ?? null,
           created_project_id: proj.id,
         } as any);
+      }
+      // Refresh the Career Site project cache so the new request gets its teal treatment immediately.
+      if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
+        refreshCareerSiteProjects().catch(() => {});
       }
       toast.success("Request created");
       onOpenChange(false);
