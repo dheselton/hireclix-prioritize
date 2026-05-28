@@ -31,7 +31,7 @@ export function QuickTasksColumn({ tasks, totalCount }: Props) {
   const remaining = Math.max(0, totalCount - tasks.length);
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 flex flex-col min-h-0 max-h-[55vh]">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
           <Zap className="h-3.5 w-3.5" /> QUICK TASKS
@@ -44,7 +44,7 @@ export function QuickTasksColumn({ tasks, totalCount }: Props) {
           No quick tasks. Nice work.
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5">
           {tasks.map((t) => {
             const u = urgency(t);
             const dot =
@@ -76,7 +76,7 @@ export function QuickTasksColumn({ tasks, totalCount }: Props) {
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/60">
+      <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/60 shrink-0">
         <span className="text-[11px] text-muted-foreground">
           {remaining > 0 ? `${remaining} more in queue` : ""}
         </span>

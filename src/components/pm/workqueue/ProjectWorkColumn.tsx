@@ -16,8 +16,8 @@ interface Props {
 
 export function ProjectWorkColumn({ projects }: Props) {
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
+    <div className="flex flex-col min-h-0 max-h-[55vh]">
+      <div className="flex items-center justify-between mb-3 shrink-0">
         <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
           <FolderOpen className="h-3.5 w-3.5" /> PROJECT WORK
         </h2>
@@ -28,7 +28,7 @@ export function ProjectWorkColumn({ projects }: Props) {
           No active projects right now.
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
           {projects.map((p) => (
             <ProjectBriefingCard key={p.id} project={p} />
           ))}
