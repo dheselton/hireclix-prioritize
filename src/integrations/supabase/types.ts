@@ -1014,6 +1014,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_project_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          project_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          project_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          project_id?: string
+          url?: string
+        }
+        Relationships: []
+      }
       pm_project_members: {
         Row: {
           id: string
@@ -1120,6 +1147,7 @@ export type Database = {
           kickoff_date: string | null
           page_group_overrides: Json
           pages_locked_at: string | null
+          requested_by: string | null
           start_date: string | null
           status: string
           tags: string[] | null
@@ -1142,6 +1170,7 @@ export type Database = {
           kickoff_date?: string | null
           page_group_overrides?: Json
           pages_locked_at?: string | null
+          requested_by?: string | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
@@ -1164,6 +1193,7 @@ export type Database = {
           kickoff_date?: string | null
           page_group_overrides?: Json
           pages_locked_at?: string | null
+          requested_by?: string | null
           start_date?: string | null
           status?: string
           tags?: string[] | null
