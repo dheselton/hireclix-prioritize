@@ -907,6 +907,36 @@ export type Database = {
           },
         ]
       }
+      pm_notes: {
+        Row: {
+          content: string
+          created_at: string
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pm_notifications: {
         Row: {
           body: string | null
