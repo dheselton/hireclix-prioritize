@@ -187,6 +187,7 @@ export default function TaskWorkspace() {
           </aside>
         </div>
       </div>
+      <TaskDrawer />
     </div>
   );
 }
