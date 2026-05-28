@@ -1,81 +1,112 @@
-## Problem
 
-The current Page Groups flow assumes the PM knows which pages exist at project creation. In reality, pages are discovered during Discovery — sometimes weeks after kickoff. Forcing a list upfront creates fake placeholders or blocks project start. **And** when pages are deferred, the timeline must still reserve enough working time across **both Design and Build phases** so adding pages later doesn't push Go-Live.
+# Daily Briefing Dashboard — Work Queue Redesign
 
-## Solution: Defer page definition, reserve time in every phase the pages touch
+Rebuild `src/pages/pm/WorkQueue.tsx` as a personalized daily briefing, replacing the current list-driven view.
 
-Treat page groups as **empty containers** at project start. The spine (Discovery → Strategy → Design → Build → QA → Launch) schedules immediately, with **phase-level reserved time blocks** held open for each page group in *every* phase its slot tasks belong to.
+## Important adaptation to this project
 
-### 1. Wizard — skip the Pages step
+Auth is currently **disabled** in this codebase. The "current user" comes from `useCurrentUser()` against `mock_users` (PM/Designer/Developer/Submitter), persisted in localStorage. We will:
 
-- Remove "Pages" step from `TimelineSetupWizard`.
-- Show info card: *"Pages will be added after Discovery. Design and Build time is reserved in the timeline."*
-- Optional "I already know my pages" toggle reveals the current picker.
+- Use `current_user.id` (mock user id) everywhere your spec references `auth.uid()`.
+- Create `pm_notes` with a plain `user_id uuid` column (no FK to `auth.users`) and permissive RLS matching the rest of the `pm_*` tables. When auth is re-enabled later we tighten policies in a single migration alongside the other PM tables — noted in the existing memory.
+- "Me Mode" already exists globally (`useMeMode` + `MeModeToggle` in TopBar). We reuse it; we do NOT add another toggle.
 
-### 2. Template — per-phase reservations (key change)
+Date format stays mm/dd/yyyy (`fmtDate` from `src/lib/pm/format.ts`).
 
-In `TemplateBuilder`, each Page Group exposes:
-- **`discovery_task_temp_id`** — fixed template task that gates page definition (e.g. "Sitemap Approval").
-- **`reserved_by_phase`** — JSON map of `{ phase_name: days }`. Computed default = sum of slot-task durations per phase, multiplied by expected page count (PM sets `expected_page_count`, default 5).
-  - Example for a "Content Page" group with Wireframe (2d), Design (3d), Build (4d), QA (1d) × 5 expected pages:
-    ```
-    { "Design": 25, "Build": 20, "QA": 5 }
-    ```
-- **`expected_page_count`** — drives default reservation math; editable per project.
-- **`parallel_cap`** — max pages worked on concurrently per phase (prevents reservation from assuming infinite team capacity).
+## 1. Database migration
 
-Reservations render on the Gantt as **striped ghost bars inside each phase swimlane**, labeled "Content Pages — Design (25d reserved, 0/5 defined)".
+Single migration adding `pm_notes`:
 
-### 3. Scheduler — reservations as real constraints
+- Columns: `id`, `user_id` (uuid, not null), `content` (text, not null), `due_date` (date, null), `is_completed` (bool default false), `created_at`, `updated_at`.
+- Indexes on `user_id` and `due_date`.
+- `update_updated_at_column` trigger.
+- GRANTs to anon/authenticated/service_role + permissive RLS (true) to match existing `pm_*` table pattern while auth is off.
 
-Update `src/lib/pm/scheduler.ts`:
-- Reserved blocks act as **fixed-duration phase placeholders** until pages are stamped.
-- When a page is added mid-project, its real tasks **consume** matching reserved time in each phase (Design tasks eat Design reservation, Build tasks eat Build reservation).
-- If real tasks exceed the reservation → cascade forward, surface a warning banner: *"Build phase over reservation by 4 days — Go-Live impacted."*
-- If under reservation when group marked complete → reclaim slack, optional pull-in toast.
-- Critical path treats reservations as on-path until consumed.
+## 2. Page layout
 
-### 4. Project Pages tab
+`src/pages/pm/WorkQueue.tsx` becomes a thin composition:
 
-New **Pages** sub-tab on `ProjectDetail`:
-- Card per Page Group: defined count vs. expected, **per-phase reservation usage bars** (Design: 12/25d used, Build: 8/20d used), "Add page", "Adjust expected count", "Mark group complete".
-- Banner on Discovery completion: *"Discovery done — define pages for [Group]"* → opens `AddPageDialog`.
-- Adjusting `expected_page_count` recomputes reservations and runs cascade through `CascadeConfirmModal`.
+```text
+<DailyBriefingHero />
+<div grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4>
+  <QuickTasksColumn />
+  <ProjectWorkColumn />
+</div>
+<NotesSection />
+```
 
-### 5. `AddPageDialog` improvements
+Existing toolbar / chip filters / kanban/list toggle on WorkQueue are removed from this page (the deep-link views in `links.ts` still serve filtered Work Queue use cases via `buildQueueLink`). Hero stat chips and "View all →" links use `buildQueueLink` so callouts remain clickable per the Core memory rule.
 
-- Multi-paste (one page name per line → N pages at once).
-- Clone-from-existing-page (duplicates tasks + assignees).
-- Per-page duration multiplier (Personas = 1.5×).
-- Live preview of remaining Design/Build reservation after the add.
+## 3. Components (all new, under `src/components/pm/workqueue/`)
 
-### 6. Help page
+### DailyBriefingHero.tsx
+- Dark gradient card (`bg-gradient-to-r from-slate-800 to-slate-700`), white text, `rounded-xl p-5 mb-4`.
+- Time-of-day greeting + first name from `mock_users.name`.
+- Stat chips (overdue, quick tasks, active projects, blocked) — each chip is a `Link` built from `buildQueueLink({ ... })` so clicking jumps to a pre-filtered queue / project list view. Blocked chip only renders when count > 0.
+- Counts derived from a single fetch (see Data section).
 
-Rewrite Section 7 around the new flow, including how Design and Build reservations are computed, consumed, and recovered.
+### QuickTasksColumn.tsx
+- Card wrapper, header "⚡ QUICK TASKS".
+- Shows up to 5 tasks where the parent project's `work_type = 'request'` (quick request) and assignee = current user, status not in done/approved/complete.
+- Each row: status dot, title, project name, due badge (Overdue / Today / mm/dd). Click opens full workspace via `useTaskDrawerLink().open(task.id)`.
+- Footer: "X more in queue" + "View all →" → `buildQueueLink({ workType: 'request', assignee: 'me' })`.
 
-## Technical Details
+### ProjectWorkColumn.tsx
+- Header "📁 PROJECT WORK".
+- Up to 5 active projects where current user is a `pm_project_members` row (or created_by), `work_type = 'project'`, status active.
+- Per project renders `<ProjectBriefingCard />`:
+  - Header: title, status badge (overdue / due today / on track), "Open →" → `/pm/projects/:id`.
+  - Progress bar using `Progress` from `@/components/ui/progress` (completed / total tasks) + go-live date.
+  - "MY NEXT UP (3 OF X)" — up to 3 of my tasks in that project, sorted overdue→today→upcoming. Color-coded 3px left border + dot. Click opens full task workspace.
+  - Footer: "+ N more tasks" + "Open project →".
 
-**Schema (one migration):**
-- `pm_template_page_groups`: add `discovery_task_temp_id text`, `reserved_by_phase jsonb default '{}'`, `expected_page_count int default 5`, `parallel_cap int`, `allow_late_definition boolean default true`.
-- `pm_projects`: add `page_group_overrides jsonb default '{}'` (per-project expected counts / phase reservations), `pages_locked_at timestamptz`.
-- No changes to `pm_tasks`.
+### NotesSection.tsx + NoteDialog.tsx
+- Gray container, header "📝 MY NOTES & REMINDERS" + "+ Add note" button.
+- Pills (rounded-full) showing note text + due-date badge. Color tokens:
+  - Overdue → `bg-destructive/15 text-destructive`
+  - Today → amber tokens
+  - Soon (≤7d) → `bg-primary/15 text-primary`
+  - No date → muted
+- Click pill → opens `NoteDialog` for edit (content textarea, `DatePicker` from `src/components/ui/date-picker.tsx`, "mark completed" checkbox, Delete + Save).
+- "+ Add note" → same dialog in create mode.
+- Lists incomplete notes for current user, ordered overdue → today → soon → no-date → completed-hidden, limit 10, with "+ N more" expand.
 
-**Files to modify:**
-- `src/components/pm/TimelineSetupWizard.tsx` — drop Pages step.
-- `src/lib/pm/api.ts` `instantiateTemplateIntoProject` — don't expand groups; write reservation records per phase.
-- `src/lib/pm/scheduler.ts` — reservation consumption, over/under detection, cascade hooks.
-- `src/lib/pm/pageGroups.ts` — `computeReservedByPhase(group, count)`, `consumeReservation(group, addedTasks)`.
-- `src/pages/pm/TemplateBuilder.tsx` — per-phase reservation editor + expected count + parallel cap.
-- `src/pages/pm/ProjectDetail.tsx` — new Pages tab route.
-- `src/components/pm/project/PagesTab.tsx` (new) — group cards with per-phase usage bars.
-- `src/components/pm/project/AddPageDialog.tsx` — multi-paste, clone, multiplier, live reservation preview.
-- Gantt component — ghost bars per phase per group; consumption animation.
-- `src/pages/pm/Help.tsx` — Section 7 rewrite.
+## 4. Data layer
 
-**Backwards compatibility:** existing projects keep their stamped pages; new behavior only triggers for new projects or when a PM resets a group to "empty/reserved".
+Add `src/lib/pm/briefing.ts` with:
 
-## Out of scope
+- `useBriefingCounts(userId)` — single query joining `pm_tasks` + `pm_projects` + `pm_project_members`, returns `{ overdue, quickTasks, activeProjects, blocked }`.
+- `useQuickTasks(userId)` — tasks where `pm_projects.work_type='request'`, `assignee_id=userId`, status not terminal, limit 5, sorted overdue→today→future.
+- `useMyActiveProjects(userId)` — projects where membership row exists OR `created_by=userId`, `work_type='project'`, status active. Returns aggregate `{ total, completed, overdue }` per project (single grouped fetch).
+- `useMyTopTasksForProject(projectId, userId)` — top 3 my-tasks per project (batched fetch for the visible project IDs).
+- `useMyNotes(userId)` + mutations (`createNote`, `updateNote`, `deleteNote`, `toggleComplete`).
 
-- Auto-detecting pages from form submissions or sitemaps.
-- Client-facing page-approval portal.
-- Per-page subtask checklists beyond existing task support.
+All hooks use existing `supabase` client and the project's bumpRefresh pattern from `src/lib/pm/refresh.ts` so other PM pages stay in sync.
+
+## 5. Responsive behavior
+
+- `≥lg`: two columns (Quick Tasks | Project Work).
+- `md`: stacked.
+- `<md`: hero collapses chip row to wrap; Quick Tasks limit 3; Project Work limit 2 (2 tasks each); Notes limit 5 + "+ N more".
+
+## 6. Files
+
+**New**
+- `supabase/migrations/<ts>_pm_notes.sql`
+- `src/components/pm/workqueue/DailyBriefingHero.tsx`
+- `src/components/pm/workqueue/QuickTasksColumn.tsx`
+- `src/components/pm/workqueue/ProjectWorkColumn.tsx`
+- `src/components/pm/workqueue/ProjectBriefingCard.tsx`
+- `src/components/pm/workqueue/NotesSection.tsx`
+- `src/components/pm/workqueue/NoteDialog.tsx`
+- `src/lib/pm/briefing.ts`
+
+**Modified**
+- `src/pages/pm/WorkQueue.tsx` — replaced with briefing composition.
+- `mem://index.md` — note new dashboard + pm_notes table.
+
+## 7. Out of scope (per your spec)
+
+- No new global "Me Mode" toggle — already exists (`MeModeToggle` in TopBar, hotkey M).
+- No changes to the existing deep-linked filtered Work Queue (those routes remain reachable via `buildQueueLink` and from hero chips).
+- No realtime channel on `pm_notes` for v1 (manual refresh after mutations via `bumpRefresh`).
