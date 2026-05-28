@@ -40,3 +40,48 @@ export function refreshInternalClients() {
   pending = fetchInternal();
   return pending;
 }
+
+// --- Project → internal lookup (cached) ---
+let projCache: Set<string> | null = null;
+let projPending: Promise<Set<string>> | null = null;
+const projSubs = new Set<(s: Set<string>) => void>();
+
+async function fetchInternalProjects(): Promise<Set<string>> {
+  const internal = await (pending ?? fetchInternal());
+  if (!internal.size) {
+    projCache = new Set();
+    projSubs.forEach((fn) => { try { fn(projCache!); } catch {} });
+    return projCache;
+  }
+  const { data } = await supabase
+    .from("pm_projects")
+    .select("id,client_id")
+    .in("client_id", Array.from(internal));
+  const set = new Set<string>(((data ?? []) as { id: string }[]).map((r) => r.id));
+  projCache = set;
+  projSubs.forEach((fn) => { try { fn(set); } catch {} });
+  return set;
+}
+
+/** Returns the set of project IDs that belong to an internal client (e.g. HireClix). */
+export function useInternalProjectIds(): Set<string> {
+  const [set, setSet] = useState<Set<string>>(projCache ?? new Set());
+  useEffect(() => {
+    let cancelled = false;
+    if (projCache) {
+      setSet(projCache);
+    } else {
+      projPending = projPending ?? fetchInternalProjects();
+      projPending.then((s) => { if (!cancelled) setSet(s); });
+    }
+    const fn = (s: Set<string>) => { if (!cancelled) setSet(s); };
+    projSubs.add(fn);
+    return () => { cancelled = true; projSubs.delete(fn); };
+  }, []);
+  return set;
+}
+
+export function refreshInternalProjects() {
+  projPending = fetchInternalProjects();
+  return projPending;
+}
