@@ -36,6 +36,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
   const [state, setState] = useState<BriefingData>({
     counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0 },
     quickTasks: [],
+    unclaimedQuickTasks: [],
     projects: [],
     loading: true,
   });
@@ -45,6 +46,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       setState({
         counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0 },
         quickTasks: [],
+        unclaimedQuickTasks: [],
         projects: [],
         loading: false,
       });
