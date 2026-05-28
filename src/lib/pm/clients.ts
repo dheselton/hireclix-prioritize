@@ -86,6 +86,49 @@ export function refreshInternalProjects() {
   return projPending;
 }
 
+// --- Project → Career Site request lookup (cached) ---
+let csCache: Set<string> | null = null;
+let csPending: Promise<Set<string>> | null = null;
+const csSubs = new Set<(s: Set<string>) => void>();
+
+async function fetchCareerSiteProjects(): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("pm_projects")
+    .select("id,custom_fields")
+    .eq("work_type", "request");
+  const set = new Set<string>();
+  for (const r of ((data ?? []) as { id: string; custom_fields: any }[])) {
+    const t = r.custom_fields?.request_type;
+    if (typeof t === "string" && t.startsWith("careersite_")) set.add(r.id);
+  }
+  csCache = set;
+  csSubs.forEach((fn) => { try { fn(set); } catch {} });
+  return set;
+}
+
+/** Returns the set of project IDs whose request_type belongs to the Career Site Support family. */
+export function useCareerSiteProjectIds(): Set<string> {
+  const [set, setSet] = useState<Set<string>>(csCache ?? new Set());
+  useEffect(() => {
+    let cancelled = false;
+    if (csCache) {
+      setSet(csCache);
+    } else {
+      csPending = csPending ?? fetchCareerSiteProjects();
+      csPending.then((s) => { if (!cancelled) setSet(s); });
+    }
+    const fn = (s: Set<string>) => { if (!cancelled) setSet(s); };
+    csSubs.add(fn);
+    return () => { cancelled = true; csSubs.delete(fn); };
+  }, []);
+  return set;
+}
+
+export function refreshCareerSiteProjects() {
+  csPending = fetchCareerSiteProjects();
+  return csPending;
+}
+
 /** True when a project/task's custom_fields.request_type belongs to the Career Site Support family. */
 export function isCareerSiteRequest(customFields: any): boolean {
   const t = customFields?.request_type;
