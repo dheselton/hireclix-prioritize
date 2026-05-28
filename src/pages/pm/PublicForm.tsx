@@ -74,10 +74,10 @@ export default function PublicForm() {
           createdProjectId = (anyProj as any).id;
           const { data } = await supabase.from("pm_tasks").insert({
             project_id: (anyProj as any).id, title, type: "design",
-            status: requestedBy ? "claimed" : "unclaimed",
+            status: "unclaimed",
             priority: "medium", duration_days: 1,
             description: JSON.stringify(values, null, 2),
-            assignee_id: requestedBy,
+            assignee_id: null,
           } as any).select().single();
           createdTaskId = (data as any)?.id;
         }

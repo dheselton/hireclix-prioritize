@@ -1,67 +1,30 @@
-## Goal
-Stop forcing downloads / new-tab hops for attachments and links. Click anything → opens an in-app preview modal. Links on cards get rich-ish thumbs (favicon + title) instead of bare URLs.
+## Bug
+Intake (Quick Request via `CreateWorkDialog` and `PublicForm`) auto-assigns every new task to the requester and sets `status = "claimed"`. Result: when a teammate submits a request on their own behalf, the task lands pre-claimed and never surfaces in the unclaimed Quick Tasks queue, so the team misses new work.
 
-## Scope (UI-only, no schema changes)
-Surfaces touched:
-- `RequestContextPanel` (request files + reference links)
-- `FilesTab` (Project → Files: project files + per-task files + links)
-- `AssetHub` (Task workspace uploads grid)
-- `AttachmentsSection` (TaskDrawer quick edit)
+Requester is project-level metadata only (drives Briefing visibility via `pm_project_members.role='requester'`). It must not auto-own the task.
 
-Behavior elsewhere (intake upload, delete, etc.) stays untouched.
+## Fix
+All intake-created tasks are always `unclaimed` with `assignee_id = null`, regardless of who submitted them or whether the requester is on the team.
 
-## New shared pieces
+### Files
 
-1. `src/components/pm/attachments/AttachmentPreviewModal.tsx`
-   Single Dialog-based viewer. Props: `{ open, onOpenChange, items: PreviewItem[], index, onIndexChange }`.
-   - Header: filename / link label, kind pill, `Open in new tab` + `Download` (files only) + close.
-   - Prev / Next arrows + keyboard ← → when `items.length > 1`.
-   - Body renders by detected kind:
-     - **image** (`png|jpe?g|gif|webp|svg|avif`) → `<img>` fit-contain, dark backdrop.
-     - **pdf** → `<iframe src={url}#toolbar=1>` full-height.
-     - **video** (`mp4|webm|mov|m4v`) → `<video controls>`.
-     - **audio** (`mp3|wav|m4a|ogg`) → `<audio controls>`.
-     - **office** (`docx?|xlsx?|pptx?`) → `<iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encoded}">`.
-     - **text** (`txt|md|csv|json|log`) → fetch then `<pre>` (csv → simple table parse).
-     - **link** → try `<iframe src=url>`; on `load` timeout/error fall back to Microlink-style card (favicon via `https://www.google.com/s2/favicons?domain=…&sz=64`, hostname, "Open in new tab").
-     - **fallback** → big file icon + Open / Download buttons.
+1. `src/components/pm/CreateWorkDialog.tsx` (~L172–186, Quick Request flow)
+   - Drop the `assigneeForTasks` derivation.
+   - In the `pm_tasks` insert: set `status: "unclaimed"` and `assignee_id: null` unconditionally.
+   - Keep `created_by`, `requested_by` (on project), description mirroring, and attachment behavior unchanged.
 
-2. `src/lib/pm/previewKind.ts`
-   `detectKind(nameOrUrl, type): PreviewKind` + extension regex constants (moved out of FilesTab/AssetHub).
+2. `src/pages/pm/PublicForm.tsx` (~L75–81, single-task action)
+   - Same change: `status: "unclaimed"`, `assignee_id: null`. Public form already shouldn't auto-claim; this also makes the team-internal case correct if a logged-in teammate uses a public link.
 
-3. `src/components/pm/attachments/AttachmentThumb.tsx`
-   Small square/rounded tile used in card-like surfaces. Image → real thumb; PDF/Office/video/audio → extension chip with kind icon; link → favicon + hostname. Click triggers `openPreview(items, i)`.
+### Out of scope (intentionally unchanged)
+- `createTask()` in `src/lib/pm/api.ts` keeps auto-claiming the creator. That helper is used inside the workspace (PM/designer adding follow-up tasks to an existing project), where "I created it for myself" is the right default. Intake never calls it.
+- Project-level `requested_by` and the `role='requester'` membership row stay — they're how the project shows up in the requester's Briefing without owning tasks.
+- No schema or RLS changes.
 
-4. `src/components/pm/attachments/PreviewProvider.tsx`
-   Context exposing `openPreview(items, startIndex)`. Mounted once near the PM app root (next to existing `TaskDrawer`/`FloatingTimerTray`) so any surface can open the modal without prop-drilling. Hook: `usePreview()`.
+### Verify
+- Submit a Quick Request as a team member → resulting task appears in the unclaimed section of Quick Tasks with the amber Claim CTA, not in "my claimed" tasks.
+- Submitter-role intake still works the same (already unclaimed before).
+- Existing pre-claimed tasks are not migrated (only fixes new submissions).
 
-## Surface changes
-
-- **AssetHub**: replace the current `<a href target=_blank>` wrapper with a button that calls `openPreview(items, i)`. Hover Download icon → real `<a download>` (kept). Grid layout unchanged.
-- **FilesTab → Row**: same swap — name link & thumbnail click → `openPreview`. Build `items` from `[...filteredProject, ...filteredTask]` so the modal can page through. Download icon stays as a true `<a download>`.
-- **RequestContextPanel**:
-  - Files list → render as a small thumb row using `AttachmentThumb` (2–4 across), click opens preview.
-  - Links list → use `AttachmentThumb` link variant (favicon + label/host), click opens preview (iframe-or-card).
-- **AttachmentsSection (TaskDrawer)**: file rows + link rows → click name or thumb → `openPreview`. Existing download/delete buttons stay.
-
-## Edge cases
-- Supabase `task-attachments` bucket is public → direct URLs work in iframe/img/video.
-- Office viewer needs a publicly reachable URL (we have one). If user is offline / iframe blocked → fallback panel shows Open + Download.
-- Links that block embedding (X-Frame-Options/CSP): detect via 2.5 s `load` timeout → swap to favicon card automatically. No server calls required.
-- Keep all existing delete/upload logic intact.
-
-## Non-goals
-- No server-side thumbnailing, no new tables, no Microlink API key, no PDF.js bundle (native `<iframe>` is enough for the Supabase public URLs we serve).
-- No changes to upload, drag-drop, or RLS.
-
-## Files
-- new: `src/components/pm/attachments/AttachmentPreviewModal.tsx`
-- new: `src/components/pm/attachments/AttachmentThumb.tsx`
-- new: `src/components/pm/attachments/PreviewProvider.tsx`
-- new: `src/lib/pm/previewKind.ts`
-- edit: `src/components/pm/workspace/AssetHub.tsx`
-- edit: `src/components/pm/project/FilesTab.tsx`
-- edit: `src/components/pm/workspace/RequestContextPanel.tsx`
-- edit: `src/components/pm/drawer/AttachmentsSection.tsx`
-- edit: PM app shell (where `TaskDrawer`/`FloatingTimerTray` mount) to wrap children in `PreviewProvider`.
-- update `mem://index.md` Core line about attachments → "All attachment/link surfaces use PreviewProvider + AttachmentPreviewModal; never link out to new tab as the primary action."
+### Memory
+Add a line to Core: "Intake (CreateWorkDialog + PublicForm) ALWAYS creates tasks `unclaimed` with `assignee_id=null`. Requester is project metadata only — never task owner."

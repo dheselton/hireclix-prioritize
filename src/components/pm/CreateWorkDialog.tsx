@@ -169,19 +169,20 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       } as any);
       let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
       if (!titles.length) titles = [reqForm.title.trim()];
-      const assigneeForTasks = reqRequestedBy ?? user?.id ?? null;
       // Mirror request description onto each auto-created task so context follows the work.
       const taskDescription = reqForm.description.trim() || null;
+      // Intake tasks ALWAYS start unclaimed — requester (even if on team) is project
+      // metadata, never the task owner. Otherwise unclaimed queue would miss new work.
       await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
         project_id: proj.id,
         title,
         type: "design",
-        status: assigneeForTasks ? "claimed" : "unclaimed",
+        status: "unclaimed",
         priority: "medium",
         duration_days: 1,
         sort_order: i * 10,
         created_by: user?.id ?? null,
-        assignee_id: assigneeForTasks,
+        assignee_id: null,
         description: taskDescription,
       })) as any);
 
