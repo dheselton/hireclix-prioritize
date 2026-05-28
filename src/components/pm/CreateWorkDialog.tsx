@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Zap, FolderKanban, X, Plus, FileText, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,8 @@ import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
+import { useInternalClientIds } from "@/lib/pm/clients";
+import { Sparkle } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -30,12 +32,35 @@ interface Props {
 
 type Step = "select" | "request" | "project-entry" | "project-blank";
 
-const REQUEST_TYPES: { value: RequestType; label: string }[] = [
-  { value: "web_edit",   label: "Web edit" },
-  { value: "banner_ads", label: "Banner ads" },
-  { value: "social",     label: "Social post" },
-  { value: "email",      label: "Email" },
-  { value: "general",    label: "General" },
+const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
+  web_edit: "Web edit",
+  landing_page: "New landing page",
+  careersite_update: "Career site update",
+  banner_ads: "Banner ads",
+  social: "Social post",
+  email: "Email",
+  copywriting: "Copywriting",
+  job_description: "Job description",
+  infographic: "Infographic",
+  recruiter_collateral: "Recruiter collateral",
+  event_collateral: "Event collateral",
+  print_collateral: "Print collateral",
+  swag_apparel: "Swag / apparel",
+  video_edit: "Video edit",
+  photo_retouch: "Photo retouch",
+  presentation: "Presentation",
+  brand_assets: "Brand assets",
+  general: "General",
+};
+
+const REQUEST_TYPE_GROUPS: { label: string; types: RequestType[] }[] = [
+  { label: "Web",                types: ["web_edit", "landing_page", "careersite_update"] },
+  { label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
+  { label: "Content",            types: ["copywriting", "job_description", "infographic"] },
+  { label: "Print & Collateral", types: ["recruiter_collateral", "event_collateral", "print_collateral", "swag_apparel"] },
+  { label: "Media",              types: ["video_edit", "photo_retouch", "presentation"] },
+  { label: "Brand",              types: ["brand_assets"] },
+  { label: "Other",              types: ["general"] },
 ];
 
 export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
