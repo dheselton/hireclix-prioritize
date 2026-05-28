@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SectionShell } from "./SectionShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Link as LinkIcon, FileIcon, Download, Trash2, X } from "lucide-react";
+import { Upload, Link as LinkIcon, Download, Trash2, X } from "lucide-react";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 
 interface Att {
   id: string;
@@ -23,7 +25,6 @@ interface Att {
 }
 
 const BUCKET = "task-attachments";
-const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
 
 function fmtSize(b?: number | null) {
   if (!b) return "";
