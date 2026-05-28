@@ -28,8 +28,33 @@ interface Props {
   unclaimed: QuickTask[];
 }
 
+function isCareerSiteType(v: string | null) {
+  return typeof v === "string" && v.startsWith("careersite_");
+}
+
+function careerSiteLabel(v: string) {
+  const sub = v.replace(/^careersite_/, "");
+  const map: Record<string, string> = {
+    bug: "Bug fix",
+    content: "Content change",
+    jobfeed: "API / Job feed",
+    new_page: "New page",
+    sow: "SOW project",
+    support: "General support",
+    update: "Update",
+  };
+  return map[sub] ?? sub.replace(/_/g, " ");
+}
+
 function TypePill({ value }: { value: string | null }) {
   if (!value) return null;
+  if (isCareerSiteType(value)) {
+    return (
+      <span className="careersite-pill shrink-0">
+        Career Site · {careerSiteLabel(value)}
+      </span>
+    );
+  }
   return (
     <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
       {value.replace(/_/g, " ")}
@@ -42,7 +67,7 @@ function MetaRow({ t }: { t: QuickTask }) {
   if (t.client_name) parts.push(t.client_name);
   if (t.project_title && t.project_title !== t.client_name) parts.push(t.project_title);
   return (
-    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+    <div className="flex items-center gap-1.5 mt-0.5 min-w-0 flex-wrap">
       <TypePill value={t.request_type} />
       {parts.length > 0 && (
         <span className="text-[11px] text-muted-foreground truncate">
