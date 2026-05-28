@@ -10,7 +10,7 @@ import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
-import { useInternalProjectIds } from "@/lib/pm/clients";
+import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import type { PmProject, PmTask, TaskPriority } from "@/types/pm";
 
 interface Props {
@@ -43,13 +43,18 @@ export function ProjectTaskCard({
   const overdue = isOverdue(task);
   const team = useProjectTeam(task.project_id);
   const internalProjects = useInternalProjectIds();
+  const careersiteProjects = useCareerSiteProjects();
   const isInternal = internalProjects.has(task.project_id);
+  const csRequestType = careersiteProjects.get(task.project_id) ?? null;
+  const isCareerSite = !!csRequestType;
+  const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
   return (
     <Card className={cn(
       "card-lift border border-border",
-      unclaimed && !isInternal && "border-l-4 border-l-amber-500",
-      isInternal && "internal-border-l",
+      unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
+      isInternal && !isCareerSite && "internal-border-l",
+      isCareerSite && "careersite-border-l",
     )}>
       <CardContent className="p-4 space-y-2">
         {showProjectHeader && project && (
@@ -62,6 +67,9 @@ export function ProjectTaskCard({
               <span className="font-bold text-sm truncate">{project.title}</span>
               <WorkTypeBadge workType="project" compact />
               {isInternal && <span className="internal-pill">Internal</span>}
+              {isCareerSite && (
+                <span className="careersite-pill">Career Site{csLabel ? ` · ${csLabel}` : ""}</span>
+              )}
             </Link>
             {phaseName && (
               <Badge variant="outline" className="text-[10px] capitalize shrink-0">

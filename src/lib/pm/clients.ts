@@ -85,3 +85,70 @@ export function refreshInternalProjects() {
   projPending = fetchInternalProjects();
   return projPending;
 }
+
+// --- Project → Career Site request lookup (cached) ---
+// Map<projectId, request_type> so consumers can also derive the subtype label.
+let csCache: Map<string, string> | null = null;
+let csPending: Promise<Map<string, string>> | null = null;
+const csSubs = new Set<(m: Map<string, string>) => void>();
+
+async function fetchCareerSiteProjects(): Promise<Map<string, string>> {
+  const { data } = await supabase
+    .from("pm_projects")
+    .select("id,custom_fields")
+    .eq("work_type", "request");
+  const map = new Map<string, string>();
+  for (const r of ((data ?? []) as { id: string; custom_fields: any }[])) {
+    const t = r.custom_fields?.request_type;
+    if (typeof t === "string" && t.startsWith("careersite_")) map.set(r.id, t);
+  }
+  csCache = map;
+  csSubs.forEach((fn) => { try { fn(map); } catch {} });
+  return map;
+}
+
+/** Returns Map<projectId, request_type> for projects in the Career Site Support family. */
+export function useCareerSiteProjects(): Map<string, string> {
+  const [map, setMap] = useState<Map<string, string>>(csCache ?? new Map());
+  useEffect(() => {
+    let cancelled = false;
+    if (csCache) {
+      setMap(csCache);
+    } else {
+      csPending = csPending ?? fetchCareerSiteProjects();
+      csPending.then((m) => { if (!cancelled) setMap(m); });
+    }
+    const fn = (m: Map<string, string>) => { if (!cancelled) setMap(m); };
+    csSubs.add(fn);
+    return () => { cancelled = true; csSubs.delete(fn); };
+  }, []);
+  return map;
+}
+
+export function refreshCareerSiteProjects() {
+  csPending = fetchCareerSiteProjects();
+  return csPending;
+}
+
+/** True when a project/task's custom_fields.request_type belongs to the Career Site Support family. */
+export function isCareerSiteRequest(customFields: any): boolean {
+  const t = customFields?.request_type;
+  return typeof t === "string" && t.startsWith("careersite_");
+}
+
+/** Pretty sub-type label for a Career Site request (strips the "careersite_" prefix). */
+export function careerSiteSubtype(customFields: any): string | null {
+  const t = customFields?.request_type;
+  if (typeof t !== "string" || !t.startsWith("careersite_")) return null;
+  const sub = t.replace(/^careersite_/, "");
+  const map: Record<string, string> = {
+    bug: "Bug fix",
+    content: "Content change",
+    jobfeed: "API / Job feed",
+    new_page: "New page",
+    sow: "SOW project",
+    support: "General support",
+    update: "Update",
+  };
+  return map[sub] ?? sub.replace(/_/g, " ");
+}

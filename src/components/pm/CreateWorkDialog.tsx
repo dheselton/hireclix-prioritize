@@ -20,7 +20,7 @@ import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
 import { Sparkle } from "lucide-react";
 
 interface Props {
@@ -36,6 +36,12 @@ const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   web_edit: "Web edit",
   landing_page: "New landing page",
   careersite_update: "Career site update",
+  careersite_bug: "Career site · Bug fix",
+  careersite_content: "Career site · Content change",
+  careersite_jobfeed: "Career site · API / Job feed",
+  careersite_new_page: "Career site · New page",
+  careersite_sow: "Career site · SOW project",
+  careersite_support: "Career site · General support",
   banner_ads: "Banner ads",
   social: "Social post",
   email: "Email",
@@ -54,6 +60,7 @@ const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
 };
 
 const REQUEST_TYPE_GROUPS: { label: string; types: RequestType[] }[] = [
+  { label: "Career Site Support", types: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support"] },
   { label: "Web",                types: ["web_edit", "landing_page", "careersite_update"] },
   { label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
   { label: "Content",            types: ["copywriting", "job_description", "infographic"] },
@@ -199,6 +206,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           submitter_email: user?.email ?? null,
           created_project_id: proj.id,
         } as any);
+      }
+      // Refresh the Career Site project cache so the new request gets its teal treatment immediately.
+      if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
+        refreshCareerSiteProjects().catch(() => {});
       }
       toast.success("Request created");
       onOpenChange(false);
