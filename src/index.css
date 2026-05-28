@@ -150,6 +150,17 @@ All colors MUST be HSL.
     border: 1px solid hsl(var(--internal) / 0.3);
   }
 
+  /* Career Site Support accent treatment for cards/pills */
+  .careersite-border-l { border-left-width: 4px !important; border-left-color: hsl(var(--careersite)) !important; }
+  .careersite-pill {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0 0.5rem; height: 1.125rem; border-radius: 9999px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+    background: hsl(var(--careersite) / 0.12);
+    color: hsl(var(--careersite));
+    border: 1px solid hsl(var(--careersite) / 0.3);
+  }
+
   /* Card hover: subtle lift + colored ring. Use on any always-stroked card. */
   .card-lift {
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
