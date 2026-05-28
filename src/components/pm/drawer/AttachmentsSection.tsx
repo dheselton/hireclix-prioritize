@@ -42,6 +42,12 @@ export function AttachmentsSection({ taskId, projectId }: { taskId: string; proj
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
   const users = useMockUsers();
+  const { openPreview } = usePreview();
+
+  const previewItems = useMemo(
+    () => items.map(a => ({ id: a.id, name: a.name, url: a.url, type: a.type })),
+    [items]
+  );
 
   async function load() {
     const { data } = await supabase.from("pm_attachments").select("*").eq("task_id", taskId).order("uploaded_at", { ascending: false });
