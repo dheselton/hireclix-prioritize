@@ -49,7 +49,7 @@ export function ProjectHeader({ project, onAddTask }: {
         {clientName && <> <span className="mx-1">/</span><span>{clientName}</span></>}
       </nav>
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
           <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
             {project.status.replace(/_/g, " ")}
@@ -57,6 +57,7 @@ export function ProjectHeader({ project, onAddTask }: {
           <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
             {(project.work_type ?? "project")}
           </Badge>
+          <RequesterBadge requestedBy={(project as any).requested_by ?? null} />
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {memberIds.length > 0 && (
