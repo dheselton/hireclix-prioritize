@@ -83,10 +83,11 @@ export default function PublicForm() {
         }
       }
 
+      // Always attach intake files/links at project level so every related task sees them.
       if ((files.length || links.length) && createdProjectId) {
         await persistIntakeAttachments({
           projectId: createdProjectId,
-          taskId: createdTaskId,
+          taskId: null,
           files, links,
           userId: requestedBy,
         });
