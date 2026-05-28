@@ -130,28 +130,28 @@ export function AttachmentsSection({ taskId, projectId }: { taskId: string; proj
       )}
 
       <div className="mt-3 space-y-1">
-        {items.map(a => {
+        {items.map((a, i) => {
           const uploader = users.find(u => u.id === a.uploaded_by);
-          const isImg = a.type === "file" && IMG_RE.test(a.name);
           const ownMine = !!user && a.uploaded_by === user.id;
+          const open = () => openPreview(previewItems, i);
           return (
             <div key={a.id} className="group flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40">
-              {isImg ? (
-                <img src={a.url} alt={a.name} className="h-9 w-9 object-cover rounded" />
-              ) : a.type === "link" ? (
-                <LinkIcon className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <FileIcon className="h-5 w-5 text-muted-foreground" />
-              )}
+              <AttachmentThumb
+                item={{ id: a.id, name: a.name, url: a.url, type: a.type }}
+                onClick={open}
+                variant="row"
+              />
               <div className="flex-1 min-w-0">
-                <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-sm truncate block hover:underline">{a.name}</a>
+                <button type="button" onClick={open} className="text-sm truncate block hover:underline text-left w-full">{a.name}</button>
                 <div className="text-[11px] text-muted-foreground">
                   {fmtSize(a.file_size)} {a.file_size ? "·" : ""} {uploader?.name ?? "—"} · {fmtDate(a.uploaded_at?.slice(0, 10))}
                 </div>
               </div>
-              <a href={a.url} target="_blank" rel="noopener noreferrer" download className="opacity-0 group-hover:opacity-100">
-                <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
-              </a>
+              {a.type !== "link" && (
+                <a href={a.url} target="_blank" rel="noopener noreferrer" download={a.name} className="opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
+                </a>
+              )}
               {ownMine && (
                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => remove(a)}>
                   <Trash2 className="h-3.5 w-3.5" />
