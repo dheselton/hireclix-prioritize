@@ -13,6 +13,7 @@ import type { PmTask, TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
 
 import { ControlPanel } from "@/components/pm/workspace/ControlPanel";
+import { TaskMetaCard } from "@/components/pm/workspace/TaskMetaCard";
 import { LinksSection } from "@/components/pm/workspace/LinksSection";
 import { AssetHub } from "@/components/pm/workspace/AssetHub";
 import { CollabHub } from "@/components/pm/workspace/CollabHub";
@@ -169,6 +170,7 @@ export default function TaskWorkspace() {
 
           {/* RIGHT */}
           <aside className="space-y-3">
+            <TaskMetaCard projectId={task.project_id} phaseName={crumbs.phaseName} />
             <ControlPanel task={task} setTask={setTask} patch={patch} />
             <QuickChecklist taskId={task.id} />
 
