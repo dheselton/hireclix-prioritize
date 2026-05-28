@@ -163,7 +163,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
       if (!titles.length) titles = [reqForm.title.trim()];
       const assigneeForTasks = reqRequestedBy ?? user?.id ?? null;
-      const { data: insertedTasks } = await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
+      // Mirror request description onto each auto-created task so context follows the work.
+      const taskDescription = reqForm.description.trim() || null;
+      await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
         project_id: proj.id,
         title,
         type: "design",
@@ -173,14 +175,15 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         sort_order: i * 10,
         created_by: user?.id ?? null,
         assignee_id: assigneeForTasks,
-      })) as any).select("id");
+        description: taskDescription,
+      })) as any);
 
-      // Attach staged files/links to the first auto-created task (fallback to project-level).
-      const firstTaskId = (insertedTasks as any[] | null)?.[0]?.id ?? null;
+      // Always attach staged files/links at the PROJECT level so every task in the
+      // request can see the original assets/refs.
       if (reqFiles.length || reqLinks.length) {
         await persistIntakeAttachments({
           projectId: proj.id,
-          taskId: firstTaskId,
+          taskId: null,
           files: reqFiles,
           links: reqLinks,
           userId: user?.id ?? null,

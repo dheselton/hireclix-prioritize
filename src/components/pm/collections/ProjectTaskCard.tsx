@@ -47,7 +47,7 @@ export function ProjectTaskCard({
   const unclaimed = task.status === "unclaimed";
   return (
     <Card className={cn(
-      "hover:shadow-md hover:border-foreground/20 transition",
+      "card-lift border border-border",
       unclaimed && !isInternal && "border-l-4 border-l-amber-500",
       isInternal && "internal-border-l",
     )}>

@@ -55,7 +55,7 @@ export function BoardTaskCard({
     >
       <Card
         onClick={onClick}
-        className={`cursor-pointer transition hover:border-info ${overlay ? "opacity-80 shadow-lg" : ""} ${isInternal ? "internal-border-l" : unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
+        className={`card-lift cursor-pointer border border-border ${overlay ? "opacity-80 shadow-lg" : ""} ${isInternal ? "internal-border-l" : unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
       >
         <CardContent className="p-3 space-y-2 flex flex-col">
           <div className="flex items-start gap-2">

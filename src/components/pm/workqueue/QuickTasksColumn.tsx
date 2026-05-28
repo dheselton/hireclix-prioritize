@@ -5,16 +5,16 @@ import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { buildQueueLink } from "@/lib/pm/links";
 import { fmtDate } from "@/lib/pm/format";
-import type { PmTask } from "@/types/pm";
+import type { EnrichedQuickTask } from "@/lib/pm/briefing";
 
-type QuickTask = PmTask & { project_title: string | null };
+type QuickTask = EnrichedQuickTask;
 
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function urgency(t: PmTask): "overdue" | "today" | "upcoming" | "none" {
+function urgency(t: QuickTask): "overdue" | "today" | "upcoming" | "none" {
   if (!t.due_date) return "none";
   const today = todayIso();
   if (t.due_date < today) return "overdue";
@@ -26,6 +26,31 @@ interface Props {
   tasks: QuickTask[];
   totalCount: number;
   unclaimed: QuickTask[];
+}
+
+function TypePill({ value }: { value: string | null }) {
+  if (!value) return null;
+  return (
+    <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+      {value.replace(/_/g, " ")}
+    </span>
+  );
+}
+
+function MetaRow({ t }: { t: QuickTask }) {
+  const parts: string[] = [];
+  if (t.client_name) parts.push(t.client_name);
+  if (t.project_title && t.project_title !== t.client_name) parts.push(t.project_title);
+  return (
+    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+      <TypePill value={t.request_type} />
+      {parts.length > 0 && (
+        <span className="text-[11px] text-muted-foreground truncate">
+          {parts.join(" · ")}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }) {
@@ -42,16 +67,14 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
   return (
     <button
       onClick={() => onOpen(t.id)}
-      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md border border-transparent hover:border-primary/40 hover:bg-accent/40 transition-colors text-left"
+      className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md border border-border bg-card text-left"
     >
-      <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
+      <span className={`h-2 w-2 rounded-full shrink-0 mt-1.5 ${dot}`} />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{t.title}</div>
-        {t.project_title && (
-          <div className="text-[11px] text-muted-foreground truncate">{t.project_title}</div>
-        )}
+        <MetaRow t={t} />
       </div>
-      <div className="shrink-0">{badge}</div>
+      <div className="shrink-0 mt-0.5">{badge}</div>
     </button>
   );
 }
@@ -64,19 +87,17 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
     t.due_date ? <span className="text-[10px] text-muted-foreground">{fmtDate(t.due_date)}</span> :
     null;
   return (
-    <div className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md bg-amber-500/5 border border-amber-500/30 border-l-4 border-l-amber-500 hover:bg-amber-500/10 transition-colors">
-      <span className="h-2 w-2 rounded-full shrink-0 bg-amber-500 unclaimed-pulse" />
+    <div className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md bg-amber-500/5 border border-amber-500/40 border-l-4 border-l-amber-500">
+      <span className="h-2 w-2 rounded-full shrink-0 mt-1.5 bg-amber-500 unclaimed-pulse" />
       <button
         onClick={() => onOpen(t.id)}
         className="flex-1 min-w-0 text-left"
       >
         <div className="text-sm font-medium truncate">{t.title}</div>
-        {t.project_title && (
-          <div className="text-[11px] text-muted-foreground truncate">{t.project_title}</div>
-        )}
+        <MetaRow t={t} />
       </button>
-      {badge && <div className="shrink-0">{badge}</div>}
-      <ClaimButton task={t} size="sm" />
+      {badge && <div className="shrink-0 mt-0.5">{badge}</div>}
+      <div className="mt-0.5"><ClaimButton task={t} size="sm" /></div>
     </div>
   );
 }

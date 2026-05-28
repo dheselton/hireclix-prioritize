@@ -35,7 +35,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       type="button"
       onClick={() => onOpen(task.id)}
       className={cn(
-        "group w-full text-left rounded-md border bg-card hover:border-foreground/30 hover:bg-muted/40 transition px-3 py-2",
+        "card-lift group w-full text-left rounded-md border border-border bg-card px-3 py-2",
         "flex items-center gap-3",
         unclaimed && !isInternal && "border-l-4 border-l-amber-500",
         isInternal && "internal-border-l",
