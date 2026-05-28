@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, ChevronRight, Download, ExternalLink, X,
+  ChevronLeft, ChevronRight, Download, ExternalLink,
   FileText, FileIcon, Image as ImageIcon, Video, Music, Link as LinkIcon,
 } from "lucide-react";
 import { detectKind, faviconFor, hostOf, PreviewKind, extOf } from "@/lib/pm/previewKind";
