@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, Upload, Link as LinkIcon, FileIcon, Download, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Upload, Link as LinkIcon, Download, Trash2, X } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PmTask } from "@/types/pm";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 
 const BUCKET = "task-attachments";
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
@@ -49,6 +51,7 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
   const { user } = useCurrentUser();
   const users = useMockUsers();
   const isPM = user?.role === "pm";
+  const { openPreview } = usePreview();
 
   const [type, setType] = useState<FilterType>("all");
   const [uploader, setUploader] = useState<string>("all");
@@ -137,26 +140,32 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
     await load();
   }
 
+  const allPreviewItems = useMemo(
+    () => [...filteredProject, ...filteredTask].map(f => ({ id: f.id, name: f.name, url: f.url, type: f.type })),
+    [filteredProject, filteredTask]
+  );
+
   function Row({ f, onRemove }: { f: FileRow; onRemove: () => void }) {
     const u = users.find(x => x.id === f.uploaded_by);
-    const isImg = f.type === "file" && IMG_RE.test(f.name);
     const canDelete = isPM || (user && f.uploaded_by === user.id);
+    const idx = allPreviewItems.findIndex(p => p.id === f.id);
+    const open = () => openPreview(allPreviewItems, Math.max(0, idx));
     return (
       <div className="group flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40">
-        {isImg ? (
-          <img src={f.url} alt={f.name} className="h-9 w-9 object-cover rounded" />
-        ) : f.type === "link" ? (
-          <LinkIcon className="h-5 w-5 text-muted-foreground" />
-        ) : (
-          <FileIcon className="h-5 w-5 text-muted-foreground" />
-        )}
+        <AttachmentThumb
+          item={{ id: f.id, name: f.name, url: f.url, type: f.type }}
+          onClick={open}
+          variant="row"
+        />
         <div className="flex-1 min-w-0">
-          <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-sm truncate block hover:underline">{f.name}</a>
+          <button type="button" onClick={open} className="text-sm truncate block hover:underline text-left w-full">
+            {f.name}
+          </button>
           <div className="text-[11px] text-muted-foreground">
             {fmtSize(f.file_size)}{f.file_size ? " · " : ""}{u?.name ?? "—"} · {fmtDate(f.created_at?.slice(0, 10))}
           </div>
         </div>
-        <a href={f.url} target="_blank" rel="noopener noreferrer" download className="opacity-0 group-hover:opacity-100">
+        <a href={f.url} target="_blank" rel="noopener noreferrer" download={f.name} className="opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
           <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
         </a>
         {canDelete && (
