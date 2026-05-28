@@ -131,21 +131,36 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         description: reqForm.description.trim() || null,
         start_date: new Date().toISOString().slice(0, 10),
         created_by: user?.id ?? null,
+        requested_by: reqRequestedBy ?? user?.id ?? null,
         custom_fields: { request_type: requestType, ...requestCustomFields },
       } as any);
       let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
       if (!titles.length) titles = [reqForm.title.trim()];
-      await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
+      const assigneeForTasks = reqRequestedBy ?? user?.id ?? null;
+      const { data: insertedTasks } = await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
         project_id: proj.id,
         title,
         type: "design",
-        status: user?.id ? "claimed" : "unclaimed",
+        status: assigneeForTasks ? "claimed" : "unclaimed",
         priority: "medium",
         duration_days: 1,
         sort_order: i * 10,
         created_by: user?.id ?? null,
-        assignee_id: user?.id ?? null,
-      })) as any);
+        assignee_id: assigneeForTasks,
+      })) as any).select("id");
+
+      // Attach staged files/links to the first auto-created task (fallback to project-level).
+      const firstTaskId = (insertedTasks as any[] | null)?.[0]?.id ?? null;
+      if (reqFiles.length || reqLinks.length) {
+        await persistIntakeAttachments({
+          projectId: proj.id,
+          taskId: firstTaskId,
+          files: reqFiles,
+          links: reqLinks,
+          userId: user?.id ?? null,
+        });
+      }
+
       // Audit submission
       if (internalFormId) {
         await supabase.from("pm_form_submissions").insert({
@@ -170,7 +185,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     if (!projForm.title.trim()) { toast.error("Title is required"); return; }
     setBusy(true);
     try {
-      await createProject({
+      const proj = await createProject({
         title: projForm.title.trim(),
         type: projForm.type as any,
         work_type: "project",
@@ -180,7 +195,17 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         start_date: projForm.kickoff_date || new Date().toISOString().slice(0, 10),
         go_live_date: projForm.go_live_date || null,
         created_by: user?.id ?? null,
+        requested_by: projRequestedBy ?? user?.id ?? null,
       } as any);
+      if (projFiles.length || projLinks.length) {
+        await persistIntakeAttachments({
+          projectId: proj.id,
+          taskId: null,
+          files: projFiles,
+          links: projLinks,
+          userId: user?.id ?? null,
+        });
+      }
       toast.success("Project created");
       onOpenChange(false);
       onCreated?.();
