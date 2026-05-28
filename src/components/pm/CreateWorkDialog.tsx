@@ -10,13 +10,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Zap, FolderKanban, X, Plus, FileText, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { createProject } from "@/lib/pm/api";
+import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
 import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
 import { useInternalRequestForm, slugifyLabel, type RequestType } from "@/components/pm/forms/useInternalRequestForm";
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
+import { ClientSelect } from "@/components/pm/ClientSelect";
+import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
+import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 
 interface Props {
   open: boolean;
