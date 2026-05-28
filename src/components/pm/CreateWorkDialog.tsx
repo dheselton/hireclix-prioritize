@@ -284,13 +284,19 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             </div>
             <div>
               <Label>Client *</Label>
-              <Select value={reqForm.client_id} onValueChange={v => setReqForm({ ...reqForm, client_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ClientSelect
+                value={reqForm.client_id}
+                onChange={(id) => setReqForm({ ...reqForm, client_id: id })}
+                clients={clients}
+                onClientsChanged={(next) => setClients(next)}
+              />
             </div>
+            <RequesterPicker
+              value={reqRequestedBy}
+              onChange={setReqRequestedBy}
+              label="Requested by"
+              helpText="This person will be assigned to the auto-created tasks so they can track updates."
+            />
 
             {/* Conditional fields */}
             {internalFields.length > 0 && (
