@@ -10,13 +10,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Zap, FolderKanban, X, Plus, FileText, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { createProject } from "@/lib/pm/api";
+import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
 import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
 import { useInternalRequestForm, slugifyLabel, type RequestType } from "@/components/pm/forms/useInternalRequestForm";
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
+import { ClientSelect } from "@/components/pm/ClientSelect";
+import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
+import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 
 interface Props {
   open: boolean;
@@ -48,6 +51,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   const [requestType, setRequestType] = useState<RequestType>("web_edit");
   const [reqFieldValues, setReqFieldValues] = useState<Record<string, any>>({});
   const [quickTasks, setQuickTasks] = useState<string[]>([""]);
+  const [reqRequestedBy, setReqRequestedBy] = useState<string | null>(null);
+  const [reqFiles, setReqFiles] = useState<File[]>([]);
+  const [reqLinks, setReqLinks] = useState<StagedLink[]>([]);
   const { formId: internalFormId, fields: internalFields } = useInternalRequestForm(requestType);
 
   // Project (blank)
@@ -55,6 +61,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     title: "", type: "career_site", status: "active", client_id: "",
     kickoff_date: "", go_live_date: "",
   });
+  const [projRequestedBy, setProjRequestedBy] = useState<string | null>(null);
+  const [projFiles, setProjFiles] = useState<File[]>([]);
+  const [projLinks, setProjLinks] = useState<StagedLink[]>([]);
 
   // Wizard
   const [wizardTemplateId, setWizardTemplateId] = useState<string | null>(null);
@@ -66,7 +75,11 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setRequestType("web_edit");
     setReqFieldValues({});
     setQuickTasks([""]);
+    setReqRequestedBy(user?.id ?? null);
+    setReqFiles([]); setReqLinks([]);
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
+    setProjRequestedBy(user?.id ?? null);
+    setProjFiles([]); setProjLinks([]);
     (async () => {
       const [{ data: c }, { data: t }] = await Promise.all([
         supabase.from("clients").select("id,name").order("name"),
@@ -75,7 +88,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       setClients(c || []);
       setTemplates(t || []);
     })();
-  }, [open, initialStep]);
+  }, [open, initialStep, user?.id]);
 
   // Reset answers when request type changes
   useEffect(() => { setReqFieldValues({}); }, [requestType]);
@@ -118,21 +131,36 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         description: reqForm.description.trim() || null,
         start_date: new Date().toISOString().slice(0, 10),
         created_by: user?.id ?? null,
+        requested_by: reqRequestedBy ?? user?.id ?? null,
         custom_fields: { request_type: requestType, ...requestCustomFields },
       } as any);
       let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
       if (!titles.length) titles = [reqForm.title.trim()];
-      await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
+      const assigneeForTasks = reqRequestedBy ?? user?.id ?? null;
+      const { data: insertedTasks } = await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
         project_id: proj.id,
         title,
         type: "design",
-        status: user?.id ? "claimed" : "unclaimed",
+        status: assigneeForTasks ? "claimed" : "unclaimed",
         priority: "medium",
         duration_days: 1,
         sort_order: i * 10,
         created_by: user?.id ?? null,
-        assignee_id: user?.id ?? null,
-      })) as any);
+        assignee_id: assigneeForTasks,
+      })) as any).select("id");
+
+      // Attach staged files/links to the first auto-created task (fallback to project-level).
+      const firstTaskId = (insertedTasks as any[] | null)?.[0]?.id ?? null;
+      if (reqFiles.length || reqLinks.length) {
+        await persistIntakeAttachments({
+          projectId: proj.id,
+          taskId: firstTaskId,
+          files: reqFiles,
+          links: reqLinks,
+          userId: user?.id ?? null,
+        });
+      }
+
       // Audit submission
       if (internalFormId) {
         await supabase.from("pm_form_submissions").insert({
@@ -157,7 +185,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     if (!projForm.title.trim()) { toast.error("Title is required"); return; }
     setBusy(true);
     try {
-      await createProject({
+      const proj = await createProject({
         title: projForm.title.trim(),
         type: projForm.type as any,
         work_type: "project",
@@ -167,7 +195,17 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         start_date: projForm.kickoff_date || new Date().toISOString().slice(0, 10),
         go_live_date: projForm.go_live_date || null,
         created_by: user?.id ?? null,
+        requested_by: projRequestedBy ?? user?.id ?? null,
       } as any);
+      if (projFiles.length || projLinks.length) {
+        await persistIntakeAttachments({
+          projectId: proj.id,
+          taskId: null,
+          files: projFiles,
+          links: projLinks,
+          userId: user?.id ?? null,
+        });
+      }
       toast.success("Project created");
       onOpenChange(false);
       onCreated?.();
@@ -246,13 +284,19 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             </div>
             <div>
               <Label>Client *</Label>
-              <Select value={reqForm.client_id} onValueChange={v => setReqForm({ ...reqForm, client_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ClientSelect
+                value={reqForm.client_id}
+                onChange={(id) => setReqForm({ ...reqForm, client_id: id })}
+                clients={clients}
+                onClientsChanged={(next) => setClients(next)}
+              />
             </div>
+            <RequesterPicker
+              value={reqRequestedBy}
+              onChange={setReqRequestedBy}
+              label="Requested by"
+              helpText="This person will be assigned to the auto-created tasks so they can track updates."
+            />
 
             {/* Conditional fields */}
             {internalFields.length > 0 && (
@@ -306,6 +350,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 )}
               </div>
             </div>
+            <IntakeAttachmentsField
+              files={reqFiles} onFilesChange={setReqFiles}
+              links={reqLinks} onLinksChange={setReqLinks}
+            />
           </div>
         )}
 
@@ -375,13 +423,19 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             </div>
             <div>
               <Label>Client</Label>
-              <Select value={projForm.client_id} onValueChange={v => setProjForm({ ...projForm, client_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ClientSelect
+                value={projForm.client_id}
+                onChange={(id) => setProjForm({ ...projForm, client_id: id })}
+                clients={clients}
+                onClientsChanged={(next) => setClients(next)}
+              />
             </div>
+            <RequesterPicker
+              value={projRequestedBy}
+              onChange={setProjRequestedBy}
+              label="Requested by"
+              helpText="They'll get visibility into project updates even if they aren't the primary worker."
+            />
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Type</Label>
@@ -414,6 +468,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 <DatePicker value={projForm.go_live_date} onChange={v => setProjForm({ ...projForm, go_live_date: v ?? "" })} />
               </div>
             </div>
+            <IntakeAttachmentsField
+              files={projFiles} onFilesChange={setProjFiles}
+              links={projLinks} onLinksChange={setProjLinks}
+            />
           </div>
         )}
 

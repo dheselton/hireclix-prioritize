@@ -79,7 +79,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
     const { data: createdRows } = await supabase
       .from("pm_projects")
       .select("*")
-      .eq("created_by", userId);
+      .or(`created_by.eq.${userId},requested_by.eq.${userId}`);
     ((createdRows ?? []) as PmProject[]).forEach((p) => {
       candidateProjectIds.add(p.id);
       if (!projById.has(p.id)) projById.set(p.id, p);
