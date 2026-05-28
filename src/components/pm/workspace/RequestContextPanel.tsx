@@ -107,15 +107,12 @@ export function RequestContextPanel({ projectId }: Props) {
         );
       })()}
 
-      {(attachments.length > 0 || links.length > 0) && (() => {
-        const fileItems = attachments.map(a => ({ id: a.id, name: a.name, url: a.url, type: "file" }));
-        const linkItems = links.map(l => ({ id: l.id, name: l.label || l.url, url: l.url, type: "link" }));
-        const all = [...fileItems, ...linkItems];
-        const { openPreview } = (window as any).__pmPreviewHook?.() ?? { openPreview: undefined };
-        return (
-          <PreviewSection attachments={fileItems} links={linkItems} all={all} />
-        );
-      })()}
+      {(attachments.length > 0 || links.length > 0) && (
+        <PreviewSection
+          attachments={attachments.map(a => ({ id: a.id, name: a.name, url: a.url, type: "file" }))}
+          links={links.map(l => ({ id: l.id, name: l.label || l.url, url: l.url, type: "link" }))}
+        />
+      )}
     </section>
   );
 }
@@ -123,13 +120,12 @@ export function RequestContextPanel({ projectId }: Props) {
 function PreviewSection({
   attachments,
   links,
-  all,
 }: {
   attachments: { id: string; name: string; url: string; type: string }[];
   links: { id: string; name: string; url: string; type: string }[];
-  all: { id: string; name: string; url: string; type: string }[];
 }) {
   const { openPreview } = usePreview();
+  const all = [...attachments, ...links];
   return (
     <div className="pt-2 border-t border-border/60 space-y-3">
       {attachments.length > 0 && (
@@ -163,7 +159,5 @@ function PreviewSection({
         </div>
       )}
     </div>
-  );
-}
   );
 }
