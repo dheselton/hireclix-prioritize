@@ -423,13 +423,19 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             </div>
             <div>
               <Label>Client</Label>
-              <Select value={projForm.client_id} onValueChange={v => setProjForm({ ...projForm, client_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ClientSelect
+                value={projForm.client_id}
+                onChange={(id) => setProjForm({ ...projForm, client_id: id })}
+                clients={clients}
+                onClientsChanged={(next) => setClients(next)}
+              />
             </div>
+            <RequesterPicker
+              value={projRequestedBy}
+              onChange={setProjRequestedBy}
+              label="Requested by"
+              helpText="They'll get visibility into project updates even if they aren't the primary worker."
+            />
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Type</Label>
