@@ -350,6 +350,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 )}
               </div>
             </div>
+            <IntakeAttachmentsField
+              files={reqFiles} onFilesChange={setReqFiles}
+              links={reqLinks} onLinksChange={setReqLinks}
+            />
           </div>
         )}
 
