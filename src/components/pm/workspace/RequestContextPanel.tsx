@@ -107,45 +107,63 @@ export function RequestContextPanel({ projectId }: Props) {
         );
       })()}
 
-      {(attachments.length > 0 || links.length > 0) && (
-        <div className="pt-2 border-t border-border/60 space-y-2">
-          {attachments.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                <Paperclip className="h-3 w-3" /> Files ({attachments.length})
+      {(attachments.length > 0 || links.length > 0) && (() => {
+        const fileItems = attachments.map(a => ({ id: a.id, name: a.name, url: a.url, type: "file" }));
+        const linkItems = links.map(l => ({ id: l.id, name: l.label || l.url, url: l.url, type: "link" }));
+        const all = [...fileItems, ...linkItems];
+        const { openPreview } = (window as any).__pmPreviewHook?.() ?? { openPreview: undefined };
+        return (
+          <PreviewSection attachments={fileItems} links={linkItems} all={all} />
+        );
+      })()}
+    </section>
+  );
+}
+
+function PreviewSection({
+  attachments,
+  links,
+  all,
+}: {
+  attachments: { id: string; name: string; url: string; type: string }[];
+  links: { id: string; name: string; url: string; type: string }[];
+  all: { id: string; name: string; url: string; type: string }[];
+}) {
+  const { openPreview } = usePreview();
+  return (
+    <div className="pt-2 border-t border-border/60 space-y-3">
+      {attachments.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <Paperclip className="h-3 w-3" /> Files ({attachments.length})
+          </div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))" }}>
+            {attachments.map((a, i) => (
+              <div key={a.id} className="space-y-1">
+                <AttachmentThumb item={a} onClick={() => openPreview(all, i)} />
+                <div className="text-[10px] truncate text-muted-foreground" title={a.name}>{a.name}</div>
               </div>
-              <ul className="space-y-1">
-                {attachments.map((a) => (
-                  <li key={a.id}>
-                    <a href={a.url} target="_blank" rel="noreferrer"
-                       className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-                      <FileText className="h-3.5 w-3.5" /> {a.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {links.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                <LinkIcon className="h-3 w-3" /> Reference links ({links.length})
-              </div>
-              <ul className="space-y-1">
-                {links.map((l) => (
-                  <li key={l.id}>
-                    <a href={l.url} target="_blank" rel="noreferrer"
-                       className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline break-all">
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                      {l.label || l.url}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
-    </section>
+      {links.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <LinkIcon className="h-3 w-3" /> Reference links ({links.length})
+          </div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))" }}>
+            {links.map((l, i) => (
+              <div key={l.id} className="space-y-1">
+                <AttachmentThumb item={l} onClick={() => openPreview(all, attachments.length + i)} />
+                <div className="text-[10px] truncate text-muted-foreground" title={l.name}>{l.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
   );
 }
