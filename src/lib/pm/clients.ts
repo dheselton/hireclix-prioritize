@@ -87,41 +87,42 @@ export function refreshInternalProjects() {
 }
 
 // --- Project → Career Site request lookup (cached) ---
-let csCache: Set<string> | null = null;
-let csPending: Promise<Set<string>> | null = null;
-const csSubs = new Set<(s: Set<string>) => void>();
+// Map<projectId, request_type> so consumers can also derive the subtype label.
+let csCache: Map<string, string> | null = null;
+let csPending: Promise<Map<string, string>> | null = null;
+const csSubs = new Set<(m: Map<string, string>) => void>();
 
-async function fetchCareerSiteProjects(): Promise<Set<string>> {
+async function fetchCareerSiteProjects(): Promise<Map<string, string>> {
   const { data } = await supabase
     .from("pm_projects")
     .select("id,custom_fields")
     .eq("work_type", "request");
-  const set = new Set<string>();
+  const map = new Map<string, string>();
   for (const r of ((data ?? []) as { id: string; custom_fields: any }[])) {
     const t = r.custom_fields?.request_type;
-    if (typeof t === "string" && t.startsWith("careersite_")) set.add(r.id);
+    if (typeof t === "string" && t.startsWith("careersite_")) map.set(r.id, t);
   }
-  csCache = set;
-  csSubs.forEach((fn) => { try { fn(set); } catch {} });
-  return set;
+  csCache = map;
+  csSubs.forEach((fn) => { try { fn(map); } catch {} });
+  return map;
 }
 
-/** Returns the set of project IDs whose request_type belongs to the Career Site Support family. */
-export function useCareerSiteProjectIds(): Set<string> {
-  const [set, setSet] = useState<Set<string>>(csCache ?? new Set());
+/** Returns Map<projectId, request_type> for projects in the Career Site Support family. */
+export function useCareerSiteProjects(): Map<string, string> {
+  const [map, setMap] = useState<Map<string, string>>(csCache ?? new Map());
   useEffect(() => {
     let cancelled = false;
     if (csCache) {
-      setSet(csCache);
+      setMap(csCache);
     } else {
       csPending = csPending ?? fetchCareerSiteProjects();
-      csPending.then((s) => { if (!cancelled) setSet(s); });
+      csPending.then((m) => { if (!cancelled) setMap(m); });
     }
-    const fn = (s: Set<string>) => { if (!cancelled) setSet(s); };
+    const fn = (m: Map<string, string>) => { if (!cancelled) setMap(m); };
     csSubs.add(fn);
     return () => { cancelled = true; csSubs.delete(fn); };
   }, []);
-  return set;
+  return map;
 }
 
 export function refreshCareerSiteProjects() {
