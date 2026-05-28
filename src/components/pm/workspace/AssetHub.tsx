@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Upload, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 
 interface Att {
   id: string; task_id: string; type: string; name: string; url: string;
@@ -12,18 +14,13 @@ interface Att {
 }
 
 const BUCKET = "task-attachments";
-const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
-
-function ext(name: string) {
-  const m = name.match(/\.([a-z0-9]+)$/i);
-  return m ? m[1].toUpperCase() : "FILE";
-}
 
 export function AssetHub({ taskId, projectId }: { taskId: string; projectId: string }) {
   const [items, setItems] = useState<Att[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
+  const { openPreview } = usePreview();
 
   async function load() {
     const { data } = await supabase
@@ -60,6 +57,11 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
     await load();
   }
 
+  const previewItems = useMemo(
+    () => items.map(a => ({ id: a.id, name: a.name, url: a.url, type: a.type })),
+    [items]
+  );
+
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
@@ -85,38 +87,34 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
           if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
         }}
       >
-        {items.map(a => {
-          const isImg = IMG_RE.test(a.name);
+        {items.map((a, i) => {
           const own = !!user && a.uploaded_by === user.id;
           return (
-            <div key={a.id} className="group">
-              <a
-                href={a.url} target="_blank" rel="noopener noreferrer"
-                className="block aspect-square rounded-md border border-border bg-muted/40 overflow-hidden relative hover:border-primary/60 transition"
-              >
-                {isImg ? (
-                  <img src={a.url} alt={a.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground p-2 text-center">
-                    <div className="text-xs font-mono font-semibold mb-1">.{ext(a.name).toLowerCase()}</div>
-                    <div className="text-[10px] line-clamp-2 break-all">{a.name}</div>
-                  </div>
+            <div key={a.id} className="group relative">
+              <AttachmentThumb
+                item={{ id: a.id, name: a.name, url: a.url, type: a.type }}
+                onClick={() => openPreview(previewItems, i)}
+              />
+              <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                <a
+                  href={a.url} target="_blank" rel="noopener noreferrer" download={a.name}
+                  onClick={e => e.stopPropagation()}
+                  className="bg-background/80 backdrop-blur rounded p-1 inline-flex"
+                  title="Download"
+                >
+                  <Download className="h-3 w-3" />
+                </a>
+                {own && (
+                  <button
+                    type="button"
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); remove(a); }}
+                    className="bg-background/80 backdrop-blur rounded p-1 text-destructive"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
                 )}
-                <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
-                  <span className="bg-background/80 backdrop-blur rounded p-1 inline-flex">
-                    <Download className="h-3 w-3" />
-                  </span>
-                  {own && (
-                    <button
-                      type="button"
-                      onClick={e => { e.preventDefault(); e.stopPropagation(); remove(a); }}
-                      className="bg-background/80 backdrop-blur rounded p-1 text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              </a>
+              </div>
               <div className="mt-1 text-xs truncate text-foreground" title={a.name}>{a.name}</div>
             </div>
           );
