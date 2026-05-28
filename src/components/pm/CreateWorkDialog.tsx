@@ -51,6 +51,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   const [requestType, setRequestType] = useState<RequestType>("web_edit");
   const [reqFieldValues, setReqFieldValues] = useState<Record<string, any>>({});
   const [quickTasks, setQuickTasks] = useState<string[]>([""]);
+  const [reqRequestedBy, setReqRequestedBy] = useState<string | null>(null);
+  const [reqFiles, setReqFiles] = useState<File[]>([]);
+  const [reqLinks, setReqLinks] = useState<StagedLink[]>([]);
   const { formId: internalFormId, fields: internalFields } = useInternalRequestForm(requestType);
 
   // Project (blank)
@@ -58,6 +61,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     title: "", type: "career_site", status: "active", client_id: "",
     kickoff_date: "", go_live_date: "",
   });
+  const [projRequestedBy, setProjRequestedBy] = useState<string | null>(null);
+  const [projFiles, setProjFiles] = useState<File[]>([]);
+  const [projLinks, setProjLinks] = useState<StagedLink[]>([]);
 
   // Wizard
   const [wizardTemplateId, setWizardTemplateId] = useState<string | null>(null);
@@ -69,7 +75,11 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setRequestType("web_edit");
     setReqFieldValues({});
     setQuickTasks([""]);
+    setReqRequestedBy(user?.id ?? null);
+    setReqFiles([]); setReqLinks([]);
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
+    setProjRequestedBy(user?.id ?? null);
+    setProjFiles([]); setProjLinks([]);
     (async () => {
       const [{ data: c }, { data: t }] = await Promise.all([
         supabase.from("clients").select("id,name").order("name"),
@@ -78,7 +88,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       setClients(c || []);
       setTemplates(t || []);
     })();
-  }, [open, initialStep]);
+  }, [open, initialStep, user?.id]);
 
   // Reset answers when request type changes
   useEffect(() => { setReqFieldValues({}); }, [requestType]);
