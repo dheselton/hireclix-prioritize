@@ -1,7 +1,16 @@
-I’ll update the Work Queue dashboard layout so the Project Work column has a real bounded height and scrolls internally.
+Wipe all seeded/demo PM data so the app starts clean.
 
-Plan:
-1. Update the dashboard grid wrapper to reserve viewport height for the hero/actions/notes area instead of allowing the project cards to stretch the page.
-2. Make `ProjectWorkColumn` a flex column with `min-h-0` and put only the project card list inside an `overflow-y-auto` container.
-3. Give the scroll area a viewport-based max height at desktop sizes, with a smaller mobile-safe max height, so Notes & Reminders remains visible below the two-column section.
-4. Apply the same `min-h-0`/bounded behavior to the Quick Tasks card only if needed for alignment, without changing its content or business logic.
+What gets deleted (via a single migration using TRUNCATE ... CASCADE):
+- All 16 projects in `pm_projects` (including "Acme Career Site Refresh", "Career Site — Resideo", "Test Career Site Project", "New NGA banner ads", etc.) and everything tied to them — tasks, subtasks, assignments, dependencies, comments, attachments, time entries, active timers, project members, project phases, page links, task snippet links.
+- All 207 rows in `pm_tasks` (covers project tasks and standalone requests).
+- All 6 sample clients (Acme Corp, Globex Inc, BrightSpring Health, The Container Store, Sheppard Pratt, Resideo).
+- The 1 existing personal note in `pm_notes`.
+
+What is preserved:
+- Mock users (TopBar role switcher keeps working).
+- Templates, page groups, snippets, forms, and integrations config.
+- All schema, RLS, grants, triggers — structure untouched.
+
+Technical approach:
+- One migration that runs `TRUNCATE` with `CASCADE` and `RESTART IDENTITY` on the parent tables (`pm_projects`, `pm_tasks`, `pm_notes`, `clients`), letting FKs cascade to dependent tables. This is safer than hand-listing every child table and guarantees nothing is left orphaned.
+- No app code changes needed — pages already render empty states.
