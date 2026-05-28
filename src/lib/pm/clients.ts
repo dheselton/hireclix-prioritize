@@ -85,3 +85,26 @@ export function refreshInternalProjects() {
   projPending = fetchInternalProjects();
   return projPending;
 }
+
+/** True when a project/task's custom_fields.request_type belongs to the Career Site Support family. */
+export function isCareerSiteRequest(customFields: any): boolean {
+  const t = customFields?.request_type;
+  return typeof t === "string" && t.startsWith("careersite_");
+}
+
+/** Pretty sub-type label for a Career Site request (strips the "careersite_" prefix). */
+export function careerSiteSubtype(customFields: any): string | null {
+  const t = customFields?.request_type;
+  if (typeof t !== "string" || !t.startsWith("careersite_")) return null;
+  const sub = t.replace(/^careersite_/, "");
+  const map: Record<string, string> = {
+    bug: "Bug fix",
+    content: "Content change",
+    jobfeed: "API / Job feed",
+    new_page: "New page",
+    sow: "SOW project",
+    support: "General support",
+    update: "Update",
+  };
+  return map[sub] ?? sub.replace(/_/g, " ");
+}
