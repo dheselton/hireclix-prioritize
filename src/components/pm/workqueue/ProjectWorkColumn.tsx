@@ -8,6 +8,7 @@ type ProjectWithMeta = PmProject & {
   overdue_tasks: number;
   my_top_tasks: PmTask[];
   my_total: number;
+  team: string[];
 };
 
 interface Props {
