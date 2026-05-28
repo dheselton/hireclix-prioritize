@@ -170,6 +170,7 @@ export default function TaskWorkspace() {
 
           {/* RIGHT */}
           <aside className="space-y-3">
+            <TaskMetaCard projectId={task.project_id} phaseName={crumbs.phaseName} />
             <ControlPanel task={task} setTask={setTask} patch={patch} />
             <QuickChecklist taskId={task.id} />
 
