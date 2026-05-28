@@ -85,9 +85,8 @@ export function AttachmentPreviewModal({ open, onOpenChange, items, index, onInd
               <Button size="sm" variant="ghost" className="h-8 gap-1"><Download className="h-3.5 w-3.5" />Download</Button>
             </a>
           )}
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onOpenChange(false)}>
-            <X className="h-4 w-4" />
-          </Button>
+          {/* Built-in close X is rendered by DialogContent */}
+          <span className="w-8" />
         </div>
 
         {/* Body */}
