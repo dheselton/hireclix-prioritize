@@ -67,7 +67,8 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   const { user } = useCurrentUser();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(initialStep === "project" ? "project-entry" : (initialStep as Step));
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; is_internal?: boolean }[]>([]);
+  const internalIds = useInternalClientIds();
   const [templates, setTemplates] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -107,7 +108,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setProjFiles([]); setProjLinks([]);
     (async () => {
       const [{ data: c }, { data: t }] = await Promise.all([
-        supabase.from("clients").select("id,name").order("name"),
+        supabase.from("clients").select("id,name,is_internal").order("name"),
         supabase.from("pm_project_templates").select("id,name,type").order("created_at", { ascending: false }),
       ]);
       setClients(c || []);
@@ -291,14 +292,33 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "request" && (
+        {step === "request" && (() => {
+          const selectedClient = clients.find(c => c.id === reqForm.client_id);
+          const isInternal = !!selectedClient && (selectedClient.is_internal || internalIds.has(selectedClient.id));
+          return (
           <div className="space-y-3">
+            {isInternal && (
+              <div className="rounded-md border internal-border-l bg-[hsl(var(--internal)/0.06)] px-3 py-2 flex items-center gap-2">
+                <Sparkle className="h-4 w-4 text-[hsl(var(--internal))]" />
+                <div className="text-xs">
+                  <span className="font-semibold text-[hsl(var(--internal))]">Internal HireClix Request</span>
+                  <span className="text-muted-foreground"> — will be color-coded for internal team visibility.</span>
+                </div>
+              </div>
+            )}
             <div>
               <Label>Request type *</Label>
               <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {REQUEST_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                <SelectContent className="z-50 bg-popover max-h-[60vh]">
+                  {REQUEST_TYPE_GROUPS.map(g => (
+                    <SelectGroup key={g.label}>
+                      <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{g.label}</SelectLabel>
+                      {g.types.map(t => (
+                        <SelectItem key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">Fields below change based on the request type.</p>
@@ -327,7 +347,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             {internalFields.length > 0 && (
               <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {REQUEST_TYPES.find(t => t.value === requestType)?.label} details
+                  {REQUEST_TYPE_LABELS[requestType]} details
                 </div>
                 {internalFields.map((f) => (
                   <FormFieldRenderer
