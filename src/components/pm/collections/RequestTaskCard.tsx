@@ -7,7 +7,9 @@ import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
-import { useInternalProjectIds } from "@/lib/pm/clients";
+import { useInternalProjectIds, useCareerSiteProjectIds } from "@/lib/pm/clients";
+import { useProjectRequestType } from "@/lib/pm/projectRequestType";
+import { careerSiteSubtype } from "@/lib/pm/clients";
 import type { PmTask } from "@/types/pm";
 
 interface Props {
