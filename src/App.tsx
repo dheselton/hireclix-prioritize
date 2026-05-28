@@ -32,6 +32,7 @@ import Snippets from "./pages/pm/Snippets";
 import Help from "./pages/pm/Help";
 import { ActiveTimerProvider } from "@/components/pm/timer/ActiveTimerProvider";
 import { FloatingTimerTray } from "@/components/pm/timer/FloatingTimerTray";
+import { PreviewProvider } from "@/components/pm/attachments/PreviewProvider";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ function App() {
           <Sonner />
           <BrowserRouter>
             <ActiveTimerProvider>
+              <PreviewProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/f/:slug" element={<PublicForm />} />
@@ -90,6 +92,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <FloatingTimerTray />
+              </PreviewProvider>
             </ActiveTimerProvider>
           </BrowserRouter>
         </TooltipProvider>

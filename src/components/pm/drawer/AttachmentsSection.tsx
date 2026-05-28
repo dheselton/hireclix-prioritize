@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SectionShell } from "./SectionShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Link as LinkIcon, FileIcon, Download, Trash2, X } from "lucide-react";
+import { Upload, Link as LinkIcon, Download, Trash2, X } from "lucide-react";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 
 interface Att {
   id: string;
@@ -23,7 +25,6 @@ interface Att {
 }
 
 const BUCKET = "task-attachments";
-const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
 
 function fmtSize(b?: number | null) {
   if (!b) return "";
@@ -41,6 +42,12 @@ export function AttachmentsSection({ taskId, projectId }: { taskId: string; proj
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
   const users = useMockUsers();
+  const { openPreview } = usePreview();
+
+  const previewItems = useMemo(
+    () => items.map(a => ({ id: a.id, name: a.name, url: a.url, type: a.type })),
+    [items]
+  );
 
   async function load() {
     const { data } = await supabase.from("pm_attachments").select("*").eq("task_id", taskId).order("uploaded_at", { ascending: false });
@@ -123,28 +130,28 @@ export function AttachmentsSection({ taskId, projectId }: { taskId: string; proj
       )}
 
       <div className="mt-3 space-y-1">
-        {items.map(a => {
+        {items.map((a, i) => {
           const uploader = users.find(u => u.id === a.uploaded_by);
-          const isImg = a.type === "file" && IMG_RE.test(a.name);
           const ownMine = !!user && a.uploaded_by === user.id;
+          const open = () => openPreview(previewItems, i);
           return (
             <div key={a.id} className="group flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40">
-              {isImg ? (
-                <img src={a.url} alt={a.name} className="h-9 w-9 object-cover rounded" />
-              ) : a.type === "link" ? (
-                <LinkIcon className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <FileIcon className="h-5 w-5 text-muted-foreground" />
-              )}
+              <AttachmentThumb
+                item={{ id: a.id, name: a.name, url: a.url, type: a.type }}
+                onClick={open}
+                variant="row"
+              />
               <div className="flex-1 min-w-0">
-                <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-sm truncate block hover:underline">{a.name}</a>
+                <button type="button" onClick={open} className="text-sm truncate block hover:underline text-left w-full">{a.name}</button>
                 <div className="text-[11px] text-muted-foreground">
                   {fmtSize(a.file_size)} {a.file_size ? "·" : ""} {uploader?.name ?? "—"} · {fmtDate(a.uploaded_at?.slice(0, 10))}
                 </div>
               </div>
-              <a href={a.url} target="_blank" rel="noopener noreferrer" download className="opacity-0 group-hover:opacity-100">
-                <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
-              </a>
+              {a.type !== "link" && (
+                <a href={a.url} target="_blank" rel="noopener noreferrer" download={a.name} className="opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
+                </a>
+              )}
               {ownMine && (
                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => remove(a)}>
                   <Trash2 className="h-3.5 w-3.5" />
