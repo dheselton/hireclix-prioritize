@@ -6,6 +6,7 @@ import { Share2, Plus, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers } from "@/lib/pm/mockUser";
+import { useInternalClientIds } from "@/lib/pm/clients";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus } from "@/types/pm";
 
@@ -23,6 +24,8 @@ export function ProjectHeader({ project, onAddTask }: {
 }) {
   const [clientName, setClientName] = useState<string>("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const internalIds = useInternalClientIds();
+  const isInternal = !!project.client_id && internalIds.has(project.client_id);
 
   useEffect(() => {
     (async () => {
@@ -48,9 +51,10 @@ export function ProjectHeader({ project, onAddTask }: {
         <Link to="/pm/projects" className="hover:text-foreground">Projects</Link>
         {clientName && <> <span className="mx-1">/</span><span>{clientName}</span></>}
       </nav>
-      <div className="flex items-start justify-between gap-4">
+      <div className={`flex items-start justify-between gap-4 ${isInternal ? "internal-border-l pl-3 -ml-3" : ""}`}>
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
+          {isInternal && <span className="internal-pill">Internal · HireClix</span>}
           <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
             {project.status.replace(/_/g, " ")}
           </Badge>
