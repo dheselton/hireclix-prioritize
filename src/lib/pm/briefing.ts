@@ -125,10 +125,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
     };
     const quickSorted = [...quickPool].sort(sortByUrgency);
-    const quickTop = quickSorted.slice(0, 5).map((t) => ({
-      ...t,
-      project_title: projById.get(t.project_id)?.title ?? null,
-    }));
+    const quickTopRaw = quickSorted.slice(0, 5);
 
     // 5b. Unclaimed quick tasks (visible to everyone)
     const { data: unclaimedRaw } = await supabase
@@ -144,10 +141,36 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
         .from("pm_projects").select("*").in("id", unclaimedProjIds);
       ((extraProj ?? []) as PmProject[]).forEach((p) => projById.set(p.id, p));
     }
-    const unclaimedQuick = unclaimedAll
+    const unclaimedQuickRaw = unclaimedAll
       .filter((t) => (projById.get(t.project_id) as any)?.work_type === "request")
-      .sort(sortByUrgency)
-      .map((t) => ({ ...t, project_title: projById.get(t.project_id)?.title ?? null }));
+      .sort(sortByUrgency);
+
+    // 5c. Resolve client names for all referenced projects
+    const allClientIds = new Set<string>();
+    [...quickTopRaw, ...unclaimedQuickRaw].forEach((t) => {
+      const cid = (projById.get(t.project_id) as any)?.client_id;
+      if (cid) allClientIds.add(cid);
+    });
+    const clientNameById = new Map<string, string>();
+    if (allClientIds.size) {
+      const { data: cRows } = await supabase
+        .from("clients").select("id, name").in("id", Array.from(allClientIds));
+      ((cRows ?? []) as Array<{ id: string; name: string }>).forEach((c) =>
+        clientNameById.set(c.id, c.name)
+      );
+    }
+
+    const enrich = (t: PmTask): EnrichedQuickTask => {
+      const p: any = projById.get(t.project_id);
+      return {
+        ...t,
+        project_title: p?.title ?? null,
+        client_name: p?.client_id ? clientNameById.get(p.client_id) ?? null : null,
+        request_type: p?.custom_fields?.request_type ?? null,
+      };
+    };
+    const quickTop = quickTopRaw.map(enrich);
+    const unclaimedQuick = unclaimedQuickRaw.map(enrich);
 
     // 6. Active projects with aggregates
     const activeProjectList = Array.from(candidateProjectIds)
