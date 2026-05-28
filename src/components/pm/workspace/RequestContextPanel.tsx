@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Paperclip, Link as LinkIcon, Sparkles, ExternalLink } from "lucide-react";
+import { Paperclip, Link as LinkIcon, Sparkles } from "lucide-react";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 
 interface Props {
   projectId: string;
