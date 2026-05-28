@@ -79,22 +79,83 @@ export const updateProject = async (id: string, patch: Partial<PmProject>) => {
   return data as unknown as PmProject;
 };
 
-export const createProject = async (p: Partial<PmProject>) => {
+export const createProject = async (p: Partial<PmProject> & { requested_by?: string | null }) => {
   const uid = getCurrentUserId();
   const payload: any = { ...p };
   if (uid && payload.created_by === undefined) payload.created_by = uid;
   const { data, error } = await supabase.from('pm_projects').insert(payload).select().single();
   if (error) throw error;
+  const projectId = (data as any)?.id;
   // Ensure creator is a project member so they're "assigned" to the project.
-  if (uid && (data as any)?.id) {
+  if (uid && projectId) {
     await supabase.from('pm_project_members').insert({
-      project_id: (data as any).id,
-      user_id: uid,
-      role: 'creator',
+      project_id: projectId, user_id: uid, role: 'creator',
+    } as any);
+  }
+  // Add requester as a member too, so the project surfaces in their Briefing.
+  const reqId = (payload.requested_by ?? null) as string | null;
+  if (reqId && projectId && reqId !== uid) {
+    await supabase.from('pm_project_members').insert({
+      project_id: projectId, user_id: reqId, role: 'requester',
     } as any);
   }
   return data as unknown as PmProject;
 };
+
+const ATT_BUCKET = 'task-attachments';
+
+/** Upload staged files + insert staged links after a project/task is created. */
+export async function persistIntakeAttachments(opts: {
+  projectId: string;
+  taskId?: string | null;
+  files: File[];
+  links: { url: string; label: string }[];
+  userId?: string | null;
+}) {
+  const { projectId, taskId, files, links, userId } = opts;
+
+  // Files: prefer task-scoped attachment row when a task exists, otherwise project-level.
+  for (const f of files) {
+    const folder = taskId ? `task/${taskId}` : `project/${projectId}`;
+    const path = `${folder}/${crypto.randomUUID()}-${f.name}`;
+    const { error: upErr } = await supabase.storage.from(ATT_BUCKET).upload(path, f);
+    if (upErr) { console.error('upload failed', upErr); continue; }
+    const { data: pub } = supabase.storage.from(ATT_BUCKET).getPublicUrl(path);
+
+    if (taskId) {
+      await supabase.from('pm_attachments').insert({
+        task_id: taskId, project_id: projectId, type: 'file',
+        name: f.name, url: pub.publicUrl, file_size: f.size,
+        uploaded_by: userId ?? null,
+      } as any);
+    } else {
+      await supabase.from('pm_project_attachments').insert({
+        project_id: projectId, type: 'file',
+        name: f.name, url: pub.publicUrl, file_size: f.size,
+        uploaded_by: userId ?? null,
+      } as any);
+    }
+  }
+
+  // Links: task-scoped if task exists, else project-level.
+  if (links.length) {
+    if (taskId) {
+      await supabase.from('pm_task_links').insert(
+        links.map(l => ({
+          task_id: taskId, url: l.url, label: l.label || null,
+          created_by: userId ?? null,
+        })) as any
+      );
+    } else {
+      await supabase.from('pm_project_links' as any).insert(
+        links.map(l => ({
+          project_id: projectId, url: l.url, label: l.label || null,
+          created_by: userId ?? null,
+        })) as any
+      );
+    }
+  }
+}
 
 export const logActivity = async (params: { project_id?: string; task_id?: string; user_id?: string | null; action: string; payload?: any }) => {
   await supabase.from('pm_activity_log').insert({
