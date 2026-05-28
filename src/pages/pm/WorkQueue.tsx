@@ -65,7 +65,7 @@ export default function WorkQueue() {
   }, [isSubmitter]);
 
   // --- Briefing data for non-submitters ---
-  const { counts, quickTasks, projects, loading } = useBriefingData(isSubmitter ? null : user?.id);
+  const { counts, quickTasks, unclaimedQuickTasks, projects, loading } = useBriefingData(isSubmitter ? null : user?.id);
   const firstName = user?.name?.split(" ")[0] ?? "there";
   const projById = new Map(submitterProjects.map((p) => [p.id, p]));
 
@@ -129,7 +129,7 @@ export default function WorkQueue() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4 mb-4">
-        <QuickTasksColumn tasks={quickTasks} totalCount={counts.quickTasks} />
+        <QuickTasksColumn tasks={quickTasks} totalCount={counts.quickTasks} unclaimed={unclaimedQuickTasks} />
         <ProjectWorkColumn projects={projects} />
       </div>
 

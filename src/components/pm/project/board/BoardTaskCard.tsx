@@ -1,5 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { AvatarStack } from "@/components/pm/AvatarStack";
+import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
 import { groupForStatus } from "@/lib/pm/statusGroups";
 import type { PmTask } from "@/types/pm";
@@ -37,6 +39,8 @@ export function BoardTaskCard({
     : { transform: CSS.Transform.toString(transform), transition };
   const preview = stripHtml(task.description);
   const group = groupForStatus(task.status);
+  const team = useProjectTeam(task.project_id);
+  const unclaimed = task.status === "unclaimed";
 
   return (
     <div
@@ -48,7 +52,7 @@ export function BoardTaskCard({
     >
       <Card
         onClick={onClick}
-        className={`cursor-pointer transition hover:border-info ${overlay ? "opacity-80 shadow-lg" : ""}`}
+        className={`cursor-pointer transition hover:border-info ${overlay ? "opacity-80 shadow-lg" : ""} ${unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
       >
         <CardContent className="p-3 space-y-2 flex flex-col">
           <div className="text-[12px] font-bold leading-snug line-clamp-2">{task.title}</div>
@@ -67,7 +71,12 @@ export function BoardTaskCard({
             <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} />
             <div className="flex items-center gap-2">
               <InlineDatePopover value={task.due_date} onChange={onDateChange} />
-              <AssigneePopover taskId={task.id} assigneeId={task.assignee_id} size="xs" />
+              {team.length > 1 && (
+                <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} muted={unclaimed} />
+              )}
+              {team.length <= 1 && (
+                <AssigneePopover taskId={task.id} assigneeId={task.assignee_id} size="xs" />
+              )}
             </div>
           </div>
         </CardContent>

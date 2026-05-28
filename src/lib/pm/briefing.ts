@@ -20,12 +20,14 @@ export interface BriefingCounts {
 interface BriefingData {
   counts: BriefingCounts;
   quickTasks: (PmTask & { project_title: string | null })[];
+  unclaimedQuickTasks: (PmTask & { project_title: string | null })[];
   projects: (PmProject & {
     total_tasks: number;
     completed_tasks: number;
     overdue_tasks: number;
     my_top_tasks: PmTask[];
     my_total: number;
+    team: string[];
   })[];
   loading: boolean;
 }
@@ -34,6 +36,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
   const [state, setState] = useState<BriefingData>({
     counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0 },
     quickTasks: [],
+    unclaimedQuickTasks: [],
     projects: [],
     loading: true,
   });
@@ -43,6 +46,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       setState({
         counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0 },
         quickTasks: [],
+        unclaimedQuickTasks: [],
         projects: [],
         loading: false,
       });
@@ -120,10 +124,43 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       project_title: projById.get(t.project_id)?.title ?? null,
     }));
 
+    // 5b. Unclaimed quick tasks (visible to everyone)
+    const { data: unclaimedRaw } = await supabase
+      .from("pm_tasks")
+      .select("*")
+      .eq("status", "unclaimed");
+    const unclaimedAll = (unclaimedRaw ?? []) as PmTask[];
+    // Need work_type lookup for these projects too
+    const unclaimedProjIds = Array.from(new Set(unclaimedAll.map((t) => t.project_id)))
+      .filter((id) => !projById.has(id));
+    if (unclaimedProjIds.length) {
+      const { data: extraProj } = await supabase
+        .from("pm_projects").select("*").in("id", unclaimedProjIds);
+      ((extraProj ?? []) as PmProject[]).forEach((p) => projById.set(p.id, p));
+    }
+    const unclaimedQuick = unclaimedAll
+      .filter((t) => (projById.get(t.project_id) as any)?.work_type === "request")
+      .sort(sortByUrgency)
+      .map((t) => ({ ...t, project_title: projById.get(t.project_id)?.title ?? null }));
+
     // 6. Active projects with aggregates
     const activeProjectList = Array.from(candidateProjectIds)
       .map((id) => projById.get(id))
       .filter((p): p is PmProject => !!p && (p as any).work_type === "project" && p.status === "active");
+
+    // 6b. Fetch project members for all candidate projects (for team avatars)
+    const teamByProj = new Map<string, string[]>();
+    if (activeProjectList.length) {
+      const { data: members } = await supabase
+        .from("pm_project_members")
+        .select("project_id, user_id")
+        .in("project_id", activeProjectList.map((p) => p.id));
+      for (const r of (members ?? []) as Array<{ project_id: string; user_id: string }>) {
+        const arr = teamByProj.get(r.project_id) ?? [];
+        if (!arr.includes(r.user_id)) arr.push(r.user_id);
+        teamByProj.set(r.project_id, arr);
+      }
+    }
 
     let projectsOut: BriefingData["projects"] = [];
     if (activeProjectList.length) {
@@ -154,6 +191,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
           overdue_tasks: overdue,
           my_total: mine.length,
           my_top_tasks: mine.slice(0, 3),
+          team: teamByProj.get(p.id) ?? [],
         };
       });
 
@@ -175,6 +213,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
         blocked: blocked.length,
       },
       quickTasks: quickTop,
+      unclaimedQuickTasks: unclaimedQuick,
       projects: projectsOut,
       loading: false,
     });

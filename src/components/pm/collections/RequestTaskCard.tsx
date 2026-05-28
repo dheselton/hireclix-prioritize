@@ -5,6 +5,8 @@ import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AvatarStack } from "@/components/pm/AvatarStack";
+import { useProjectTeam } from "@/lib/pm/projectTeam";
 import type { PmTask } from "@/types/pm";
 
 interface Props {
@@ -23,6 +25,8 @@ function isOverdue(t: PmTask) {
 /** Compact, thin card for request-type tasks. Optimized for speed/throughput. */
 export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) {
   const overdue = isOverdue(task);
+  const team = useProjectTeam(task.project_id);
+  const unclaimed = task.status === "unclaimed";
   return (
     <button
       type="button"
@@ -30,6 +34,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       className={cn(
         "group w-full text-left rounded-md border bg-card hover:border-foreground/30 hover:bg-muted/40 transition px-3 py-2",
         "flex items-center gap-3",
+        unclaimed && "border-l-4 border-l-amber-500",
       )}
     >
       <div className="flex-1 min-w-0">
@@ -49,7 +54,12 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
         </div>
       </div>
       <StatusPill status={task.status} />
-      <UserAvatar userId={task.assignee_id} size="xs" />
+      {unclaimed ? (
+        team.length > 0 ? <AvatarStack userIds={team} max={3} size="xs" muted /> : null
+      ) : (
+        <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} />
+      )}
+      {unclaimed && team.length === 0 && <UserAvatar userId={task.assignee_id} size="xs" />}
       <div onClick={(e) => e.stopPropagation()}>
         <ClaimButton task={task} onChanged={onChanged} />
       </div>
