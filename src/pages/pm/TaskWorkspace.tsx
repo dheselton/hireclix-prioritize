@@ -25,6 +25,7 @@ import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPan
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
+import { TaskDrawer } from "@/components/pm/TaskDrawer";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
@@ -186,6 +187,7 @@ export default function TaskWorkspace() {
           </aside>
         </div>
       </div>
+      <TaskDrawer />
     </div>
   );
 }

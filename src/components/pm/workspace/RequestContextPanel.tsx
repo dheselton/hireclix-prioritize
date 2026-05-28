@@ -72,18 +72,38 @@ export function RequestContextPanel({ projectId }: Props) {
         </div>
       )}
 
-      {fieldEntries.length > 0 && (
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          {fieldEntries.map((f) => (
-            <div key={f.key} className="min-w-0">
-              <dt className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{f.label}</dt>
-              <dd className="text-sm text-foreground break-words">
-                {Array.isArray(f.value) ? f.value.join(", ") : String(f.value ?? "")}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
+      {fieldEntries.length > 0 && (() => {
+        const isLong = (f: typeof fieldEntries[number]) =>
+          f.type === "textarea" ||
+          /description|notes|details|copy|content/i.test(f.key) ||
+          (typeof f.value === "string" && f.value.length > 120);
+        const shortFields = fieldEntries.filter((f) => !isLong(f));
+        const longFields = fieldEntries.filter(isLong);
+        return (
+          <>
+            {shortFields.length > 0 && (
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                {shortFields.map((f) => (
+                  <div key={f.key} className="min-w-0">
+                    <dt className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{f.label}</dt>
+                    <dd className="text-sm text-foreground break-words">
+                      {Array.isArray(f.value) ? f.value.join(", ") : String(f.value ?? "")}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {longFields.map((f) => (
+              <div key={f.key} className="min-w-0">
+                <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{f.label}</div>
+                <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap break-words">
+                  {Array.isArray(f.value) ? f.value.join(", ") : String(f.value ?? "")}
+                </div>
+              </div>
+            ))}
+          </>
+        );
+      })()}
 
       {(attachments.length > 0 || links.length > 0) && (
         <div className="pt-2 border-t border-border/60 space-y-2">
