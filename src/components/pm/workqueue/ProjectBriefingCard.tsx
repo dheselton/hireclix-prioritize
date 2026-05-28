@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
+import { AvatarStack } from "@/components/pm/AvatarStack";
 import { fmtDate } from "@/lib/pm/format";
 import type { PmTask, PmProject } from "@/types/pm";
 
@@ -12,6 +13,7 @@ type ProjectWithMeta = PmProject & {
   overdue_tasks: number;
   my_top_tasks: PmTask[];
   my_total: number;
+  team: string[];
 };
 
 function todayIso() {
@@ -63,6 +65,9 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
           >
             {project.title}
           </Link>
+          {project.team.length > 0 && (
+            <AvatarStack userIds={project.team} max={4} size="xs" />
+          )}
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${statusClass}`}>
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {statusLabel}
