@@ -468,6 +468,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 <DatePicker value={projForm.go_live_date} onChange={v => setProjForm({ ...projForm, go_live_date: v ?? "" })} />
               </div>
             </div>
+            <IntakeAttachmentsField
+              files={projFiles} onFilesChange={setProjFiles}
+              links={projLinks} onLinksChange={setProjLinks}
+            />
           </div>
         )}
 
