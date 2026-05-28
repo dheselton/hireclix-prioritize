@@ -76,7 +76,7 @@ export function QuickTasksColumn({ tasks, totalCount }: Props) {
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/60">
+      <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/60 shrink-0">
         <span className="text-[11px] text-muted-foreground">
           {remaining > 0 ? `${remaining} more in queue` : ""}
         </span>
