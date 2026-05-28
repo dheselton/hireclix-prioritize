@@ -400,7 +400,8 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
               links={reqLinks} onLinksChange={setReqLinks}
             />
           </div>
-        )}
+          );
+        })()}
 
         {step === "project-entry" && (
           <div className="space-y-4">
