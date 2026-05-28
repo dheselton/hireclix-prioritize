@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers } from "@/lib/pm/mockUser";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useInternalClientIds, isCareerSiteRequest } from "@/lib/pm/clients";
 
 interface Props {
   projectId: string;
@@ -111,9 +111,14 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
         )}
         {requestType && (
           <Row icon={Tag} label="Request type">
-            <span className="inline-flex text-[11px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-              {requestType}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex text-[11px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                {requestType}
+              </span>
+              {isCareerSiteRequest(meta.custom_fields) && (
+                <span className="careersite-pill">Career Site</span>
+              )}
+            </div>
           </Row>
         )}
         {phaseName && (

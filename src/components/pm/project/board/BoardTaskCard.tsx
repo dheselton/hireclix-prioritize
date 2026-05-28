@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
-import { useInternalProjectIds } from "@/lib/pm/clients";
+import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
 import { groupForStatus } from "@/lib/pm/statusGroups";
 import type { PmTask } from "@/types/pm";
@@ -42,7 +42,11 @@ export function BoardTaskCard({
   const group = groupForStatus(task.status);
   const team = useProjectTeam(task.project_id);
   const internalProjects = useInternalProjectIds();
+  const careersiteProjects = useCareerSiteProjects();
   const isInternal = internalProjects.has(task.project_id);
+  const csRequestType = careersiteProjects.get(task.project_id) ?? null;
+  const isCareerSite = !!csRequestType;
+  const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
 
   return (
@@ -55,12 +59,15 @@ export function BoardTaskCard({
     >
       <Card
         onClick={onClick}
-        className={`card-lift cursor-pointer border border-border ${overlay ? "opacity-80 shadow-lg" : ""} ${isInternal ? "internal-border-l" : unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
+        className={`card-lift cursor-pointer border border-border ${overlay ? "opacity-80 shadow-lg" : ""} ${isCareerSite ? "careersite-border-l" : isInternal ? "internal-border-l" : unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
       >
         <CardContent className="p-3 space-y-2 flex flex-col">
           <div className="flex items-start gap-2">
             <div className="text-[12px] font-bold leading-snug line-clamp-2 flex-1">{task.title}</div>
             {isInternal && <span className="internal-pill shrink-0">Internal</span>}
+            {isCareerSite && (
+              <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>
+            )}
           </div>
           {preview && (
             <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
