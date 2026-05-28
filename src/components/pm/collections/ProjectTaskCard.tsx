@@ -8,6 +8,8 @@ import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AvatarStack } from "@/components/pm/AvatarStack";
+import { useProjectTeam } from "@/lib/pm/projectTeam";
 import type { PmProject, PmTask, TaskPriority } from "@/types/pm";
 
 interface Props {
@@ -38,8 +40,10 @@ export function ProjectTaskCard({
   task, project, phaseName, clientName, showProjectHeader = true, onOpen, onChanged,
 }: Props) {
   const overdue = isOverdue(task);
+  const team = useProjectTeam(task.project_id);
+  const unclaimed = task.status === "unclaimed";
   return (
-    <Card className="hover:shadow-md hover:border-foreground/20 transition">
+    <Card className={cn("hover:shadow-md hover:border-foreground/20 transition", unclaimed && "border-l-4 border-l-amber-500")}>
       <CardContent className="p-4 space-y-2">
         {showProjectHeader && project && (
           <div className="flex items-center justify-between gap-2 min-w-0">
@@ -81,7 +85,13 @@ export function ProjectTaskCard({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <UserAvatar userId={task.assignee_id} size="xs" />
+            {unclaimed ? (
+              team.length > 0
+                ? <AvatarStack userIds={team} max={3} size="xs" muted />
+                : <UserAvatar userId={task.assignee_id} size="xs" />
+            ) : (
+              <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} />
+            )}
             <div onClick={(e) => e.stopPropagation()}>
               <ClaimButton task={task} onChanged={onChanged} />
             </div>
