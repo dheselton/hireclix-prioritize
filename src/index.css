@@ -102,6 +102,10 @@ All colors MUST be HSL.
     /* Internal (HireClix) accent — distinguishes internal work from client work */
     --internal: 270 70% 55%;
     --internal-foreground: 0 0% 100%;
+
+    /* Career Site Support accent — teal, denotes career-site request family */
+    --careersite: 188 70% 42%;
+    --careersite-foreground: 0 0% 100%;
   }
 }
 
