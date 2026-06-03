@@ -25,6 +25,7 @@ import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
 import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPanel";
+import { IncidentContextBanner } from "@/components/pm/workspace/IncidentContextBanner";
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
@@ -166,6 +167,13 @@ export default function TaskWorkspace() {
           {/* LEFT */}
           <div className="space-y-6 min-w-0">
             <RequestContextPanel projectId={task.project_id} />
+            {(task.custom_fields as any)?.snippet_incident_id && (
+              <IncidentContextBanner
+                incidentId={(task.custom_fields as any).snippet_incident_id}
+                snippetId={(task.custom_fields as any).snippet_id ?? null}
+                currentTaskId={task.id}
+              />
+            )}
             <DescriptionSection task={task} patch={patch} />
             {task.status === "blocked" && <BlockerBanner />}
             <AssetHub taskId={task.id} projectId={task.project_id} />
