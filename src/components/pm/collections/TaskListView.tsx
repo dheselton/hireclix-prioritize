@@ -158,7 +158,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
               );
             })}
             {!sorted.length && (
-              <tr><td colSpan={enableBulk ? 8 : 7} className="p-6 text-center text-muted-foreground italic">No tasks.</td></tr>
+              <tr><td colSpan={enableBulk ? 8 : 7} className="p-6 text-center text-muted-foreground italic">No work here yet.</td></tr>
             )}
           </tbody>
         </table>
