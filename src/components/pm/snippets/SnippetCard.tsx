@@ -1,16 +1,28 @@
 import { useState } from "react";
-import { Check, ChevronDown, ChevronUp, Copy, MoreHorizontal, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  MoreHorizontal,
+  Video,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CodeBlock } from "./CodeBlock";
 import { SnippetUsageFooter } from "./SnippetUsageFooter";
+import { SnippetIncidentBanner } from "./SnippetIncidentBanner";
+import { SnippetIncidentDrawer } from "./SnippetIncidentDrawer";
+import { ReportBrokenSnippetDialog } from "./ReportBrokenSnippetDialog";
 import type { Snippet, SnippetCategory } from "@/lib/pm/snippets";
 
 interface Props {
@@ -26,6 +38,8 @@ export function SnippetCard({ snippet, category, onEdit, onDuplicate, onDelete }
   const [copied, setCopied] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [incidentDrawerId, setIncidentDrawerId] = useState<string | null>(null);
 
   const variation = snippet.variations[activeVar] ?? snippet.variations[0];
   const tagsVisible = showAllTags ? snippet.tags : snippet.tags.slice(0, 4);
@@ -82,12 +96,19 @@ export function SnippetCard({ snippet, category, onEdit, onDuplicate, onDelete }
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
             <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
+              <AlertTriangle className="h-4 w-4 mr-2" /> Report broken
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-destructive">
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <SnippetIncidentBanner snippetId={snippet.id} onOpen={setIncidentDrawerId} />
 
       {snippet.description && (
         <p className="text-[13px] text-muted-foreground line-clamp-3">{snippet.description}</p>
@@ -170,6 +191,17 @@ export function SnippetCard({ snippet, category, onEdit, onDuplicate, onDelete }
           )}
         </Button>
       </div>
+
+      <ReportBrokenSnippetDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        snippet={snippet}
+        onCreated={id => setIncidentDrawerId(id)}
+      />
+      <SnippetIncidentDrawer
+        incidentId={incidentDrawerId}
+        onOpenChange={v => !v && setIncidentDrawerId(null)}
+      />
     </Card>
   );
 }
