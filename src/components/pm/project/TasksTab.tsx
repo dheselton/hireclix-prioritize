@@ -9,7 +9,8 @@ import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { STATUS_GROUPS, groupForStatus, typeBadgeClass, priorityDotClass, type StatusGroupId } from "@/lib/pm/statusGroups";
-import type { PmTask, TaskStatus } from "@/types/pm";
+import type { PmTask, PmDependency, TaskStatus } from "@/types/pm";
+import { computeHiddenTaskIds, firstUnmetPredecessor } from "@/lib/pm/reveal";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor,
   useSensor, useSensors, closestCenter,
