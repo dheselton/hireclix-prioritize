@@ -26,6 +26,7 @@ import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
 import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPanel";
 import { IncidentContextBanner } from "@/components/pm/workspace/IncidentContextBanner";
+import { UpcomingBanner } from "@/components/pm/workspace/UpcomingBanner";
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
