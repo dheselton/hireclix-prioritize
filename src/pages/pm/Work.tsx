@@ -145,10 +145,10 @@ export default function Work() {
             <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
             {user?.role !== "submitter" && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")}>
+                <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
                   <Zap className="h-4 w-4 mr-1" /> Quick Request
                 </Button>
-                <Button size="sm" onClick={() => setOpenCreate("project")}>
+                <Button size="sm" onClick={() => setOpenCreate("project")} title="Multi-phase project with timeline">
                   <FolderKanban className="h-4 w-4 mr-1" /> Project
                 </Button>
               </>
