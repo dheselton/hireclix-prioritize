@@ -90,10 +90,18 @@ export default function Board() {
 
   const workType = useWorkTypeFilter("board");
 
+  const coMap = useTaskAssigneesMap();
+  const myCoTaskIds = useMemo(() => {
+    if (!user?.id) return new Set<string>();
+    const s = new Set<string>();
+    coMap.forEach((users, tid) => { if (users.includes(user.id)) s.add(tid); });
+    return s;
+  }, [coMap, user?.id]);
+
   const visible = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
-    v = applyTaskMeMode(v, isMe, user?.id);
-    v = applyTaskChips(v, chips.active, user?.id);
+    v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
+    v = applyTaskChips(v, chips.active, user?.id, undefined, myCoTaskIds);
     if (workType.value !== "all") {
       v = v.filter(t => {
         const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
