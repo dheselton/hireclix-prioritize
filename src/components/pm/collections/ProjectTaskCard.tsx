@@ -8,6 +8,7 @@ import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
