@@ -1,30 +1,43 @@
-## Bug
-Intake (Quick Request via `CreateWorkDialog` and `PublicForm`) auto-assigns every new task to the requester and sets `status = "claimed"`. Result: when a teammate submits a request on their own behalf, the task lands pre-claimed and never surfaces in the unclaimed Quick Tasks queue, so the team misses new work.
+## Problem
 
-Requester is project-level metadata only (drives Briefing visibility via `pm_project_members.role='requester'`). It must not auto-own the task.
+The unclaimed banner says "48 unclaimed team tasks" but clicking it leaves you on the Daily Briefing (`/pm`), which ignores `chips=` / `workType=` / `section=` URL params. Same for every hero chip in `DailyBriefingHero` (Quick Tasks, Active Projects, Overdue, Blocked) — they all point to `/pm?chips=…`, which renders the briefing, not a filtered list.
+
+Only `/pm/board` actually consumes those params (via `useChipFilters("board")` + `useWorkTypeFilter("board")`).
 
 ## Fix
-All intake-created tasks are always `unclaimed` with `assignee_id = null`, regardless of who submitted them or whether the requester is on the team.
 
-### Files
+### 1. Make `buildQueueLink` land on a filterable view
 
-1. `src/components/pm/CreateWorkDialog.tsx` (~L172–186, Quick Request flow)
-   - Drop the `assigneeForTasks` derivation.
-   - In the `pm_tasks` insert: set `status: "unclaimed"` and `assignee_id: null` unconditionally.
-   - Keep `created_by`, `requested_by` (on project), description mirroring, and attachment behavior unchanged.
+`src/lib/pm/links.ts` — change the default `base` from `/pm` to `/pm/board`. The `chips`, `workType`, and `section` params already match what Board reads on mount, so all existing call sites start working without changing their args.
 
-2. `src/pages/pm/PublicForm.tsx` (~L75–81, single-task action)
-   - Same change: `status: "unclaimed"`, `assignee_id: null`. Public form already shouldn't auto-claim; this also makes the team-internal case correct if a logged-in teammate uses a public link.
+### 2. Audit & fix non-`buildQueueLink` callouts
 
-### Out of scope (intentionally unchanged)
-- `createTask()` in `src/lib/pm/api.ts` keeps auto-claiming the creator. That helper is used inside the workspace (PM/designer adding follow-up tasks to an existing project), where "I created it for myself" is the right default. Intake never calls it.
-- Project-level `requested_by` and the `role='requester'` membership row stay — they're how the project shows up in the requester's Briefing without owning tasks.
-- No schema or RLS changes.
+- **`UnclaimedBanner`** — already uses `buildQueueLink({ chips: ["unclaimed"] })`; once #1 lands it deep-links to `/pm/board?chips=unclaimed`. Drop `section: "inbox"` (Board has no inbox section).
+- **`DailyBriefingHero`** — fine after #1 (Quick Tasks, Active Projects, Overdue, Blocked all become real filtered views).
+- **`KpiStrip`** (`src/components/pm/project/KpiStrip.tsx`) — Overdue / Blocked / Open numbers are currently plain text. Wrap each in a `<Link>` to `/pm/board?chips=overdue|blocked` (Open → `chips=` empty, scoped via project? since Board is global, just link to the project's own Tasks tab `/pm/projects/:id`). Specifically:
+  - Overdue → `/pm/board?chips=overdue`
+  - Blocked → `/pm/board?chips=blocked`
+  - Open → `/pm/projects/:id` (in-project)
+  - Progress / Go-live stay non-clickable (informational).
+- **`OverviewTab` callouts** — the "X overdue tasks" link currently uses `buildQueueLink({ chips: ["overdue"] })` which is global; that's misleading on a project page. Change to `/pm/projects/:id` (keeps the user on the project). Other callouts already link to the project — leave them.
+- **`QuickTasksColumn` "View all"** — keep as-is; works correctly after #1 (`/pm/board?chips=assigned_to_me&workType=request&section=quick-hits`).
 
-### Verify
-- Submit a Quick Request as a team member → resulting task appears in the unclaimed section of Quick Tasks with the amber Claim CTA, not in "my claimed" tasks.
-- Submitter-role intake still works the same (already unclaimed before).
-- Existing pre-claimed tasks are not migrated (only fixes new submissions).
+### 3. Establish the rule in memory
 
-### Memory
-Add a line to Core: "Intake (CreateWorkDialog + PublicForm) ALWAYS creates tasks `unclaimed` with `assignee_id=null`. Requester is project metadata only — never task owner."
+Update `mem://index.md` Core rule from the existing "every CTA, alert/banner, and stat tile must be a deep link" to also state:
+- Deep links MUST target a view that honors the filter (today: `/pm/board` for chip/workType filters, `/pm/projects/:id` for project-scoped callouts).
+- Stat tiles with a count (overdue, blocked, in-review, unclaimed, etc.) must be clickable.
+- "Actionable = important."
+
+## Out of scope
+
+- Adding chip-param support to the Daily Briefing page itself (would duplicate Board). The briefing stays a dashboard; clicks fan out to Board/project views.
+- Adding chip-param support to `TasksTab` (project-level chip filtering) — KpiStrip + OverviewTab callouts use Board or project home for now.
+- Backfilling chip support into Workload / Timeline views — none of the surfaced callouts target them.
+
+## Verification
+
+1. From `/pm`, click the amber "48 unclaimed team tasks" banner → lands on `/pm/board` with the Unclaimed chip active and the board filtered to those 48.
+2. Hero "1 Quick Task" / "2 Active Projects" / "0 Overdue" / Blocked chips each open `/pm/board` with the corresponding chip(s) + workType pre-applied.
+3. Open any project → `KpiStrip` Overdue/Blocked are clickable and deep-link to Board with the matching chip; Open links into the project.
+4. `OverviewTab` "X overdue tasks" callout opens the project (no longer the global queue).
