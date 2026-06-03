@@ -7,6 +7,9 @@ import { Plus, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
 import { STATUS_COLORS } from "@/types/pm";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { TaskPicker } from "./TaskPicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { REVEAL_MODE_LABEL, REVEAL_MODE_SHORT } from "@/lib/pm/reveal";
+import type { RevealMode } from "@/types/pm";
 
 interface Dep { id: string; task_id: string; depends_on_task_id: string; reveal_mode?: string; }
 interface TaskLite { id: string; title: string; status: string; project_id: string; project_title?: string; }
