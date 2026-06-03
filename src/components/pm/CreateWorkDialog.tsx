@@ -225,8 +225,16 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
         refreshCareerSiteProjects().catch(() => {});
       }
-      toast.success("Request created");
-      onOpenChange(false);
+      // Auto-add watchers configured for this client + request type.
+      const watcherIds = await applyClientWatchers(proj.id, reqForm.client_id, requestType).catch(() => []);
+      toast.success("Request submitted");
+      setSuccess({
+        projectId: proj.id,
+        requestType,
+        requestTypeLabel: REQUEST_TYPE_LABELS[requestType] ?? null,
+        watcherIds,
+        alias: aliasFor(requestType),
+      });
       onCreated?.();
     } catch (e: any) {
       toast.error(e.message || "Failed to create request");
