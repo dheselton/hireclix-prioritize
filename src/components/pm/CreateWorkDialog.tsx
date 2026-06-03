@@ -542,7 +542,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "project-blank" && (
+        {!success && step === "project-blank" && (
           <div className="space-y-3">
             <div>
               <Label>Title *</Label>
