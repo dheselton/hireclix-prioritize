@@ -80,7 +80,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       ) : (
         <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} />
       )}
-      {unclaimed && team.length === 0 && <UserAvatar userId={task.assignee_id} size="xs" />}
+      {unclaimed && team.length === 0 && <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted />}
       <div onClick={(e) => e.stopPropagation()}>
         <ClaimButton task={task} onChanged={onChanged} />
       </div>
