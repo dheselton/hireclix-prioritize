@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Code, LayoutGrid, List, Plus, Search, Settings2 } from "lucide-react";
+import { AlertTriangle, Code, LayoutGrid, List, Plus, Search, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,6 +27,7 @@ import { SnippetCard } from "@/components/pm/snippets/SnippetCard";
 import { SnippetRow } from "@/components/pm/snippets/SnippetRow";
 import { SnippetEditorDialog } from "@/components/pm/snippets/SnippetEditorDialog";
 import { ManageCategoriesDialog } from "@/components/pm/snippets/ManageCategoriesDialog";
+import { IncidentsTab } from "@/components/pm/snippets/IncidentsTab";
 import { useViewMode } from "@/hooks/useViewMode";
 
 type SortKey = "newest" | "az" | "used";
