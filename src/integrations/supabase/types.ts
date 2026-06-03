@@ -1499,6 +1499,7 @@ export type Database = {
           depends_on_task_id: string
           id: string
           lag_days: number | null
+          reveal_mode: string
           task_id: string
           type: string
         }
@@ -1506,6 +1507,7 @@ export type Database = {
           depends_on_task_id: string
           id?: string
           lag_days?: number | null
+          reveal_mode?: string
           task_id: string
           type?: string
         }
@@ -1513,6 +1515,7 @@ export type Database = {
           depends_on_task_id?: string
           id?: string
           lag_days?: number | null
+          reveal_mode?: string
           task_id?: string
           type?: string
         }
@@ -1752,6 +1755,7 @@ export type Database = {
           from_temp_id: string
           id: string
           lag_days: number | null
+          reveal_mode: string
           template_id: string
           to_temp_id: string
           type: string
@@ -1760,6 +1764,7 @@ export type Database = {
           from_temp_id: string
           id?: string
           lag_days?: number | null
+          reveal_mode?: string
           template_id: string
           to_temp_id: string
           type?: string
@@ -1768,6 +1773,7 @@ export type Database = {
           from_temp_id?: string
           id?: string
           lag_days?: number | null
+          reveal_mode?: string
           template_id?: string
           to_temp_id?: string
           type?: string
