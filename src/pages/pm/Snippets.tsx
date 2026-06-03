@@ -139,6 +139,34 @@ export default function Snippets() {
         </Button>
       </div>
 
+      <div className="mb-6 flex border-b border-border text-[13px]">
+        {([
+          { id: "snippets", label: "Snippets", icon: Code },
+          { id: "incidents", label: "Incidents", icon: AlertTriangle },
+        ] as const).map(t => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "px-4 py-2 -mb-px border-b-2 flex items-center gap-1.5 transition-colors",
+                active
+                  ? "border-foreground text-foreground font-medium"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "incidents" ? (
+        <IncidentsTab />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="space-y-5">
