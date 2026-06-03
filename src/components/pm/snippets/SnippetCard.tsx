@@ -96,12 +96,19 @@ export function SnippetCard({ snippet, category, onEdit, onDuplicate, onDelete }
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
             <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
+              <AlertTriangle className="h-4 w-4 mr-2" /> Report broken
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-destructive">
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <SnippetIncidentBanner snippetId={snippet.id} onOpen={setIncidentDrawerId} />
 
       {snippet.description && (
         <p className="text-[13px] text-muted-foreground line-clamp-3">{snippet.description}</p>
