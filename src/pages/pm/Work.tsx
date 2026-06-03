@@ -124,9 +124,9 @@ export default function Work() {
   }
 
   const subtitle =
-    mode === "list" ? "Everything across the team — quick tasks and project work." :
+    mode === "list" ? "Every project across the team — quick requests and full projects." :
     mode === "kanban" ? "Drag cards across columns to update status." :
-    mode === "projects" ? "Projects with active work — open a card to drill in." :
+    mode === "projects" ? "All projects with active work. Quick requests show as compact cards." :
     "Tasks across all statuses.";
 
   return (
@@ -145,10 +145,10 @@ export default function Work() {
             <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
             {user?.role !== "submitter" && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")}>
+                <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
                   <Zap className="h-4 w-4 mr-1" /> Quick Request
                 </Button>
-                <Button size="sm" onClick={() => setOpenCreate("project")}>
+                <Button size="sm" onClick={() => setOpenCreate("project")} title="Multi-phase project with timeline">
                   <FolderKanban className="h-4 w-4 mr-1" /> Project
                 </Button>
               </>

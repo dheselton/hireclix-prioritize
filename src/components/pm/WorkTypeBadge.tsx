@@ -11,9 +11,11 @@ interface Props {
 export function WorkTypeBadge({ workType, compact = false, className }: Props) {
   if (!workType) return null;
   const isRequest = workType === "request";
-  const label = isRequest ? "Request" : "Project";
+  const label = isRequest ? "Quick" : "Full";
+  const hint = isRequest ? "Quick request — lightweight project" : "Full project — multi-phase work";
   return (
     <span
+      title={hint}
       className={cn(
         "inline-flex items-center rounded-full font-medium leading-none",
         compact

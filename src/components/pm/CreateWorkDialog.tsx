@@ -289,7 +289,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                     <div className="rounded-full bg-muted p-2"><Zap className="h-4 w-4" /></div>
                     <div className="font-semibold">Quick Request</div>
                   </div>
-                  <p className="text-sm text-muted-foreground">Small tasks, quick turnaround (1–3 tasks).</p>
+                  <p className="text-sm text-muted-foreground">A lightweight project for small, fast work (1–3 tasks, no timeline).</p>
                 </CardContent>
               </Card>
             </button>
@@ -300,7 +300,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                     <div className="rounded-full bg-[hsl(var(--role-pm)/0.12)] text-[hsl(var(--role-pm))] p-2"><FolderKanban className="h-4 w-4" /></div>
                     <div className="font-semibold">Full Project</div>
                   </div>
-                  <p className="text-sm text-muted-foreground">Multi-phase work with timeline and dependencies.</p>
+                  <p className="text-sm text-muted-foreground">A multi-phase project with timeline, dependencies, and page groups.</p>
                 </CardContent>
               </Card>
             </button>

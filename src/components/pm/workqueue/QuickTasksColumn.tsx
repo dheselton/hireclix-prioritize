@@ -143,12 +143,13 @@ export function QuickTasksColumn({ tasks, totalCount, unclaimed }: Props) {
 
   return (
     <Card className="p-4 flex flex-col min-h-0 max-h-[55vh]">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
           <Zap className="h-3.5 w-3.5" /> QUICK TASKS
         </h2>
         <span className="text-[11px] text-muted-foreground">{totalCount}</span>
       </div>
+      <p className="text-[11px] text-muted-foreground mb-3">Single-task work from quick requests.</p>
 
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
         {unclaimed.length > 0 && (

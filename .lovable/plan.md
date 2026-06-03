@@ -1,62 +1,69 @@
-## Goal
+## Mental model to land
 
-One sidebar entry — **Work** — that answers "who claimed this? has this started? what's unclaimed? what's in progress?" across quick tasks and project work, with intuitive filtering between the two.
+Everything is a **project**. A **Quick Request** creates a lightweight, single-purpose project (1–3 tasks, no timeline). A **Full Project** is a multi-phase project (timeline, dependencies, page groups). The Work view shows them side by side and lets you filter between the two.
 
-## Navigation & routing
+No data model changes — `pm_projects.work_type` (`"request" | "project"`) stays as the source of truth. Only labels, helper text, tooltips, and empty states change.
 
-- Sidebar: replace the two entries **Board** and **Projects** with one entry **Work** (`/pm/work`), icon `LayoutGrid`. Order stays where Board sits today.
-- New route `/pm/work` renders the merged page.
-- `/pm/board` and `/pm/projects` become `<Navigate to="/pm/work" replace />` so existing deep links (including `buildQueueLink()` which defaults to `/pm/board`) keep working.
-- Update `buildQueueLink()` default base to `/pm/work`; keep `/pm/board` accepted as input.
-- Update the "Core" memory line that names the nav set to read "Work" instead of "Board, Projects".
+## Copy changes
 
-## The Work page (`src/pages/pm/Work.tsx`)
+### 1. `WorkTypeFilterToggle` (src/components/pm/WorkTypeFilterToggle.tsx)
+- Relabel: `All` → **All work**, `Requests` → **Quick requests**, `Projects` → **Full projects**.
+- Add a `title` tooltip on each button: "All work across the team", "Lightweight, single-task projects", "Multi-task projects with a timeline".
 
-Built by consolidating today's `Board.tsx` and `ProjectList.tsx`. Same `CollectionToolbar`, same chip filters, same `WorkTypeFilterToggle`, same `UnclaimedBanner`, same `CreateWorkDialog` Quick Request / Project actions from ProjectList.
+### 2. `CreateWorkDialog` (src/components/pm/CreateWorkDialog.tsx)
+Selector cards on the "Create new work" step:
+- **Quick Request** card subtitle → "A lightweight project for small, fast work (1–3 tasks, no timeline)."
+- **Full Project** card subtitle → "A multi-phase project with timeline, dependencies, and page groups."
+- Dialog titles: keep "New Quick Request" and rename "New Full Project" header copy stays as is. Add one-line helper under each step's title:
+  - Quick Request: "Creates a lightweight project — same home as full projects, just simpler."
+  - Full Project: "Plan multi-phase work with a timeline and dependencies."
 
-**Header**
-- Title: `Work`
-- Subtitle adapts to current mode (same pattern as Board today).
-- Right side actions: `WorkTypeFilterToggle` (All / Quick tasks / Projects), `Quick Request`, `Project` (hidden for submitter, matching ProjectList).
+### 3. `WorkTypeBadge` (src/components/pm/WorkTypeBadge.tsx)
+- Label `"Request"` → **"Quick"**, `"Project"` → **"Full"** (keeps badge narrow). Add `title` tooltip "Quick request — lightweight project" / "Full project — multi-phase work".
 
-**View modes** (segmented control in toolbar, persisted via `useViewMode("work", ...)`):
-1. **All** *(new default)* — flat task list across every project, columns: Title · Project · Type · Status badge · Priority flag · Assignees (MultiAssigneeChip) · Due. Reuses `TaskListView`, with an added "Project" column already supported there. This is the "see everything" answer.
-2. **Projects** — existing `ProjectWorkGrid` (project cards with nested tasks).
-3. **Kanban** — existing kanban columns + Columns popover from Board.
-4. **Grid** — existing `TaskGridView`.
+### 4. Work page (src/pages/pm/Work.tsx)
+- Subtitle for `list` mode → "Every project across the team — quick requests and full projects."
+- Subtitle for `projects` mode → "All projects with active work. Quick requests show as compact cards."
+- Button label `Quick Request` stays; tooltip on `Quick Request` button → "Lightweight project (1–3 tasks)". Tooltip on `Project` button → "Multi-phase project with timeline".
 
-The Work-type toggle is the primary axis for "quick tasks vs larger projects":
-- `all` → everything
-- `quick` → tasks whose project `work_type === "quick"`
-- `project` → tasks whose project `work_type === "project"`
+### 5. Daily Briefing column header (src/components/pm/workqueue/QuickTasksColumn.tsx, src/pages/pm/WorkQueue.tsx)
+- Section header "Quick Tasks" → keep, add one-line helper "Single-task work from quick requests."
+- "Project Work" column helper → "Tasks from multi-phase projects."
 
-Already implemented in both pages today; we keep that hook unchanged and just expose it in every mode (Projects mode filters projects, the other three filter tasks — matching current behavior).
+### 6. Empty states (collections)
+- `TaskListView` "No tasks." → "No work here yet."
+- `TaskGridView` same → "No work here yet."
+- `ProjectGridView` / `ProjectListView` "No projects yet." → "No projects yet. Start a Quick Request or Full Project to get going."
+- `ProjectWorkGrid` "No work here." → "Nothing matches these filters."
 
-**Filters retained as-is**
-- `useChipFilters("work")` (rename the storage key from "board"/"projects" with a one-time migration that reads either old key on first load).
-- Me mode toggle.
-- Type filter (`useTypeFilter("work")`).
+### 7. ProjectHeader (src/components/pm/project/ProjectHeader.tsx)
+- Where a `work_type === "request"` project is shown, render the `WorkTypeBadge` with its new tooltip; no other copy change.
 
-## Files
+## Files touched
 
-- `src/pages/pm/Work.tsx` — new, ~90% lifted from `Board.tsx` with the `mode="all"` default and the Quick Request/Project actions from ProjectList.
-- `src/App.tsx` — add `/pm/work` route, change `/pm/board` and `/pm/projects` to redirects, drop unused `Board`/`ProjectList` imports (files stay on disk for now in case of regressions, but no route renders them).
-- `src/components/AppSidebar.tsx` — collapse the two items into one `{ title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" }`.
-- `src/lib/pm/links.ts` — `buildQueueLink()` default base → `/pm/work`; accept legacy values.
-- `src/hooks/useChipFilters.ts` / `useViewMode.ts` / `useTypeFilter.ts` / `useWorkTypeFilter.ts` — add a tiny read-fallback so `"work"` keys inherit from `"board"` (preferred) or `"projects"` on first load, then write under `"work"`.
-- Memory: update the Core line listing nav items.
+- `src/components/pm/WorkTypeFilterToggle.tsx`
+- `src/components/pm/WorkTypeBadge.tsx`
+- `src/components/pm/CreateWorkDialog.tsx`
+- `src/pages/pm/Work.tsx`
+- `src/pages/pm/WorkQueue.tsx`
+- `src/components/pm/workqueue/QuickTasksColumn.tsx`
+- `src/components/pm/collections/TaskListView.tsx`
+- `src/components/pm/collections/TaskGridView.tsx`
+- `src/components/pm/collections/ProjectGridView.tsx`
+- `src/components/pm/collections/ProjectListView.tsx`
+- `src/components/pm/collections/ProjectWorkGrid.tsx`
+- `src/components/pm/project/ProjectHeader.tsx` (only if badge needs tooltip wiring)
 
-## What stays the same
+## Not changing
 
-- Status model, priority flag, multi-assignee chip — all already consistent from tasks 1–3.
-- `/pm` Daily Briefing, `/pm/projects/:id` detail, `/pm/workload`, `/pm/time`, `/pm/timeline`, Forms, Templates, Snippets, Integrations — untouched.
-- `CreateWorkDialog`, intake flow, attachments, RLS, scheduler — untouched.
+- Database columns, enum values, API payloads, route paths.
+- Visual styling, spacing, icons, component variants.
+- Behavior of any filter, button, or card.
 
 ## Verification
 
-After build:
-1. Sidebar shows a single **Work** item; clicking it lands on `/pm/work` in **All** mode with every task listed (title, project, status badge, priority flag, assignee stack, due date).
-2. Toggling `WorkTypeFilterToggle` between All / Quick / Projects filters in place.
-3. Switching to **Projects** / **Kanban** / **Grid** modes shows today's Board/ProjectList equivalents.
-4. Visiting `/pm/board` or `/pm/projects` directly redirects to `/pm/work`.
-5. A deep link from the Daily Briefing (e.g. unclaimed callout via `buildQueueLink({ chips: ["unclaimed"] })`) lands on Work with the chip applied and the right tasks shown.
+1. Open `/pm/work` → toolbar shows "All work / Quick requests / Full projects"; tooltips appear on hover.
+2. Click "Create new work" → both selector cards have the new subtitles; dialog titles unchanged.
+3. WorkTypeBadge on a task card reads "Quick" or "Full" with tooltip on hover.
+4. Filter to a state with no results → empty state reads new copy.
+5. Daily Briefing columns show the new one-line helpers.
