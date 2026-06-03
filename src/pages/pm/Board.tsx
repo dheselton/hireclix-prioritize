@@ -234,7 +234,7 @@ export default function Board() {
                           {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
                           <div className="flex items-center justify-between pt-1">
                             <span onClick={(e) => e.stopPropagation()}>
-                              <AssigneePopover taskId={t.id} assigneeId={t.assignee_id} size="xs" onChanged={reload} />
+                              <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={reload} />
                             </span>
                             <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
                           </div>
