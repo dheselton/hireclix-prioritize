@@ -301,12 +301,50 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {step === "select" ? "Create new work"
+            {success ? "Submitted"
+              : step === "select" ? "Create new work"
               : step === "request" ? "New Quick Request"
               : step === "project-entry" ? "New Full Project"
               : "New Blank Project"}
           </DialogTitle>
         </DialogHeader>
+
+        {success && (
+          <SubmissionSuccess
+            requestTypeLabel={success.requestTypeLabel}
+            projectId={success.projectId}
+            watcherIds={success.watcherIds}
+            confirmationAlias={success.alias}
+          >
+            <Button
+              onClick={() => {
+                const id = success.projectId;
+                onOpenChange(false);
+                navigate(`/pm/projects/${id}`);
+              }}
+            >
+              Open {success.requestType ? "request" : "project"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSuccess(null);
+                setStep(success.requestType ? "request" : "project-blank");
+                setReqForm({ title: "", client_id: "", description: "" });
+                setReqFieldValues({});
+                setQuickTasks([""]);
+                setReqFiles([]); setReqLinks([]);
+                setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
+                setProjFiles([]); setProjLinks([]);
+              }}
+            >
+              Submit another
+            </Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+          </SubmissionSuccess>
+        )}
+
+
 
         {step === "select" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
