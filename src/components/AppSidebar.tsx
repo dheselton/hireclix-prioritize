@@ -57,13 +57,9 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
   const { role } = useCurrentUser();
-  const baseItems = role === "submitter"
-    ? pmItems.filter(i => SUBMITTER_ITEM_KEYS.has(i.key))
-    : pmItems;
-  const withSnippets = role === "developer" || role === "designer"
-    ? [...baseItems, snippetsItem as any]
-    : baseItems;
-  const items = [...withSnippets, helpItem as any];
+  const visiblePm = pmItems.filter(i => canSee(role, i.key));
+  const withSnippets = canSee(role, "snippets") ? [...visiblePm, snippetsItem] : visiblePm;
+  const items = [...withSnippets, helpItem];
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>
