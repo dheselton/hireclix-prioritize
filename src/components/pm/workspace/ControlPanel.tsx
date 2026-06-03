@@ -76,42 +76,9 @@ export function ControlPanel({
         </Select>
       </Row>
 
-      {/* Assignee */}
-      <Row label="Assignee">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button type="button" className="inline-flex items-center gap-1.5 hover:underline">
-              {assignee ? (
-                <>
-                  <UserAvatar userId={assignee.id} size="xs" />
-                  <span>{assignee.name}</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground italic font-normal">Unassigned</span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-1 z-50 bg-popover">
-            <button
-              type="button"
-              className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded text-muted-foreground"
-              onClick={() => patch({ assignee_id: null })}
-            >
-              Unassigned
-            </button>
-            {users.filter(u => u.role !== "submitter").map(u => (
-              <button
-                key={u.id}
-                type="button"
-                className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex items-center gap-2"
-                onClick={() => patch({ assignee_id: u.id })}
-              >
-                <UserAvatar userId={u.id} size="xs" />
-                {u.name}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
+      {/* Assignees */}
+      <Row label="Assignees">
+        <AssigneeChips taskId={task.id} primaryId={task.assignee_id} />
       </Row>
 
       {/* Due Date */}
