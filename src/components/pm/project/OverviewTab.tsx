@@ -39,7 +39,7 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange, i
     callouts.push({
       tone: "destructive", icon: <AlertTriangle className="h-4 w-4" />,
       msg: <><strong>{overdue}</strong> overdue {overdue === 1 ? "task" : "tasks"}</>,
-      href: buildQueueLink({ chips: ["overdue"] }),
+      href: `/pm/projects/${project.id}`,
     });
   }
   if (goLiveDays !== null && goLiveDays >= 0 && goLiveDays <= 7) {
