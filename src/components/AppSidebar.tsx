@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Inbox, LayoutGrid, FolderKanban, Users, Calendar, FileText,
+  Inbox, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map, BarChart3, Code, BookOpen, Clock,
 } from "lucide-react";
 import {
@@ -16,8 +16,7 @@ import type { PmTask } from "@/types/pm";
 
 const pmItems = [
   { title: "Work Queue", url: "/pm", icon: Inbox, end: true, key: "queue" as const },
-  { title: "Board", url: "/pm/board", icon: LayoutGrid, key: "board" as const },
-  { title: "Projects", url: "/pm/projects", icon: FolderKanban, key: "projects" as const },
+  { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" as const },
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" as const },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" as const },
   { title: "Time", url: "/pm/time", icon: Clock, key: "time" as const },
@@ -48,7 +47,7 @@ function useUnclaimedCount() {
   }, [tasks, role, isMe]);
 }
 
-const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "projects", "forms"]);
+const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "work", "forms"]);
 
 const snippetsItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" as const };
 const helpItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" as const };

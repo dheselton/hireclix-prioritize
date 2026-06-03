@@ -16,11 +16,11 @@ export interface QueueLinkOpts {
  * than hand-crafting URLs. See mem://design/clickable-callouts.
  */
 export function buildQueueLink(opts: QueueLinkOpts = {}): string {
-  // Default to /pm/board because the Daily Briefing (/pm) does NOT honor
-  // chips/workType/section params — only Board does (via useChipFilters("board")
-  // + useWorkTypeFilter("board")). Callers can override `base` for project-scoped
-  // links (e.g., /pm/projects/:id).
-  const base = opts.base ?? "/pm/board";
+  // Default to /pm/work — the canonical "see everything" view. It honors
+  // chips/workType/section params (via useChipFilters("board") +
+  // useWorkTypeFilter("board"), same storage keys as the old /pm/board route).
+  // Callers can override `base` for project-scoped links (e.g., /pm/projects/:id).
+  const base = opts.base ?? "/pm/work";
   const params = new URLSearchParams();
   if (opts.chips && opts.chips.length) params.set("chips", opts.chips.join(","));
   if (opts.workType && opts.workType !== "all") params.set("workType", opts.workType);
