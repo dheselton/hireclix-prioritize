@@ -36,7 +36,7 @@ import { PreviewProvider } from "@/components/pm/attachments/PreviewProvider";
 
 const queryClient = new QueryClient();
 
-import { SubmitterRouteGuard } from "@/components/pm/SubmitterRouteGuard";
+import { RoleRouteGuard } from "@/components/pm/SubmitterRouteGuard";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
