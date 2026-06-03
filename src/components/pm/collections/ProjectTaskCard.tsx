@@ -11,7 +11,8 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
-import type { PmProject, PmTask, TaskPriority } from "@/types/pm";
+import type { PmProject, PmTask } from "@/types/pm";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 
 interface Props {
   task: PmTask;
@@ -23,12 +24,6 @@ interface Props {
   onChanged?: () => void;
 }
 
-const PRIORITY_DOT: Record<TaskPriority, string> = {
-  low: "bg-slate-400",
-  medium: "bg-sky-500",
-  high: "bg-amber-500",
-  urgent: "bg-red-500",
-};
 
 function isOverdue(t: PmTask) {
   if (!t.due_date) return false;
@@ -84,7 +79,7 @@ export function ProjectTaskCard({
           onClick={() => onOpen(task.id)}
           className="w-full text-left flex items-center gap-2"
         >
-          <span className={cn("h-2 w-2 rounded-full shrink-0", PRIORITY_DOT[task.priority])} title={`Priority: ${task.priority}`} />
+          <PriorityFlag priority={task.priority} size="xs" />
           {overdue && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
           <span className="text-sm font-medium flex-1 truncate hover:underline">{task.title}</span>
           <StatusPill status={task.status} />

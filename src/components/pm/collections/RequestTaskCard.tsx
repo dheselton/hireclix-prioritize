@@ -6,9 +6,11 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { AvatarStack } from "@/components/pm/AvatarStack";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import type { PmTask } from "@/types/pm";
+
 
 interface Props {
   task: PmTask;
@@ -49,8 +51,10 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           {overdue && <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
+          <PriorityFlag priority={task.priority} size="xs" />
           <span className="text-sm font-medium truncate">{task.title}</span>
           <WorkTypeBadge workType="request" compact />
+
           {isInternal && <span className="internal-pill shrink-0">Internal</span>}
           {isCareerSite && (
             <span className="careersite-pill shrink-0">Career Site{csLabel ? ` · ${csLabel}` : ""}</span>

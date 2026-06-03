@@ -11,10 +11,8 @@ import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 
-const PRIORITY_DOT: Record<string, string> = {
-  urgent: "bg-red-500", high: "bg-orange-500", medium: "bg-amber-400", low: "bg-emerald-500",
-};
 
 interface Props {
   tasks: PmTask[];
@@ -71,11 +69,11 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
                     <SubtaskBadge count={subCounts.get(t.id)} />
                   </div>
-                  <span className={cn("inline-block h-2.5 w-2.5 rounded-full", PRIORITY_DOT[t.priority] ?? "bg-muted")} />
+                  <PriorityFlag priority={t.priority} size="sm" />
                 </div>
+
                 <div className="font-medium leading-tight">{t.title}</div>
                 <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
                   {proj && <WorkTypeBadge workType={(proj as any).work_type ?? "project"} />}

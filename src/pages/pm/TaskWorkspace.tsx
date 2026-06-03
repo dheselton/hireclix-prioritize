@@ -20,6 +20,8 @@ import { CollabHub } from "@/components/pm/workspace/CollabHub";
 import { QuickChecklist } from "@/components/pm/workspace/QuickChecklist";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
 import { TimeTrackerCard } from "@/components/pm/time/TimeTrackerCard";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
+
 import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
 import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPanel";
@@ -146,7 +148,9 @@ export default function TaskWorkspace() {
               className="h-2.5 w-2.5 rounded-full shrink-0"
               style={{ backgroundColor: dotColor }}
             />
+            <PriorityFlag priority={task.priority} size="md" />
             <Input
+
               value={task.title}
               onChange={e => setTask({ ...task, title: e.target.value })}
               onBlur={e => patch({ title: e.target.value })}
