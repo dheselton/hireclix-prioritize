@@ -38,6 +38,18 @@ export default function Workload() {
   useTasksChanged(reloadAll);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const trackedTasks = useMemo(() => applyTaskTypes(tasks, types), [tasks, types]);
+  const coMap = useTaskAssigneesMap();
+  // Reverse: user_id -> Set<task_id>
+  const taskIdsByUser = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    coMap.forEach((users, taskId) => {
+      for (const uid of users) {
+        if (!m.has(uid)) m.set(uid, new Set());
+        m.get(uid)!.add(taskId);
+      }
+    });
+    return m;
+  }, [coMap]);
 
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
