@@ -12,17 +12,20 @@ import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
+import { canSee, type Surface } from "@/lib/pm/permissions";
 import type { PmTask } from "@/types/pm";
 
-const pmItems = [
-  { title: "Work Queue", url: "/pm", icon: Inbox, end: true, key: "queue" as const },
-  { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" as const },
-  { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" as const },
-  { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" as const },
-  { title: "Time", url: "/pm/time", icon: Clock, key: "time" as const },
-  { title: "Forms", url: "/pm/forms", icon: FileText, key: "forms" as const },
-  { title: "Templates", url: "/pm/templates", icon: LayoutTemplate, key: "templates" as const },
-  { title: "Integrations", url: "/pm/integrations", icon: Plug, key: "integrations" as const },
+type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
+
+const pmItems: NavItem[] = [
+  { title: "Work Queue", url: "/pm", icon: Inbox, end: true, key: "queue" },
+  { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" },
+  { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" },
+  { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" },
+  { title: "Time", url: "/pm/time", icon: Clock, key: "time" },
+  { title: "Forms", url: "/pm/forms", icon: FileText, key: "forms" },
+  { title: "Templates", url: "/pm/templates", icon: LayoutTemplate, key: "templates" },
+  { title: "Integrations", url: "/pm/integrations", icon: Plug, key: "integrations" },
 ];
 
 const roadmapItems = [
@@ -47,22 +50,16 @@ function useUnclaimedCount() {
   }, [tasks, role, isMe]);
 }
 
-const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "work", "forms"]);
-
-const snippetsItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" as const };
-const helpItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" as const };
+const snippetsItem: NavItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" };
+const helpItem: NavItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" };
 
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
   const { role } = useCurrentUser();
-  const baseItems = role === "submitter"
-    ? pmItems.filter(i => SUBMITTER_ITEM_KEYS.has(i.key))
-    : pmItems;
-  const withSnippets = role === "developer" || role === "designer"
-    ? [...baseItems, snippetsItem as any]
-    : baseItems;
-  const items = [...withSnippets, helpItem as any];
+  const visiblePm = pmItems.filter(i => canSee(role, i.key));
+  const withSnippets = canSee(role, "snippets") ? [...visiblePm, snippetsItem] : visiblePm;
+  const items = [...withSnippets, helpItem];
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
       <SidebarContent>

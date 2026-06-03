@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useCurrentUser, isAuthEnabled } from "@/lib/pm/mockUser";
 import { MeModeToggle } from "@/components/pm/MeModeToggle";
 import { installMeModeHotkey } from "@/hooks/useMeMode";
 import { useDefaultViewMode, type ViewMode } from "@/hooks/useViewMode";
@@ -52,11 +52,14 @@ export function TopBar() {
           {ROLE_BADGE_LABEL[user.role]}
         </span>
       )}
-      <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
+      {!isAuthEnabled() && (
+        <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
+      )}
 
       <DefaultViewMenu />
       <MeModeToggle />
 
+      {!isAuthEnabled() && (
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
         <SelectTrigger className="w-[240px]">
           <SelectValue placeholder="Select user" />
@@ -88,6 +91,7 @@ export function TopBar() {
           })}
         </SelectContent>
       </Select>
+      )}
 
       <Button variant="ghost" size="icon" aria-label="Notifications">
         <Bell className="h-5 w-5" />

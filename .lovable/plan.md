@@ -1,145 +1,93 @@
-# Broken snippet incident workflow
+## Goal
 
-When a shared snippet breaks, give a snippet owner a one-click way to spin up an individual follow-up task on every site that uses that snippet, and keep all those tasks visibly tied back to a single incident so completion can be tracked per site.
+Make role-based visibility predictable and centralized so that when real auth is flipped on, each role automatically sees the right surfaces. Keep current dev-mode role switcher working. No visual redesign — reuse existing components and tokens.
 
-## Concept
+## Roles & visibility matrix
 
-- An **incident** = "this snippet is broken; here's what's wrong; these N sites need fixing."
-- One incident → many tasks (one task per affected project).
-- Each task stays a normal `pm_tasks` row so it flows through Work Queue, assignment, time tracking, and status like anything else.
-- The incident is the connective tissue surfacing the relationship.
+Roles already in `mock_users`: `pm`, `designer`, `developer`, `strategist`, `analyst`, `submitter`.
 
-## Schema — one new table, additive only
+| Surface | pm | designer / developer / strategist / analyst | submitter |
+|---|---|---|---|
+| `/pm` Daily Briefing | full (team-wide hero stats) | personal (my work + unclaimed in my track) | "My Requests" view (already exists) |
+| `/pm/work` (all modes) | all projects/tasks | all projects/tasks they're a member of OR unclaimed in their track | hidden |
+| `/pm/workload`, `/pm/timeline` | full | read-only, team-wide | hidden |
+| `/pm/time` (Timesheet) | self + team toggle | self only | hidden |
+| `/pm/templates`, `/pm/forms` builder, `/pm/integrations` | full | hidden | hidden |
+| `/snippets` (+ Incidents tab) | visible | designer/developer only (current rule) | hidden |
+| Project detail | members + PMs | members only (others get "request access" empty state) | hidden |
+| TaskWorkspace | members + PMs | assignee, co-assignees, project members, or unclaimed-in-track | only their own submitted tasks |
 
-```sql
-CREATE TABLE public.pm_snippet_incidents (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  snippet_id uuid NOT NULL REFERENCES pm_snippets(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  description text,
-  severity text NOT NULL DEFAULT 'high',  -- low | medium | high | critical
-  reported_by uuid REFERENCES mock_users(id) ON DELETE SET NULL,
-  resolved_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+Briefing rule preserved: dashboard = my work + unclaimed in my track. Broader Work view = cross-team as permitted above.
+
+## Implementation
+
+### 1. Central permissions module — `src/lib/pm/permissions.ts` (new)
+
+Single source of truth. Pure functions keyed on `PmRole` (+ optional userId / projectMembership):
+
+```ts
+canSee(role, surface)              // route-level gate
+canSeeProject(role, userId, project, members)
+canSeeTask(role, userId, task, projectMembers)
+briefingScope(role)                // 'team' | 'personal' | 'submitter'
+workViewScope(role, userId)        // filter spec for /pm/work queries
+timesheetScope(role)               // 'team-toggle' | 'self' | 'hidden'
 ```
 
-Plus GRANTs + permissive RLS to match the rest of `pm_*`.
+`useRoleGate()` hook wraps `useCurrentUser` and exposes these helpers + `role`.
 
-**Task linkage** uses the existing `pm_tasks.custom_fields jsonb`:
+### 2. Route guard generalization
 
-```json
-{ "snippet_incident_id": "<uuid>", "snippet_id": "<uuid>" }
-```
+Rename/extend `SubmitterRouteGuard` → `RoleRouteGuard` (keep old export as alias to avoid churn). Drives BLOCKED_PREFIXES from `permissions.ts` per role. Submitter rules unchanged; non-PM staff stay allowed everywhere except `/pm/templates`, `/pm/forms/`, `/pm/integrations` (redirect to `/pm/work`).
 
-No schema change to `pm_tasks` — keeps tasks normal everywhere they already appear.
+### 3. Sidebar (`AppSidebar.tsx`)
 
-## UX flow
+Filter nav items by `canSee(role, surface)`. No restructure — just hide entries the role can't access (matches today's submitter handling).
 
-### 1. Trigger: "Report broken" on the snippet card
+### 4. Daily Briefing (`/pm`)
 
-In `SnippetCard.tsx`, add an item to the existing `…` dropdown: **"Report broken"** (between Duplicate and Delete; AlertTriangle icon, destructive-ish color). Opens `ReportBrokenSnippetDialog`.
+`briefingScope(role)` switches the hero/stat queries already in `src/lib/pm/briefing.ts`:
+- `team`: existing behavior (PM).
+- `personal`: hero counts scoped to `assignee_id = me OR (status='unclaimed' AND track=myTrack)`; Project Work column already shows my projects.
+- `submitter`: existing My Requests view.
 
-### 2. The dialog — `src/components/pm/snippets/ReportBrokenSnippetDialog.tsx`
+Tile/CTA links continue to use `buildQueueLink` with appropriate `assignee`/`unclaimed` chips so they keep honoring filters.
 
-Single-screen workflow using existing primitives (`Dialog`, `Input`, `Textarea`, `Select`, `Checkbox`, `Avatar`):
+### 5. `/pm/work` query scoping
 
-- **What's broken?** — `Input` (incident title, defaults to `"{Snippet} broken"`).
-- **Details** — `Textarea` (what's failing, repro steps, expected fix). Becomes the description copied onto every follow-up task.
-- **Severity** — `Select`: Low / Medium / High (default) / Critical → maps to task `priority`.
-- **Affected sites** — auto-populated list from real usage (same query as `SnippetUsageFooter`: distinct project_ids from `pm_task_snippets` → `pm_tasks` → `pm_projects`). Each row = `Checkbox` (default checked), project name, client name, current open task count from this snippet, optional `Select` to pick an assignee from that project's team (`pm_project_members`). "Select all / none" header control.
-- **Add to projects not currently using the snippet** — secondary `MultiSelect` / popover (optional) so a PM can add a site that has the snippet but isn't linked yet.
-- **Submit** button: "Create N follow-up tasks".
+`useWorkQueries` (or equivalent in `src/pages/pm/Work.tsx`) gains `workViewScope`:
+- PM: no extra filter.
+- Staff: `project_id IN myProjects OR (status='unclaimed' AND track=myTrack)`.
+- Submitter: blocked by guard.
 
-### 3. On submit
+Filter chips/UI unchanged.
 
-1. Insert one `pm_snippet_incidents` row.
-2. For each selected project, call `createTask` with:
-   - `project_id` = that project
-   - `title` = `"[Broken snippet] {snippet.title} — {project.title}"`
-   - `description` = incident description
-   - `type` = `"bug"` (falls back to `"dev"` if `bug` not in app's type set — see Technical notes)
-   - `priority` = mapped severity
-   - `status` = `"unclaimed"` (or `"claimed"` if assignee chosen)
-   - `assignee_id` = optional
-   - `due_date` = today + 2 days for High, +1 day for Critical, +7 days otherwise
-   - `custom_fields.snippet_incident_id` + `custom_fields.snippet_id`
-3. Insert a `pm_task_snippets` row tying each new task to the original snippet (so it appears in the snippet's usage footer immediately).
-4. Toast: "Created N follow-up tasks across N sites" with "View incident" link → opens the incident drawer (below).
-5. Invalidate `["snippet-usage", snippetId]` and `["pm-tasks"]` query keys.
+### 6. Project detail & TaskWorkspace
 
-### 4. Showing the relationship — two surfaces
+`canSeeProject` / `canSeeTask` gates render a small empty state ("You don't have access to this project — ask the PM to add you") using existing `Card` + `EmptyState` styling. No redesign.
 
-**On the snippet card** (`SnippetCard.tsx`): when `pm_snippet_incidents` has unresolved rows for this snippet, render a small inline banner above the description using existing destructive tokens:
+### 7. Auth-ready plumbing (no behavioral change yet)
 
-```
-⚠ Active incident · 2 of 4 sites fixed · View
-```
+- `getCurrentUserId()` already abstracts the source. Add `getAuthUserId()` placeholder in `mockUser.ts` that returns `supabase.auth.getUser()` id when a `VITE_PM_AUTH_ENABLED` flag is true, falling back to the localStorage mock id otherwise. All call sites already use the helper, so flipping the flag is a one-line switch later.
+- Document in memory: when auth is enabled, role comes from `user_roles` (existing table) joined to `mock_users` by email; no policy work in this step.
+- RLS stays permissive in this pass (per existing memory note); plan mentions tightening as a follow-up so behavior remains predictable now.
 
-Click → opens `SnippetIncidentDrawer`.
+### 8. TopBar role switcher
 
-**On every affected task** (`TaskWorkspace`): when `task.custom_fields.snippet_incident_id` is set, render `IncidentContextBanner` directly above `RequestContextPanel`:
-
-```
-Part of broken-snippet incident: "{incident title}"
-Snippet: {snippet title} · Sibling sites: site-a ✓, site-b ✓, site-c, site-d
-[View incident] [View snippet]
-```
-
-Sibling chips use existing `StatusPill` colors (done = green check, others muted).
-
-### 5. The incident drawer — `SnippetIncidentDrawer.tsx`
-
-Lightweight `Sheet` (right side, matches existing drawers):
-
-- Header: snippet title + severity pill + "Mark resolved" button (sets `resolved_at`).
-- Description.
-- **Affected sites table**: project · assignee avatar · `StatusPill` · due date · click row → opens that task in the workspace (`useTaskDrawerLink().open(taskId)`).
-- Progress: "2 of 4 sites fixed" (counts tasks where status ∈ done/approved set).
-- "Add another site" secondary action → mini version of the dialog's site picker, creates one more task tied to this incident.
-
-### 6. Incident list
-
-Add an **"Incidents"** tab inside `/snippets` (existing tabs/segmented control). Lists all incidents with snippet, severity, progress, resolved/active filter. Clicking opens the drawer. No new top-level nav route.
-
-## Files
-
-**Migration**
-- `pm_snippet_incidents` table + grants + permissive RLS.
-
-**Created**
-- `src/lib/pm/snippetIncidents.ts` — types + `createSnippetIncident`, `fetchIncident`, `fetchIncidentsForSnippet`, `fetchAllIncidents`, `resolveIncident`, `addSiteToIncident`, `useIncidentSiblings(taskId)`, `useSnippetActiveIncident(snippetId)`.
-- `src/components/pm/snippets/ReportBrokenSnippetDialog.tsx`
-- `src/components/pm/snippets/SnippetIncidentDrawer.tsx`
-- `src/components/pm/snippets/SnippetIncidentBanner.tsx` (the inline card warning)
-- `src/components/pm/snippets/IncidentsList.tsx` (the tab content)
-- `src/components/pm/workspace/IncidentContextBanner.tsx`
-
-**Edited**
-- `src/components/pm/snippets/SnippetCard.tsx` — dropdown item + active-incident banner.
-- `src/pages/pm/Snippets.tsx` — add Incidents tab.
-- `src/components/pm/workspace/TaskWorkspace.tsx` — mount `IncidentContextBanner` above `RequestContextPanel` when `custom_fields.snippet_incident_id` present.
-- `mem://index.md` — append one Core line describing the incident model.
+Keep visible while `VITE_PM_AUTH_ENABLED` is false. Hide automatically when the flag flips on. No styling change.
 
 ## Out of scope
 
-- No notifications/email — uses existing `pm_notifications` patterns only if trivial; otherwise deferred.
-- No bulk re-assignment after creation — handled per-task in the normal workspace.
-- No edits to the snippet's code from the incident flow — fixing the snippet itself happens in the normal editor; the incident only tracks the rollout to each site.
-- No new colors, icons system, or layout — reuses `Dialog`, `Sheet`, `StatusPill`, `Checkbox`, `AvatarStack`, destructive/warning tokens already in `index.css`.
+- Real Supabase auth wiring, sign-in UI, RLS tightening, email confirmations.
+- Any nav/layout redesign or new visual treatments.
+- Per-project role overrides (members table already covers needs).
 
-## Technical notes
+## Files
 
-- Reuse the usage query from `SnippetUsageFooter` (extract into `src/lib/pm/snippetUsage.ts` so both the footer and the dialog read it).
-- Pick the task `type` carefully: check `src/components/pm/WorkTypeBadge.tsx` for the canonical set — if `"bug"` exists use it; otherwise fall back to `"dev"` and add an `is_incident: true` flag in `custom_fields` so the workspace can still highlight it.
-- "Sibling sites" query: `select id, title, status, project_id, pm_projects(title) from pm_tasks where custom_fields->>'snippet_incident_id' = $1`.
-- All new queries use `staleTime: 30_000` and emit `emitTasksChanged()` after writes to keep boards in sync.
+- New: `src/lib/pm/permissions.ts`
+- Edited: `src/components/pm/SubmitterRouteGuard.tsx` (extend), `src/App.tsx` (rename usage), `src/components/AppSidebar.tsx`, `src/lib/pm/mockUser.ts` (auth-ready accessor), `src/lib/pm/briefing.ts`, `src/pages/pm/Work.tsx`, `src/pages/pm/ProjectDetail.tsx`, `src/pages/pm/TaskWorkspace.tsx`, `src/pages/pm/Timesheet.tsx`, `mem://index.md` (note the permissions module + auth flag).
 
-## Success criteria
+## Verification
 
-- A snippet owner can report a broken snippet, pick affected sites, and produce one individual task per site in a single submit.
-- Every generated task appears in normal queues (Board, Work Queue, Workload) with correct priority and assignee.
-- Opening any of those tasks shows the incident banner with sibling progress.
-- Opening the snippet shows an active-incident banner + per-site progress in the drawer.
-- Marking the last task done lets the incident be resolved (or auto-resolves), and the banner goes away.
+- Switch role via TopBar through pm / designer / developer / submitter and confirm: sidebar items, `/pm` scope, `/pm/work` rows, project & task gating, snippets, timesheet.
+- Build passes; no visual diff for PM role.

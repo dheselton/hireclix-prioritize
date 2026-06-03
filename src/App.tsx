@@ -36,7 +36,7 @@ import { PreviewProvider } from "@/components/pm/attachments/PreviewProvider";
 
 const queryClient = new QueryClient();
 
-import { SubmitterRouteGuard } from "@/components/pm/SubmitterRouteGuard";
+import { RoleRouteGuard } from "@/components/pm/SubmitterRouteGuard";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -46,7 +46,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col">
           <TopBar />
           <main className="flex-1 overflow-auto">
-            <SubmitterRouteGuard>{children}</SubmitterRouteGuard>
+            <RoleRouteGuard>{children}</RoleRouteGuard>
           </main>
         </div>
       </div>
