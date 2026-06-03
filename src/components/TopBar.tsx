@@ -52,7 +52,9 @@ export function TopBar() {
           {ROLE_BADGE_LABEL[user.role]}
         </span>
       )}
-      <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
+      {!isAuthEnabled() && (
+        <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
+      )}
 
       <DefaultViewMenu />
       <MeModeToggle />
