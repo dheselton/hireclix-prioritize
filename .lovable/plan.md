@@ -1,93 +1,94 @@
 ## Goal
 
-Make role-based visibility predictable and centralized so that when real auth is flipped on, each role automatically sees the right surfaces. Keep current dev-mode role switcher working. No visual redesign — reuse existing components and tokens.
+Let templates (and live projects) define which downstream tasks are hidden until prerequisites complete, while supporting parallel/early-visible exceptions for design-build and time tracking. Reuse existing dependency tables — no new dependency model.
 
-## Roles & visibility matrix
+## Concept
 
-Roles already in `mock_users`: `pm`, `designer`, `developer`, `strategist`, `analyst`, `submitter`.
+Add a single `reveal_mode` column to both dependency tables. It controls when the *successor* becomes visible in default task views:
 
-| Surface | pm | designer / developer / strategist / analyst | submitter |
-|---|---|---|---|
-| `/pm` Daily Briefing | full (team-wide hero stats) | personal (my work + unclaimed in my track) | "My Requests" view (already exists) |
-| `/pm/work` (all modes) | all projects/tasks | all projects/tasks they're a member of OR unclaimed in their track | hidden |
-| `/pm/workload`, `/pm/timeline` | full | read-only, team-wide | hidden |
-| `/pm/time` (Timesheet) | self + team toggle | self only | hidden |
-| `/pm/templates`, `/pm/forms` builder, `/pm/integrations` | full | hidden | hidden |
-| `/snippets` (+ Incidents tab) | visible | designer/developer only (current rule) | hidden |
-| Project detail | members + PMs | members only (others get "request access" empty state) | hidden |
-| TaskWorkspace | members + PMs | assignee, co-assignees, project members, or unclaimed-in-track | only their own submitted tasks |
+| `reveal_mode` | Successor visible when… | Use case |
+|---|---|---|
+| `on_complete` (default) | predecessor is `approved`/`complete` | Round 2 hidden until Round 1 done |
+| `on_start` | predecessor is `in_progress` or later | Dev can start once design enters working state |
+| `always` | immediately, ignore prereq state | Parallel build/track for planning + time tracking |
 
-Briefing rule preserved: dashboard = my work + unclaimed in my track. Broader Work view = cross-team as permitted above.
+Existing `finish_start` / `start_start` / `finish_finish` semantics (for scheduler dates) are unchanged. `reveal_mode` is a UI-visibility concern only — it never blocks editing, time tracking, or the Gantt.
 
-## Implementation
+## Schema
 
-### 1. Central permissions module — `src/lib/pm/permissions.ts` (new)
+Single migration:
 
-Single source of truth. Pure functions keyed on `PmRole` (+ optional userId / projectMembership):
+```sql
+ALTER TABLE pm_template_dependencies
+  ADD COLUMN reveal_mode text NOT NULL DEFAULT 'on_complete'
+  CHECK (reveal_mode IN ('on_complete','on_start','always'));
 
-```ts
-canSee(role, surface)              // route-level gate
-canSeeProject(role, userId, project, members)
-canSeeTask(role, userId, task, projectMembers)
-briefingScope(role)                // 'team' | 'personal' | 'submitter'
-workViewScope(role, userId)        // filter spec for /pm/work queries
-timesheetScope(role)               // 'team-toggle' | 'self' | 'hidden'
+ALTER TABLE pm_task_dependencies
+  ADD COLUMN reveal_mode text NOT NULL DEFAULT 'on_complete'
+  CHECK (reveal_mode IN ('on_complete','on_start','always'));
 ```
 
-`useRoleGate()` hook wraps `useCurrentUser` and exposes these helpers + `role`.
+Template→project copy in `instantiateTemplateIntoProject` (`src/lib/pm/api.ts`) already copies dependency rows; extend it to carry `reveal_mode` over.
 
-### 2. Route guard generalization
+## Visibility helper
 
-Rename/extend `SubmitterRouteGuard` → `RoleRouteGuard` (keep old export as alias to avoid churn). Drives BLOCKED_PREFIXES from `permissions.ts` per role. Submitter rules unchanged; non-PM staff stay allowed everywhere except `/pm/templates`, `/pm/forms/`, `/pm/integrations` (redirect to `/pm/work`).
+New `src/lib/pm/reveal.ts`:
 
-### 3. Sidebar (`AppSidebar.tsx`)
+```ts
+export type RevealMode = 'on_complete' | 'on_start' | 'always';
 
-Filter nav items by `canSee(role, surface)`. No restructure — just hide entries the role can't access (matches today's submitter handling).
+// Given tasks + deps, return Set<taskId> of hidden tasks.
+export function computeHiddenTaskIds(tasks: PmTask[], deps: PmDependency[]): Set<string>;
 
-### 4. Daily Briefing (`/pm`)
+// Per-task helper for surface checks.
+export function isTaskHidden(task: PmTask, tasks: PmTask[], deps: PmDependency[]): boolean;
+```
 
-`briefingScope(role)` switches the hero/stat queries already in `src/lib/pm/briefing.ts`:
-- `team`: existing behavior (PM).
-- `personal`: hero counts scoped to `assignee_id = me OR (status='unclaimed' AND track=myTrack)`; Project Work column already shows my projects.
-- `submitter`: existing My Requests view.
+Rules:
+- A task is hidden if it has at least one `pm_task_dependencies` row with `reveal_mode <> 'always'` whose predecessor hasn't reached the required state.
+- `on_complete` requires predecessor status ∈ {`approved`, `complete`}.
+- `on_start` requires predecessor status ∈ {`in_progress`, `in_review`, `approved`, `complete`}.
+- Tasks with no deps are always visible (existing behavior).
 
-Tile/CTA links continue to use `buildQueueLink` with appropriate `assignee`/`unclaimed` chips so they keep honoring filters.
+## UI integration (reuse current components)
 
-### 5. `/pm/work` query scoping
+1. **TasksTab** (`src/components/pm/project/TasksTab.tsx`) and the `/pm/work` list/kanban/projects views filter through `computeHiddenTaskIds`. A subtle inline row appears at the bottom of each list/column:
+   ```
+   <button> + 3 upcoming tasks — show all </button>
+   ```
+   Toggle persists in `localStorage` per project/view key. No new component family — uses the existing muted-button styling already used by "Show completed".
 
-`useWorkQueries` (or equivalent in `src/pages/pm/Work.tsx`) gains `workViewScope`:
-- PM: no extra filter.
-- Staff: `project_id IN myProjects OR (status='unclaimed' AND track=myTrack)`.
-- Submitter: blocked by guard.
+2. **TaskWorkspace** never hides itself even if hidden — deep links and search always reach a task. A small muted chip in the header says "Upcoming · waiting on {predecessor title}" when hidden, with a tooltip explaining the reveal mode. Uses the existing `Badge` variant.
 
-Filter chips/UI unchanged.
+3. **Time tracking & TimerSearch**: time entry surfaces (TimeTrackerCard, EntryPopover task picker) ignore the hidden flag so anyone can log time against a task that hasn't surfaced yet — addresses the "appear earlier for time tracking" requirement without forcing UI exposure.
 
-### 6. Project detail & TaskWorkspace
+4. **Gantt / Workload / Timeline**: always show every task (planning surfaces). Hidden tasks render with reduced opacity + dashed border (already used for proposed dates) so they read as "upcoming". No new tokens.
 
-`canSeeProject` / `canSeeTask` gates render a small empty state ("You don't have access to this project — ask the PM to add you") using existing `Card` + `EmptyState` styling. No redesign.
+5. **TemplateBuilder dependency editor** (`src/components/pm/template/...`): on each dependency row add a small `Select` with three options: "Reveal on complete (default)" / "Reveal on start" / "Always visible". Matches the existing dep-type select. Same select appears in the live task dependency editor inside TaskWorkspace.
 
-### 7. Auth-ready plumbing (no behavioral change yet)
-
-- `getCurrentUserId()` already abstracts the source. Add `getAuthUserId()` placeholder in `mockUser.ts` that returns `supabase.auth.getUser()` id when a `VITE_PM_AUTH_ENABLED` flag is true, falling back to the localStorage mock id otherwise. All call sites already use the helper, so flipping the flag is a one-line switch later.
-- Document in memory: when auth is enabled, role comes from `user_roles` (existing table) joined to `mock_users` by email; no policy work in this step.
-- RLS stays permissive in this pass (per existing memory note); plan mentions tightening as a follow-up so behavior remains predictable now.
-
-### 8. TopBar role switcher
-
-Keep visible while `VITE_PM_AUTH_ENABLED` is false. Hide automatically when the flag flips on. No styling change.
-
-## Out of scope
-
-- Real Supabase auth wiring, sign-in UI, RLS tightening, email confirmations.
-- Any nav/layout redesign or new visual treatments.
-- Per-project role overrides (members table already covers needs).
+6. **Task list row indicator**: revealed-but-still-blocked tasks already show the `blocked` status badge — no change. New "upcoming" indicator only on hidden tasks, only when "Show all" is toggled on.
 
 ## Files
 
-- New: `src/lib/pm/permissions.ts`
-- Edited: `src/components/pm/SubmitterRouteGuard.tsx` (extend), `src/App.tsx` (rename usage), `src/components/AppSidebar.tsx`, `src/lib/pm/mockUser.ts` (auth-ready accessor), `src/lib/pm/briefing.ts`, `src/pages/pm/Work.tsx`, `src/pages/pm/ProjectDetail.tsx`, `src/pages/pm/TaskWorkspace.tsx`, `src/pages/pm/Timesheet.tsx`, `mem://index.md` (note the permissions module + auth flag).
+- New: `src/lib/pm/reveal.ts`, migration `add_reveal_mode_to_dependencies.sql`
+- Edited:
+  - `src/lib/pm/api.ts` — carry `reveal_mode` in `instantiateTemplateIntoProject`; expose in fetchers; update `PmDependency` / template dep types
+  - `src/types/pm.ts` — add `reveal_mode` to dep types
+  - `src/components/pm/project/TasksTab.tsx`, `src/pages/pm/Work.tsx` (and ProjectWorkGrid/board renderers) — filter + "show all" toggle
+  - `src/pages/pm/TaskWorkspace.tsx` — upcoming badge, reveal-mode select in dep editor
+  - `src/components/pm/template/TemplateDependencyEditor.tsx` (or current template dep UI) — reveal-mode select
+  - `mem://index.md` — short note: "Dependency `reveal_mode` controls UI visibility only (scheduler unchanged); helper in `src/lib/pm/reveal.ts`; Gantt/Workload/Timesheet always include hidden tasks"
+
+## Out of scope
+
+- Changing scheduler date math (`reveal_mode` is UI-only).
+- Auto-claim / auto-assign on reveal.
+- Notifications when a task becomes visible (can layer on later).
+- Server-side filtering — kept client-side because the same query feeds Gantt/Workload which need all rows.
 
 ## Verification
 
-- Switch role via TopBar through pm / designer / developer / submitter and confirm: sidebar items, `/pm` scope, `/pm/work` rows, project & task gating, snippets, timesheet.
-- Build passes; no visual diff for PM role.
+- Template with round1→round2 finish_start + `reveal_mode='on_complete'`: round 2 hidden until round 1 marked complete.
+- Same template with a parallel "Dev scaffold" task depending on "Design v1" with `reveal_mode='always'`: visible immediately.
+- Hidden task: appears on Gantt + Timesheet picker; TaskWorkspace direct URL works.
+- TopBar/sidebar/permissions and existing date-cascade flows unchanged.

@@ -84,12 +84,15 @@ export interface PmTask {
   updated_at: string;
 }
 
+export type RevealMode = 'on_complete' | 'on_start' | 'always';
+
 export interface PmDependency {
   id: string;
   task_id: string;
   depends_on_task_id: string;
   type: DepType;
   lag_days: number;
+  reveal_mode?: RevealMode;
 }
 
 export const TASK_STATUSES: TaskStatus[] = ['unclaimed','claimed','in_progress','blocked','in_review','approved','complete'];

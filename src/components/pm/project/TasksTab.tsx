@@ -9,7 +9,8 @@ import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { STATUS_GROUPS, groupForStatus, typeBadgeClass, priorityDotClass, type StatusGroupId } from "@/lib/pm/statusGroups";
-import type { PmTask, TaskStatus } from "@/types/pm";
+import type { PmTask, PmDependency, TaskStatus } from "@/types/pm";
+import { computeHiddenTaskIds } from "@/lib/pm/reveal";
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, KeyboardSensor,
   useSensor, useSensors, closestCenter,
@@ -38,8 +39,8 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function TasksTab({ tasks, projectId, meId, templateId }: {
-  tasks: PmTask[]; projectId: string; meId: string | null; templateId?: string | null;
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
+  tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
@@ -50,13 +51,30 @@ export function TasksTab({ tasks, projectId, meId, templateId }: {
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, in_progress: false, in_review: false, complete: true,
   });
+  const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
+    try { return localStorage.getItem(`pm.showUpcoming.${projectId}`) === "1"; } catch { return false; }
+  });
+  function toggleUpcoming() {
+    setShowUpcoming(v => {
+      const nv = !v;
+      try { localStorage.setItem(`pm.showUpcoming.${projectId}`, nv ? "1" : "0"); } catch {}
+      return nv;
+    });
+  }
+
+  const hiddenIds = useMemo(() => computeHiddenTaskIds(tasks, deps), [tasks, deps]);
+  const upcomingCount = useMemo(
+    () => tasks.filter(t => hiddenIds.has(t.id)).length,
+    [tasks, hiddenIds],
+  );
 
   const filtered = useMemo(() => {
     let out = tasks;
+    if (!showUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     return out;
-  }, [tasks, pill, isMe, meId]);
+  }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming]);
 
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
@@ -263,9 +281,21 @@ export function TasksTab({ tasks, projectId, meId, templateId }: {
             <Plus className="h-3 w-3 mr-1" /> Add page
           </Button>
         )}
-        <div className="ml-auto flex gap-1">
-          <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
-          <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
+        <div className="ml-auto flex items-center gap-2">
+          {upcomingCount > 0 && (
+            <button
+              type="button"
+              onClick={toggleUpcoming}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              title={showUpcoming ? "Hide tasks awaiting prerequisites" : "Show tasks awaiting prerequisites"}
+            >
+              {showUpcoming ? `Hide ${upcomingCount} upcoming` : `+ ${upcomingCount} upcoming`}
+            </button>
+          )}
+          <div className="flex gap-1">
+            <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
+            <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
+          </div>
         </div>
       </div>
 
