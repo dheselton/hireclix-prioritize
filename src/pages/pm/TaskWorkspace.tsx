@@ -19,6 +19,7 @@ import { AssetHub } from "@/components/pm/workspace/AssetHub";
 import { CollabHub } from "@/components/pm/workspace/CollabHub";
 import { QuickChecklist } from "@/components/pm/workspace/QuickChecklist";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
+import { TimeTrackerCard } from "@/components/pm/time/TimeTrackerCard";
 import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
 import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPanel";
@@ -173,7 +174,9 @@ export default function TaskWorkspace() {
           <aside className="space-y-3">
             <TaskMetaCard projectId={task.project_id} phaseName={crumbs.phaseName} />
             <ControlPanel task={task} setTask={setTask} patch={patch} />
+            <TimeTrackerCard taskId={task.id} taskTitle={task.title} />
             <QuickChecklist taskId={task.id} />
+
 
             <CollapsedSection label="Show Dependencies">
               <DependenciesSection taskId={task.id} />
