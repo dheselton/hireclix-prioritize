@@ -43,7 +43,7 @@ export function ProjectGridView({ projects, tasks, onChanged }: Props) {
   }
 
   if (!projects.length) {
-    return <div className="text-sm text-muted-foreground italic py-8 text-center">No projects yet.</div>;
+    return <div className="text-sm text-muted-foreground italic py-8 text-center">No projects yet. Start a Quick Request or Full Project to get going.</div>;
   }
   return (
     <div className="space-y-2">
