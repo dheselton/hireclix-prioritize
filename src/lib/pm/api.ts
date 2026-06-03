@@ -212,11 +212,12 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
     page_group_key: t._page_group_key ?? null,
     page_label: t._page_label ?? null,
   }));
-  const previewDeps: ScheduleDep[] = deps.map(d => ({
+  const previewDeps: (ScheduleDep & { reveal_mode?: string })[] = deps.map(d => ({
     task_id: d.to_temp_id,
     depends_on_task_id: d.from_temp_id,
     type: d.type,
     lag_days: d.lag_days || 0,
+    reveal_mode: d.reveal_mode ?? 'on_complete',
   }));
   return { previewTasks, previewDeps };
 };
