@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserAvatar } from "@/components/pm/UserAvatar";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { fmtDateShort } from "@/lib/pm/format";
 import { updateTask, logActivity } from "@/lib/pm/api";
 import { TASK_STATUSES, type PmTask, type PmProject, type TaskStatus } from "@/types/pm";
