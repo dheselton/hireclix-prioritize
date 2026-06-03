@@ -3,7 +3,7 @@ import { Ban, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { fmtDate } from "@/lib/pm/format";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
-import { UserAvatar } from "@/components/pm/UserAvatar";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import type { PmProject, PmTask, WorkType } from "@/types/pm";
 
