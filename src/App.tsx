@@ -16,8 +16,7 @@ import NotFound from "./pages/NotFound";
 
 // PM
 import WorkQueue from "./pages/pm/WorkQueue";
-import Board from "./pages/pm/Board";
-import ProjectList from "./pages/pm/ProjectList";
+import Work from "./pages/pm/Work";
 import ProjectDetail from "./pages/pm/ProjectDetail";
 import Workload from "./pages/pm/Workload";
 import GlobalTimeline from "./pages/pm/GlobalTimeline";
