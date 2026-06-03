@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
