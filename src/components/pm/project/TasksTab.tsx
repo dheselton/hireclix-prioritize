@@ -51,13 +51,30 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, in_progress: false, in_review: false, complete: true,
   });
+  const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
+    try { return localStorage.getItem(`pm.showUpcoming.${projectId}`) === "1"; } catch { return false; }
+  });
+  function toggleUpcoming() {
+    setShowUpcoming(v => {
+      const nv = !v;
+      try { localStorage.setItem(`pm.showUpcoming.${projectId}`, nv ? "1" : "0"); } catch {}
+      return nv;
+    });
+  }
+
+  const hiddenIds = useMemo(() => computeHiddenTaskIds(tasks, deps), [tasks, deps]);
+  const upcomingCount = useMemo(
+    () => tasks.filter(t => hiddenIds.has(t.id)).length,
+    [tasks, hiddenIds],
+  );
 
   const filtered = useMemo(() => {
     let out = tasks;
+    if (!showUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     return out;
-  }, [tasks, pill, isMe, meId]);
+  }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming]);
 
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
