@@ -649,6 +649,45 @@ export type Database = {
           },
         ]
       }
+      pm_client_watchers: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          request_type: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          request_type?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          request_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_client_watchers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_client_watchers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_comments: {
         Row: {
           body: string
