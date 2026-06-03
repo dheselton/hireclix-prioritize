@@ -108,3 +108,60 @@ export function ControlPanel({
     </div>
   );
 }
+
+function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: string | null }) {
+  const users = useMockUsers();
+  const co = useTaskCoAssignees(taskId);
+  const all = combineAssignees(primaryId, co);
+  const invalidate = useInvalidateAssignees();
+
+  async function remove(uid: string) {
+    await removeAssignee(taskId, uid);
+    invalidate();
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      {all.length === 0 && (
+        <span className="text-muted-foreground italic font-normal text-xs">Unassigned</span>
+      )}
+      {all.map(uid => {
+        const u = users.find(x => x.id === uid);
+        if (!u) return null;
+        const isPrimary = uid === primaryId;
+        return (
+          <span
+            key={uid}
+            className={cn(
+              "inline-flex items-center gap-1 pl-1 pr-1 py-0.5 rounded-full border text-xs",
+              isPrimary ? "border-amber-500/50 bg-amber-500/10" : "border-border bg-muted/40"
+            )}
+            title={isPrimary ? `${u.name} (primary)` : u.name}
+          >
+            <UserAvatar userId={uid} size="xs" />
+            <span className="font-medium max-w-[80px] truncate">{u.name.split(" ")[0]}</span>
+            {isPrimary && <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />}
+            <button
+              type="button"
+              onClick={() => remove(uid)}
+              aria-label={`Remove ${u.name}`}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        );
+      })}
+      <AssigneePopover
+        taskId={taskId}
+        assigneeId={primaryId}
+        mode="multi"
+        trigger={
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
+            <Plus className="h-3 w-3" />
+          </Button>
+        }
+      />
+    </div>
+  );
+}
