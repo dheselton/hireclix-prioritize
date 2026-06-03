@@ -220,7 +220,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
         const completed = tasks.filter((t) => TERMINAL.has(t.status)).length;
         const overdue = tasks.filter((t) => t.due_date && t.due_date < today && !TERMINAL.has(t.status)).length;
         const mine = tasks
-          .filter((t) => t.assignee_id === userId && !TERMINAL.has(t.status))
+          .filter((t) => (t.assignee_id === userId || coTaskIds.includes(t.id)) && !TERMINAL.has(t.status))
           .sort(sortByUrgency);
         return {
           ...p,
