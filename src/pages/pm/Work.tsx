@@ -9,6 +9,8 @@ import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { StatusPill } from "@/components/pm/StatusPill";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtDateShort } from "@/lib/pm/format";
 import { useCurrentUser } from "@/lib/pm/mockUser";
