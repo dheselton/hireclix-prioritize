@@ -191,6 +191,17 @@ export function SnippetCard({ snippet, category, onEdit, onDuplicate, onDelete }
           )}
         </Button>
       </div>
+
+      <ReportBrokenSnippetDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        snippet={snippet}
+        onCreated={id => setIncidentDrawerId(id)}
+      />
+      <SnippetIncidentDrawer
+        incidentId={incidentDrawerId}
+        onOpenChange={v => !v && setIncidentDrawerId(null)}
+      />
     </Card>
   );
 }
