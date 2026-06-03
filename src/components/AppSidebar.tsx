@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Inbox, LayoutGrid, FolderKanban, Users, Calendar, FileText,
+  Inbox, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map, BarChart3, Code, BookOpen, Clock,
 } from "lucide-react";
 import {
