@@ -33,7 +33,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
   }
 
   if (!tasks.length) {
-    return <div className="text-sm text-muted-foreground italic py-8 text-center">No tasks.</div>;
+    return <div className="text-sm text-muted-foreground italic py-8 text-center">No work here yet.</div>;
   }
 
   return (
