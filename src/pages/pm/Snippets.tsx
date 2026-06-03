@@ -319,6 +319,9 @@ export default function Snippets() {
           )}
         </main>
       </div>
+      )}
+
+
 
       <SnippetEditorDialog
         open={editorOpen}
