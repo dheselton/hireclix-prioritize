@@ -268,8 +268,15 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           userId: user?.id ?? null,
         });
       }
+      const watcherIds = await applyClientWatchers(proj.id, projForm.client_id, null).catch(() => []);
       toast.success("Project created");
-      onOpenChange(false);
+      setSuccess({
+        projectId: proj.id,
+        requestType: null,
+        requestTypeLabel: null,
+        watcherIds,
+        alias: aliasFor(null),
+      });
       onCreated?.();
     } catch (e: any) {
       toast.error(e.message || "Failed to create project");
