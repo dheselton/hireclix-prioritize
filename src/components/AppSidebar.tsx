@@ -16,8 +16,7 @@ import type { PmTask } from "@/types/pm";
 
 const pmItems = [
   { title: "Work Queue", url: "/pm", icon: Inbox, end: true, key: "queue" as const },
-  { title: "Board", url: "/pm/board", icon: LayoutGrid, key: "board" as const },
-  { title: "Projects", url: "/pm/projects", icon: FolderKanban, key: "projects" as const },
+  { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" as const },
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" as const },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" as const },
   { title: "Time", url: "/pm/time", icon: Clock, key: "time" as const },
