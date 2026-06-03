@@ -43,6 +43,8 @@ export function SnippetEditorDialog({
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [language, setLanguage] = useState<string>("JavaScript");
   const [tags, setTags] = useState<string[]>([]);
@@ -58,6 +60,8 @@ export function SnippetEditorDialog({
     if (initial) {
       setTitle(initial.title);
       setDescription(initial.description ?? "");
+      setInstructions(initial.instructions ?? "");
+      setVideoUrl(initial.video_url ?? "");
       setCategoryId(initial.category_id ?? "");
       setLanguage(initial.language ?? "JavaScript");
       setTags(initial.tags ?? []);
@@ -70,6 +74,8 @@ export function SnippetEditorDialog({
     } else {
       setTitle("");
       setDescription("");
+      setInstructions("");
+      setVideoUrl("");
       setCategoryId(categories[0]?.id ?? "");
       setLanguage("JavaScript");
       setTags([]);
@@ -114,6 +120,8 @@ export function SnippetEditorDialog({
       await onSave({
         title: title.trim(),
         description: description.trim() || null,
+        instructions: instructions.trim() || null,
+        video_url: videoUrl.trim() || null,
         category_id: categoryId || null,
         language,
         tags,
