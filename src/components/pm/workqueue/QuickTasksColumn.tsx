@@ -99,7 +99,7 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
       <span className={`h-2 w-2 rounded-full shrink-0 mt-1.5 ${dot}`} />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate flex items-center gap-1.5">
-          <PriorityFlag priority={(t as any).priority} size="xs" />
+          <PriorityFlag priority={t.priority} size="xs" />
           <span className="truncate">{t.title}</span>
         </div>
         <MetaRow t={t} />
@@ -125,7 +125,7 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
         className="flex-1 min-w-0 text-left"
       >
         <div className="text-sm font-medium truncate flex items-center gap-1.5">
-          <PriorityFlag priority={(t as any).priority} size="xs" />
+          <PriorityFlag priority={t.priority} size="xs" />
           <span className="truncate">{t.title}</span>
         </div>
         <MetaRow t={t} />
