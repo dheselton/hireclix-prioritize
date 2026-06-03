@@ -71,8 +71,9 @@ function App() {
                 <Route path="/" element={<Navigate to="/pm" replace />} />
 
                 <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
-                <Route path="/pm/board" element={<AppLayout><Board /></AppLayout>} />
-                <Route path="/pm/projects" element={<AppLayout><ProjectList /></AppLayout>} />
+                <Route path="/pm/work" element={<AppLayout><Work /></AppLayout>} />
+                <Route path="/pm/board" element={<Navigate to="/pm/work" replace />} />
+                <Route path="/pm/projects" element={<Navigate to="/pm/work" replace />} />
                 <Route path="/pm/projects/:id" element={<AppLayout><ProjectDetail /></AppLayout>} />
                 <Route path="/pm/tasks/:id" element={<AppLayout><TaskWorkspace /></AppLayout>} />
                 <Route path="/pm/workload" element={<AppLayout><Workload /></AppLayout>} />
