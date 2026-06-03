@@ -125,6 +125,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
     setProjRequestedBy(user?.id ?? null);
     setProjFiles([]); setProjLinks([]);
+    setSuccess(null);
     (async () => {
       const [{ data: c }, { data: t }] = await Promise.all([
         supabase.from("clients").select("id,name,is_internal").order("name"),
