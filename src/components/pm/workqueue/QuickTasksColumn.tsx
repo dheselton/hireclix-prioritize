@@ -3,9 +3,11 @@ import { Zap, ArrowRight, Inbox } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { ClaimButton } from "@/components/pm/ClaimButton";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { buildQueueLink } from "@/lib/pm/links";
 import { fmtDate } from "@/lib/pm/format";
 import type { EnrichedQuickTask } from "@/lib/pm/briefing";
+
 
 type QuickTask = EnrichedQuickTask;
 
@@ -96,9 +98,13 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
     >
       <span className={`h-2 w-2 rounded-full shrink-0 mt-1.5 ${dot}`} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{t.title}</div>
+        <div className="text-sm font-medium truncate flex items-center gap-1.5">
+          <PriorityFlag priority={t.priority} size="xs" />
+          <span className="truncate">{t.title}</span>
+        </div>
         <MetaRow t={t} />
       </div>
+
       <div className="shrink-0 mt-0.5">{badge}</div>
     </button>
   );
@@ -118,9 +124,13 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
         onClick={() => onOpen(t.id)}
         className="flex-1 min-w-0 text-left"
       >
-        <div className="text-sm font-medium truncate">{t.title}</div>
+        <div className="text-sm font-medium truncate flex items-center gap-1.5">
+          <PriorityFlag priority={t.priority} size="xs" />
+          <span className="truncate">{t.title}</span>
+        </div>
         <MetaRow t={t} />
       </button>
+
       {badge && <div className="shrink-0 mt-0.5">{badge}</div>}
       <div className="mt-0.5"><ClaimButton task={t} size="sm" /></div>
     </div>

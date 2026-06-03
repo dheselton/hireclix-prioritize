@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { fmtDate } from "@/lib/pm/format";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import type { PmProject, PmTask, WorkType } from "@/types/pm";
+
 
 interface Props {
   task: PmTask;
@@ -26,9 +28,11 @@ export function BlockedTaskCard({ task, project, clientName, onOpen }: Props) {
             onClick={() => onOpen(task.id)}
             className="text-left flex items-center gap-2 min-w-0 hover:underline"
           >
+            <PriorityFlag priority={task.priority} size="xs" />
             <span className="font-medium text-sm truncate">{task.title}</span>
             <WorkTypeBadge workType={workType} compact />
           </button>
+
           <div className="flex items-center gap-2 shrink-0">
             <UserAvatar userId={task.assignee_id} size="xs" />
             {project && (

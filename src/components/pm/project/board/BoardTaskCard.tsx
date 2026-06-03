@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { AvatarStack } from "@/components/pm/AvatarStack";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
@@ -12,6 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { StatusPickerPopover } from "./StatusPickerPopover";
 import { InlineDatePopover } from "./InlineDatePopover";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
+
 
 function stripHtml(html?: string | null): string {
   if (!html) return "";
@@ -63,7 +65,9 @@ export function BoardTaskCard({
       >
         <CardContent className="p-3 space-y-2 flex flex-col">
           <div className="flex items-start gap-2">
+            <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
             <div className="text-[12px] font-bold leading-snug line-clamp-2 flex-1">{task.title}</div>
+
             {isInternal && <span className="internal-pill shrink-0">Internal</span>}
             {isCareerSite && (
               <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>

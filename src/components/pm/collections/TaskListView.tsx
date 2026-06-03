@@ -13,13 +13,12 @@ import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { PriorityFlag } from "@/components/pm/PriorityFlag";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
 const PRIORITY_RANK: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
-const PRIORITY_DOT: Record<string, string> = {
-  urgent: "bg-red-500", high: "bg-orange-500", medium: "bg-amber-400", low: "bg-emerald-500",
-};
+
 
 interface Props {
   tasks: PmTask[];
@@ -152,8 +151,9 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   </td>
                   <td className="p-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.due_date)}</td>
                   <td className="p-2 text-center">
-                    <span className={cn("inline-block h-2.5 w-2.5 rounded-full", PRIORITY_DOT[t.priority] ?? "bg-muted")} title={t.priority} />
+                    <PriorityFlag priority={t.priority} size="sm" />
                   </td>
+
                 </tr>
               );
             })}
