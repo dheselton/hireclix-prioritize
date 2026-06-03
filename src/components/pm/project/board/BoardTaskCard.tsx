@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { StatusPill } from "@/components/pm/StatusPill";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
@@ -67,19 +68,22 @@ export function BoardTaskCard({
           <div className="flex items-start gap-2">
             <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
             <div className="text-[12px] font-bold leading-snug line-clamp-2 flex-1">{task.title}</div>
-
-            {isInternal && <span className="internal-pill shrink-0">Internal</span>}
-            {isCareerSite && (
-              <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>
-            )}
+            <span onClick={(e) => e.stopPropagation()} className="shrink-0">
+              <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={unclaimed} />
+            </span>
           </div>
           {preview && (
             <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
             <span className={`inline-block text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
               {task.type}
             </span>
+            {isInternal && <span className="internal-pill shrink-0">Internal</span>}
+            {isCareerSite && (
+              <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>
+            )}
             {count && count.total > 0 && (
               <span className="text-[11px] text-muted-foreground">{count.done}/{count.total} subtasks</span>
             )}
@@ -89,10 +93,7 @@ export function BoardTaskCard({
             <div className="flex items-center gap-2">
               <InlineDatePopover value={task.due_date} onChange={onDateChange} />
               {team.length > 1 && (
-                <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} muted={unclaimed} />
-              )}
-              {team.length <= 1 && (
-                <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
+                <AvatarStack userIds={team} max={3} size="xs" muted={unclaimed} />
               )}
             </div>
           </div>
