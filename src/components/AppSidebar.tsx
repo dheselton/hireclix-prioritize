@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, LayoutGrid, FolderKanban, Users, Calendar, FileText,
-  LayoutTemplate, Plug, Map, BarChart3, Code, BookOpen,
+  LayoutTemplate, Plug, Map, BarChart3, Code, BookOpen, Clock,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -20,6 +20,7 @@ const pmItems = [
   { title: "Projects", url: "/pm/projects", icon: FolderKanban, key: "projects" as const },
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" as const },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" as const },
+  { title: "Time", url: "/pm/time", icon: Clock, key: "time" as const },
   { title: "Forms", url: "/pm/forms", icon: FileText, key: "forms" as const },
   { title: "Templates", url: "/pm/templates", icon: LayoutTemplate, key: "templates" as const },
   { title: "Integrations", url: "/pm/integrations", icon: Plug, key: "integrations" as const },
