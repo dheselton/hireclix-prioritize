@@ -10,9 +10,14 @@ export function applyTaskTypes(tasks: PmTask[], types: Set<TaskType>): PmTask[] 
 const startOfToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const endOfWeek = () => { const d = startOfToday(); d.setDate(d.getDate() + 7); return d; };
 
-export function applyTaskMeMode(tasks: PmTask[], isMe: boolean, meId: string | null | undefined) {
+export function applyTaskMeMode(
+  tasks: PmTask[],
+  isMe: boolean,
+  meId: string | null | undefined,
+  coAssignedTaskIds?: Set<string>,
+) {
   if (!isMe || !meId) return tasks;
-  return tasks.filter(t => t.assignee_id === meId);
+  return tasks.filter(t => t.assignee_id === meId || coAssignedTaskIds?.has(t.id));
 }
 
 export function applyTaskChips(
@@ -20,19 +25,21 @@ export function applyTaskChips(
   active: Set<ChipId>,
   meId: string | null | undefined,
   watcherTaskIds?: Set<string>,
+  coAssignedTaskIds?: Set<string>,
 ) {
   if (!active.size) return tasks;
   const today = startOfToday();
   const week = endOfWeek();
+  const isMine = (t: PmTask) => !!meId && (t.assignee_id === meId || coAssignedTaskIds?.has(t.id));
   return tasks.filter(t => {
     for (const id of active) {
       switch (id) {
         case "assigned_to_me":
-          if (!meId || t.assignee_id !== meId) return false; break;
+          if (!isMine(t)) return false; break;
         case "created_by_me":
           if (!meId || t.created_by !== meId) return false; break;
         case "watching": {
-          const watched = watcherTaskIds ? watcherTaskIds.has(t.id) : (meId ? t.assignee_id === meId : false);
+          const watched = watcherTaskIds ? watcherTaskIds.has(t.id) : isMine(t);
           if (!watched) return false; break;
         }
         case "overdue":

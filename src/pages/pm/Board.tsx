@@ -8,7 +8,7 @@ import { Columns3 } from "lucide-react";
 import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
-import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtDateShort } from "@/lib/pm/format";
 import { useCurrentUser } from "@/lib/pm/mockUser";
@@ -22,6 +22,7 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
+import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
@@ -89,10 +90,18 @@ export default function Board() {
 
   const workType = useWorkTypeFilter("board");
 
+  const coMap = useTaskAssigneesMap();
+  const myCoTaskIds = useMemo(() => {
+    if (!user?.id) return new Set<string>();
+    const s = new Set<string>();
+    coMap.forEach((users, tid) => { if (users.includes(user.id)) s.add(tid); });
+    return s;
+  }, [coMap, user?.id]);
+
   const visible = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
-    v = applyTaskMeMode(v, isMe, user?.id);
-    v = applyTaskChips(v, chips.active, user?.id);
+    v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
+    v = applyTaskChips(v, chips.active, user?.id, undefined, myCoTaskIds);
     if (workType.value !== "all") {
       v = v.filter(t => {
         const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
@@ -100,7 +109,7 @@ export default function Board() {
       });
     }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds]);
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visible.filter(t => t.status === s).length }));
@@ -234,7 +243,7 @@ export default function Board() {
                           {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
                           <div className="flex items-center justify-between pt-1">
                             <span onClick={(e) => e.stopPropagation()}>
-                              <AssigneePopover taskId={t.id} assigneeId={t.assignee_id} size="xs" onChanged={reload} />
+                              <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={reload} />
                             </span>
                             <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
                           </div>

@@ -5,10 +5,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { Button } from "@/components/ui/button";
+import { Plus, X, Star } from "lucide-react";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, PRIORITIES, type PmTask, type TaskStatus, type TaskPriority } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
+import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssignees } from "@/lib/pm/assignees";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
@@ -42,8 +46,6 @@ export function ControlPanel({
   setTask: (t: PmTask) => void;
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
-  const users = useMockUsers();
-  const assignee = users.find(u => u.id === task.assignee_id);
   const showEnv = task.type === "dev" || !!task.dev_environment;
 
   return (
@@ -76,42 +78,9 @@ export function ControlPanel({
         </Select>
       </Row>
 
-      {/* Assignee */}
-      <Row label="Assignee">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button type="button" className="inline-flex items-center gap-1.5 hover:underline">
-              {assignee ? (
-                <>
-                  <UserAvatar userId={assignee.id} size="xs" />
-                  <span>{assignee.name}</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground italic font-normal">Unassigned</span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-1 z-50 bg-popover">
-            <button
-              type="button"
-              className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded text-muted-foreground"
-              onClick={() => patch({ assignee_id: null })}
-            >
-              Unassigned
-            </button>
-            {users.filter(u => u.role !== "submitter").map(u => (
-              <button
-                key={u.id}
-                type="button"
-                className="w-full text-left px-2 py-1.5 text-sm hover:bg-muted rounded flex items-center gap-2"
-                onClick={() => patch({ assignee_id: u.id })}
-              >
-                <UserAvatar userId={u.id} size="xs" />
-                {u.name}
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
+      {/* Assignees */}
+      <Row label="Assignees">
+        <AssigneeChips taskId={task.id} primaryId={task.assignee_id} />
       </Row>
 
       {/* Due Date */}
@@ -134,6 +103,63 @@ export function ControlPanel({
           />
         </Row>
       )}
+    </div>
+  );
+}
+
+function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: string | null }) {
+  const users = useMockUsers();
+  const co = useTaskCoAssignees(taskId);
+  const all = combineAssignees(primaryId, co);
+  const invalidate = useInvalidateAssignees();
+
+  async function remove(uid: string) {
+    await removeAssignee(taskId, uid);
+    invalidate();
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      {all.length === 0 && (
+        <span className="text-muted-foreground italic font-normal text-xs">Unassigned</span>
+      )}
+      {all.map(uid => {
+        const u = users.find(x => x.id === uid);
+        if (!u) return null;
+        const isPrimary = uid === primaryId;
+        return (
+          <span
+            key={uid}
+            className={cn(
+              "inline-flex items-center gap-1 pl-1 pr-1 py-0.5 rounded-full border text-xs",
+              isPrimary ? "border-amber-500/50 bg-amber-500/10" : "border-border bg-muted/40"
+            )}
+            title={isPrimary ? `${u.name} (primary)` : u.name}
+          >
+            <UserAvatar userId={uid} size="xs" />
+            <span className="font-medium max-w-[80px] truncate">{u.name.split(" ")[0]}</span>
+            {isPrimary && <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />}
+            <button
+              type="button"
+              onClick={() => remove(uid)}
+              aria-label={`Remove ${u.name}`}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        );
+      })}
+      <AssigneePopover
+        taskId={taskId}
+        assigneeId={primaryId}
+        mode="multi"
+        trigger={
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
+            <Plus className="h-3 w-3" />
+          </Button>
+        }
+      />
     </div>
   );
 }

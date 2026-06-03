@@ -1,50 +1,76 @@
 ## Goal
 
-Surface task priority at a glance with a small colored flag icon (with tooltip) on every task card and the task detail header, without disturbing existing layouts.
+Let a task have more than one assignee, render that everywhere assignees appear today, and keep every existing single-assignee flow working unchanged.
 
-## Component
+## Approach: keep the primary owner, add co-assignees
 
-New `src/components/pm/PriorityFlag.tsx`:
-- Renders a `Flag` icon from `lucide-react` wrapped in shadcn `Tooltip`.
-- Color via `text-*` classes mapped to existing semantic tokens:
-  - `low` → `text-muted-foreground` (subtle gray)
-  - `medium` → `text-warning` (orange)
-  - `high` → `text-orange-500` *(or `text-warning` darker)* — actually map `high` → `text-warning` and `medium` → a softer amber via existing token. Final mapping:
-    - `low` → `text-muted-foreground/60`
-    - `medium` → `text-warning` (orange, per request)
-    - `high` → `text-warning` filled
-    - `urgent` → `text-destructive` filled (red, per request)
-- Sizes via prop: `xs` (h-3 w-3) for dense cards, `sm` (h-3.5 w-3.5) default, `md` (h-4 w-4) for detail header.
-- `filled` boolean for high/urgent (sets `fill-current` so the flag is solid).
-- Tooltip label: `"Priority: <Capitalized>"`.
-- Returns `null` when priority is missing/`low` if `hideLow` prop set (default true for cards to avoid noise — confirm in question? No — keep simple: always render, low is dim).
+`pm_tasks.assignee_id` already drives a lot of behavior — the claim flow, the `pm_set_task_track_from_assignee` DB trigger, the "my tasks" filters in Briefing / Workload / filters.ts, and the bulk reassign action. Replacing it would mean rewriting all of that and risk regressions.
 
-Single source of truth — replaces ad-hoc dot in `ProjectTaskCard` and the unstyled `Badge` text in other cards.
+Instead, treat `assignee_id` as the **primary owner** and add a join table `pm_task_assignees` for **additional people on the task**. The UI presents them as one combined list (primary first, co-assignees stacked after).
 
-## Where to add it
+This is fully additive: every existing query, filter, trigger, and form keeps working. New behavior layers on top.
 
-Insert inline next to the existing title or meta row, no layout changes:
+### Schema (migration)
 
-1. `src/components/pm/collections/ProjectTaskCard.tsx` — replace the existing `PRIORITY_DOT` span (~L87) with `<PriorityFlag priority={task.priority} size="xs" />`.
-2. `src/components/pm/collections/RequestTaskCard.tsx` — add to header row near type pill.
-3. `src/components/pm/collections/ProjectWorkCard.tsx` — add next to title.
-4. `src/components/pm/project/board/BoardTaskCard.tsx` — add next to title.
-5. `src/components/pm/workqueue/QuickTasksColumn.tsx` (TaskRow) — add inline before/after title.
-6. `src/components/pm/workqueue/BlockedTaskCard.tsx` — add to header.
-7. `src/components/pm/workqueue/TaskListByType.tsx` — add inline per row.
-8. `src/components/pm/collections/TaskListView.tsx` / `TaskGridView.tsx` — add inline (these power the global Board / Workload list views).
-9. `src/pages/pm/TaskWorkspace.tsx` header — render `<PriorityFlag size="md" />` next to the track color dot at L142–147.
-10. `src/components/pm/workspace/ControlPanel.tsx` — keep the existing priority pill `Select` (it's the editor), but adjacent — no change needed; the flag in the header is the at-a-glance signal.
+```sql
+CREATE TABLE public.pm_task_assignees (
+  task_id     uuid NOT NULL REFERENCES public.pm_tasks(id) ON DELETE CASCADE,
+  user_id     uuid NOT NULL REFERENCES public.mock_users(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (task_id, user_id)
+);
+CREATE INDEX pm_task_assignees_user_idx ON public.pm_task_assignees(user_id);
+-- GRANTs to authenticated/anon/service_role + permissive RLS (matches other pm_ tables while auth is off)
+```
 
-## Out of scope
+No trigger changes. No data migration — existing primaries stay where they are.
 
-- Changing the priority editor / Select trigger styling.
-- Adding `urgent` highlighting to card borders (could be a follow-up if requested).
-- Sorting / filtering by priority (already supported via existing chips).
+## UI changes (existing components, no new visual language)
+
+### 1. New data layer — `src/lib/pm/assignees.ts`
+- `useTaskAssigneesBulk(taskIds: string[]): Map<taskId, string[]>` — one batched query per list, react-query cached. Returns **co-assignees only** (primary already lives on the row).
+- `useTaskAssignees(taskId)` for single-task views.
+- `addAssignee(taskId, userId)`, `removeAssignee(taskId, userId)`, `setPrimary(taskId, userId)` (swaps a co-assignee into `assignee_id`, demotes the old primary into the join table).
+- Emits a `task-assignees-changed` event so all consumers refetch.
+
+### 2. `AssigneePopover` — add `mode: "single" | "multi"` (default `"single"`)
+- Single mode: unchanged.
+- Multi mode: shows checkmarks next to all current assignees (primary + co), click to add/remove. "Make primary" link on each selected non-primary row. "Assign me" shortcut at top.
+
+### 3. New thin wrapper `MultiAssigneeChip`
+- Props: `taskId`, `primaryId`, optional `coAssigneeIds` (so list views can pass pre-loaded data and skip the hook).
+- Renders the existing `AvatarStack` (primary highlighted) when count > 1, otherwise the existing single `UserAvatar` button. Clicking opens `AssigneePopover` in multi mode. No new visual style — reuses what's already on the board.
+
+### 4. Card surfaces that swap to `MultiAssigneeChip`
+All currently render a single `UserAvatar`/`AssigneePopover`:
+- `BoardTaskCard`, `ProjectTaskCard`, `RequestTaskCard`, `BlockedTaskCard`
+- `TaskKanban`, `TaskListView`, `TaskGridView`
+- `TasksTab`, `Board.tsx`
+Each list view calls `useTaskAssigneesBulk(taskIds)` once and passes the slice down to the chip — no N+1 queries.
+
+### 5. Task detail
+- `ControlPanel` "Assignee" row becomes "Assignees": shows primary chip + each co-assignee chip (X to remove). `+` button opens the multi popover. Primary swap available via popover row action.
+- `TaskWorkspace` header already shows primary via team stack — no change needed beyond the chip.
+
+### 6. "Me" filters and queues
+Update the predicate used by Briefing, Workload, and `src/lib/pm/filters.ts` so a task counts as "mine" when **either** `assignee_id === me` **or** `me ∈ coAssignees(task)`.
+- `src/lib/pm/briefing.ts`: fetch `pm_task_assignees` rows where `user_id = me`, union with the primary-owner query.
+- `src/pages/pm/Workload.tsx`: same union when computing per-user active tasks.
+- `src/lib/pm/filters.ts`: accept an optional `coAssigneeIndex: Map<taskId, Set<userId>>` and use it in the existing `assignee_id === meId` checks.
+
+### 7. Things that stay single-owner on purpose (preserves current behavior)
+- Claim flow → still sets the primary owner.
+- Track derivation trigger → still keyed off the primary.
+- Status auto-unclaim when primary cleared → unchanged.
+- Bulk "Assign to…" action → still sets primary (the most common ask); multi-add is per-task in the popover.
+
+## Files touched
+
+- **Migration**: create `pm_task_assignees` + GRANTs + RLS.
+- **New**: `src/lib/pm/assignees.ts`, `src/components/pm/MultiAssigneeChip.tsx`.
+- **Edited**: `src/components/pm/AssigneePopover.tsx` (add multi mode), `src/components/pm/workspace/ControlPanel.tsx`, `src/lib/pm/filters.ts`, `src/lib/pm/briefing.ts`, `src/pages/pm/Workload.tsx`, and the nine card/list components listed above.
+- **Memory**: add a short note about the primary + co-assignee split and the bulk hook.
 
 ## Verification
 
-- Open `/pm`, `/pm/board`, a project page, and a task page. Confirm a colored flag is visible on each card and on the task detail header.
-- Hover the flag → tooltip shows `Priority: Urgent` etc.
-- Switch a task's priority via the existing pill — the flag updates everywhere on next refetch.
-- No card layout shifts; spacing matches surrounding meta chips.
+After the migration: open a task workspace, add 2 co-assignees, verify they appear on the same task card on `/pm/board`, in `/pm/projects/:id` list and grid, in the workspace header chip, and that the co-assignees see the task in their `/pm` Briefing "my quick tasks" and Workload row. Confirm a single-assignee task still renders identically to today.

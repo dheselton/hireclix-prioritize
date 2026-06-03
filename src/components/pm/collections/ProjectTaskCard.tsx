@@ -7,7 +7,7 @@ import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
-import { UserAvatar } from "@/components/pm/UserAvatar";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
@@ -99,7 +99,7 @@ export function ProjectTaskCard({
             {unclaimed ? (
               team.length > 0
                 ? <AvatarStack userIds={team} max={3} size="xs" muted />
-                : <UserAvatar userId={task.assignee_id} size="xs" />
+                : <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted />
             ) : (
               <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} />
             )}

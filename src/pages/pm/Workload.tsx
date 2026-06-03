@@ -15,6 +15,7 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
+import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 
 export default function Workload() {
@@ -37,6 +38,18 @@ export default function Workload() {
   useTasksChanged(reloadAll);
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const trackedTasks = useMemo(() => applyTaskTypes(tasks, types), [tasks, types]);
+  const coMap = useTaskAssigneesMap();
+  // Reverse: user_id -> Set<task_id>
+  const taskIdsByUser = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    coMap.forEach((users, taskId) => {
+      for (const uid of users) {
+        if (!m.has(uid)) m.set(uid, new Set());
+        m.get(uid)!.add(taskId);
+      }
+    });
+    return m;
+  }, [coMap]);
 
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
@@ -53,8 +66,9 @@ export default function Workload() {
         {users.map(u => {
           const isMyRow = u.id === me?.id;
           const dimmed = isMe && !isMyRow;
-          const activeRaw = trackedTasks.filter(t => t.assignee_id === u.id && t.status !== "complete" && t.status !== "approved");
-          const active = applyTaskChips(activeRaw, chips.active, me?.id);
+          const myCoIds = taskIdsByUser.get(u.id);
+          const activeRaw = trackedTasks.filter(t => (t.assignee_id === u.id || myCoIds?.has(t.id)) && t.status !== "complete" && t.status !== "approved");
+          const active = applyTaskChips(activeRaw, chips.active, me?.id, undefined, taskIdsByUser.get(me?.id ?? ""));
           const thisWeek = active.filter(t => t.due_date && new Date(t.due_date) <= weekEnd);
           const cap = u.capacity_hours_per_week / 8;
           const ratio = thisWeek.length / Math.max(1, cap);

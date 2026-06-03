@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
@@ -92,7 +92,7 @@ export function BoardTaskCard({
                 <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} muted={unclaimed} />
               )}
               {team.length <= 1 && (
-                <AssigneePopover taskId={task.id} assigneeId={task.assignee_id} size="xs" />
+                <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
               )}
             </div>
           </div>

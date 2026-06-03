@@ -4,7 +4,7 @@ import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
-import { UserAvatar } from "@/components/pm/UserAvatar";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
@@ -79,7 +79,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       ) : (
         <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} />
       )}
-      {unclaimed && team.length === 0 && <UserAvatar userId={task.assignee_id} size="xs" />}
+      {unclaimed && team.length === 0 && <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted />}
       <div onClick={(e) => e.stopPropagation()}>
         <ClaimButton task={task} onChanged={onChanged} />
       </div>
