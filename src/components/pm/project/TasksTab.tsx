@@ -281,9 +281,21 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
             <Plus className="h-3 w-3 mr-1" /> Add page
           </Button>
         )}
-        <div className="ml-auto flex gap-1">
-          <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
-          <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
+        <div className="ml-auto flex items-center gap-2">
+          {upcomingCount > 0 && (
+            <button
+              type="button"
+              onClick={toggleUpcoming}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              title={showUpcoming ? "Hide tasks awaiting prerequisites" : "Show tasks awaiting prerequisites"}
+            >
+              {showUpcoming ? `Hide ${upcomingCount} upcoming` : `+ ${upcomingCount} upcoming`}
+            </button>
+          )}
+          <div className="flex gap-1">
+            <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
+            <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
+          </div>
         </div>
       </div>
 
