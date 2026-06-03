@@ -47,7 +47,7 @@ export function ControlPanel({
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
   const users = useMockUsers();
-  const assignee = users.find(u => u.id === task.assignee_id);
+  void users; // referenced inside AssigneeChips subcomponent
   const showEnv = task.type === "dev" || !!task.dev_environment;
 
   return (
