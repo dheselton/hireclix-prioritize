@@ -109,7 +109,7 @@ export default function Board() {
       });
     }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds]);
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visible.filter(t => t.status === s).length }));
