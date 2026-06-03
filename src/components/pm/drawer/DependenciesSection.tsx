@@ -38,13 +38,17 @@ export function DependenciesSection({ taskId }: { taskId: string }) {
 
   async function addDep(otherId: string, mode: "blocked_by" | "blocking") {
     const row = mode === "blocked_by"
-      ? { task_id: taskId, depends_on_task_id: otherId, type: "finish_start", lag_days: 0 }
-      : { task_id: otherId, depends_on_task_id: taskId, type: "finish_start", lag_days: 0 };
+      ? { task_id: taskId, depends_on_task_id: otherId, type: "finish_start", lag_days: 0, reveal_mode: "on_complete" }
+      : { task_id: otherId, depends_on_task_id: taskId, type: "finish_start", lag_days: 0, reveal_mode: "on_complete" };
     await supabase.from("pm_task_dependencies").insert(row as any);
     await load();
   }
   async function removeDep(id: string) {
     await supabase.from("pm_task_dependencies").delete().eq("id", id);
+    await load();
+  }
+  async function setReveal(depId: string, reveal_mode: string) {
+    await supabase.from("pm_task_dependencies").update({ reveal_mode }).eq("id", depId);
     await load();
   }
 
