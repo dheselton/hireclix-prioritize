@@ -60,12 +60,21 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
     }
     const today = todayIso();
 
-    // 1. All my active tasks (single fetch, used for counts + quick tasks)
-    const { data: myTasksRaw } = await supabase
-      .from("pm_tasks")
-      .select("*")
-      .eq("assignee_id", userId);
-    const myTasks = ((myTasksRaw ?? []) as PmTask[]).filter((t) => !TERMINAL.has(t.status));
+    // 1. All my active tasks — primary owner OR co-assignee
+    const { data: coRows } = await supabase
+      .from("pm_task_assignees")
+      .select("task_id")
+      .eq("user_id", userId);
+    const coTaskIds = Array.from(new Set(((coRows ?? []) as Array<{ task_id: string }>).map(r => r.task_id)));
+    const [{ data: primaryRaw }, { data: coTasksRaw }] = await Promise.all([
+      supabase.from("pm_tasks").select("*").eq("assignee_id", userId),
+      coTaskIds.length
+        ? supabase.from("pm_tasks").select("*").in("id", coTaskIds)
+        : Promise.resolve({ data: [] as PmTask[] } as any),
+    ]);
+    const byId = new Map<string, PmTask>();
+    for (const t of ([...(primaryRaw ?? []), ...(coTasksRaw ?? [])] as PmTask[])) byId.set(t.id, t);
+    const myTasks = Array.from(byId.values()).filter((t) => !TERMINAL.has(t.status));
 
     // 2. Projects map (for work_type lookup + titles)
     const projectIds = Array.from(new Set(myTasks.map((t) => t.project_id)));
