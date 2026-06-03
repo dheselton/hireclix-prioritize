@@ -78,3 +78,26 @@ export function getCurrentUserRole(): PmRole | null {
   const u = cachedUsers.find(x => x.id === id);
   return (u?.role as PmRole) ?? null;
 }
+
+/**
+ * Auth-ready accessor. When `VITE_PM_AUTH_ENABLED` is true and a Supabase
+ * session exists, this returns the authenticated user id; otherwise it falls
+ * back to the localStorage-backed mock user. All call sites that need the
+ * "current actor" id should go through this helper so flipping auth on later
+ * is a single-flag change.
+ */
+export async function getAuthUserId(): Promise<string | null> {
+  const enabled = typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_PM_AUTH_ENABLED === "true";
+  if (enabled) {
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.id) return data.user.id;
+    } catch { /* fall through to mock */ }
+  }
+  return getCurrentUserId();
+}
+
+/** True when real auth is enabled. The TopBar role switcher hides when true. */
+export function isAuthEnabled(): boolean {
+  return typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_PM_AUTH_ENABLED === "true";
+}
