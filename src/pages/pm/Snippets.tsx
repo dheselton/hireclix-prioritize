@@ -46,6 +46,7 @@ export default function Snippets() {
   const [view, setView] = useViewMode("snippets", "grid");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Snippet | null>(null);
+  const [tab, setTab] = useState<"snippets" | "incidents">("snippets");
   const [manageOpen, setManageOpen] = useState(false);
 
   const reload = async () => {
