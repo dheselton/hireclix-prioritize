@@ -1,76 +1,62 @@
 ## Goal
 
-Let a task have more than one assignee, render that everywhere assignees appear today, and keep every existing single-assignee flow working unchanged.
+One sidebar entry — **Work** — that answers "who claimed this? has this started? what's unclaimed? what's in progress?" across quick tasks and project work, with intuitive filtering between the two.
 
-## Approach: keep the primary owner, add co-assignees
+## Navigation & routing
 
-`pm_tasks.assignee_id` already drives a lot of behavior — the claim flow, the `pm_set_task_track_from_assignee` DB trigger, the "my tasks" filters in Briefing / Workload / filters.ts, and the bulk reassign action. Replacing it would mean rewriting all of that and risk regressions.
+- Sidebar: replace the two entries **Board** and **Projects** with one entry **Work** (`/pm/work`), icon `LayoutGrid`. Order stays where Board sits today.
+- New route `/pm/work` renders the merged page.
+- `/pm/board` and `/pm/projects` become `<Navigate to="/pm/work" replace />` so existing deep links (including `buildQueueLink()` which defaults to `/pm/board`) keep working.
+- Update `buildQueueLink()` default base to `/pm/work`; keep `/pm/board` accepted as input.
+- Update the "Core" memory line that names the nav set to read "Work" instead of "Board, Projects".
 
-Instead, treat `assignee_id` as the **primary owner** and add a join table `pm_task_assignees` for **additional people on the task**. The UI presents them as one combined list (primary first, co-assignees stacked after).
+## The Work page (`src/pages/pm/Work.tsx`)
 
-This is fully additive: every existing query, filter, trigger, and form keeps working. New behavior layers on top.
+Built by consolidating today's `Board.tsx` and `ProjectList.tsx`. Same `CollectionToolbar`, same chip filters, same `WorkTypeFilterToggle`, same `UnclaimedBanner`, same `CreateWorkDialog` Quick Request / Project actions from ProjectList.
 
-### Schema (migration)
+**Header**
+- Title: `Work`
+- Subtitle adapts to current mode (same pattern as Board today).
+- Right side actions: `WorkTypeFilterToggle` (All / Quick tasks / Projects), `Quick Request`, `Project` (hidden for submitter, matching ProjectList).
 
-```sql
-CREATE TABLE public.pm_task_assignees (
-  task_id     uuid NOT NULL REFERENCES public.pm_tasks(id) ON DELETE CASCADE,
-  user_id     uuid NOT NULL REFERENCES public.mock_users(id) ON DELETE CASCADE,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (task_id, user_id)
-);
-CREATE INDEX pm_task_assignees_user_idx ON public.pm_task_assignees(user_id);
--- GRANTs to authenticated/anon/service_role + permissive RLS (matches other pm_ tables while auth is off)
-```
+**View modes** (segmented control in toolbar, persisted via `useViewMode("work", ...)`):
+1. **All** *(new default)* — flat task list across every project, columns: Title · Project · Type · Status badge · Priority flag · Assignees (MultiAssigneeChip) · Due. Reuses `TaskListView`, with an added "Project" column already supported there. This is the "see everything" answer.
+2. **Projects** — existing `ProjectWorkGrid` (project cards with nested tasks).
+3. **Kanban** — existing kanban columns + Columns popover from Board.
+4. **Grid** — existing `TaskGridView`.
 
-No trigger changes. No data migration — existing primaries stay where they are.
+The Work-type toggle is the primary axis for "quick tasks vs larger projects":
+- `all` → everything
+- `quick` → tasks whose project `work_type === "quick"`
+- `project` → tasks whose project `work_type === "project"`
 
-## UI changes (existing components, no new visual language)
+Already implemented in both pages today; we keep that hook unchanged and just expose it in every mode (Projects mode filters projects, the other three filter tasks — matching current behavior).
 
-### 1. New data layer — `src/lib/pm/assignees.ts`
-- `useTaskAssigneesBulk(taskIds: string[]): Map<taskId, string[]>` — one batched query per list, react-query cached. Returns **co-assignees only** (primary already lives on the row).
-- `useTaskAssignees(taskId)` for single-task views.
-- `addAssignee(taskId, userId)`, `removeAssignee(taskId, userId)`, `setPrimary(taskId, userId)` (swaps a co-assignee into `assignee_id`, demotes the old primary into the join table).
-- Emits a `task-assignees-changed` event so all consumers refetch.
+**Filters retained as-is**
+- `useChipFilters("work")` (rename the storage key from "board"/"projects" with a one-time migration that reads either old key on first load).
+- Me mode toggle.
+- Type filter (`useTypeFilter("work")`).
 
-### 2. `AssigneePopover` — add `mode: "single" | "multi"` (default `"single"`)
-- Single mode: unchanged.
-- Multi mode: shows checkmarks next to all current assignees (primary + co), click to add/remove. "Make primary" link on each selected non-primary row. "Assign me" shortcut at top.
+## Files
 
-### 3. New thin wrapper `MultiAssigneeChip`
-- Props: `taskId`, `primaryId`, optional `coAssigneeIds` (so list views can pass pre-loaded data and skip the hook).
-- Renders the existing `AvatarStack` (primary highlighted) when count > 1, otherwise the existing single `UserAvatar` button. Clicking opens `AssigneePopover` in multi mode. No new visual style — reuses what's already on the board.
+- `src/pages/pm/Work.tsx` — new, ~90% lifted from `Board.tsx` with the `mode="all"` default and the Quick Request/Project actions from ProjectList.
+- `src/App.tsx` — add `/pm/work` route, change `/pm/board` and `/pm/projects` to redirects, drop unused `Board`/`ProjectList` imports (files stay on disk for now in case of regressions, but no route renders them).
+- `src/components/AppSidebar.tsx` — collapse the two items into one `{ title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" }`.
+- `src/lib/pm/links.ts` — `buildQueueLink()` default base → `/pm/work`; accept legacy values.
+- `src/hooks/useChipFilters.ts` / `useViewMode.ts` / `useTypeFilter.ts` / `useWorkTypeFilter.ts` — add a tiny read-fallback so `"work"` keys inherit from `"board"` (preferred) or `"projects"` on first load, then write under `"work"`.
+- Memory: update the Core line listing nav items.
 
-### 4. Card surfaces that swap to `MultiAssigneeChip`
-All currently render a single `UserAvatar`/`AssigneePopover`:
-- `BoardTaskCard`, `ProjectTaskCard`, `RequestTaskCard`, `BlockedTaskCard`
-- `TaskKanban`, `TaskListView`, `TaskGridView`
-- `TasksTab`, `Board.tsx`
-Each list view calls `useTaskAssigneesBulk(taskIds)` once and passes the slice down to the chip — no N+1 queries.
+## What stays the same
 
-### 5. Task detail
-- `ControlPanel` "Assignee" row becomes "Assignees": shows primary chip + each co-assignee chip (X to remove). `+` button opens the multi popover. Primary swap available via popover row action.
-- `TaskWorkspace` header already shows primary via team stack — no change needed beyond the chip.
-
-### 6. "Me" filters and queues
-Update the predicate used by Briefing, Workload, and `src/lib/pm/filters.ts` so a task counts as "mine" when **either** `assignee_id === me` **or** `me ∈ coAssignees(task)`.
-- `src/lib/pm/briefing.ts`: fetch `pm_task_assignees` rows where `user_id = me`, union with the primary-owner query.
-- `src/pages/pm/Workload.tsx`: same union when computing per-user active tasks.
-- `src/lib/pm/filters.ts`: accept an optional `coAssigneeIndex: Map<taskId, Set<userId>>` and use it in the existing `assignee_id === meId` checks.
-
-### 7. Things that stay single-owner on purpose (preserves current behavior)
-- Claim flow → still sets the primary owner.
-- Track derivation trigger → still keyed off the primary.
-- Status auto-unclaim when primary cleared → unchanged.
-- Bulk "Assign to…" action → still sets primary (the most common ask); multi-add is per-task in the popover.
-
-## Files touched
-
-- **Migration**: create `pm_task_assignees` + GRANTs + RLS.
-- **New**: `src/lib/pm/assignees.ts`, `src/components/pm/MultiAssigneeChip.tsx`.
-- **Edited**: `src/components/pm/AssigneePopover.tsx` (add multi mode), `src/components/pm/workspace/ControlPanel.tsx`, `src/lib/pm/filters.ts`, `src/lib/pm/briefing.ts`, `src/pages/pm/Workload.tsx`, and the nine card/list components listed above.
-- **Memory**: add a short note about the primary + co-assignee split and the bulk hook.
+- Status model, priority flag, multi-assignee chip — all already consistent from tasks 1–3.
+- `/pm` Daily Briefing, `/pm/projects/:id` detail, `/pm/workload`, `/pm/time`, `/pm/timeline`, Forms, Templates, Snippets, Integrations — untouched.
+- `CreateWorkDialog`, intake flow, attachments, RLS, scheduler — untouched.
 
 ## Verification
 
-After the migration: open a task workspace, add 2 co-assignees, verify they appear on the same task card on `/pm/board`, in `/pm/projects/:id` list and grid, in the workspace header chip, and that the co-assignees see the task in their `/pm` Briefing "my quick tasks" and Workload row. Confirm a single-assignee task still renders identically to today.
+After build:
+1. Sidebar shows a single **Work** item; clicking it lands on `/pm/work` in **All** mode with every task listed (title, project, status badge, priority flag, assignee stack, due date).
+2. Toggling `WorkTypeFilterToggle` between All / Quick / Projects filters in place.
+3. Switching to **Projects** / **Kanban** / **Grid** modes shows today's Board/ProjectList equivalents.
+4. Visiting `/pm/board` or `/pm/projects` directly redirects to `/pm/work`.
+5. A deep link from the Daily Briefing (e.g. unclaimed callout via `buildQueueLink({ chips: ["unclaimed"] })`) lands on Work with the chip applied and the right tasks shown.
