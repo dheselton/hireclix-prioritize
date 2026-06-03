@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Plus, Trash2, FileText } from "lucide-react";
-import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
