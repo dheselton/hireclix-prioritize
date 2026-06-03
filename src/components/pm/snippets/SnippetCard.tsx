@@ -1,16 +1,28 @@
 import { useState } from "react";
-import { Check, ChevronDown, ChevronUp, Copy, MoreHorizontal, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  MoreHorizontal,
+  Video,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CodeBlock } from "./CodeBlock";
 import { SnippetUsageFooter } from "./SnippetUsageFooter";
+import { SnippetIncidentBanner } from "./SnippetIncidentBanner";
+import { SnippetIncidentDrawer } from "./SnippetIncidentDrawer";
+import { ReportBrokenSnippetDialog } from "./ReportBrokenSnippetDialog";
 import type { Snippet, SnippetCategory } from "@/lib/pm/snippets";
 
 interface Props {
@@ -26,6 +38,8 @@ export function SnippetCard({ snippet, category, onEdit, onDuplicate, onDelete }
   const [copied, setCopied] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [incidentDrawerId, setIncidentDrawerId] = useState<string | null>(null);
 
   const variation = snippet.variations[activeVar] ?? snippet.variations[0];
   const tagsVisible = showAllTags ? snippet.tags : snippet.tags.slice(0, 4);
