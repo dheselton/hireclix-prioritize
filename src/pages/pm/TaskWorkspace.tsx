@@ -19,7 +19,7 @@ import { AssetHub } from "@/components/pm/workspace/AssetHub";
 import { CollabHub } from "@/components/pm/workspace/CollabHub";
 import { QuickChecklist } from "@/components/pm/workspace/QuickChecklist";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
-import { TimeTrackerCard } from "@/components/pm/time/TimeTrackerCard";
+
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 
 import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
