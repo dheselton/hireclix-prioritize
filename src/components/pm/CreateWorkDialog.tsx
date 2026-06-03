@@ -602,7 +602,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step !== "select" && (
+        {!success && step !== "select" && (
           <DialogFooter className={cn("gap-2")}>
             <Button
               variant="outline"
