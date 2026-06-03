@@ -20,6 +20,8 @@ export type Snippet = {
   id: string;
   title: string;
   description: string | null;
+  instructions: string | null;
+  video_url: string | null;
   category_id: string | null;
   language: string | null;
   tags: string[];
@@ -33,6 +35,8 @@ export type Snippet = {
 export type SnippetInput = {
   title: string;
   description?: string | null;
+  instructions?: string | null;
+  video_url?: string | null;
   category_id?: string | null;
   language?: string | null;
   tags: string[];
@@ -111,6 +115,8 @@ export async function createSnippet(input: SnippetInput): Promise<Snippet> {
     .insert({
       title: input.title,
       description: input.description ?? null,
+      instructions: input.instructions ?? null,
+      video_url: input.video_url ?? null,
       category_id: input.category_id ?? null,
       language: input.language ?? null,
       tags: input.tags,
@@ -130,6 +136,8 @@ export async function updateSnippet(id: string, input: SnippetInput): Promise<Sn
     .update({
       title: input.title,
       description: input.description ?? null,
+      instructions: input.instructions ?? null,
+      video_url: input.video_url ?? null,
       category_id: input.category_id ?? null,
       language: input.language ?? null,
       tags: input.tags,
@@ -168,6 +176,8 @@ export async function duplicateSnippet(s: Snippet): Promise<Snippet> {
   return createSnippet({
     title: `${s.title} (Copy)`,
     description: s.description,
+    instructions: s.instructions,
+    video_url: s.video_url,
     category_id: s.category_id,
     language: s.language,
     tags: s.tags,

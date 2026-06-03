@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_snippets ADD COLUMN IF NOT EXISTS instructions text, ADD COLUMN IF NOT EXISTS video_url text;

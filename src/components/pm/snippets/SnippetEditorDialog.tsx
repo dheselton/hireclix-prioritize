@@ -43,6 +43,8 @@ export function SnippetEditorDialog({
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [language, setLanguage] = useState<string>("JavaScript");
   const [tags, setTags] = useState<string[]>([]);
@@ -58,6 +60,8 @@ export function SnippetEditorDialog({
     if (initial) {
       setTitle(initial.title);
       setDescription(initial.description ?? "");
+      setInstructions(initial.instructions ?? "");
+      setVideoUrl(initial.video_url ?? "");
       setCategoryId(initial.category_id ?? "");
       setLanguage(initial.language ?? "JavaScript");
       setTags(initial.tags ?? []);
@@ -70,6 +74,8 @@ export function SnippetEditorDialog({
     } else {
       setTitle("");
       setDescription("");
+      setInstructions("");
+      setVideoUrl("");
       setCategoryId(categories[0]?.id ?? "");
       setLanguage("JavaScript");
       setTags([]);
@@ -114,6 +120,8 @@ export function SnippetEditorDialog({
       await onSave({
         title: title.trim(),
         description: description.trim() || null,
+        instructions: instructions.trim() || null,
+        video_url: videoUrl.trim() || null,
         category_id: categoryId || null,
         language,
         tags,
@@ -163,6 +171,29 @@ export function SnippetEditorDialog({
               onChange={e => setDescription(e.target.value)}
               rows={3}
               placeholder="What this snippet does and when to use it"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs">Instructions</Label>
+            <Textarea
+              value={instructions}
+              onChange={e => setInstructions(e.target.value)}
+              rows={5}
+              placeholder="Step-by-step notes for a teammate using this snippet (where to paste, gotchas, required setup)."
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Helps teammates implement this without needing to ask.
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-xs">Loom or other video link</Label>
+            <Input
+              type="url"
+              value={videoUrl}
+              onChange={e => setVideoUrl(e.target.value)}
+              placeholder="https://loom.com/share/…"
             />
           </div>
 
