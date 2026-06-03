@@ -1332,11 +1332,13 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          instructions: string | null
           language: string | null
           project_ids: string[] | null
           tags: string[] | null
           title: string
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           category_id?: string | null
@@ -1344,11 +1346,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          instructions?: string | null
           language?: string | null
           project_ids?: string[] | null
           tags?: string[] | null
           title: string
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           category_id?: string | null
@@ -1356,11 +1360,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          instructions?: string | null
           language?: string | null
           project_ids?: string[] | null
           tags?: string[] | null
           title?: string
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: [
           {
