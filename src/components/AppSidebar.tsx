@@ -47,7 +47,7 @@ function useUnclaimedCount() {
   }, [tasks, role, isMe]);
 }
 
-const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "projects", "forms"]);
+const SUBMITTER_ITEM_KEYS = new Set<string>(["queue", "work", "forms"]);
 
 const snippetsItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" as const };
 const helpItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" as const };
