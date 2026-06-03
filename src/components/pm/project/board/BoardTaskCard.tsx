@@ -92,7 +92,7 @@ export function BoardTaskCard({
                 <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} muted={unclaimed} />
               )}
               {team.length <= 1 && (
-                <AssigneePopover taskId={task.id} assigneeId={task.assignee_id} size="xs" />
+                <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
               )}
             </div>
           </div>
