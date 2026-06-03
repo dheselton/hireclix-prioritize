@@ -1,22 +1,22 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { blockedRoutePrefixes, fallbackPath } from "@/lib/pm/permissions";
 
-const BLOCKED_PREFIXES = [
-  "/pm/board",
-  "/pm/workload",
-  "/pm/timeline",
-  "/pm/templates",
-  "/pm/integrations",
-  "/pm/forms/", // form builder (public /f/:slug routes are outside /pm)
-  "/snippets",
-];
-
-/** Redirects submitters away from pages they shouldn't see. */
-export function SubmitterRouteGuard({ children }: { children: React.ReactNode }) {
+/**
+ * Redirects users away from routes their role can't access.
+ *
+ * Kept under the old filename + export alias to avoid churn in App.tsx; rules
+ * now come from `src/lib/pm/permissions.ts`.
+ */
+export function RoleRouteGuard({ children }: { children: React.ReactNode }) {
   const { role } = useCurrentUser();
   const { pathname } = useLocation();
-  if (role === "submitter" && BLOCKED_PREFIXES.some(p => pathname.startsWith(p))) {
-    return <Navigate to="/pm" replace />;
+  const blocked = blockedRoutePrefixes(role);
+  if (blocked.some(p => pathname.startsWith(p))) {
+    return <Navigate to={fallbackPath(role)} replace />;
   }
   return <>{children}</>;
 }
+
+/** @deprecated Use `RoleRouteGuard` — kept as an alias for existing imports. */
+export const SubmitterRouteGuard = RoleRouteGuard;
