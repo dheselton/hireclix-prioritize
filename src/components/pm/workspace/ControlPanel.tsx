@@ -47,7 +47,6 @@ export function ControlPanel({
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
   const showEnv = task.type === "dev" || !!task.dev_environment;
-  void useMockUsers;
 
   return (
     <div className="rounded-lg border border-border bg-card p-3">
