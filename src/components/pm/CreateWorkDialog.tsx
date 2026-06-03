@@ -104,6 +104,15 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   // Wizard
   const [wizardTemplateId, setWizardTemplateId] = useState<string | null>(null);
 
+  // Submission confirmation payload
+  const [success, setSuccess] = useState<null | {
+    projectId: string;
+    requestType: RequestType | null;
+    requestTypeLabel: string | null;
+    watcherIds: string[];
+    alias: string;
+  }>(null);
+
   useEffect(() => {
     if (!open) return;
     setStep(initialStep === "project" ? "project-entry" : (initialStep as Step));
