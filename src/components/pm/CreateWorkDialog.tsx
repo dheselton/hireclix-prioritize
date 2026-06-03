@@ -20,6 +20,9 @@ import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
+import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
+import { applyClientWatchers } from "@/lib/pm/clientWatchers";
+import { aliasFor } from "@/lib/pm/requestAliases";
 import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
 import { Sparkle } from "lucide-react";
 
