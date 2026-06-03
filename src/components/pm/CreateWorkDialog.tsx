@@ -373,7 +373,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "request" && (() => {
+        {!success && step === "request" && (() => {
           const selectedClient = clients.find(c => c.id === reqForm.client_id);
           const isInternal = !!selectedClient && (selectedClient.is_internal || internalIds.has(selectedClient.id));
           return (
