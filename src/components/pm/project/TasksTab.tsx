@@ -39,8 +39,8 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function TasksTab({ tasks, projectId, meId, templateId }: {
-  tasks: PmTask[]; projectId: string; meId: string | null; templateId?: string | null;
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
+  tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
