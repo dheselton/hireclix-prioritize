@@ -34,7 +34,7 @@ export function BlockedTaskCard({ task, project, clientName, onOpen }: Props) {
           </button>
 
           <div className="flex items-center gap-2 shrink-0">
-            <UserAvatar userId={task.assignee_id} size="xs" />
+            <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
             {project && (
               <Link to={`/pm/projects/${project.id}`} className="text-muted-foreground hover:text-foreground">
                 <ChevronRight className="h-3.5 w-3.5" />
