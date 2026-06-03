@@ -346,7 +346,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
 
 
-        {step === "select" && (
+        {!success && step === "select" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button type="button" onClick={() => setStep("request")} className="text-left">
               <Card className="h-full hover:border-primary transition cursor-pointer">
