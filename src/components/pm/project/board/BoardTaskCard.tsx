@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { StatusPill } from "@/components/pm/StatusPill";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import { typeBadgeClass } from "@/lib/pm/statusGroups";
