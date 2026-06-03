@@ -100,7 +100,7 @@ export function ProjectTaskCard({
             {unclaimed ? (
               team.length > 0
                 ? <AvatarStack userIds={team} max={3} size="xs" muted />
-                : <UserAvatar userId={task.assignee_id} size="xs" />
+                : <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted />
             ) : (
               <AvatarStack userIds={team} max={3} size="xs" highlightId={task.assignee_id} />
             )}
