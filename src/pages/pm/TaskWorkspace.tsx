@@ -168,6 +168,7 @@ export default function TaskWorkspace() {
           {/* LEFT */}
           <div className="space-y-6 min-w-0">
             <RequestContextPanel projectId={task.project_id} />
+            <UpcomingBanner taskId={task.id} />
             {(task.custom_fields as any)?.snippet_incident_id && (
               <IncidentContextBanner
                 incidentId={(task.custom_fields as any).snippet_incident_id}
