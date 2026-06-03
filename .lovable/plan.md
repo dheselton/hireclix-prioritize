@@ -1,56 +1,73 @@
-## Goal
-Tighten intake forms so submissions feel structured and trustworthy: align with the new request-type taxonomy, auto-add watchers for specific client + request-type combinations, give submitters a real confirmation screen, and prepare a per-request-type email alias mapping so confirmation emails can be wired up later without re-plumbing.
+# Snippet instructions + Loom support + usage visibility
 
-## Files to add
+Enhance the snippet library so each snippet can carry implementation guidance (written instructions + an optional Loom/video link) and clearly show where it's actually used across live projects and templates. No data model overhaul — just additive columns and a new usage panel that queries existing link tables.
 
-### `supabase/migrations/<ts>_pm_client_watchers.sql`
-New table `pm_client_watchers` with the standard pm permissive RLS:
-- `id uuid pk default gen_random_uuid()`
-- `client_id uuid not null references clients(id) on delete cascade`
-- `user_id uuid not null references mock_users(id) on delete cascade`
-- `request_type text` (nullable — null means "all request types for this client")
-- `created_at timestamptz default now()`
-- Unique `(client_id, user_id, coalesce(request_type, ''))`
-- GRANTs + permissive RLS matching other pm_* tables.
+## Scope
 
-### `src/lib/pm/requestAliases.ts`
-Pure code map (no sends yet) used by the confirmation screens and reserved for future `send-transactional-email`:
-- `REQUEST_TYPE_ALIASES: Record<RequestType, string>` — e.g. `careersite_* → careersite@hireclix.com`, `web_edit/landing_page → web@…`, ads → `ads@…`, etc., fallback `requests@hireclix.com`.
-- `aliasFor(requestType)` helper.
+1. Add `instructions` (long-form markdown-ish text) and `video_url` to snippets.
+2. Surface both on the snippet card with the same patterns we already use elsewhere.
+3. Replace the misleading "Used in N projects" footer (currently counted from a stale `project_ids` array) with a real usage list pulled from `pm_task_snippets` and `pm_template_task_snippets`.
 
-### `src/lib/pm/clientWatchers.ts`
-- `fetchClientWatchers(clientId, requestType): Promise<string[]>` — returns deduped userIds matching `(client_id=clientId AND (request_type=requestType OR request_type IS NULL))`.
-- `applyClientWatchers(projectId, clientId, requestType)` — fetches matching watchers and upserts each into `pm_project_members` with `role='watcher'`.
+## Schema change
 
-### `src/components/pm/intake/SubmissionSuccess.tsx`
-Reusable success panel (Card-based, semantic tokens only). Props: `title`, `requestType?`, `projectId?`, `taskId?`, `watcherIds`, `confirmationAlias`. Renders:
-- Checkmark + "Request received".
-- Reference: short id (last 6 of project id) + request-type label.
-- "Watchers notified" avatar stack (existing `AvatarStack`) when any.
-- Info row: "A confirmation email will be sent from `{alias}` once enabled." (greyed/italic — labels future behavior).
-- Primary action button slot (children).
+Single migration adding two nullable columns:
 
-## Files to edit
+```sql
+ALTER TABLE public.pm_snippets
+  ADD COLUMN instructions text,
+  ADD COLUMN video_url text;
+```
 
-### `src/components/pm/CreateWorkDialog.tsx`
-- After `submitRequest()` succeeds: call `applyClientWatchers(proj.id, client_id, requestType)`, collect watcher ids, swap the dialog body to `<SubmissionSuccess>` with actions "Open request" (navigates to `/pm/projects/:id`) and "New request" (resets to step `request`). Do not auto-close.
-- Same treatment for `submitProject()` (no request type → uses default alias).
-- Move toast to a short success toast; success screen carries the detail.
+No new tables, no RLS changes, no grants needed (table already configured).
 
-### `src/pages/pm/PublicForm.tsx`
-- After submit, render `<SubmissionSuccess>` instead of the bare "Thanks!" card. Show request-type label when the form is `kind=internal_request` (read from `form.custom_fields.request_type` if present on the submitted payload, otherwise omit).
-- Compute watcher ids by calling `applyClientWatchers` when the form has a `client_id` association (skip silently otherwise).
-- Pass `confirmationAlias` from `aliasFor(...)`.
+## Editor changes — `SnippetEditorDialog.tsx`
 
-### `src/components/pm/forms/useInternalRequestForm.ts` (verify only)
-- Confirm the hook already returns the conditional fields for all entries in `REQUEST_TYPE_GROUPS`. No change unless a type is missing.
+Add two fields under the existing Description field, before Variations:
+
+- **Instructions** — `Textarea` (rows=5), placeholder "Step-by-step notes for a teammate using this snippet (where to paste, gotchas, required setup)."
+- **Loom / video link** — `Input type="url"`, placeholder "https://loom.com/share/…". Light client-side validation: must start with `http`. We accept any URL (Loom, YouTube, Vimeo, internal share) — copy says "Loom or other video link".
+
+Wire both through `SnippetInput`, `createSnippet`, `updateSnippet`, `duplicateSnippet`, and the `Snippet` type in `src/lib/pm/snippets.ts`.
+
+## Card changes — `SnippetCard.tsx`
+
+- If `instructions` exists, render a collapsible "Instructions" panel above the variation tabs using the existing muted-surface pattern (rounded `bg-muted/50` block, `text-[13px]`, default collapsed with a "Show instructions" toggle that flips to "Hide"). Preserves whitespace with `whitespace-pre-wrap`.
+- If `video_url` exists, render a small inline button next to the category chip in the header: `<Button variant="outline" size="sm">` with `Video` lucide icon + label "Watch Loom" (or "Watch video" for non-loom hosts — detected by `url.includes("loom.com")`). Opens in a new tab (`target="_blank" rel="noreferrer"`), matches the existing link/attachment patterns used in `AttachmentsSection`.
+- Replace the static "Used in N projects" footer with a new `<SnippetUsageFooter snippetId={…} />` (see below) — keeps the same visual slot, just driven by real data.
+
+## New file — `src/components/pm/snippets/SnippetUsageFooter.tsx`
+
+Tiny component that fetches and renders true usage:
+
+- React-query hook `useSnippetUsage(snippetId)` keyed on the snippet id.
+- Query joins:
+  - `pm_task_snippets` → `pm_tasks (id, title, project_id, pm_projects(title))`
+  - `pm_template_task_snippets` → `pm_template_tasks (id, title, template_id, pm_project_templates(name))`
+- Footer renders: "Used in 3 projects · 2 templates" as a button-styled trigger that opens a `Popover` listing each usage as a clickable row:
+  - Project tasks: deep link to `/pm/tasks/:id` (uses existing `useTaskDrawerLink` open behavior — full workspace, not Quick Edit).
+  - Templates: deep link to `/pm/templates/:id` (existing route).
+- Zero usage → muted "Not used yet" label, no popover.
+
+## Files touched
+
+- **Migration** — add 2 columns to `pm_snippets`.
+- **Edited**
+  - `src/lib/pm/snippets.ts` — extend types, persistence, duplicate.
+  - `src/components/pm/snippets/SnippetEditorDialog.tsx` — add 2 fields.
+  - `src/components/pm/snippets/SnippetCard.tsx` — instructions panel, video button, swap footer.
+- **Created**
+  - `src/components/pm/snippets/SnippetUsageFooter.tsx` — real usage list popover.
 
 ## Out of scope
-- No real email sending — alias mapping + UI copy only. A follow-up task will wire `send-transactional-email`.
-- No FormBuilder UI changes (admins manage watchers via DB / future settings screen).
-- No styling overhaul — reuse `Card`, `Button`, `Input`, `Label`, `AvatarStack`, semantic tokens.
+
+- No embedded video player — we link out (matches existing attachment patterns).
+- No rich-text editor for instructions (plain text + line breaks, like other description fields in the app).
+- No changes to `SnippetRow`, search popover, or template summary cells (footer there is already minimal).
+- No backfill — `instructions`/`video_url` stay null on existing rows.
 
 ## Success criteria
-- A request submitted for an internal HireClix `careersite_*` type auto-adds any watchers configured for that client/type as project members.
-- Both the in-app dialog and the public form show a structured confirmation panel with a reference id, watcher avatars, and the future-confirmation-email note.
-- Alias mapping is exposed via one helper so future email work imports a single source of truth.
+
+- Author can add instructions + a Loom URL when creating/editing a snippet, and both persist.
+- Snippet card shows a collapsible Instructions panel and a "Watch Loom" button when present, using existing components and tokens.
+- The card footer reflects actual current usage from `pm_task_snippets` + `pm_template_task_snippets`, and each row deep-links to the task workspace or template editor.
+- Existing snippet library structure, list/search behavior, and styles are unchanged.
