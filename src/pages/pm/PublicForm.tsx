@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
+import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
+import { applyClientWatchers } from "@/lib/pm/clientWatchers";
+import { aliasFor } from "@/lib/pm/requestAliases";
 import { persistIntakeAttachments } from "@/lib/pm/api";
 
 export default function PublicForm() {
