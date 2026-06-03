@@ -56,7 +56,7 @@ export function ProjectWorkGrid({ tasks, projects, meId, onOpenTask, onChanged, 
 
   const isEmpty = groups.list.length === 0 && groups.loose.length === 0;
   if (isEmpty) {
-    return <div className="text-sm text-muted-foreground italic py-6 text-center border border-dashed rounded-md">No work here.</div>;
+    return <div className="text-sm text-muted-foreground italic py-6 text-center border border-dashed rounded-md">Nothing matches these filters.</div>;
   }
 
   return (
