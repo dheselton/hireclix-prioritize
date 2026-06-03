@@ -178,7 +178,6 @@ export default function TaskWorkspace() {
           <aside className="space-y-3">
             <TaskMetaCard projectId={task.project_id} phaseName={crumbs.phaseName} />
             <ControlPanel task={task} setTask={setTask} patch={patch} />
-            <TimeTrackerCard taskId={task.id} taskTitle={task.title} />
             <QuickChecklist taskId={task.id} />
 
 
