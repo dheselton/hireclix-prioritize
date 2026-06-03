@@ -174,6 +174,29 @@ export function SnippetEditorDialog({
             />
           </div>
 
+          <div>
+            <Label className="text-xs">Instructions</Label>
+            <Textarea
+              value={instructions}
+              onChange={e => setInstructions(e.target.value)}
+              rows={5}
+              placeholder="Step-by-step notes for a teammate using this snippet (where to paste, gotchas, required setup)."
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Helps teammates implement this without needing to ask.
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-xs">Loom or other video link</Label>
+            <Input
+              type="url"
+              value={videoUrl}
+              onChange={e => setVideoUrl(e.target.value)}
+              placeholder="https://loom.com/share/…"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Language</Label>
