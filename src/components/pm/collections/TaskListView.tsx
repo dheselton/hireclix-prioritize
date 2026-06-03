@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
-import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
