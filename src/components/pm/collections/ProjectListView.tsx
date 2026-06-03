@@ -91,7 +91,7 @@ export function ProjectListView({ projects, tasks }: Props) {
               </td>
             </tr>
           ))}
-          {!sorted.length && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground italic">No projects yet.</td></tr>}
+          {!sorted.length && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground italic">No projects yet. Start a Quick Request or Full Project to get going.</td></tr>}
         </tbody>
       </table>
     </div>
