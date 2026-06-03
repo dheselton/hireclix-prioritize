@@ -85,7 +85,7 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
                       {proj && <div className="text-[11px] text-muted-foreground">{proj.title}</div>}
                       {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
                       <div className="flex items-center justify-between pt-1">
-                        <UserAvatar userId={t.assignee_id} size="xs" />
+                        <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" />
                         {t.status === "unclaimed"
                           ? <ClaimButton task={t} onChanged={onChanged} />
                           : <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>}
