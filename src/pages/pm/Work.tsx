@@ -248,17 +248,20 @@ export default function Work() {
                         className={cn("cursor-pointer hover:shadow-md transition", blocked && "border-red-500/60")}
                       >
                         <CardContent className="p-2.5 space-y-1.5">
-                          <div className="flex items-center gap-1">
-                            <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
-                            <Badge variant="outline" className="text-[10px]">{t.priority}</Badge>
-                          </div>
-                          <div className="text-sm font-medium leading-tight">{t.title}</div>
-                          <div className="text-[11px] text-muted-foreground">{proj?.title}</div>
-                          {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
-                          <div className="flex items-center justify-between pt-1">
-                            <span onClick={(e) => e.stopPropagation()}>
-                              <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={reload} />
+                          <div className="flex items-start gap-2">
+                            <PriorityFlag priority={t.priority} size="xs" className="mt-0.5" />
+                            <div className="text-sm font-medium leading-tight flex-1 line-clamp-2">{t.title}</div>
+                            <span onClick={(e) => e.stopPropagation()} className="shrink-0">
+                              <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" muted={t.status === "unclaimed"} onChanged={reload} />
                             </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <StatusPill status={t.status} className="text-[10px] py-0 px-1.5" />
+                            <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate">{proj?.title}</div>
+                          {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
+                          <div className="flex items-center justify-end pt-1">
                             <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
                           </div>
                         </CardContent>
