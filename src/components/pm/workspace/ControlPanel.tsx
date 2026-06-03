@@ -46,9 +46,8 @@ export function ControlPanel({
   setTask: (t: PmTask) => void;
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
-  const users = useMockUsers();
-  void users; // referenced inside AssigneeChips subcomponent
   const showEnv = task.type === "dev" || !!task.dev_environment;
+  void useMockUsers;
 
   return (
     <div className="rounded-lg border border-border bg-card p-3">
