@@ -147,7 +147,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   <td className="p-2 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></td>
                   <td className="p-2"><StatusPill status={t.status} /></td>
                   <td className="p-2 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
-                    <AssigneePopover taskId={t.id} assigneeId={t.assignee_id} size="xs" onChanged={onChanged} />
+                    <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={onChanged} />
                   </td>
                   <td className="p-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.due_date)}</td>
                   <td className="p-2 text-center">
