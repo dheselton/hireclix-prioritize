@@ -59,6 +59,7 @@ export function TopBar() {
       <DefaultViewMenu />
       <MeModeToggle />
 
+      {!isAuthEnabled() && (
       <Select value={user?.id ?? ""} onValueChange={setCurrent}>
         <SelectTrigger className="w-[240px]">
           <SelectValue placeholder="Select user" />
