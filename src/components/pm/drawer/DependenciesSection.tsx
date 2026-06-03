@@ -8,7 +8,7 @@ import { STATUS_COLORS } from "@/types/pm";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { TaskPicker } from "./TaskPicker";
 
-interface Dep { id: string; task_id: string; depends_on_task_id: string; }
+interface Dep { id: string; task_id: string; depends_on_task_id: string; reveal_mode?: string; }
 interface TaskLite { id: string; title: string; status: string; project_id: string; project_title?: string; }
 
 export function DependenciesSection({ taskId }: { taskId: string }) {
