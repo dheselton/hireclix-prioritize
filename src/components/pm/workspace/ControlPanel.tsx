@@ -5,10 +5,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { AssigneePopover } from "@/components/pm/AssigneePopover";
+import { Button } from "@/components/ui/button";
+import { Plus, X, Star } from "lucide-react";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, PRIORITIES, type PmTask, type TaskStatus, type TaskPriority } from "@/types/pm";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
+import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssignees } from "@/lib/pm/assignees";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
