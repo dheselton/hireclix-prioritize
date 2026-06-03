@@ -20,6 +20,9 @@ import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
+import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
+import { applyClientWatchers } from "@/lib/pm/clientWatchers";
+import { aliasFor } from "@/lib/pm/requestAliases";
 import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
 import { Sparkle } from "lucide-react";
 
@@ -101,6 +104,15 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   // Wizard
   const [wizardTemplateId, setWizardTemplateId] = useState<string | null>(null);
 
+  // Submission confirmation payload
+  const [success, setSuccess] = useState<null | {
+    projectId: string;
+    requestType: RequestType | null;
+    requestTypeLabel: string | null;
+    watcherIds: string[];
+    alias: string;
+  }>(null);
+
   useEffect(() => {
     if (!open) return;
     setStep(initialStep === "project" ? "project-entry" : (initialStep as Step));
@@ -113,6 +125,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
     setProjRequestedBy(user?.id ?? null);
     setProjFiles([]); setProjLinks([]);
+    setSuccess(null);
     (async () => {
       const [{ data: c }, { data: t }] = await Promise.all([
         supabase.from("clients").select("id,name,is_internal").order("name"),
@@ -212,8 +225,16 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
         refreshCareerSiteProjects().catch(() => {});
       }
-      toast.success("Request created");
-      onOpenChange(false);
+      // Auto-add watchers configured for this client + request type.
+      const watcherIds = await applyClientWatchers(proj.id, reqForm.client_id, requestType).catch(() => []);
+      toast.success("Request submitted");
+      setSuccess({
+        projectId: proj.id,
+        requestType,
+        requestTypeLabel: REQUEST_TYPE_LABELS[requestType] ?? null,
+        watcherIds,
+        alias: aliasFor(requestType),
+      });
       onCreated?.();
     } catch (e: any) {
       toast.error(e.message || "Failed to create request");
@@ -247,8 +268,15 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           userId: user?.id ?? null,
         });
       }
+      const watcherIds = await applyClientWatchers(proj.id, projForm.client_id, null).catch(() => []);
       toast.success("Project created");
-      onOpenChange(false);
+      setSuccess({
+        projectId: proj.id,
+        requestType: null,
+        requestTypeLabel: null,
+        watcherIds,
+        alias: aliasFor(null),
+      });
       onCreated?.();
     } catch (e: any) {
       toast.error(e.message || "Failed to create project");
@@ -273,14 +301,52 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {step === "select" ? "Create new work"
+            {success ? "Submitted"
+              : step === "select" ? "Create new work"
               : step === "request" ? "New Quick Request"
               : step === "project-entry" ? "New Full Project"
               : "New Blank Project"}
           </DialogTitle>
         </DialogHeader>
 
-        {step === "select" && (
+        {success && (
+          <SubmissionSuccess
+            requestTypeLabel={success.requestTypeLabel}
+            projectId={success.projectId}
+            watcherIds={success.watcherIds}
+            confirmationAlias={success.alias}
+          >
+            <Button
+              onClick={() => {
+                const id = success.projectId;
+                onOpenChange(false);
+                navigate(`/pm/projects/${id}`);
+              }}
+            >
+              Open {success.requestType ? "request" : "project"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSuccess(null);
+                setStep(success.requestType ? "request" : "project-blank");
+                setReqForm({ title: "", client_id: "", description: "" });
+                setReqFieldValues({});
+                setQuickTasks([""]);
+                setReqFiles([]); setReqLinks([]);
+                setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
+                setProjFiles([]); setProjLinks([]);
+              }}
+            >
+              Submit another
+            </Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+          </SubmissionSuccess>
+        )}
+
+
+
+        {!success && step === "select" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button type="button" onClick={() => setStep("request")} className="text-left">
               <Card className="h-full hover:border-primary transition cursor-pointer">
@@ -307,7 +373,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "request" && (() => {
+        {!success && step === "request" && (() => {
           const selectedClient = clients.find(c => c.id === reqForm.client_id);
           const isInternal = !!selectedClient && (selectedClient.is_internal || internalIds.has(selectedClient.id));
           return (
@@ -418,7 +484,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           );
         })()}
 
-        {step === "project-entry" && (
+        {!success && step === "project-entry" && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Card className="border-primary/40">
@@ -476,7 +542,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step === "project-blank" && (
+        {!success && step === "project-blank" && (
           <div className="space-y-3">
             <div>
               <Label>Title *</Label>
@@ -536,7 +602,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           </div>
         )}
 
-        {step !== "select" && (
+        {!success && step !== "select" && (
           <DialogFooter className={cn("gap-2")}>
             <Button
               variant="outline"

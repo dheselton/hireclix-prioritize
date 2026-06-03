@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
+import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
+import { applyClientWatchers } from "@/lib/pm/clientWatchers";
+import { aliasFor } from "@/lib/pm/requestAliases";
 import { persistIntakeAttachments } from "@/lib/pm/api";
 
 export default function PublicForm() {
@@ -22,7 +25,12 @@ export default function PublicForm() {
   const [requestedBy, setRequestedBy] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [links, setLinks] = useState<StagedLink[]>([]);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState<null | {
+    projectId: string | null;
+    watcherIds: string[];
+    alias: string;
+    requestTypeLabel: string | null;
+  }>(null);
   const [busy, setBusy] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +105,20 @@ export default function PublicForm() {
         form_id: form.id, payload: values, submitter_name: name, submitter_email: email,
         created_project_id: createdProjectId, created_task_id: createdTaskId,
       } as any);
-      setSubmitted(true);
+
+      // Pull request type + client off the form (set by FormBuilder for internal_request forms).
+      const requestType = (form as any).request_type ?? null;
+      const clientId = (form as any).client_id ?? null;
+      const watcherIds = createdProjectId
+        ? await applyClientWatchers(createdProjectId, clientId, requestType).catch(() => [])
+        : [];
+
+      setSubmitted({
+        projectId: createdProjectId,
+        watcherIds,
+        alias: aliasFor(requestType),
+        requestTypeLabel: typeof requestType === "string" ? requestType.replace(/_/g, " ") : null,
+      });
       toast.success("Submitted!");
     } catch (e: any) {
       toast.error(e.message || "Failed to submit");
@@ -109,10 +130,12 @@ export default function PublicForm() {
   if (!form) return <div ref={rootRef} className="p-6 max-w-xl mx-auto">Form not found.</div>;
   if (submitted) return (
     <div ref={rootRef} className={embed ? "p-4" : "p-6 max-w-xl mx-auto"}>
-      <Card><CardContent className="p-8 text-center space-y-2">
-        <h1 className="text-xl font-bold">Thanks!</h1>
-        <p className="text-sm text-muted-foreground">Your request was received and added to the queue.</p>
-      </CardContent></Card>
+      <SubmissionSuccess
+        projectId={submitted.projectId}
+        watcherIds={submitted.watcherIds}
+        confirmationAlias={submitted.alias}
+        requestTypeLabel={submitted.requestTypeLabel}
+      />
     </div>
   );
 
