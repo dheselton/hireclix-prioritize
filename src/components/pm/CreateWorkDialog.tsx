@@ -484,7 +484,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           );
         })()}
 
-        {step === "project-entry" && (
+        {!success && step === "project-entry" && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Card className="border-primary/40">
