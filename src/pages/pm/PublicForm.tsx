@@ -25,7 +25,12 @@ export default function PublicForm() {
   const [requestedBy, setRequestedBy] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [links, setLinks] = useState<StagedLink[]>([]);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState<null | {
+    projectId: string | null;
+    watcherIds: string[];
+    alias: string;
+    requestTypeLabel: string | null;
+  }>(null);
   const [busy, setBusy] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
