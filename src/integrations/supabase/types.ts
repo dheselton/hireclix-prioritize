@@ -1290,6 +1290,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_snippet_incidents: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          reported_by: string | null
+          resolved_at: string | null
+          severity: string
+          snippet_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reported_by?: string | null
+          resolved_at?: string | null
+          severity?: string
+          snippet_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reported_by?: string | null
+          resolved_at?: string | null
+          severity?: string
+          snippet_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_snippet_incidents_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_snippet_incidents_snippet_id_fkey"
+            columns: ["snippet_id"]
+            isOneToOne: false
+            referencedRelation: "pm_snippets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_snippet_variations: {
         Row: {
           code: string
