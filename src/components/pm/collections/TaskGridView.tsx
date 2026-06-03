@@ -81,7 +81,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
-                    <UserAvatar userId={t.assignee_id} size="xs" />
+                    <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" />
                     <StatusPill status={t.status} />
                   </div>
                   {t.status === "unclaimed"
