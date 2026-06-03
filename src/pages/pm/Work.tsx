@@ -124,9 +124,9 @@ export default function Work() {
   }
 
   const subtitle =
-    mode === "list" ? "Everything across the team — quick tasks and project work." :
+    mode === "list" ? "Every project across the team — quick requests and full projects." :
     mode === "kanban" ? "Drag cards across columns to update status." :
-    mode === "projects" ? "Projects with active work — open a card to drill in." :
+    mode === "projects" ? "All projects with active work. Quick requests show as compact cards." :
     "Tasks across all statuses.";
 
   return (
