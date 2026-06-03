@@ -434,7 +434,7 @@ function TaskRow({ task, groupColorBg, count, onClick }: {
         {task.type}
       </span>
       <span onClick={(e) => e.stopPropagation()}>
-        <AssigneePopover taskId={task.id} assigneeId={task.assignee_id} size="xs" />
+        <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
       </span>
       <span className="text-[11px] text-muted-foreground w-16 text-right">{fmtDate(task.due_date)}</span>
       <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} title={task.priority} />
