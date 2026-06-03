@@ -7,10 +7,10 @@ interface Props {
   className?: string;
 }
 
-const OPTIONS: { id: WorkTypeFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "request", label: "Requests" },
-  { id: "project", label: "Projects" },
+const OPTIONS: { id: WorkTypeFilter; label: string; hint: string }[] = [
+  { id: "all", label: "All work", hint: "All work across the team" },
+  { id: "request", label: "Quick requests", hint: "Lightweight, single-task projects" },
+  { id: "project", label: "Full projects", hint: "Multi-task projects with a timeline" },
 ];
 
 export function WorkTypeFilterToggle({ value, onChange, className }: Props) {
@@ -20,6 +20,7 @@ export function WorkTypeFilterToggle({ value, onChange, className }: Props) {
         <button
           key={o.id}
           type="button"
+          title={o.hint}
           onClick={() => onChange(o.id)}
           className={cn(
             "px-2.5 h-7 text-xs rounded transition",
