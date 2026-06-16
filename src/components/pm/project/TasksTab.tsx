@@ -433,6 +433,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
                     onClick={() => openTask(t.id)}
                     onStatusChange={(gid) => changeStatus(t.id, gid)}
                     onDateChange={(iso) => changeDate(t.id, iso)}
+                    allTasks={boardTasks}
+                    deps={deps}
                   />
                 ))}
               </BoardColumn>
@@ -446,6 +448,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
                 onClick={() => {}}
                 onStatusChange={() => {}}
                 onDateChange={() => {}}
+                allTasks={boardTasks}
+                deps={deps}
                 overlay
               />
             ) : null}
