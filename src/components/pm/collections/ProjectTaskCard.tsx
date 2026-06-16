@@ -9,8 +9,12 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
+import { TeamColorBar } from "@/components/pm/TeamColorBar";
+import { TeamPill } from "@/components/pm/TeamsMultiSelect";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
+import { teamsFromTask } from "@/lib/pm/teams";
+import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmProject, PmTask } from "@/types/pm";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 
@@ -44,14 +48,18 @@ export function ProjectTaskCard({
   const isCareerSite = !!csRequestType;
   const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
+  const teams = teamsFromTask(task);
+  const teamBg = teamBarBackground(teams);
+  const showTeamBar = !!teamBg && !isCareerSite && !isInternal && !unclaimed;
   return (
     <Card className={cn(
-      "card-lift border border-border",
+      "relative overflow-hidden card-lift border border-border",
       unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
       isInternal && !isCareerSite && "internal-border-l",
       isCareerSite && "careersite-border-l",
     )}>
-      <CardContent className="p-4 space-y-2">
+      {showTeamBar && <TeamColorBar background={teamBg} />}
+      <CardContent className={cn("p-4 space-y-2", showTeamBar && "pl-5")}>
         {showProjectHeader && project && (
           <div className="flex items-center justify-between gap-2 min-w-0">
             <Link
@@ -84,6 +92,11 @@ export function ProjectTaskCard({
           <span className="text-sm font-medium flex-1 truncate hover:underline">{task.title}</span>
           <StatusPill status={task.status} />
         </button>
+        {teams.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {teams.map(t => <TeamPill key={t} team={t} />)}
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-2 min-w-0">

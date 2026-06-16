@@ -161,6 +161,17 @@ All colors MUST be HSL.
     border: 1px solid hsl(var(--careersite) / 0.3);
   }
 
+  /* Dimmed / "not ready yet" state for tasks waiting on a predecessor or
+     scheduled to start far in the future. Calm, not noisy — the card stays
+     clickable but visibly recedes. */
+  .task-waiting {
+    background: hsl(var(--muted) / 0.35);
+    opacity: 0.75;
+  }
+  .task-waiting:hover {
+    opacity: 1;
+  }
+
   /* Card hover: subtle lift + colored ring. Use on any always-stroked card. */
   .card-lift {
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
