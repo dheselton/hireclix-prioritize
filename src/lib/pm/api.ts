@@ -275,6 +275,7 @@ const instantiateTemplateIntoProject = async (params: {
       sort_order: pt.sort_order + sortOffset,
       page_label: pt.page_label ?? null,
       page_group_key: pt.page_group_key ?? null,
+      teams: Array.isArray(pt.teams) && pt.teams.length ? pt.teams : undefined,
     };
   });
   const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();
