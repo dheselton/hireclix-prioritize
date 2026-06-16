@@ -7,8 +7,12 @@ import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { TeamColorBar } from "@/components/pm/TeamColorBar";
+import { TeamPill } from "@/components/pm/TeamsMultiSelect";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
+import { teamsFromTask } from "@/lib/pm/teams";
+import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmTask } from "@/types/pm";
 
 
