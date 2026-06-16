@@ -70,13 +70,16 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
     [tasks, hiddenIds],
   );
 
+  const team = useTeamFilter(`project.${projectId}`);
+
   const filtered = useMemo(() => {
     let out = tasks;
     if (!showUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
+    out = out.filter(t => team.filterTask(t));
     return out;
-  }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming]);
+  }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming, team]);
 
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
