@@ -32,8 +32,13 @@ export function ProjectHeader({ project, onAddTask }: {
 }) {
   const [clientName, setClientName] = useState<string>("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const internalIds = useInternalClientIds();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
+  const { user } = useCurrentUser();
+  const isPM = user?.role === "pm";
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
