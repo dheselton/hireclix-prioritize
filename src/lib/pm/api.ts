@@ -193,6 +193,7 @@ export interface PreviewTask extends ScheduleTask {
   sort_order: number;
   page_group_key?: string | null;
   page_label?: string | null;
+  teams?: string[];
 }
 
 export const fetchTemplateBundle = async (templateId: string) => {
