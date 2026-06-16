@@ -117,18 +117,22 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
             {sorted.map(t => {
               const proj = projects?.get(t.project_id);
               const checked = selected.has(t.id);
+              const rowTeams = teamsFromTask(t);
+              const rowTeamBg = teamBarBackground(rowTeams);
               return (
                 <tr
                   key={t.id}
                   className={cn(
                     "border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer",
                     checked && "bg-primary/5",
-                    t.status === "unclaimed"
+                    !rowTeamBg && (t.status === "unclaimed"
                       ? "unclaimed-row"
-                      : (t.track === "pm" ? "track-border-pm" : "track-border-production"),
+                      : (t.track === "pm" ? "track-border-pm" : "track-border-production")),
                   )}
+                  style={rowTeamBg ? { boxShadow: `inset 4px 0 0 0 ${rowTeams.length === 1 ? TEAM_COLOR[rowTeams[0]] : "transparent"}`, backgroundImage: rowTeams.length > 1 ? rowTeamBg : undefined, backgroundSize: rowTeams.length > 1 ? "4px 100%" : undefined, backgroundRepeat: rowTeams.length > 1 ? "no-repeat" : undefined, backgroundPosition: rowTeams.length > 1 ? "left center" : undefined, paddingLeft: 4 } : undefined}
                   onClick={() => onOpen(t.id)}
                 >
+
                   {enableBulk && (
                     <td className="p-2" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(t.id, !!v)} />
