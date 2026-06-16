@@ -54,7 +54,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
     ready: false, in_progress: false, in_review: false, complete: true,
   });
   const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
-    try { return localStorage.getItem(`pm.showUpcoming.${projectId}`) === "1"; } catch { return false; }
+    // Default to TRUE so new projects (where every task is dependency-blocked)
+    // aren't blank on first load. Only hide when the user has explicitly opted out.
+    try { return localStorage.getItem(`pm.showUpcoming.${projectId}`) !== "0"; } catch { return true; }
   });
   function toggleUpcoming() {
     setShowUpcoming(v => {

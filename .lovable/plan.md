@@ -1,35 +1,53 @@
-# Team-color left border on every task card
+# Fix project Tasks initial view + Board drag-and-drop
 
-## Problem
-The amber left border on **unclaimed** tasks (and the teal/purple bars on Career Site / Internal) currently override the team color bar. So at-a-glance every unclaimed Design task looks identical to every unclaimed Dev task — the team color only shows inside the small pill.
+Two bugs on `/pm/projects/:id` → Tasks tab.
 
-The user wants the most prominent visual cue — the left bar — to communicate **team(s)** first.
+## Problem 1 — Tasks tab looks empty on first load
 
-## Fix
+`TasksTab` defaults `showUpcoming = false`. `computeHiddenTaskIds()` marks any task whose predecessor isn't `complete/approved` as hidden. For a freshly created project (Brightspring Career Site), every task has an unmet predecessor → all 46 are hidden → the list/board is blank, forcing the user to click "+46 upcoming" before they see anything.
 
-### 1. Team bar always wins on `pm_tasks` cards
-Update `BoardTaskCard`, `ProjectTaskCard`, `RequestTaskCard`:
-- Remove the `!unclaimed` exclusion from `showTeamBar`. Whenever the task has team tags, the left bar renders the team color (or diagonal stripes for multi-team).
-- Drop the `unclaimed && border-l-4 border-l-amber-500` rule entirely. "Unclaimed" is still clearly communicated by the existing **Unclaimed** pill + Claim CTA.
-- Keep the **Career Site (teal)** and **Internal (purple)** left bars as overrides — these are project-level signals (not visible from the team pills) and per the existing precedence rule in memory. They get a thin team-colored *dot* in the top-right of the bar area? No — keep it simple: career site / internal bars stay as-is for now; team is still visible via the pill.
+### Fix
+In `src/components/pm/project/TasksTab.tsx`:
 
-### 2. Multi-team clarity
-`teamBarBackground()` already returns diagonal stripes for multi-team. Bump stripe width from 6px → 8px so two-team cards (e.g. Design + PM) read clearly at a glance instead of looking like a fuzzy gradient.
+- Change the `showUpcoming` localStorage default so it falls back to **`true`** when nothing is stored (`localStorage.getItem(...) !== "0"`). New projects start fully visible; users who explicitly hit "Hide N upcoming" still have their choice remembered per project.
+- Add a safety net: if hiding upcoming would leave `filtered.length === 0` AND there are tasks in the project, transparently show all of them (still display the toggle so power users can opt back in). This prevents the blank-state from ever returning even on edge-case data.
+- Slight copy tweak on the toggle: when expanded it reads "Hide upcoming (N)" instead of just "Hide N upcoming" so the action is clearer.
 
-### 3. Waiting state preserved
-When `vis.waiting` is true the bar already renders dimmed via the `dim` prop on `TeamColorBar`. No change.
+No behavior change for projects where some work is already started — those still hide future-blocked rows by default.
 
-### 4. List + grid views
-`TaskListView` rows get the same treatment: a 4px team-colored left edge on the row (currently they only show team pills). Same precedence (careersite > internal > team).
+## Problem 2 — Cards bounce back to their original column on the project Board
 
-## Files to edit
-- `src/components/pm/project/board/BoardTaskCard.tsx`
-- `src/components/pm/collections/ProjectTaskCard.tsx`
-- `src/components/pm/collections/RequestTaskCard.tsx`
-- `src/components/pm/collections/TaskListView.tsx`
-- `src/lib/pm/taskVisualState.ts` (stripe width tweak)
+In `TasksTab.handleDragEnd`, `boardTasks` is read from the function closure. `setBoardTasks` calls from `handleDragOver` updated state but the closure is stale, so:
 
-No DB / type / API changes.
+```
+nextTasks = boardTasks          // stale pre-drag-over value
+movedTask = nextTasks.find(...) // still has the OLD status
+statusChanged = movedTask.status !== originalTask.status   // false
+// → no status patch is sent to the DB
+// → useEffect([filtered]) snaps the card back
+```
 
-## Result
-Every card's left edge instantly tells you which team(s) own it. Unclaimed status is still obvious (pill + Claim button) but no longer drowns out the team signal.
+### Fix
+Refactor `handleDragEnd` in `src/components/pm/project/TasksTab.tsx`:
+
+1. Compute the authoritative post-drop list synchronously from the snapshot:
+   - Start from `snapshotRef.current` (pre-drag state).
+   - Determine `newStatus` directly from `overContainer` + active task (same logic `handleDragOver` uses).
+   - Apply `arrayMove` for same-column reorder, or splice into end of `overContainer` for cross-column move.
+   - Use this list as both the value passed to `setBoardTasks(...)` AND the basis for the persistence loop.
+2. Use a functional `setBoardTasks(curr => ...)` for the optimistic UI update so we never depend on stale closures.
+3. Compute `statusChanged` against the snapshot, not the closure copy.
+4. On persistence error, restore from `snapshotRef.current` (unchanged) and toast.
+
+This makes the same-column reorder, cross-column move, and DB write all derive from one freshly computed array — eliminating the bounce-back.
+
+### Validation
+- Open `/pm/projects/<id>` → Tasks tab → should immediately show task rows (no "+46 upcoming" needed).
+- Switch to Board view → drag a card from "Ready" → "In Progress" → card stays put, toast confirms, refresh persists.
+- Drag within the same column to reorder → order survives a reload.
+- Toggle "Hide upcoming" → choice persists per project.
+
+## Files touched
+- `src/components/pm/project/TasksTab.tsx` (default + safety net + handleDragEnd rewrite)
+
+No DB/schema/type changes. No other components affected. `WorkKanban` (global `/pm/work` board) already uses a single `onDragEnd` model with no stale-closure issue and is left untouched.
