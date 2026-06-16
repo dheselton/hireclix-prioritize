@@ -16,7 +16,7 @@ import type { PmProject, ProjectStatus, WorkType } from "@/types/pm";
 type Client = { id: string; name: string; is_internal?: boolean };
 
 const STATUSES: ProjectStatus[] = ["draft", "active", "on_hold", "in_review", "complete", "archived"];
-const WORK_TYPES: WorkType[] = ["project", "retainer", "request", "internal"] as any;
+const WORK_TYPES: WorkType[] = ["project", "request"];
 
 interface Props {
   open: boolean;
