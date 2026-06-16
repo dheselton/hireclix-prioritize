@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus, UserCheck } from "lucide-react";
+import { Share2, Plus, UserCheck, MoreHorizontal, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
-import { useMockUsers } from "@/lib/pm/mockUser";
+import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { useInternalClientIds } from "@/lib/pm/clients";
+import { deleteProject } from "@/lib/pm/api";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus } from "@/types/pm";
 
@@ -24,8 +32,13 @@ export function ProjectHeader({ project, onAddTask }: {
 }) {
   const [clientName, setClientName] = useState<string>("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const internalIds = useInternalClientIds();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
+  const { user } = useCurrentUser();
+  const isPM = user?.role === "pm";
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -79,8 +92,60 @@ export function ProjectHeader({ project, onAddTask }: {
           <Button size="sm" onClick={share}>
             <Share2 className="h-4 w-4 mr-1" /> Share
           </Button>
+          {isPM && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="px-2" aria-label="Project actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={(e) => { e.preventDefault(); setConfirmDelete(true); }}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-foreground">{project.title}</span> and all of its
+              tasks, dependencies, comments, attachments, time entries, and activity will be
+              permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                e.preventDefault();
+                setDeleting(true);
+                try {
+                  await deleteProject(project.id);
+                  toast.success("Project deleted");
+                  setConfirmDelete(false);
+                  navigate("/pm/work");
+                } catch (err: any) {
+                  toast.error(err?.message ?? "Could not delete project");
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete project"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }
