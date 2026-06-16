@@ -79,6 +79,17 @@ export const updateProject = async (id: string, patch: Partial<PmProject>) => {
   return data as unknown as PmProject;
 };
 
+export const deleteProject = async (id: string) => {
+  // pm_tasks and most related tables cascade on project_id; manually clear
+  // siblings that don't have a hard FK to be safe.
+  await supabase.from('pm_project_attachments').delete().eq('project_id', id);
+  await supabase.from('pm_project_links').delete().eq('project_id', id);
+  await supabase.from('pm_notes').delete().eq('project_id', id);
+  const { error } = await supabase.from('pm_projects').delete().eq('id', id);
+  if (error) throw error;
+  emitTasksChanged();
+};
+
 export const createProject = async (p: Partial<PmProject> & { requested_by?: string | null }) => {
   const uid = getCurrentUserId();
   const payload: any = { ...p };
