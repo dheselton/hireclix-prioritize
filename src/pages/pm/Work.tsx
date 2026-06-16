@@ -31,6 +31,7 @@ import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+import { WorkKanban } from "@/components/pm/work/WorkKanban";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -221,58 +222,7 @@ export default function Work() {
       )}
 
       {mode === "kanban" && (
-        <div className="flex gap-3 overflow-x-auto pb-3">
-          {cols.map(s => {
-            const items = visibleTasks.filter(t => t.status === s);
-            return (
-              <div key={s}
-                className="flex-shrink-0 w-72 bg-muted/30 rounded-lg p-2"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => { if (draggingId) { moveTo(draggingId, s); setDraggingId(null); } }}
-              >
-                <div className="flex items-center justify-between px-1 mb-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide">{COL_LABELS[s]}</div>
-                  <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
-                </div>
-                <div className="space-y-2 min-h-[100px]">
-                  {items.map(t => {
-                    const proj = projById.get(t.project_id);
-                    const blocked = t.status === "blocked";
-                    return (
-                      <Card
-                        key={t.id}
-                        draggable
-                        onDragStart={() => setDraggingId(t.id)}
-                        onDragEnd={() => setDraggingId(null)}
-                        onClick={() => drawer.open(t.id)}
-                        className={cn("cursor-pointer hover:shadow-md transition", blocked && "border-red-500/60")}
-                      >
-                        <CardContent className="p-2.5 space-y-1.5">
-                          <div className="flex items-start gap-2">
-                            <PriorityFlag priority={t.priority} size="xs" className="mt-0.5" />
-                            <div className="text-sm font-medium leading-tight flex-1 line-clamp-2">{t.title}</div>
-                            <span onClick={(e) => e.stopPropagation()} className="shrink-0">
-                              <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" muted={t.status === "unclaimed"} onChanged={reload} />
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <StatusPill status={t.status} className="text-[10px] py-0 px-1.5" />
-                            <Badge variant="outline" className="text-[10px]">{t.type}</Badge>
-                          </div>
-                          <div className="text-[11px] text-muted-foreground truncate">{proj?.title}</div>
-                          {blocked && t.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {t.dev_blocker}</div>}
-                          <div className="flex items-center justify-end pt-1">
-                            <span className="text-[11px] text-muted-foreground">{fmtDateShort(t.due_date)}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <WorkKanban tasks={visibleTasks} columns={cols} projects={projById} onOpen={drawer.open} onMove={moveTo} />
       )}
 
       <CreateWorkDialog
