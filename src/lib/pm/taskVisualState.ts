@@ -26,7 +26,7 @@ export function teamBarBackground(teams: Team[]): string | null {
   if (!teams.length) return null;
   if (teams.length === 1) return TEAM_COLOR[teams[0]];
   // Diagonal stripes alternating between teams (cycle through all).
-  const stripe = 6; // px per stripe
+  const stripe = 8; // px per stripe
   const stops: string[] = [];
   teams.forEach((t, i) => {
     const a = i * stripe;
