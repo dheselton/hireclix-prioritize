@@ -249,16 +249,16 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
     }
   }
 
-  const pills: { id: TypePill | "me"; label: string }[] = [
+  const pills: { id: TypePill | "me"; label: string; teamColor?: string }[] = [
     { id: "all", label: "All" },
-    { id: "design", label: "Design" },
-    { id: "dev", label: "Dev" },
-    { id: "qa", label: "QA" },
+    { id: "design", label: "Design", teamColor: "hsl(280 70% 60%)" },
+    { id: "dev", label: "Dev", teamColor: "hsl(150 60% 45%)" },
+    { id: "qa", label: "QA", teamColor: "hsl(50 90% 50%)" },
     { id: "me", label: "My Tasks" },
   ];
 
   function chipCls(active: boolean) {
-    return `h-7 px-3 rounded-full text-xs font-medium border transition ${
+    return `h-7 px-3 rounded-full text-xs font-medium border transition inline-flex items-center gap-1.5 ${
       active ? "bg-info/10 text-info border-info" : "bg-background text-muted-foreground border-border hover:bg-muted"
     }`;
   }
@@ -277,6 +277,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
                 if (p.id === "me") setMeMode(isMe ? "all" : "me");
                 else setPill(p.id as TypePill);
               }}>
+              {p.teamColor && (
+                <span className="h-2 w-2 rounded-full" style={{ background: p.teamColor }} />
+              )}
               {p.label}
             </button>
           );
