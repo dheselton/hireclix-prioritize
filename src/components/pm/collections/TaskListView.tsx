@@ -14,6 +14,8 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { TeamPill } from "@/components/pm/TeamsMultiSelect";
+import { teamsFromTask } from "@/lib/pm/teams";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
@@ -144,7 +146,12 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       {proj?.title ?? "—"}
                     </span>
                   </td>
-                  <td className="p-2 hidden sm:table-cell"><Badge variant="outline" className="text-[10px]">{t.type}</Badge></td>
+                  <td className="p-2 hidden sm:table-cell">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {teamsFromTask(t).map(tm => <TeamPill key={tm} team={tm} />)}
+                      <span className="text-[10px] text-muted-foreground lowercase">{t.type}</span>
+                    </div>
+                  </td>
                   <td className="p-2"><StatusPill status={t.status} /></td>
                   <td className="p-2 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                     <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={onChanged} />
