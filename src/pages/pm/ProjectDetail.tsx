@@ -195,6 +195,15 @@ export default function ProjectDetail() {
       )}
 
       <TaskDrawer />
+      <NewTaskDialog
+        open={newTaskOpen}
+        onOpenChange={setNewTaskOpen}
+        project={project}
+        phases={phases}
+        meId={user?.id ?? null}
+        meRole={user?.role ?? null}
+        onCreated={reload}
+      />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}
         onOpenChange={(v) => { if (!v) { setPendingDiffs([]); setPendingGoLive(null); reload(); } }}
