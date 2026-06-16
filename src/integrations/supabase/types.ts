@@ -1639,6 +1639,7 @@ export type Database = {
           start_date: string | null
           status: string
           tags: string[] | null
+          teams: string[]
           title: string
           track: string
           type: string
@@ -1673,6 +1674,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           tags?: string[] | null
+          teams?: string[]
           title: string
           track?: string
           type?: string
@@ -1707,6 +1709,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           tags?: string[] | null
+          teams?: string[]
           title?: string
           track?: string
           type?: string
@@ -1911,6 +1914,7 @@ export type Database = {
           phase_name: string | null
           role: string | null
           sort_order: number
+          teams: string[]
           temp_id: string
           template_id: string
           title: string
@@ -1931,6 +1935,7 @@ export type Database = {
           phase_name?: string | null
           role?: string | null
           sort_order?: number
+          teams?: string[]
           temp_id: string
           template_id: string
           title: string
@@ -1951,6 +1956,7 @@ export type Database = {
           phase_name?: string | null
           role?: string | null
           sort_order?: number
+          teams?: string[]
           temp_id?: string
           template_id?: string
           title?: string

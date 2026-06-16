@@ -13,6 +13,8 @@ import { TASK_STATUSES, PRIORITIES, type PmTask, type TaskStatus, type TaskPrior
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssignees } from "@/lib/pm/assignees";
+import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
+import { teamsFromTask, type Team } from "@/lib/pm/teams";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
@@ -81,6 +83,14 @@ export function ControlPanel({
       {/* Assignees */}
       <Row label="Assignees">
         <AssigneeChips taskId={task.id} primaryId={task.assignee_id} />
+      </Row>
+
+      {/* Teams */}
+      <Row label="Teams">
+        <TeamsMultiSelect
+          value={teamsFromTask(task)}
+          onChange={(next: Team[]) => patch({ teams: next })}
+        />
       </Row>
 
       {/* Due Date */}

@@ -38,7 +38,7 @@ export function canSee(role: PmRole | null | undefined, surface: Surface): boole
 
   if (r === "pm") return true; // PMs see everything.
 
-  // Designer / developer / strategist / analyst.
+  // Designer / developer / strategist / analyst / qa / csm / support.
   switch (surface) {
     case "templates":
     case "formBuilder":

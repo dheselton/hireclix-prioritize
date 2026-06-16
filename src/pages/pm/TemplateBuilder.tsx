@@ -15,6 +15,8 @@ import {
   isSnippetEligibleType,
 } from "@/components/pm/snippets/TemplateTaskSnippetCell";
 import { TemplateSnippetSummary } from "@/components/pm/snippets/TemplateSnippetSummary";
+import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
+import { teamsFromTask, type Team } from "@/lib/pm/teams";
 
 export default function TemplateBuilder() {
   const { id } = useParams<{ id: string }>();
@@ -128,34 +130,45 @@ export default function TemplateBuilder() {
           <div className="col-span-1">Snippets</div>
         </div>
         {tasks.map(t => (
-          <div key={t.id} className="grid grid-cols-12 gap-2 items-center border border-border rounded p-2">
-            <Input className="col-span-3" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
-            <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
-              <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
-              <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
-            </Select>
-            <Input className="col-span-2" placeholder="Phase name" value={t.phase_name ?? ""} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, phase_name: e.target.value } : x))} onBlur={e => patchTask(t.id, { phase_name: e.target.value })} />
-            <Select value={t.page_group_id ?? "__none__"} onValueChange={v => patchTask(t.id, { page_group_id: v === "__none__" ? null : v })}>
-              <SelectTrigger className="col-span-2"><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent className="z-50 bg-popover">
-                <SelectItem value="__none__">— (one-off)</SelectItem>
-                {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Input type="number" className="col-span-1" value={t.duration_days}
-              onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
-              onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
-            <div className="col-span-1 flex justify-center items-center gap-1">
-              <Checkbox checked={!!t.locked} onCheckedChange={(v) => patchTask(t.id, { locked: !!v })} />
-              {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+          <div key={t.id} className="border border-border rounded p-2 space-y-1">
+            <div className="grid grid-cols-12 gap-2 items-center">
+              <Input className="col-span-3" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
+              <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
+                <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
+                <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input className="col-span-2" placeholder="Phase name" value={t.phase_name ?? ""} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, phase_name: e.target.value } : x))} onBlur={e => patchTask(t.id, { phase_name: e.target.value })} />
+              <Select value={t.page_group_id ?? "__none__"} onValueChange={v => patchTask(t.id, { page_group_id: v === "__none__" ? null : v })}>
+                <SelectTrigger className="col-span-2"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent className="z-50 bg-popover">
+                  <SelectItem value="__none__">— (one-off)</SelectItem>
+                  {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input type="number" className="col-span-1" value={t.duration_days}
+                onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
+                onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
+              <div className="col-span-1 flex justify-center items-center gap-1">
+                <Checkbox checked={!!t.locked} onCheckedChange={(v) => patchTask(t.id, { locked: !!v })} />
+                {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </div>
+              <div className="col-span-1 flex items-center gap-1">
+                {isSnippetEligibleType(t.type) ? (
+                  <TemplateTaskSnippetCell templateTaskId={t.id} onChange={bumpSnippets} />
+                ) : (
+                  <span className="text-[11px] text-muted-foreground/60">—</span>
+                )}
+                <Button size="icon" variant="ghost" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
+              </div>
             </div>
-            <div className="col-span-1 flex items-center gap-1">
-              {isSnippetEligibleType(t.type) ? (
-                <TemplateTaskSnippetCell templateTaskId={t.id} onChange={bumpSnippets} />
-              ) : (
-                <span className="text-[11px] text-muted-foreground/60">—</span>
-              )}
-              <Button size="icon" variant="ghost" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
+            <div className="flex items-center gap-2 pl-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Teams</span>
+              <TeamsMultiSelect
+                value={teamsFromTask(t)}
+                onChange={(next: Team[]) => patchTask(t.id, { teams: next })}
+                align="start"
+                compact
+              />
             </div>
           </div>
         ))}

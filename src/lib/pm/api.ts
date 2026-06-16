@@ -193,6 +193,7 @@ export interface PreviewTask extends ScheduleTask {
   sort_order: number;
   page_group_key?: string | null;
   page_label?: string | null;
+  teams?: string[];
 }
 
 export const fetchTemplateBundle = async (templateId: string) => {
@@ -222,6 +223,7 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
     sort_order: t.sort_order,
     page_group_key: t._page_group_key ?? null,
     page_label: t._page_label ?? null,
+    teams: Array.isArray(t.teams) ? t.teams : undefined,
   }));
   const previewDeps: (ScheduleDep & { reveal_mode?: string })[] = deps.map(d => ({
     task_id: d.to_temp_id,
@@ -273,6 +275,7 @@ const instantiateTemplateIntoProject = async (params: {
       sort_order: pt.sort_order + sortOffset,
       page_label: pt.page_label ?? null,
       page_group_key: pt.page_group_key ?? null,
+      teams: Array.isArray(pt.teams) && pt.teams.length ? pt.teams : undefined,
     };
   });
   const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();

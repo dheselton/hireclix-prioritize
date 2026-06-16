@@ -28,6 +28,9 @@ export function defaultTypesForRole(role: PmRole | null | undefined): Set<TaskTy
   if (role === "developer") return new Set<TaskType>(["dev", "qa"]);
   if (role === "strategist") return new Set<TaskType>(["strategy", "research"]);
   if (role === "analyst") return new Set<TaskType>(["analytics", "reporting"]);
+  if (role === "qa") return new Set<TaskType>(["qa", "review"]);
+  if (role === "csm") return new Set<TaskType>(["approval", "review"]);
+  if (role === "support") return new Set<TaskType>(["dev", "qa"]);
   // pm + submitter see all by default
   return new Set<TaskType>();
 }
