@@ -176,7 +176,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   <Button type="button" variant="outline" className="w-full justify-start gap-2 h-9">
                     {assignee ? (
                       <>
-                        <UserAvatar user={assignee} size="xs" />
+                        <UserAvatar userId={assignee.id} size="xs" />
                         <span className="truncate">{assignee.name}</span>
                       </>
                     ) : (
