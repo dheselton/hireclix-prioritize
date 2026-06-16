@@ -50,14 +50,14 @@ export function ProjectTaskCard({
   const unclaimed = task.status === "unclaimed";
   const teams = teamsFromTask(task);
   const teamBg = teamBarBackground(teams);
-  const showTeamBar = !!teamBg && !isCareerSite && !isInternal && !unclaimed;
+  const showTeamBar = !!teamBg && !isCareerSite && !isInternal;
   return (
     <Card className={cn(
       "relative overflow-hidden card-lift border border-border",
-      unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
       isInternal && !isCareerSite && "internal-border-l",
       isCareerSite && "careersite-border-l",
     )}>
+
       {showTeamBar && <TeamColorBar background={teamBg} />}
       <CardContent className={cn("p-4 space-y-2", showTeamBar && "pl-5")}>
         {showProjectHeader && project && (

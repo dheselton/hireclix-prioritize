@@ -42,7 +42,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
   const unclaimed = task.status === "unclaimed";
   const teams = teamsFromTask(task);
   const teamBg = teamBarBackground(teams);
-  const showTeamBar = !!teamBg && !isCareerSite && !isInternal && !unclaimed;
+  const showTeamBar = !!teamBg && !isCareerSite && !isInternal;
   return (
     <button
       type="button"
@@ -50,12 +50,12 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
       className={cn(
         "relative overflow-hidden card-lift group w-full text-left rounded-md border border-border bg-card px-3 py-2",
         "flex items-center gap-3",
-        unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
         isInternal && !isCareerSite && "internal-border-l",
         isCareerSite && "careersite-border-l",
         showTeamBar && "pl-4",
       )}
     >
+
       {showTeamBar && <TeamColorBar background={teamBg} />}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
