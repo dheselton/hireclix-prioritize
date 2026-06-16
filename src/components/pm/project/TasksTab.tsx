@@ -307,6 +307,11 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             </button>
           );
         })}
+        {onAddTask && (
+          <Button size="sm" onClick={onAddTask} className="h-7">
+            <Plus className="h-3 w-3 mr-1" /> New task
+          </Button>
+        )}
         {templateId && (
           <Button size="sm" variant="outline" onClick={() => setAddPageOpen(true)} className="h-7">
             <Plus className="h-3 w-3 mr-1" /> Add page
