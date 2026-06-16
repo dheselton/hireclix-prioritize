@@ -222,6 +222,7 @@ export const buildPreviewFromTemplate = (tasks: any[], deps: any[]) => {
     sort_order: t.sort_order,
     page_group_key: t._page_group_key ?? null,
     page_label: t._page_label ?? null,
+    teams: Array.isArray(t.teams) ? t.teams : undefined,
   }));
   const previewDeps: (ScheduleDep & { reveal_mode?: string })[] = deps.map(d => ({
     task_id: d.to_temp_id,
