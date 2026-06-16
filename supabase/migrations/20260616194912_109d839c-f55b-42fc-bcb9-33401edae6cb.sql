@@ -1,0 +1,1 @@
+UPDATE public.mock_users SET role='pm' WHERE id='2cd08a7f-035c-4956-b2a9-ee202fb67a8a';
