@@ -13,6 +13,8 @@ import { TASK_STATUSES, PRIORITIES, type PmTask, type TaskStatus, type TaskPrior
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssignees } from "@/lib/pm/assignees";
+import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
+import { teamsFromTask, type Team } from "@/lib/pm/teams";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
