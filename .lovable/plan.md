@@ -1,47 +1,114 @@
+
 ## Goal
 
-Let PMs edit core project details (not just delete) from the project page header.
+Every task carries a set of **teams** (Design, Dev, PM, QA, Strategy, Analytics, CSM, Help/Support). A team member opening a project sees only tasks tagged with their team by default, with a clearly-labeled toggle to reveal everything. PMs always see all. Multi-team tasks show up for each team involved.
 
-## Where it lives
+## 1. Roles & teams
 
-Add an **"Edit project"** item to the existing `…` overflow menu in `src/components/pm/project/ProjectHeader.tsx` (PM-only, above "Delete project"). Selecting it opens a new `EditProjectDialog`.
+Add three new login roles + matching teams.
 
-Also make the project title (`h1`) clickable for PMs as a shortcut — opens the same dialog with a subtle hover affordance ("Click to edit"). Non-PMs see no change.
+- `PmRole` extended: `pm | designer | developer | qa | strategist | analyst | csm | support | submitter`
+- New `Team` enum (single source of truth): `design | dev | pm | qa | strategy | analytics | csm | support`
+- `ROLE_TO_TEAM` map (role → its primary team)
+- `DEFAULT_TEAMS_FOR_TYPE` map (used to auto-seed `teams` when none chosen):
+  - design→[design], content→[design], dev→[dev], qa→[qa], review→[pm], approval→[pm], strategy→[strategy], research→[strategy], analytics→[analytics], reporting→[analytics]
 
-## Fields editable in the dialog
+PM continues to bypass every team filter. Submitter unchanged.
 
-Mapped to `pm_projects` columns we already have:
+## 2. Database
 
-- **Title** (`title`, required)
-- **Status** (`status`) — draft / active / on_hold / in_review / complete / archived
-- **Work type** (`work_type`) — project / retainer / etc. (reuse existing select)
-- **Client** (`client_id`) — reuse `ClientSelect`
-- **Requester** (`requested_by`) — reuse `RequesterPicker`
-- **Go-live date** (`go_live_date`) — date picker (mm/dd/yyyy)
-- **Kickoff date** (`kickoff_date`)
-- **Start date** (`start_date`)
-- **Description** (`description`) — textarea
-- **Tags** (`tags`) — simple comma-input
+One migration:
 
-Read-only / out of scope: template_id, created_by, custom_fields, timestamps.
+- `ALTER TYPE` is awkward for the existing string column `mock_users.role` (it's text, not an enum) — just allow the new role strings; no schema change beyond a CHECK update if one exists.
+- `ALTER TABLE pm_tasks ADD COLUMN teams text[] NOT NULL DEFAULT '{}'`
+- `ALTER TABLE pm_template_tasks ADD COLUMN teams text[] NOT NULL DEFAULT '{}'`
+- Backfill: for every existing row where `teams = '{}'`, set `teams` from `DEFAULT_TEAMS_FOR_TYPE[type]`.
+- Index: `CREATE INDEX pm_tasks_teams_gin ON pm_tasks USING gin(teams);`
+- Permissive RLS already covers these tables; no policy changes (auth still off).
 
-## Behavior
+## 3. Template builder
 
-- Save calls a new `updateProject(id, patch)` helper in `src/lib/pm/api.ts` that does a single `pm_projects` update, then `emitTasksChanged()` so headers/lists refresh.
-- If `client_id` changes, re-run `applyClientWatchers(projectId, newClientId, null)` so watcher membership stays in sync (same pattern used at intake).
-- If `go_live_date` changes, **do not** auto-cascade task dates here — the existing `CascadeConfirmModal` flow on Timeline already handles that. Show a small inline note: "Task dates won't shift automatically — open Timeline to recalculate."
-- Toast on success/failure. Close dialog and refresh local `project` via existing `ProjectDetail` query invalidation.
+`src/pages/pm/TemplateBuilder.tsx` task row gets a **Teams** multi-select cell (chip popover) between Type and Phase. Defaults to the type's default team(s) on insert. Saves to `pm_template_tasks.teams`.
 
-## Permissions
+## 4. Template → project instantiation
 
-Gated entirely by the existing `isPM` check already in `ProjectHeader`. No new role logic, no schema change. RLS already permissive.
+`instantiateTemplateIntoProject` in `src/lib/pm/api.ts`: copy `teams` from each template task to the new `pm_tasks` row. Same for `AddPageDialog` / `pageGroups.ts` page-bundle expansion.
 
-## Files
+## 5. Live task editor
 
-- **Edit** `src/components/pm/project/ProjectHeader.tsx` — add Edit menu item + dialog mount + clickable title for PMs.
-- **New** `src/components/pm/project/EditProjectDialog.tsx` — form, reusing `ClientSelect`, `RequesterPicker`, shadcn `Select`, `Calendar`/`Popover` for dates, `Textarea`.
-- **Edit** `src/lib/pm/api.ts` — add `updateProject(id, patch)` (+ export).
+- **TaskWorkspace** `ControlPanel` (right rail): new **Teams** field, multi-select chips. Editable by PMs + assignee.
+- **CreateWorkDialog / Quick add**: when a task type is picked, pre-fill `teams` from `DEFAULT_TEAMS_FOR_TYPE`; user can adjust before save.
+- Reuse one new `TeamsMultiSelect` component (chips + popover, same visual language as `MultiAssigneeChip`).
 
-## Non-goals
+## 6. "My Team" default filter
 
-- No bulk-edit, no inline title edit, no project archive workflow changes, no member management UI (already separate).
+Add `src/hooks/useTeamFilter.ts` modeled on `useTypeFilter.ts`:
+
+- Resolves `myTeam = ROLE_TO_TEAM[role]`
+- Reads/writes `localStorage` key `pm.showAllTeams.{projectId}.{userId}` (bool, default `false`)
+- Returns `{ showAll, setShowAll, myTeam, filterTask(task) }`
+
+`filterTask(task)` rule: `showAll || role==='pm' || task.teams.includes(myTeam) || task.assignee_id === meId`.
+
+Wire into:
+
+- `TasksTab` (project) — primary surface, replaces nothing, layers on top of existing `pill`/`isMe` filters
+- `BoardTaskCard` / Board view in TasksTab (same `filtered` list feeds it)
+- `Work.tsx` global list — same filter applied here too, with the toggle living next to existing chip bar
+
+The existing **type pills** (Design / Dev / QA / My Tasks) stay; they're narrower per-view overrides on top of the team default.
+
+## 7. Toolbar UI
+
+In `TasksTab` toolbar, right side, replacing nothing:
+
+```text
+[Showing my team (Design) ▾]   [Show all tasks]   [List | Board]
+```
+
+- Label shows `Showing my team ({TeamName})` when `showAll=false`, `Showing all tasks` when true.
+- Click toggles. Sticky per project+user (see hook).
+- Hidden entirely for PMs (they always see all) and Submitters (their visibility rules already restrict things).
+- Same toggle pattern on `/pm/work` (global), sticky key `pm.showAllTeams.global.{userId}`.
+
+## 8. Card visual
+
+`BoardTaskCard`, `TaskRow`, `ProjectTaskCard`, `RequestTaskCard`: render team pills (small, neutral, max 2 + "+N") next to the type badge so multi-team tasks are visible at a glance.
+
+## 9. Permissions / sidebar / route guard
+
+`src/lib/pm/permissions.ts`:
+
+- Extend `canSee` so the four new roles (`qa`, `csm`, `support`) behave like designer/developer: blocked from Templates, Forms builder, Integrations. Snippets stays designer+developer-only.
+- `defaultTypesForRole` in `useTypeFilter.ts`: add sensible defaults (qa→[qa,review], csm→[approval,review], support→[dev,qa]) so the type-pill default also matches.
+- `pm_set_task_track_from_assignee` DB trigger: extend role→track mapping (`qa`→production, `csm`→pm, `support`→production).
+
+TopBar role switcher already enumerates `mock_users.role`, so adding rows with the new roles makes them selectable with no UI change. (Plan does **not** seed new mock users — user can add them in the existing user picker / via a quick seed if asked.)
+
+## 10. Non-goals (this pass)
+
+- No per-team assignee splitting (multi-assignee already exists).
+- No reassignment of existing roles in `mock_users`.
+- No changes to time tracking / scheduler / Gantt — they continue to include all tasks regardless of team filter (filter is UI-only, same pattern as `reveal_mode`).
+- No team-based RLS (auth still off project-wide).
+
+## Files touched
+
+**New**
+- `supabase/migrations/<ts>_task_teams.sql`
+- `src/lib/pm/teams.ts` — `Team`, `TEAM_LABEL`, `ROLE_TO_TEAM`, `DEFAULT_TEAMS_FOR_TYPE`, `teamsFromTask`
+- `src/hooks/useTeamFilter.ts`
+- `src/components/pm/TeamsMultiSelect.tsx`
+
+**Edited**
+- `src/types/pm.ts` — extend `PmRole`, add `Team`, add `teams: Team[]` to `PmTask`
+- `src/lib/pm/permissions.ts` — handle new roles
+- `src/hooks/useTypeFilter.ts` — defaults for new roles
+- `src/pages/pm/TemplateBuilder.tsx` — Teams cell in task row
+- `src/lib/pm/api.ts` — copy `teams` in `instantiateTemplateIntoProject` + `updateTask`/`createTask` helpers
+- `src/lib/pm/pageGroups.ts` / `AddPageDialog.tsx` — propagate teams when stamping page bundles
+- `src/components/pm/workspace/ControlPanel.tsx` — Teams field
+- `src/components/pm/CreateWorkDialog.tsx` — Teams field on quick-add
+- `src/components/pm/project/TasksTab.tsx` — toolbar toggle + filter
+- `src/pages/pm/Work.tsx` — same toolbar toggle + filter (global key)
+- `src/components/pm/project/board/BoardTaskCard.tsx`, `collections/ProjectTaskCard.tsx`, `collections/RequestTaskCard.tsx` — team pills
