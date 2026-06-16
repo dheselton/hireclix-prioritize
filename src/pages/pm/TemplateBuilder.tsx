@@ -15,6 +15,8 @@ import {
   isSnippetEligibleType,
 } from "@/components/pm/snippets/TemplateTaskSnippetCell";
 import { TemplateSnippetSummary } from "@/components/pm/snippets/TemplateSnippetSummary";
+import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
+import { teamsFromTask, type Team } from "@/lib/pm/teams";
 
 export default function TemplateBuilder() {
   const { id } = useParams<{ id: string }>();
