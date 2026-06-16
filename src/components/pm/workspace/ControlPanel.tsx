@@ -85,6 +85,14 @@ export function ControlPanel({
         <AssigneeChips taskId={task.id} primaryId={task.assignee_id} />
       </Row>
 
+      {/* Teams */}
+      <Row label="Teams">
+        <TeamsMultiSelect
+          value={teamsFromTask(task)}
+          onChange={(next: Team[]) => patch({ teams: next })}
+        />
+      </Row>
+
       {/* Due Date */}
       <Row label="Due Date">
         <DatePicker
