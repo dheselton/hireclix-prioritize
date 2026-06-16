@@ -287,6 +287,21 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
           </Button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {!team.bypass && (
+            <button
+              type="button"
+              onClick={() => team.setShowAll(!team.showAll)}
+              className={`h-7 px-3 rounded-full text-xs font-medium border inline-flex items-center gap-1.5 transition ${
+                team.showAll
+                  ? "bg-background text-muted-foreground border-border hover:bg-muted"
+                  : "bg-info/10 text-info border-info"
+              }`}
+              title={team.showAll ? "Show only my team's tasks" : "Show every task on this project"}
+            >
+              <Users className="h-3 w-3" />
+              {team.showAll ? "Showing all tasks" : team.label}
+            </button>
+          )}
           {upcomingCount > 0 && (
             <button
               type="button"
