@@ -48,14 +48,18 @@ export function ProjectTaskCard({
   const isCareerSite = !!csRequestType;
   const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
+  const teams = teamsFromTask(task);
+  const teamBg = teamBarBackground(teams);
+  const showTeamBar = !!teamBg && !isCareerSite && !isInternal && !unclaimed;
   return (
     <Card className={cn(
-      "card-lift border border-border",
+      "relative overflow-hidden card-lift border border-border",
       unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
       isInternal && !isCareerSite && "internal-border-l",
       isCareerSite && "careersite-border-l",
     )}>
-      <CardContent className="p-4 space-y-2">
+      {showTeamBar && <TeamColorBar background={teamBg} />}
+      <CardContent className={cn("p-4 space-y-2", showTeamBar && "pl-5")}>
         {showProjectHeader && project && (
           <div className="flex items-center justify-between gap-2 min-w-0">
             <Link
