@@ -13,7 +13,8 @@ import { TeamColorBar } from "@/components/pm/TeamColorBar";
 import { TeamPill } from "@/components/pm/TeamsMultiSelect";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
-import { teamsFromTask, teamBarBackground } from "@/lib/pm/teams";
+import { teamsFromTask } from "@/lib/pm/teams";
+import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmProject, PmTask } from "@/types/pm";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 
