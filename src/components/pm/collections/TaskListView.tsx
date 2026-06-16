@@ -15,7 +15,8 @@ import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TeamPill } from "@/components/pm/TeamsMultiSelect";
-import { teamsFromTask } from "@/lib/pm/teams";
+import { teamsFromTask, TEAM_COLOR } from "@/lib/pm/teams";
+import { teamBarBackground } from "@/lib/pm/taskVisualState";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
