@@ -1,114 +1,102 @@
-
 ## Goal
 
-Every task carries a set of **teams** (Design, Dev, PM, QA, Strategy, Analytics, CSM, Help/Support). A team member opening a project sees only tasks tagged with their team by default, with a clearly-labeled toggle to reveal everything. PMs always see all. Multi-team tasks show up for each team involved.
+Make it instantly obvious — at a glance — (a) **which team owns a task** and (b) **whether a task is ready to be worked on now or is waiting on something upstream**. Keep it calm, not noisy.
 
-## 1. Roles & teams
+---
 
-Add three new login roles + matching teams.
+## Part 1 — Team color system
 
-- `PmRole` extended: `pm | designer | developer | qa | strategist | analyst | csm | support | submitter`
-- New `Team` enum (single source of truth): `design | dev | pm | qa | strategy | analytics | csm | support`
-- `ROLE_TO_TEAM` map (role → its primary team)
-- `DEFAULT_TEAMS_FOR_TYPE` map (used to auto-seed `teams` when none chosen):
-  - design→[design], content→[design], dev→[dev], qa→[qa], review→[pm], approval→[pm], strategy→[strategy], research→[strategy], analytics→[analytics], reporting→[analytics]
+Today every card uses the same orange `type` badge regardless of team, so "All" vs "Design" look identical. We'll move the visual identity from the task `type` to the task `teams[]` (already in DB).
 
-PM continues to bypass every team filter. Submitter unchanged.
+### Left border = team color (the dominant cue)
 
-## 2. Database
+Each card gets a 4px left border in the team's color. Status of the border:
 
-One migration:
+- **Single-team task** → solid color of that team (e.g. Design = purple, Dev = green, QA = yellow, PM = blue, Strategy = indigo, Analytics = teal, CSM = pink, Support = orange).
+- **Multi-team task** → diagonal **striped gradient** of both team colors (CSS `repeating-linear-gradient`), so a Design+Dev task is unmistakably "mixed" without reading text.
+- **Unclaimed** still wins on amber when relevant (precedence: careersite > internal > team-color > unclaimed-amber → revise to: careersite > internal > unclaimed-amber > team-color), so the existing amber "grab me" signal isn't lost.
 
-- `ALTER TYPE` is awkward for the existing string column `mock_users.role` (it's text, not an enum) — just allow the new role strings; no schema change beyond a CHECK update if one exists.
-- `ALTER TABLE pm_tasks ADD COLUMN teams text[] NOT NULL DEFAULT '{}'`
-- `ALTER TABLE pm_template_tasks ADD COLUMN teams text[] NOT NULL DEFAULT '{}'`
-- Backfill: for every existing row where `teams = '{}'`, set `teams` from `DEFAULT_TEAMS_FOR_TYPE[type]`.
-- Index: `CREATE INDEX pm_tasks_teams_gin ON pm_tasks USING gin(teams);`
-- Permissive RLS already covers these tables; no policy changes (auth still off).
+### Team pills replace the lone TYPE badge
 
-## 3. Template builder
+On every card (`BoardTaskCard`, `TaskRow`, `ProjectTaskCard`, `RequestTaskCard`):
 
-`src/pages/pm/TemplateBuilder.tsx` task row gets a **Teams** multi-select cell (chip popover) between Type and Phase. Defaults to the type's default team(s) on insert. Saves to `pm_template_tasks.teams`.
+- Drop the standalone uppercase TYPE pill.
+- Render one small `TeamPill` per team in `task.teams[]` (component already exists in `TeamsMultiSelect.tsx`).
+- Keep `type` as a tiny muted label next to the title (e.g. "· design mock-up"), so type info isn't lost but isn't competing.
 
-## 4. Template → project instantiation
+### Filter chips get the same color
 
-`instantiateTemplateIntoProject` in `src/lib/pm/api.ts`: copy `teams` from each template task to the new `pm_tasks` row. Same for `AddPageDialog` / `pageGroups.ts` page-bundle expansion.
+The All / Design / Dev / QA / My Tasks chips above the board pick up a left dot in the team color so the active filter visually matches the cards it surfaces. "All" stays neutral. This fixes the "All vs Design look identical" problem.
 
-## 5. Live task editor
+### Column headers (Board)
 
-- **TaskWorkspace** `ControlPanel` (right rail): new **Teams** field, multi-select chips. Editable by PMs + assignee.
-- **CreateWorkDialog / Quick add**: when a task type is picked, pre-fill `teams` from `DEFAULT_TEAMS_FOR_TYPE`; user can adjust before save.
-- Reuse one new `TeamsMultiSelect` component (chips + popover, same visual language as `MultiAssigneeChip`).
+`READY / IN PROGRESS / IN REVIEW / COMPLETE` get a thin top accent bar tinted by the **dominant team in that column** when a single-team filter is active — subtle, but reinforces "you are looking at Design work right now."
 
-## 6. "My Team" default filter
+---
 
-Add `src/hooks/useTeamFilter.ts` modeled on `useTypeFilter.ts`:
+## Part 2 — "Not ready yet" greyed state
 
-- Resolves `myTeam = ROLE_TO_TEAM[role]`
-- Reads/writes `localStorage` key `pm.showAllTeams.{projectId}.{userId}` (bool, default `false`)
-- Returns `{ showAll, setShowAll, myTeam, filterTask(task) }`
+We already have `reveal_mode` on dependencies and a hidden-upcoming toggle, but hidden ≠ visible-but-muted. We'll add a third visual state: **dimmed / waiting**.
 
-`filterTask(task)` rule: `showAll || role==='pm' || task.teams.includes(myTeam) || task.assignee_id === meId`.
+### Definition
 
-Wire into:
+A task is **waiting** if any of:
 
-- `TasksTab` (project) — primary surface, replaces nothing, layers on top of existing `pill`/`isMe` filters
-- `BoardTaskCard` / Board view in TasksTab (same `filtered` list feeds it)
-- `Work.tsx` global list — same filter applied here too, with the toggle living next to existing chip bar
+1. It has an unmet predecessor dependency (any `reveal_mode`), OR
+2. Its `start_date` is more than **7 days** in the future AND it has no in-progress work logged.
 
-The existing **type pills** (Design / Dev / QA / My Tasks) stay; they're narrower per-view overrides on top of the team default.
+PMs and the assignee always see them; for everyone else they fall under the same upcoming toggle that already exists.
 
-## 7. Toolbar UI
+### Visual treatment for waiting tasks
 
-In `TasksTab` toolbar, right side, replacing nothing:
+- Card background → `bg-muted/30`, text → `text-muted-foreground`.
+- Team-color left border drops to **30% opacity** + dashed instead of solid.
+- Title is normal weight (not bold).
+- Small lock-clock icon + tooltip: **"Waiting on: {predecessor title}"** or **"Starts {date}"**.
+- Status pill replaced by a neutral `WAITING` chip.
+- Hover/click still works; clicking opens the task as normal but the workspace shows the existing `UpcomingBanner` at the top.
 
-```text
-[Showing my team (Design) ▾]   [Show all tasks]   [List | Board]
-```
+### Board column behavior
 
-- Label shows `Showing my team ({TeamName})` when `showAll=false`, `Showing all tasks` when true.
-- Click toggles. Sticky per project+user (see hook).
-- Hidden entirely for PMs (they always see all) and Submitters (their visibility rules already restrict things).
-- Same toggle pattern on `/pm/work` (global), sticky key `pm.showAllTeams.global.{userId}`.
+Waiting cards sink to the bottom of the READY column under a thin divider labeled **"Upcoming · N"** (collapsible, remembers per-project per-user, same `localStorage` pattern as the team filter). Active cards stay on top so the user's eye lands on what to do *now*.
 
-## 8. Card visual
+### List view
 
-`BoardTaskCard`, `TaskRow`, `ProjectTaskCard`, `RequestTaskCard`: render team pills (small, neutral, max 2 + "+N") next to the type badge so multi-team tasks are visible at a glance.
+Waiting rows get the dimmed treatment and a left "⏳ Waiting on …" subline. Same divider/collapse.
 
-## 9. Permissions / sidebar / route guard
+---
 
-`src/lib/pm/permissions.ts`:
+## Part 3 — Legend / education
 
-- Extend `canSee` so the four new roles (`qa`, `csm`, `support`) behave like designer/developer: blocked from Templates, Forms builder, Integrations. Snippets stays designer+developer-only.
-- `defaultTypesForRole` in `useTypeFilter.ts`: add sensible defaults (qa→[qa,review], csm→[approval,review], support→[dev,qa]) so the type-pill default also matches.
-- `pm_set_task_track_from_assignee` DB trigger: extend role→track mapping (`qa`→production, `csm`→pm, `support`→production).
+One-time inline legend popover on the Tasks toolbar (`?` icon next to the team-filter chips) showing the team color key + the waiting state. Dismissible, stored per user.
 
-TopBar role switcher already enumerates `mock_users.role`, so adding rows with the new roles makes them selectable with no UI change. (Plan does **not** seed new mock users — user can add them in the existing user picker / via a quick seed if asked.)
+---
 
-## 10. Non-goals (this pass)
-
-- No per-team assignee splitting (multi-assignee already exists).
-- No reassignment of existing roles in `mock_users`.
-- No changes to time tracking / scheduler / Gantt — they continue to include all tasks regardless of team filter (filter is UI-only, same pattern as `reveal_mode`).
-- No team-based RLS (auth still off project-wide).
-
-## Files touched
+## Files to touch
 
 **New**
-- `supabase/migrations/<ts>_task_teams.sql`
-- `src/lib/pm/teams.ts` — `Team`, `TEAM_LABEL`, `ROLE_TO_TEAM`, `DEFAULT_TEAMS_FOR_TYPE`, `teamsFromTask`
-- `src/hooks/useTeamFilter.ts`
-- `src/components/pm/TeamsMultiSelect.tsx`
+- `src/lib/pm/taskVisualState.ts` — `computeTaskVisualState(task, deps, tasks)` → `{ waiting: boolean, waitingReason: string|null, teamColors: string[] }`. Single source of truth.
+- `src/components/pm/TeamColorBar.tsx` — renders solid / striped left border given `Team[]` + dim flag.
+- `src/components/pm/WaitingChip.tsx` — neutral pill with clock icon + tooltip.
+- `src/components/pm/TaskLegendPopover.tsx` — color key.
 
 **Edited**
-- `src/types/pm.ts` — extend `PmRole`, add `Team`, add `teams: Team[]` to `PmTask`
-- `src/lib/pm/permissions.ts` — handle new roles
-- `src/hooks/useTypeFilter.ts` — defaults for new roles
-- `src/pages/pm/TemplateBuilder.tsx` — Teams cell in task row
-- `src/lib/pm/api.ts` — copy `teams` in `instantiateTemplateIntoProject` + `updateTask`/`createTask` helpers
-- `src/lib/pm/pageGroups.ts` / `AddPageDialog.tsx` — propagate teams when stamping page bundles
-- `src/components/pm/workspace/ControlPanel.tsx` — Teams field
-- `src/components/pm/CreateWorkDialog.tsx` — Teams field on quick-add
-- `src/components/pm/project/TasksTab.tsx` — toolbar toggle + filter
-- `src/pages/pm/Work.tsx` — same toolbar toggle + filter (global key)
-- `src/components/pm/project/board/BoardTaskCard.tsx`, `collections/ProjectTaskCard.tsx`, `collections/RequestTaskCard.tsx` — team pills
+- `src/components/pm/project/board/BoardTaskCard.tsx` — swap TYPE badge for `TeamPill`s, use `TeamColorBar`, apply waiting styles, show `WaitingChip`.
+- `src/components/pm/collections/ProjectTaskCard.tsx`, `RequestTaskCard.tsx`, `TaskListView.tsx`, `TaskGridView.tsx` — same treatment.
+- `src/components/pm/project/board/BoardColumn.tsx` — Upcoming divider + collapse; column-header team accent.
+- `src/components/pm/project/TasksTab.tsx` — color the team filter chips, mount `TaskLegendPopover`, pass waiting partition to column.
+- `src/lib/pm/teams.ts` — add `teamStripeBackground(teams: Team[])` helper.
+- `src/lib/pm/reveal.ts` — extend with `isWaiting()` predicate (re-uses `firstUnmetPredecessor` + start-date rule).
+- `src/index.css` — `.team-border-solid`, `.team-border-striped`, `.task-waiting` utility classes (HSL tokens only, no hardcoded colors in components).
+
+**Not changing**
+- DB schema, scheduler, time tracking, permissions, RLS.
+- The existing hidden-upcoming toggle stays; "waiting" is the *visible-but-dimmed* tier between hidden and active.
+
+---
+
+## Open questions before I build
+
+1. **Multi-team border style** — diagonal stripes of both colors (my recommendation, very legible) vs split-half border vs gradient fade. OK with stripes?
+2. **Waiting threshold** — I'm proposing **7 days in the future + no predecessor** counts as waiting. Too aggressive? Prefer 3 / 14 / "only dependency-blocked counts, ignore future start dates"?
+3. **Assignee override** — if a task is waiting but assigned to *me*, should it still dim, or always render active for the assignee? (My default: always active for the assignee + PM.)
