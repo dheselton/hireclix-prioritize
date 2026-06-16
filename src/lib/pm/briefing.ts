@@ -207,7 +207,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
         .from("pm_tasks")
         .select("*")
         .in("project_id", ids);
-      const allTasks = (allTasksRaw ?? []) as PmTask[];
+      const allTasks = (allTasksRaw ?? []) as unknown as PmTask[];
       const byProj = new Map<string, PmTask[]>();
       for (const t of allTasks) {
         const arr = byProj.get(t.project_id) ?? [];
