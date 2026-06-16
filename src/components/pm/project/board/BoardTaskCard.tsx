@@ -3,17 +3,22 @@ import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { StatusPill } from "@/components/pm/StatusPill";
+import { TeamColorBar } from "@/components/pm/TeamColorBar";
+import { TeamPill } from "@/components/pm/TeamsMultiSelect";
+import { WaitingChip } from "@/components/pm/WaitingChip";
 import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
-import { typeBadgeClass } from "@/lib/pm/statusGroups";
 import { groupForStatus } from "@/lib/pm/statusGroups";
-import type { PmTask } from "@/types/pm";
+import { computeTaskVisualState } from "@/lib/pm/taskVisualState";
+import { useCurrentUser } from "@/lib/pm/mockUser";
+import type { PmTask, PmDependency } from "@/types/pm";
 import type { SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { StatusPickerPopover } from "./StatusPickerPopover";
 import { InlineDatePopover } from "./InlineDatePopover";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
+import { cn } from "@/lib/utils";
 
 
 function stripHtml(html?: string | null): string {
@@ -28,6 +33,8 @@ export function BoardTaskCard({
   onStatusChange,
   onDateChange,
   overlay,
+  allTasks,
+  deps,
 }: {
   task: PmTask;
   count?: SubtaskCount;
@@ -35,6 +42,8 @@ export function BoardTaskCard({
   onStatusChange: (g: StatusGroupId) => void;
   onDateChange: (iso: string | null) => void;
   overlay?: boolean;
+  allTasks?: PmTask[];
+  deps?: PmDependency[];
 }) {
   const sortable = useSortable({ id: task.id, disabled: overlay });
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
@@ -51,6 +60,15 @@ export function BoardTaskCard({
   const isCareerSite = !!csRequestType;
   const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
+  const { user } = useCurrentUser();
+  const isPM = user?.role === "pm";
+
+  const vis = computeTaskVisualState(task, allTasks ?? [], deps ?? [], {
+    meId: user?.id ?? null,
+    bypassWaiting: isPM,
+  });
+  // Special borders (careersite > internal > unclaimed) hide the team bar to avoid double accent.
+  const showTeamBar = !isCareerSite && !isInternal && !unclaimed && !!vis.teamBarBackground;
 
   return (
     <div
@@ -62,24 +80,43 @@ export function BoardTaskCard({
     >
       <Card
         onClick={onClick}
-        className={`card-lift cursor-pointer border border-border ${overlay ? "opacity-80 shadow-lg" : ""} ${isCareerSite ? "careersite-border-l" : isInternal ? "internal-border-l" : unclaimed ? "border-l-4 border-l-amber-500" : ""}`}
+        className={cn(
+          "relative overflow-hidden card-lift cursor-pointer border border-border",
+          overlay && "opacity-80 shadow-lg",
+          isCareerSite && "careersite-border-l",
+          !isCareerSite && isInternal && "internal-border-l",
+          !isCareerSite && !isInternal && unclaimed && "border-l-4 border-l-amber-500",
+          vis.waiting && "task-waiting",
+        )}
       >
-        <CardContent className="p-3 space-y-2 flex flex-col">
+        {showTeamBar && <TeamColorBar background={vis.teamBarBackground} dim={vis.waiting} />}
+        <CardContent className={cn("p-3 space-y-2 flex flex-col", showTeamBar && "pl-4")}>
           <div className="flex items-start gap-2">
             <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
-            <div className="text-[12px] font-bold leading-snug line-clamp-2 flex-1">{task.title}</div>
+            <div className={cn(
+              "text-[12px] leading-snug line-clamp-2 flex-1",
+              vis.waiting ? "font-medium text-muted-foreground" : "font-bold",
+            )}>
+              {task.title}
+            </div>
             <span onClick={(e) => e.stopPropagation()} className="shrink-0">
-              <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={unclaimed} />
+              <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={unclaimed || vis.waiting} />
             </span>
           </div>
           {preview && (
             <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
           )}
+          {vis.waiting && (
+            <div className="text-[10px] text-muted-foreground italic truncate">{vis.waitingReason}</div>
+          )}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
-            <span className={`inline-block text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
-              {task.type}
-            </span>
+            {vis.waiting ? (
+              <WaitingChip reason={vis.waitingReason} />
+            ) : (
+              <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
+            )}
+            {vis.teams.map(t => <TeamPill key={t} team={t} />)}
+            <span className="text-[10px] text-muted-foreground lowercase">· {task.type}</span>
             {isInternal && <span className="internal-pill shrink-0">Internal</span>}
             {isCareerSite && (
               <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>
@@ -93,7 +130,7 @@ export function BoardTaskCard({
             <div className="flex items-center gap-2">
               <InlineDatePopover value={task.due_date} onChange={onDateChange} />
               {team.length > 1 && (
-                <AvatarStack userIds={team} max={3} size="xs" muted={unclaimed} />
+                <AvatarStack userIds={team} max={3} size="xs" muted={unclaimed || vis.waiting} />
               )}
             </div>
           </div>
