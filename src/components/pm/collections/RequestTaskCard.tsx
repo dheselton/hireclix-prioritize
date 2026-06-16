@@ -63,6 +63,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
           <PriorityFlag priority={task.priority} size="xs" />
           <span className="text-sm font-medium truncate">{task.title}</span>
           <WorkTypeBadge workType="request" compact />
+          {teams.map(t => <TeamPill key={t} team={t} />)}
 
           {isInternal && <span className="internal-pill shrink-0">Internal</span>}
           {isCareerSite && (
