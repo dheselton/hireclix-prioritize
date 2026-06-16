@@ -316,7 +316,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
               className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
               title={showUpcoming ? "Hide tasks awaiting prerequisites" : "Show tasks awaiting prerequisites"}
             >
-              {showUpcoming ? `Hide ${upcomingCount} upcoming` : `+ ${upcomingCount} upcoming`}
+              {showUpcoming ? `Hide upcoming (${upcomingCount})` : `+ ${upcomingCount} upcoming`}
             </button>
           )}
           <div className="flex gap-1">
