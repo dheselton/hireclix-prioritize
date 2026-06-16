@@ -40,18 +40,23 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
   const isCareerSite = !!csRequestType;
   const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
+  const teams = teamsFromTask(task);
+  const teamBg = teamBarBackground(teams);
+  const showTeamBar = !!teamBg && !isCareerSite && !isInternal && !unclaimed;
   return (
     <button
       type="button"
       onClick={() => onOpen(task.id)}
       className={cn(
-        "card-lift group w-full text-left rounded-md border border-border bg-card px-3 py-2",
+        "relative overflow-hidden card-lift group w-full text-left rounded-md border border-border bg-card px-3 py-2",
         "flex items-center gap-3",
         unclaimed && !isInternal && !isCareerSite && "border-l-4 border-l-amber-500",
         isInternal && !isCareerSite && "internal-border-l",
         isCareerSite && "careersite-border-l",
+        showTeamBar && "pl-4",
       )}
     >
+      {showTeamBar && <TeamColorBar background={teamBg} />}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           {overdue && <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
