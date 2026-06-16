@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus, UserCheck, MoreHorizontal, Trash2 } from "lucide-react";
+import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { EditProjectDialog } from "./EditProjectDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
@@ -34,6 +35,7 @@ export function ProjectHeader({ project, onAddTask }: {
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const internalIds = useInternalClientIds();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
   const { user } = useCurrentUser();
@@ -66,7 +68,18 @@ export function ProjectHeader({ project, onAddTask }: {
       </nav>
       <div className={`flex items-start justify-between gap-4 ${isInternal ? "internal-border-l pl-3 -ml-3" : ""}`}>
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
+          {isPM ? (
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="text-[20px] font-medium leading-tight truncate text-left hover:text-primary transition-colors"
+              title="Click to edit project"
+            >
+              {project.title}
+            </button>
+          ) : (
+            <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
+          )}
           {isInternal && <span className="internal-pill">Internal · HireClix</span>}
           <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
             {project.status.replace(/_/g, " ")}
@@ -100,6 +113,9 @@ export function ProjectHeader({ project, onAddTask }: {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditOpen(true); }}>
+                  <Pencil className="h-4 w-4 mr-2" /> Edit project
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onSelect={(e) => { e.preventDefault(); setConfirmDelete(true); }}
@@ -146,6 +162,10 @@ export function ProjectHeader({ project, onAddTask }: {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isPM && (
+        <EditProjectDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
+      )}
     </header>
   );
 }
