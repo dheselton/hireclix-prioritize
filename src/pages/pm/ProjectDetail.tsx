@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Rocket } from "lucide-react";
 import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { supabase } from "@/integrations/supabase/client";
