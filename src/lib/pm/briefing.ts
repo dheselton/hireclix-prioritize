@@ -141,7 +141,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       .from("pm_tasks")
       .select("*")
       .eq("status", "unclaimed");
-    const unclaimedAll = (unclaimedRaw ?? []) as PmTask[];
+    const unclaimedAll = (unclaimedRaw ?? []) as unknown as PmTask[];
     // Need work_type lookup for these projects too
     const unclaimedProjIds = Array.from(new Set(unclaimedAll.map((t) => t.project_id)))
       .filter((id) => !projById.has(id));
