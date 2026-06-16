@@ -80,12 +80,12 @@ export const updateProject = async (id: string, patch: Partial<PmProject>) => {
 };
 
 export const deleteProject = async (id: string) => {
-  // pm_tasks and most related tables cascade on project_id; manually clear
-  // siblings that don't have a hard FK to be safe.
-  await supabase.from('pm_project_attachments').delete().eq('project_id', id);
-  await supabase.from('pm_project_links').delete().eq('project_id', id);
-  await supabase.from('pm_notes').delete().eq('project_id', id);
-  const { error } = await supabase.from('pm_projects').delete().eq('id', id);
+  const sb: any = supabase;
+  // pm_tasks and most related tables cascade on project_id; clear siblings that may not.
+  await sb.from('pm_project_attachments').delete().eq('project_id', id);
+  await sb.from('pm_project_links').delete().eq('project_id', id);
+  await sb.from('pm_notes').delete().eq('project_id', id);
+  const { error } = await sb.from('pm_projects').delete().eq('id', id);
   if (error) throw error;
   emitTasksChanged();
 };
