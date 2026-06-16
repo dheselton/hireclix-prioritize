@@ -84,17 +84,6 @@ export default function ProjectDetail() {
     reload();
   }
 
-  async function quickAddTask() {
-    if (!project || !quickAdd.trim()) return;
-    await createTask({
-      project_id: project.id, phase_id: null,
-      title: quickAdd.trim(), type: "design", status: "unclaimed", priority: "medium",
-      duration_days: 1, sort_order: tasks.length, created_by: user?.id ?? null,
-      assignee_id: user?.id ?? null,
-    });
-    setQuickAdd("");
-    reload();
-  }
 
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
