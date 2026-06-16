@@ -92,6 +92,11 @@ export function ProjectTaskCard({
           <span className="text-sm font-medium flex-1 truncate hover:underline">{task.title}</span>
           <StatusPill status={task.status} />
         </button>
+        {teams.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {teams.map(t => <TeamPill key={t} team={t} />)}
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-2 min-w-0">
