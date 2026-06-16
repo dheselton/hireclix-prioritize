@@ -3,13 +3,13 @@ import { useParams } from "react-router-dom";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Rocket } from "lucide-react";
 import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
-  updateProject, updateTask, createTask, logActivity,
+  updateProject, updateTask, logActivity,
 } from "@/lib/pm/api";
 import { useTasksChanged, useTaskDateProposed } from "@/lib/pm/refresh";
 import type { PmProject, PmTask, PmPhase, PmDependency } from "@/types/pm";
@@ -26,6 +26,7 @@ import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
+import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +42,7 @@ export default function ProjectDetail() {
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [convertOpen, setConvertOpen] = useState(false);
-  const [quickAdd, setQuickAdd] = useState("");
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   const reload = async () => {
     if (!id) return;
@@ -83,17 +84,6 @@ export default function ProjectDetail() {
     reload();
   }
 
-  async function quickAddTask() {
-    if (!project || !quickAdd.trim()) return;
-    await createTask({
-      project_id: project.id, phase_id: null,
-      title: quickAdd.trim(), type: "design", status: "unclaimed", priority: "medium",
-      duration_days: 1, sort_order: tasks.length, created_by: user?.id ?? null,
-      assignee_id: user?.id ?? null,
-    });
-    setQuickAdd("");
-    reload();
-  }
 
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
@@ -117,7 +107,7 @@ export default function ProjectDetail() {
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <UnclaimedBanner projectId={project.id} />
 
-      <ProjectHeader project={project} onAddTask={() => setTab("tasks")} />
+      <ProjectHeader project={project} onAddTask={() => { setTab("tasks"); setNewTaskOpen(true); }} />
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (
@@ -170,12 +160,14 @@ export default function ProjectDetail() {
 
       {tab === "tasks" && (
         <div className="space-y-3">
-          <TasksTab tasks={tasks} deps={deps} projectId={project.id} meId={user?.id ?? null} templateId={project.template_id} />
-          <div className="flex gap-2 pt-2 max-w-md">
-            <Input value={quickAdd} onChange={e => setQuickAdd(e.target.value)} placeholder="Quick add task…"
-              onKeyDown={e => { if (e.key === "Enter") quickAddTask(); }} className="h-8 text-sm" />
-            <Button size="sm" onClick={quickAddTask} disabled={!quickAdd.trim()}>Add</Button>
-          </div>
+          <TasksTab
+            tasks={tasks}
+            deps={deps}
+            projectId={project.id}
+            meId={user?.id ?? null}
+            templateId={project.template_id}
+            onAddTask={() => setNewTaskOpen(true)}
+          />
         </div>
       )}
 
@@ -203,6 +195,15 @@ export default function ProjectDetail() {
       )}
 
       <TaskDrawer />
+      <NewTaskDialog
+        open={newTaskOpen}
+        onOpenChange={setNewTaskOpen}
+        project={project}
+        phases={phases}
+        meId={user?.id ?? null}
+        meRole={user?.role ?? null}
+        onCreated={reload}
+      />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}
         onOpenChange={(v) => { if (!v) { setPendingDiffs([]); setPendingGoLive(null); reload(); } }}

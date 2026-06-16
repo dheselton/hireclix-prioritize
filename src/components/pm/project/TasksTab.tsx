@@ -41,8 +41,9 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask }: {
   tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
+  onAddTask?: () => void;
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
@@ -306,6 +307,11 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId }: {
             </button>
           );
         })}
+        {onAddTask && (
+          <Button size="sm" onClick={onAddTask} className="h-7">
+            <Plus className="h-3 w-3 mr-1" /> New task
+          </Button>
+        )}
         {templateId && (
           <Button size="sm" variant="outline" onClick={() => setAddPageOpen(true)} className="h-7">
             <Plus className="h-3 w-3 mr-1" /> Add page
