@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { AddPageDialog } from "./AddPageDialog";
 import { removePageFromProject } from "@/lib/pm/pageGroups";
 import { emitTasksChanged } from "@/lib/pm/refresh";
+import { useTeamFilter } from "@/hooks/useTeamFilter";
+import { Users } from "lucide-react";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
