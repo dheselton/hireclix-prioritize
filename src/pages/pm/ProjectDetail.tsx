@@ -9,7 +9,7 @@ import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchProject, fetchTasks, fetchPhases, fetchDependencies,
-  updateProject, updateTask, createTask, logActivity,
+  updateProject, updateTask, logActivity,
 } from "@/lib/pm/api";
 import { useTasksChanged, useTaskDateProposed } from "@/lib/pm/refresh";
 import type { PmProject, PmTask, PmPhase, PmDependency } from "@/types/pm";
