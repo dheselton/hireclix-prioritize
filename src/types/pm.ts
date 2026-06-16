@@ -1,4 +1,4 @@
-export type PmRole = 'pm' | 'designer' | 'developer' | 'submitter' | 'strategist' | 'analyst';
+export type PmRole = 'pm' | 'designer' | 'developer' | 'submitter' | 'strategist' | 'analyst' | 'qa' | 'csm' | 'support';
 export type TaskType = 'design' | 'dev' | 'review' | 'approval' | 'content' | 'qa' | 'strategy' | 'research' | 'analytics' | 'reporting';
 export type Team = 'creative' | 'pm' | 'strategy' | 'analytics';
 export type TaskStatus = 'unclaimed' | 'claimed' | 'in_progress' | 'blocked' | 'in_review' | 'approved' | 'complete';
