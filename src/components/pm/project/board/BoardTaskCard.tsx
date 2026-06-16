@@ -67,8 +67,9 @@ export function BoardTaskCard({
     meId: user?.id ?? null,
     bypassWaiting: isPM,
   });
-  // Special borders (careersite > internal > unclaimed) hide the team bar to avoid double accent.
-  const showTeamBar = !isCareerSite && !isInternal && !unclaimed && !!vis.teamBarBackground;
+  // Project-level borders (careersite > internal) hide the team bar to avoid double accent.
+  // Otherwise the team color bar always wins — including for unclaimed tasks (the Unclaimed pill still signals status).
+  const showTeamBar = !isCareerSite && !isInternal && !!vis.teamBarBackground;
 
   return (
     <div
@@ -85,7 +86,6 @@ export function BoardTaskCard({
           overlay && "opacity-80 shadow-lg",
           isCareerSite && "careersite-border-l",
           !isCareerSite && isInternal && "internal-border-l",
-          !isCareerSite && !isInternal && unclaimed && "border-l-4 border-l-amber-500",
           vis.waiting && "task-waiting",
         )}
       >
