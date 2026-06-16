@@ -80,6 +80,7 @@ export interface PmTask {
   parent_task_id?: string | null;
   page_label?: string | null;
   page_group_key?: string | null;
+  teams?: string[];
   created_at: string;
   updated_at: string;
 }
