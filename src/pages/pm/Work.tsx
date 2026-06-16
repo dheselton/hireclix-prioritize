@@ -31,6 +31,7 @@ import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+import { WorkKanban } from "@/components/pm/work/WorkKanban";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
