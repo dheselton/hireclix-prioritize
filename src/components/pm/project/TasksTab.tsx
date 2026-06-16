@@ -468,6 +468,7 @@ function TaskRow({ task, groupColorBg, count, onClick }: {
   task: PmTask; groupColorBg: string; count?: SubtaskCount; onClick: () => void;
 }) {
   const preview = stripHtml(task.description);
+  const teams = (Array.isArray((task as any).teams) ? (task as any).teams : []) as string[];
   return (
     <div
       onClick={onClick}
@@ -487,15 +488,34 @@ function TaskRow({ task, groupColorBg, count, onClick }: {
           <p className="text-[11px] text-muted-foreground truncate">{preview}</p>
         )}
       </div>
-      <span className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${typeBadgeClass(task.type)}`}>
-        {task.type}
-      </span>
+      <div className="flex items-center gap-1 shrink-0">
+        {teams.map(t => (
+          <TeamPillInline key={t} team={t} />
+        ))}
+      </div>
+      <span className="text-[10px] text-muted-foreground lowercase shrink-0">{task.type}</span>
       <span onClick={(e) => e.stopPropagation()}>
         <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
       </span>
       <span className="text-[11px] text-muted-foreground w-16 text-right">{fmtDate(task.due_date)}</span>
       <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} title={task.priority} />
     </div>
+  );
+}
+
+function TeamPillInline({ team }: { team: string }) {
+  // Inline (untyped) renderer to avoid extra imports — color map is small.
+  const colors: Record<string, string> = {
+    design: "hsl(280 70% 60%)", dev: "hsl(150 60% 45%)", pm: "hsl(220 70% 55%)",
+    qa: "hsl(50 90% 50%)", strategy: "hsl(260 70% 60%)", analytics: "hsl(190 70% 45%)",
+    csm: "hsl(330 65% 55%)", support: "hsl(15 80% 55%)",
+  };
+  const c = colors[team] ?? "hsl(var(--muted-foreground))";
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-medium" style={{ borderColor: c }}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: c }} />
+      <span className="capitalize">{team}</span>
+    </span>
   );
 }
 
