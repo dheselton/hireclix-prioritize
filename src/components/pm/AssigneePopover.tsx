@@ -56,6 +56,8 @@ export function AssigneePopover({
         .from("pm_tasks").update({ assignee_id: userId }).eq("id", taskId);
       if (error) { toast.error("Couldn't reassign"); return; }
       toast.success(userId ? "Reassigned" : "Unassigned");
+      const { emitTasksChanged } = await import("@/lib/pm/refresh");
+      emitTasksChanged();
       onChanged?.();
     }
   }
