@@ -413,7 +413,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       {/* List */}
       {view === "list" && (
         <div className="space-y-2">
-          {STATUS_GROUPS.map(g => {
+          {PROJECT_GROUPS.map(g => {
             const list = byGroup[g.id];
             const isCollapsed = collapsed[g.id];
             return (
