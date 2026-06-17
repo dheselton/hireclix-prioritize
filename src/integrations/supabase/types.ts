@@ -436,29 +436,83 @@ export type Database = {
       }
       pm_active_timers: {
         Row: {
+          activity_id: string | null
           note: string | null
           started_at: string
-          task_id: string
+          task_id: string | null
           user_id: string
         }
         Insert: {
+          activity_id?: string | null
           note?: string | null
           started_at?: string
-          task_id: string
+          task_id?: string | null
           user_id: string
         }
         Update: {
+          activity_id?: string | null
           note?: string | null
           started_at?: string
-          task_id?: string
+          task_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pm_active_timers_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "pm_activities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pm_active_timers_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_activities: {
+        Row: {
+          billable_default: boolean
+          color: string | null
+          created_at: string
+          created_by: string | null
+          default_client_id: string | null
+          icon: string | null
+          id: string
+          is_archived: boolean
+          name: string
+        }
+        Insert: {
+          billable_default?: boolean
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_client_id?: string | null
+          icon?: string | null
+          id?: string
+          is_archived?: boolean
+          name: string
+        }
+        Update: {
+          billable_default?: boolean
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_client_id?: string | null
+          icon?: string | null
+          id?: string
+          is_archived?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_activities_default_client_id_fkey"
+            columns: ["default_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1975,33 +2029,43 @@ export type Database = {
       }
       pm_time_entries: {
         Row: {
+          activity_id: string | null
           billable: boolean
           id: string
           logged_at: string
           minutes: number
           note: string | null
-          task_id: string
+          task_id: string | null
           user_id: string
         }
         Insert: {
+          activity_id?: string | null
           billable?: boolean
           id?: string
           logged_at?: string
           minutes: number
           note?: string | null
-          task_id: string
+          task_id?: string | null
           user_id: string
         }
         Update: {
+          activity_id?: string | null
           billable?: boolean
           id?: string
           logged_at?: string
           minutes?: number
           note?: string | null
-          task_id?: string
+          task_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pm_time_entries_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "pm_activities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pm_time_entries_task_id_fkey"
             columns: ["task_id"]

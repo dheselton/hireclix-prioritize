@@ -10,7 +10,9 @@ import { addTimeEntry, deleteTimeEntry, updateTimeEntry, fmtDur, type EnrichedEn
 import { toast } from "sonner";
 
 interface Props {
-  taskId: string;
+  /** Provide one of taskId OR activityId. */
+  taskId?: string | null;
+  activityId?: string | null;
   taskTitle: string;
   dateISO: string; // yyyy-mm-dd
   entries: EnrichedEntry[];
@@ -18,7 +20,7 @@ interface Props {
   onChange?: () => void;
 }
 
-export function EntryPopover({ taskId, taskTitle, dateISO, entries, children, onChange }: Props) {
+export function EntryPopover({ taskId, activityId, taskTitle, dateISO, entries, children, onChange }: Props) {
   const { user, role } = useCurrentUser();
   const [h, setH] = useState("");
   const [m, setM] = useState("");
@@ -29,7 +31,14 @@ export function EntryPopover({ taskId, taskTitle, dateISO, entries, children, on
     if (!user) return;
     const mins = (Number(h) || 0) * 60 + (Number(m) || 0);
     if (!mins) { toast.error("Enter a duration"); return; }
-    await addTimeEntry({ task_id: taskId, user_id: user.id, minutes: mins, note, logged_at: dateISO });
+    await addTimeEntry({
+      task_id: taskId ?? null,
+      activity_id: activityId ?? null,
+      user_id: user.id,
+      minutes: mins,
+      note,
+      logged_at: dateISO,
+    });
     setH(""); setM(""); setNote("");
     onChange?.();
     toast.success(`Logged ${fmtDur(mins)}`);
@@ -41,7 +50,10 @@ export function EntryPopover({ taskId, taskTitle, dateISO, entries, children, on
       <PopoverContent className="w-96 p-0 z-50 bg-popover" align="start">
         <div className="px-3 py-2 border-b border-border">
           <div className="text-xs text-muted-foreground">{fmtDate(dateISO)}</div>
-          <div className="text-sm font-medium truncate">{taskTitle}</div>
+          <div className="text-sm font-medium truncate">
+            {activityId && <span className="text-[10px] uppercase tracking-wide text-amber-600 mr-1">Activity ·</span>}
+            {taskTitle}
+          </div>
         </div>
         <div className="max-h-64 overflow-auto divide-y divide-border">
           {entries.length === 0 && (

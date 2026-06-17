@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface TimeEntry {
   id: string;
-  task_id: string;
+  task_id: string | null;
+  activity_id: string | null;
   user_id: string;
   minutes: number;
   note: string | null;
@@ -19,6 +20,11 @@ export interface EnrichedEntry extends TimeEntry {
   client_name: string | null;
   task_type: string | null;
   task_track: string | null;
+  activity_name: string | null;
+  activity_color: string | null;
+  activity_icon: string | null;
+  /** True when this entry is an overhead activity (no task). */
+  is_activity: boolean;
 }
 
 export function fmtDur(mins: number): string {
@@ -62,59 +68,73 @@ export function localDateISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Fetch entries with task/project/client joined. */
+/** Fetch entries with task/project/client + activity joined. */
 export async function fetchEnrichedEntries(opts: {
   userId?: string | null;
   userIds?: string[];
   taskId?: string;
+  activityId?: string;
   from?: string; // ISO date inclusive
   to?: string;   // ISO date inclusive
 }): Promise<EnrichedEntry[]> {
   let q = supabase
     .from("pm_time_entries")
     .select(
-      "id, task_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name)))"
+      "id, task_id, activity_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name))), pm_activities(name, color, icon, default_client_id, clients(name))"
     );
   if (opts.userId) q = q.eq("user_id", opts.userId);
   if (opts.userIds?.length) q = q.in("user_id", opts.userIds);
   if (opts.taskId) q = q.eq("task_id", opts.taskId);
+  if (opts.activityId) q = q.eq("activity_id", opts.activityId);
   if (opts.from) q = q.gte("logged_at", `${opts.from}T00:00:00`);
   if (opts.to) q = q.lte("logged_at", `${opts.to}T23:59:59.999`);
   const { data, error } = await q.order("logged_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map((r: any) => ({
-    id: r.id,
-    task_id: r.task_id,
-    user_id: r.user_id,
-    minutes: r.minutes,
-    note: r.note,
-    logged_at: r.logged_at,
-    billable: r.billable ?? true,
-    task_title: r.pm_tasks?.title ?? "Untitled task",
-    task_type: r.pm_tasks?.type ?? null,
-    task_track: r.pm_tasks?.track ?? null,
-    project_id: r.pm_tasks?.project_id ?? "",
-    project_title: r.pm_tasks?.pm_projects?.title ?? "",
-    client_id: r.pm_tasks?.pm_projects?.client_id ?? null,
-    client_name: r.pm_tasks?.pm_projects?.clients?.name ?? null,
-  }));
+  return (data || []).map((r: any): EnrichedEntry => {
+    const isActivity = !!r.activity_id;
+    return {
+      id: r.id,
+      task_id: r.task_id,
+      activity_id: r.activity_id,
+      user_id: r.user_id,
+      minutes: r.minutes,
+      note: r.note,
+      logged_at: r.logged_at,
+      billable: r.billable ?? true,
+      task_title: isActivity ? (r.pm_activities?.name ?? "Activity") : (r.pm_tasks?.title ?? "Untitled task"),
+      task_type: r.pm_tasks?.type ?? null,
+      task_track: r.pm_tasks?.track ?? null,
+      project_id: r.pm_tasks?.project_id ?? "",
+      project_title: r.pm_tasks?.pm_projects?.title ?? "",
+      client_id: isActivity ? (r.pm_activities?.default_client_id ?? null) : (r.pm_tasks?.pm_projects?.client_id ?? null),
+      client_name: isActivity ? (r.pm_activities?.clients?.name ?? null) : (r.pm_tasks?.pm_projects?.clients?.name ?? null),
+      activity_name: r.pm_activities?.name ?? null,
+      activity_color: r.pm_activities?.color ?? null,
+      activity_icon: r.pm_activities?.icon ?? null,
+      is_activity: isActivity,
+    };
+  });
 }
 
 export async function addTimeEntry(input: {
-  task_id: string;
+  task_id?: string | null;
+  activity_id?: string | null;
   user_id: string;
   minutes: number;
   note?: string;
   logged_at?: string; // ISO date or full timestamp
   billable?: boolean;
 }) {
+  if (!input.task_id && !input.activity_id) throw new Error("task_id or activity_id required");
+  if (input.task_id && input.activity_id) throw new Error("Provide either task_id OR activity_id, not both");
   const logged_at = input.logged_at
     ? (input.logged_at.length === 10 ? `${input.logged_at}T12:00:00` : input.logged_at)
     : new Date().toISOString();
   const { data, error } = await supabase
     .from("pm_time_entries")
     .insert({
-      task_id: input.task_id,
+      task_id: input.task_id ?? null,
+      activity_id: input.activity_id ?? null,
       user_id: input.user_id,
       minutes: input.minutes,
       note: input.note ?? "",
@@ -168,12 +188,17 @@ export function useEnrichedEntries(opts: Parameters<typeof fetchEnrichedEntries>
 }
 
 export interface WeekGridRow {
-  taskId: string;
-  taskTitle: string;
+  rowKey: string;
+  taskId: string | null;
+  activityId: string | null;
+  taskTitle: string;        // display label (task title OR activity name)
   taskType: string | null;
   projectId: string;
   projectTitle: string;
   clientName: string | null;
+  activityColor: string | null;
+  activityIcon: string | null;
+  isActivity: boolean;
   perDay: number[]; // length 7
   total: number;
   entries: EnrichedEntry[];
@@ -185,20 +210,26 @@ export function buildWeekGrid(entries: EnrichedEntry[], days: string[]): { rows:
     const day = e.logged_at.slice(0, 10);
     const idx = days.indexOf(day);
     if (idx < 0) continue;
-    let row = map.get(e.task_id);
+    const key = e.is_activity ? `a:${e.activity_id}` : `t:${e.task_id}`;
+    let row = map.get(key);
     if (!row) {
       row = {
+        rowKey: key,
         taskId: e.task_id,
-        taskTitle: e.task_title,
+        activityId: e.activity_id,
+        taskTitle: e.is_activity ? (e.activity_name ?? "Activity") : e.task_title,
         taskType: e.task_type,
         projectId: e.project_id,
         projectTitle: e.project_title,
         clientName: e.client_name,
+        activityColor: e.activity_color,
+        activityIcon: e.activity_icon,
+        isActivity: e.is_activity,
         perDay: Array(7).fill(0),
         total: 0,
         entries: [],
       };
-      map.set(e.task_id, row);
+      map.set(key, row);
     }
     row.perDay[idx] += e.minutes;
     row.total += e.minutes;

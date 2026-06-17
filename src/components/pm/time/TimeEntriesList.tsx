@@ -82,12 +82,23 @@ export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[
                     </div>
                   </td>
                   <td className="px-3 py-2 max-w-[280px]">
-                    <Link to={`/pm/tasks/${e.task_id}`} className="hover:underline truncate block">{e.task_title}</Link>
+                    {e.is_activity ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate">{e.activity_name ?? "Activity"}</span>
+                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 shrink-0">Activity</span>
+                      </div>
+                    ) : (
+                      <Link to={`/pm/tasks/${e.task_id}`} className="hover:underline truncate block">{e.task_title}</Link>
+                    )}
                   </td>
                   <td className="px-3 py-2 max-w-[220px]">
-                    <Link to={`/pm/projects/${e.project_id}`} className="hover:underline truncate block text-xs text-muted-foreground">
-                      {e.client_name ? `${e.client_name} · ` : ""}{e.project_title}
-                    </Link>
+                    {e.is_activity ? (
+                      <span className="text-xs text-muted-foreground">{e.client_name ?? "Overhead"}</span>
+                    ) : (
+                      <Link to={`/pm/projects/${e.project_id}`} className="hover:underline truncate block text-xs text-muted-foreground">
+                        {e.client_name ? `${e.client_name} · ` : ""}{e.project_title}
+                      </Link>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">{fmtDur(e.minutes)}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground max-w-[260px] truncate">{e.note}</td>
