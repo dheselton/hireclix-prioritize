@@ -143,6 +143,24 @@ export default function TaskWorkspace() {
               <Button variant="outline" size="sm" onClick={openQuickEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Quick edit
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!confirm("Delete this task? This cannot be undone.")) return;
+                  try {
+                    await deleteTask(task.id);
+                    emitTasksChanged();
+                    toast.success("Task deleted");
+                    navigate(`/pm/projects/${task.project_id}`);
+                  } catch (err: any) {
+                    toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+                  }
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" /> Delete
+              </Button>
             </div>
           </div>
 
