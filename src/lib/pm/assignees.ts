@@ -67,11 +67,13 @@ export async function addAssignee(taskId: string, userId: string) {
     await supabase.from("pm_tasks").update({ assignee_id: userId }).eq("id", taskId);
     // Make sure they aren't also in the co table
     await supabase.from("pm_task_assignees").delete().match({ task_id: taskId, user_id: userId });
+    emitTasksChanged();
     return;
   }
   await supabase
     .from("pm_task_assignees")
     .upsert({ task_id: taskId, user_id: userId }, { onConflict: "task_id,user_id" });
+  emitTasksChanged();
 }
 
 /** Remove an assignee. If removing the primary, promote oldest co-assignee. */
@@ -87,6 +89,7 @@ export async function removeAssignee(taskId: string, userId: string) {
   } else {
     await supabase.from("pm_task_assignees").delete().match({ task_id: taskId, user_id: userId });
   }
+  emitTasksChanged();
 }
 
 /** Make `userId` the primary owner; demote previous primary into co-assignees. */
@@ -102,4 +105,5 @@ export async function setPrimaryAssignee(taskId: string, userId: string) {
       .from("pm_task_assignees")
       .upsert({ task_id: taskId, user_id: primary }, { onConflict: "task_id,user_id" });
   }
+  emitTasksChanged();
 }
