@@ -94,6 +94,7 @@ export function BoardTaskCard({
           isCareerSite && "careersite-border-l",
           !isCareerSite && isInternal && "internal-border-l",
           vis.waiting && "task-waiting",
+          needsAssignee && !vis.waiting && "task-needs-assignee",
         )}
       >
         {showTeamBar && <TeamColorBar background={vis.teamBarBackground} dim={vis.waiting} />}
