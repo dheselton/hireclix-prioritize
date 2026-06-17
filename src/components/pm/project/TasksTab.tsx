@@ -458,7 +458,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
           }}
         >
           <div className="grid grid-cols-4 gap-3">
-            {STATUS_GROUPS.map(g => (
+            {PROJECT_GROUPS.map(g => (
               <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
                 {boardByGroup[g.id].map(t => (
                   <BoardTaskCard
@@ -470,6 +470,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                     onDateChange={(iso) => changeDate(t.id, iso)}
                     allTasks={boardTasks}
                     deps={deps}
+                    isProject
                   />
                 ))}
               </BoardColumn>
