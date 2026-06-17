@@ -1,47 +1,80 @@
+## Goal
+Make the "New task" dialog a complete composer so PMs/team members can set everything in one shot — multi-assignees, multi-type, and all the fields that currently force a "create → reopen → edit" round-trip.
 
-# Fix Add Task on project Tasks tab
+## Changes (all in `src/components/pm/project/NewTaskDialog.tsx`)
 
-Two issues today on `/pm/projects/:id`:
+### 1. Multi-assignees
+Replace the single `AssigneePopover` with an inline chip list + add button (same pattern as `ControlPanel.AssigneeChips`):
+- Local state: `assigneeIds: string[]` (order matters — first = primary).
+- Chips show avatar + name + star on first (primary) + X to remove; click a non-primary chip to promote it.
+- "+ Add" opens an `AssigneePopover` in `controlled` mode; `onPick` appends the id if not already present.
+- On save:
+  - `assignee_id = assigneeIds[0] ?? null`
+  - After `createTask` returns the new row id, insert the remaining `assigneeIds.slice(1)` into `pm_task_assignees` via `addAssignee(taskId, uid)` (sequential await; small list).
 
-1. **Header "Add task" button** (in `ProjectHeader`) just switches to the Tasks tab — it doesn't open any composer.
-2. **The bottom "Quick add task…" input** in `ProjectDetail.tsx` only captures a title and hard-codes `type: "design"`, `priority: "medium"`, `assignee_id = current user`. No way to set type/team/priority/due date at creation time, and the default type is wrong for non-designers.
+### 2. Multi-type
+Convert Type from a single `Select` to a multi-select popover (same chip pattern as `TeamsMultiSelect`):
+- Local state: `types: TaskType[]` (first = primary, defaulted from role).
+- Render selected as colored pills with X; "+ Add" popover lists remaining `TASK_TYPES`.
+- Reordering: click a pill to promote to primary (matches assignee UX). Star icon on primary.
+- On save:
+  - `type = types[0]` (drives DB trigger that seeds `teams`).
+  - Extra types persisted into `tags` as `type:dev`, `type:qa`, etc. (zero schema change, already searchable). Add a small helper inline; document in code comment.
 
-## Fix
+### 3. Add remaining task fields
+Expand dialog body (widen to `sm:max-w-[640px]`, scrollable) and add:
+- **Description** — `Textarea`, 3 rows, optional.
+- **Status** — `Select` of `TASK_STATUSES`. Default: `claimed` if any assignees else `unclaimed`. Auto-updates when assignees change unless user has manually touched it (track `statusDirty` flag).
+- **Start date** — `DatePicker` (same Popover+Calendar pattern as Due date).
+- **Duration (days)** — small numeric `Input`, default `1`, min `0.5` step `0.5`.
+- **Teams** — `TeamsMultiSelect`. Default: union of `DEFAULT_TEAMS_FOR_TYPE[t]` for each selected type; recomputed whenever `types` changes unless user has manually edited (track `teamsDirty`).
+- **Tags** — comma-separated `Input`, parsed to `string[]` on save (merged with the `type:*` tags above, deduped).
+- **Dev environment** — `Input`, shown only when `types` includes `dev`.
+- **Priority**, **Assignees**, **Due date**, **Phase** — already present, keep.
 
-### 1. New `NewTaskDialog` component
-`src/components/pm/project/NewTaskDialog.tsx` — a small modal with:
+### Layout
+```
+Title (full row)
+Description (full row)
+─────────────────
+Type [multi]        Priority
+Status              Phase
+Assignees [multi, full row]
+Teams [multi, full row]
+Start date          Due date
+Duration            Tags
+Dev environment (conditional, full row)
+```
 
-- **Title** (required)
-- **Type** (select, all `TASK_TYPES`) — defaults from the current user's role:
-  - `designer → design`, `developer → dev`, `qa → qa`, `strategist → strategy`, `analyst → analytics`, `pm → review`, `csm/support → review`
-  - Always editable, so a PM can switch a task to dev/design/etc.
-- **Assignee** (re-use `AssigneePopover`) — defaults to current user; PM can reassign
-- **Priority** (low/medium/high/urgent) — defaults `medium`
-- **Due date** (optional, mm/dd/yyyy via existing `date-picker`)
-- **Phase** (optional select if the project has phases)
+### Save flow
+```ts
+const primaryType = types[0];
+const extraTypeTags = types.slice(1).map(t => `type:${t}`);
+const allTags = Array.from(new Set([...userTags, ...extraTypeTags]));
 
-On submit, calls `createTask({...})` with the chosen fields. `teams[]` is intentionally not set on the client — the existing DB trigger seeds `teams` from `type` via `DEFAULT_TEAMS_FOR_TYPE`. Reloads tasks, toasts success, closes.
+const created = await createTask({
+  project_id, phase_id: phaseId, title, description,
+  type: primaryType,
+  status,
+  priority,
+  assignee_id: assigneeIds[0] ?? null,
+  start_date, due_date, duration_days,
+  teams,                       // overrides DB trigger default
+  tags: allTags,
+  dev_environment: types.includes("dev") ? devEnv || null : null,
+  sort_order: 9999,
+});
 
-### 2. Wire it up in `ProjectDetail.tsx`
-- Add `const [newTaskOpen, setNewTaskOpen] = useState(false)`.
-- `<ProjectHeader … onAddTask={() => { setTab("tasks"); setNewTaskOpen(true); }} />` — the header button now actually opens the dialog.
-- Replace the bottom `Quick add task…` Input + Add button with a single `+ New task` button that opens the same dialog (keeps Tasks tab uncluttered; the dialog is the one canonical entry point).
-- Remove the now-dead `quickAdd` state and `quickAddTask()` function.
-- Mount `<NewTaskDialog open={newTaskOpen} onOpenChange={setNewTaskOpen} project={project} phases={phases ?? []} meId={user?.id ?? null} meRole={user?.role ?? null} onCreated={reload} />` once on the page.
+for (const uid of assigneeIds.slice(1)) {
+  await addAssignee(created.id, uid);
+}
+useInvalidateAssignees() equivalent → caller's onCreated() already reloads.
+```
 
-### 3. Also expose `+ New task` inside `TasksTab` toolbar
-Add a `+ New task` button next to the existing "Add page" / view toggle so creating a task is reachable from the tab itself (the header lives above and stays visible, but inline is faster). Optional callback `onAddTask?: () => void` prop on `TasksTab`; `ProjectDetail` passes `() => setNewTaskOpen(true)`.
-
-### Validation
-- Sign in as developer → click "Add task" in header → dialog opens, Type pre-selected `Dev`, Assignee = me.
-- Switch role to designer → Type defaults to `Design`.
-- Switch role to PM → Type defaults to `Review`; PM can pick any type from the dropdown.
-- Save → task appears in the Tasks list under the correct status group with the right team color bar (because the DB trigger seeded `teams` from `type`).
-- Bottom "Quick add" row is gone; replaced by a single `+ New task` button.
+## Non-changes
+- No schema/DB migration. Extra types ride in `tags`; multi-assignees use existing `pm_task_assignees`.
+- No changes to `createTask`, ControlPanel, or `TasksTab` wiring — `onCreated` still triggers reload.
+- TaskWorkspace already renders multi-assignees + teams; extra-type tags will appear in the tag list (acceptable; can be promoted to a first-class UI later if needed).
 
 ## Files touched
-- **new**: `src/components/pm/project/NewTaskDialog.tsx`
-- **edit**: `src/pages/pm/ProjectDetail.tsx` (remove inline quick-add, mount dialog, wire header button)
-- **edit**: `src/components/pm/project/TasksTab.tsx` (optional `onAddTask` prop + toolbar button)
-
-No DB/schema changes. No changes to `createTask` API.
+- **Edited**: `src/components/pm/project/NewTaskDialog.tsx` (only file).
