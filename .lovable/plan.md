@@ -1,36 +1,23 @@
-## 1. Notes on overhead activity time
+## Problem
 
-**`ActivitiesStrip.tsx`**
-- When an activity timer is running, show an inline "What are you working on?" input next to the elapsed time. Value is held in local state per running activity; on Stop, pass it to `stop(note)`.
-- In `QuickLogMenu`, add a "Note (optional)" input above the +15/+30/+1h row. Forward `note` through `onPick(mins, note)` → `quickLog(activity, mins, note)` → `addTimeEntry({ ..., note })`.
+When a user is added/removed/promoted on a task from the workspace (or anywhere), the board/list cards on the project page don't reflect it until a refresh. Status changes from the workspace already work because the workspace emits a `tasks-changed` event that `ProjectDetail` listens to via `useTasksChanged(reload)`. The assignee mutation helpers don't emit that event, so the parent never re-fetches `pm_tasks` and the card avatars stay stale.
 
-**`ActiveTimerProvider.tsx`**
-- Already accepts `stop(note?)` and persists `note` into `pm_time_entries`. No schema changes — just make sure the activity timer's running note from `ActivitiesStrip` and `FloatingTimerTray` is what reaches `stop()`.
+## Fix
 
-**`FloatingTimerTray.tsx`**
-- When `current.activityId` is set, render a compact note input inside the tray (replacing the static label row with label + small input). The input value is passed into `stop(note)` when the user clicks the stop button.
+Have every assignee mutation broadcast `emitTasksChanged()` so every subscriber (ProjectDetail, Briefing, Work Queue, etc.) re-fetches automatically — same mechanism the rest of the app already uses.
 
-**`EntryPopover.tsx`**
-- Already supports notes for both task and activity entries — no change needed (verified in current file).
+### Edits
 
-No DB migration. No changes to `TimesheetGrid` / `TimeEntriesList` (they already render notes via existing fields).
+1. **`src/lib/pm/assignees.ts`**
+   - Import `emitTasksChanged` from `@/lib/pm/refresh`.
+   - Call it at the end of `addAssignee`, `removeAssignee`, and `setPrimaryAssignee` (after the Supabase writes succeed).
 
-## 2. Timer font: use body font everywhere
+2. **`src/components/pm/AssigneePopover.tsx`**
+   - In the `single` mode branch (the direct `pm_tasks.update({ assignee_id })` path used when not in multi mode), call `emitTasksChanged()` right after the successful update, alongside the existing `onChanged?.()`.
 
-Remove `font-mono` from every visible timer/clock element so they inherit the app body font (Inter). Keep `tabular-nums` so digits stay aligned.
+That's it — no UI changes, no schema changes. The existing `useTasksChanged(reload)` hook in `ProjectDetail` (and the equivalent listeners in Briefing/Work) will pull the fresh `pm_tasks` row, so the primary-owner avatar on every card updates immediately. Co-assignee changes already invalidate the react-query map via `invalidate()`; the new emit covers the primary-owner case that was missing.
 
-Files to edit:
-- `src/components/pm/workspace/TimerPill.tsx` — running + idle pill spans
-- `src/components/pm/timer/FloatingTimerTray.tsx` — elapsed time line
-- `src/components/pm/timer/TimerControls.tsx` — elapsed pill
-- `src/components/pm/time/TimeTrackerCard.tsx` — large timer display, recent-entry duration column
-- `src/components/pm/time/ActivitiesStrip.tsx` — running elapsed span
-- `src/components/pm/time/EntryPopover.tsx` — `EntryRow` duration span
-- `src/components/pm/time/TimesheetGrid.tsx` and `src/components/pm/time/TimeEntriesList.tsx` — audit any `font-mono` next to `fmtDur` / `tabular-nums` and remove
+### Out of scope
 
-Pure presentation: only `font-mono` utility removed; no logic, layout, or component structure changes.
-
-## Out of scope
-- No DB migration
-- No changes to timer business logic
-- No global font/CSS edits
+- No realtime Postgres subscriptions — the project already standardizes on the in-tab `tasks-changed` CustomEvent. Adding Supabase realtime is a larger change and not required to solve the reported bug.
+- Status-change propagation already works (kanban drag, ClaimButton via `updateTask`, workspace status changes all emit). No edits needed there.

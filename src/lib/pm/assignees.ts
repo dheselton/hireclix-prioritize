@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 
 const KEY = ["pm_task_assignees_map"] as const;
 
