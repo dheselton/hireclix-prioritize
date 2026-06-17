@@ -172,6 +172,7 @@ function AssigneeChips({ taskId, primaryId, onChanged }: { taskId: string; prima
         taskId={taskId}
         assigneeId={primaryId}
         mode="multi"
+        onChanged={onChanged}
         trigger={
           <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
             <Plus className="h-3 w-3" />
