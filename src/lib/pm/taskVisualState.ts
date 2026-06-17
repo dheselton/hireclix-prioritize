@@ -21,19 +21,16 @@ export interface TaskVisualState {
   waitingReason: string | null;
 }
 
-/** Build a CSS background value for the team color bar. */
+/** Build a CSS background value for the team color bar.
+ * Single team → solid color. Multiple teams → smooth vertical gradient blending each color. */
 export function teamBarBackground(teams: Team[]): string | null {
   if (!teams.length) return null;
   if (teams.length === 1) return TEAM_COLOR[teams[0]];
-  // Diagonal stripes alternating between teams (cycle through all).
-  const stripe = 8; // px per stripe
-  const stops: string[] = [];
-  teams.forEach((t, i) => {
-    const a = i * stripe;
-    const b = (i + 1) * stripe;
-    stops.push(`${TEAM_COLOR[t]} ${a}px ${b}px`);
+  const stops = teams.map((t, i) => {
+    const pct = (i / (teams.length - 1)) * 100;
+    return `${TEAM_COLOR[t]} ${pct.toFixed(2)}%`;
   });
-  return `repeating-linear-gradient(135deg, ${stops.join(", ")})`;
+  return `linear-gradient(180deg, ${stops.join(", ")})`;
 }
 
 /**
