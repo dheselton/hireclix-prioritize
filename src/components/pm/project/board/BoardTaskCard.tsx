@@ -64,6 +64,11 @@ export function BoardTaskCard({
   const unclaimed = task.status === "unclaimed";
   const { user } = useCurrentUser();
   const isPM = user?.role === "pm";
+  const isDone = task.status === "complete" || task.status === "approved";
+  // On project boards we hide the "claimed/unclaimed" concept and instead glow
+  // unassigned cards. On request boards we keep the muted "unclaimed" treatment.
+  const needsAssignee = isProject && !task.assignee_id && !isDone;
+  const mutedNoOwner = !isProject && unclaimed;
 
   const vis = computeTaskVisualState(task, allTasks ?? [], deps ?? [], {
     meId: user?.id ?? null,
