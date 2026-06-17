@@ -133,7 +133,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   function findContainer(id: string): StatusGroupId | null {
     if (id.startsWith("col:")) return id.slice(4) as StatusGroupId;
     const t = boardTasks.find(x => x.id === id);
-    return t ? groupForStatus(t.status).id : null;
+    return t ? groupIdFor(t.status) : null;
   }
 
   function handleDragStart(e: DragStartEvent) {
