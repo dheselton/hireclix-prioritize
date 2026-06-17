@@ -124,7 +124,7 @@ export function ControlPanel({
   );
 }
 
-function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: string | null }) {
+function AssigneeChips({ taskId, primaryId, onChanged }: { taskId: string; primaryId: string | null; onChanged?: () => void | Promise<void> }) {
   const users = useMockUsers();
   const co = useTaskCoAssignees(taskId);
   const all = combineAssignees(primaryId, co);
@@ -133,6 +133,7 @@ function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: strin
   async function remove(uid: string) {
     await removeAssignee(taskId, uid);
     invalidate();
+    await onChanged?.();
   }
 
   return (
