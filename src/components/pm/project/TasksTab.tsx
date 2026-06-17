@@ -158,7 +158,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       // Move to end of new container
       const without = updated.filter(t => t.id !== active.id);
       const moved = updated.find(t => t.id === active.id)!;
-      const targetList = updated.filter(t => groupForStatus(t.status).id === overContainer && t.id !== active.id);
+      const targetList = updated.filter(t => groupIdFor(t.status) === overContainer && t.id !== active.id);
       const lastTargetId = targetList[targetList.length - 1]?.id;
       const insertIdx = lastTargetId
         ? without.findIndex(t => t.id === lastTargetId) + 1
@@ -186,11 +186,11 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       overContainer = overId.slice(4) as StatusGroupId;
     } else {
       const overTask = snapshot.find(t => t.id === overId);
-      if (overTask) overContainer = groupForStatus(overTask.status).id;
+      if (overTask) overContainer = groupIdFor(overTask.status);
     }
     if (!overContainer) { snapshotRef.current = null; return; }
 
-    const originalContainer = groupForStatus(originalTask.status).id;
+    const originalContainer = groupIdFor(originalTask.status);
     const targetGroup = STATUS_GROUPS.find(g => g.id === overContainer)!;
     const newStatus: TaskStatus = targetGroup.statuses.includes(originalTask.status)
       ? originalTask.status
@@ -204,18 +204,18 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     let nextTasks: PmTask[];
     if (overContainer === originalContainer && overId !== activeId && !overId.startsWith("col:")) {
       // Same-column reorder: arrayMove within the column ids.
-      const colIds = snapshot.filter(t => groupForStatus(t.status).id === originalContainer).map(t => t.id);
+      const colIds = snapshot.filter(t => groupIdFor(t.status) === originalContainer).map(t => t.id);
       const oldIdx = colIds.indexOf(activeId);
       const newIdx = colIds.indexOf(overId);
       const reorderedIds = (oldIdx !== -1 && newIdx !== -1) ? arrayMove(colIds, oldIdx, newIdx) : colIds;
       const colMap = new Map(snapshot.map(t => [t.id, t]));
       let r = 0;
       nextTasks = snapshot.map(t =>
-        groupForStatus(t.status).id === originalContainer ? colMap.get(reorderedIds[r++])! : t,
+        groupIdFor(t.status) === originalContainer ? colMap.get(reorderedIds[r++])! : t,
       );
     } else {
       // Cross-column move (or drop-on-column): insert at end of target column.
-      const targetColIds = snapshot.filter(t => groupForStatus(t.status).id === overContainer && t.id !== activeId).map(t => t.id);
+      const targetColIds = snapshot.filter(t => groupIdFor(t.status) === overContainer && t.id !== activeId).map(t => t.id);
       const lastTargetId = targetColIds[targetColIds.length - 1];
       const next = [...others];
       const insertIdx = lastTargetId ? next.findIndex(t => t.id === lastTargetId) + 1 : next.length;
@@ -231,7 +231,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     try {
       const updates: Promise<unknown>[] = [];
       for (const gid of affectedGroups) {
-        const list = nextTasks.filter(t => groupForStatus(t.status).id === gid);
+        const list = nextTasks.filter(t => groupIdFor(t.status) === gid);
         list.forEach((t, idx) => {
           const patch: Record<string, unknown> = { sort_order: idx };
           if (t.id === activeId && statusChanged) patch.status = newStatus;
