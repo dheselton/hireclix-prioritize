@@ -136,10 +136,16 @@ function QuickLogMenu({ onPick }: { onPick: (mins: number, note: string) => void
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3 z-50 bg-popover" align="end">
         <div className="text-xs font-medium text-muted-foreground mb-2">Log time today</div>
+        <Input
+          placeholder="Note (optional)"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          className="h-8 mb-2"
+        />
         <div className="flex gap-1.5 mb-2">
-          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => onPick(15)}>+15m</Button>
-          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => onPick(30)}>+30m</Button>
-          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => onPick(60)}>+1h</Button>
+          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => pick(15)}>+15m</Button>
+          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => pick(30)}>+30m</Button>
+          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => pick(60)}>+1h</Button>
         </div>
         <div className="flex gap-1.5">
           <Input type="number" min={0} placeholder="h" value={h} onChange={e => setH(e.target.value)} className="h-8 w-14" />
