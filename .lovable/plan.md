@@ -1,80 +1,42 @@
-## Goal
-Make the "New task" dialog a complete composer so PMs/team members can set everything in one shot — multi-assignees, multi-type, and all the fields that currently force a "create → reopen → edit" round-trip.
+## What the error means
 
-## Changes (all in `src/components/pm/project/NewTaskDialog.tsx`)
+The project was created from a template (e.g. a Career Site template). That template defines **page groups** (like "Build") which are meant to act as reusable bundles of tasks that get stamped onto every page you add. Example: a "Build" page group might contain slots like *Design page → Dev page → QA page → Content review*.
 
-### 1. Multi-assignees
-Replace the single `AssigneePopover` with an inline chip list + add button (same pattern as `ControlPanel.AssigneeChips`):
-- Local state: `assigneeIds: string[]` (order matters — first = primary).
-- Chips show avatar + name + star on first (primary) + X to remove; click a non-primary chip to promote it.
-- "+ Add" opens an `AssigneePopover` in `controlled` mode; `onPick` appends the id if not already present.
-- On save:
-  - `assignee_id = assigneeIds[0] ?? null`
-  - After `createTask` returns the new row id, insert the remaining `assigneeIds.slice(1)` into `pm_task_assignees` via `addAssignee(taskId, uid)` (sequential await; small list).
+When you click **+ Add 3 pages**, the app looks up every template task tagged with `page_group_id = Build` and clones it for each page name you entered (Home, Search, Job Description). The toast `Page group has no task slots defined yet` means the **Build page group exists, but zero template tasks are attached to it** — so there is nothing to clone, and 0 tasks get inserted. The pages would be added as empty shells, which is why we block it instead.
 
-### 2. Multi-type
-Convert Type from a single `Select` to a multi-select popover (same chip pattern as `TeamsMultiSelect`):
-- Local state: `types: TaskType[]` (first = primary, defaulted from role).
-- Render selected as colored pills with X; "+ Add" popover lists remaining `TASK_TYPES`.
-- Reordering: click a pill to promote to primary (matches assignee UX). Star icon on primary.
-- On save:
-  - `type = types[0]` (drives DB trigger that seeds `teams`).
-  - Extra types persisted into `tags` as `type:dev`, `type:qa`, etc. (zero schema change, already searchable). Add a small helper inline; document in code comment.
+The fix lives in the **Template editor**, not the project. Someone needs to open the template behind this project, select the Build page group, and attach the task slots (Design / Dev / QA / etc.) that should fan out per page. After that, `+ Add pages` will work and stamp the full bundle.
 
-### 3. Add remaining task fields
-Expand dialog body (widen to `sm:max-w-[640px]`, scrollable) and add:
-- **Description** — `Textarea`, 3 rows, optional.
-- **Status** — `Select` of `TASK_STATUSES`. Default: `claimed` if any assignees else `unclaimed`. Auto-updates when assignees change unless user has manually touched it (track `statusDirty` flag).
-- **Start date** — `DatePicker` (same Popover+Calendar pattern as Due date).
-- **Duration (days)** — small numeric `Input`, default `1`, min `0.5` step `0.5`.
-- **Teams** — `TeamsMultiSelect`. Default: union of `DEFAULT_TEAMS_FOR_TYPE[t]` for each selected type; recomputed whenever `types` changes unless user has manually edited (track `teamsDirty`).
-- **Tags** — comma-separated `Input`, parsed to `string[]` on save (merged with the `type:*` tags above, deduped).
-- **Dev environment** — `Input`, shown only when `types` includes `dev`.
-- **Priority**, **Assignees**, **Due date**, **Phase** — already present, keep.
+## Plan
 
-### Layout
-```
-Title (full row)
-Description (full row)
-─────────────────
-Type [multi]        Priority
-Status              Phase
-Assignees [multi, full row]
-Teams [multi, full row]
-Start date          Due date
-Duration            Tags
-Dev environment (conditional, full row)
-```
+Make this self-explanatory and recoverable from the dialog (no code spelunking needed).
 
-### Save flow
-```ts
-const primaryType = types[0];
-const extraTypeTags = types.slice(1).map(t => `type:${t}`);
-const allTags = Array.from(new Set([...userTags, ...extraTypeTags]));
+### 1. Detect empty page groups up front
+In `AddPageDialog.tsx`, when groups load also fetch `pm_template_tasks` counts grouped by `page_group_id` for the template. Build a `slotCountByGroup: Record<groupId, number>` map.
 
-const created = await createTask({
-  project_id, phase_id: phaseId, title, description,
-  type: primaryType,
-  status,
-  priority,
-  assignee_id: assigneeIds[0] ?? null,
-  start_date, due_date, duration_days,
-  teams,                       // overrides DB trigger default
-  tags: allTags,
-  dev_environment: types.includes("dev") ? devEnv || null : null,
-  sort_order: 9999,
-});
+### 2. Show slot count on each page-group chip
+Render the chip as `Build · 0 slots` (muted) vs `Build · 4 slots`. Empty groups are visually dimmed but still selectable so the user can see what's wrong.
 
-for (const uid of assigneeIds.slice(1)) {
-  await addAssignee(created.id, uid);
-}
-useInvalidateAssignees() equivalent → caller's onCreated() already reloads.
-```
+### 3. Replace the cryptic toast with an inline explainer + CTA
+When the selected group has 0 slots, replace the "Bulk add" textarea area with an inline panel:
 
-## Non-changes
-- No schema/DB migration. Extra types ride in `tags`; multi-assignees use existing `pm_task_assignees`.
-- No changes to `createTask`, ControlPanel, or `TasksTab` wiring — `onCreated` still triggers reload.
-- TaskWorkspace already renders multi-assignees + teams; extra-type tags will appear in the tag list (acceptable; can be promoted to a first-class UI later if needed).
+> **"Build" has no task slots yet.**
+> Page groups stamp a bundle of tasks onto every page you add (e.g. Design → Dev → QA). This group has none defined, so adding pages would create empty shells.
+>
+> [Open template editor →]  (deep-links to `/pm/templates/{templateId}/edit#group={groupId}`)
+
+The **Add pages** button is disabled in this state with a tooltip pointing at the same fix.
+
+### 4. Keep the existing happy path intact
+If the group has slots, behavior is unchanged — bulk-add still stamps the full bundle and consumes reserved time.
+
+### 5. (Optional, ask before doing) Allow "Add as empty pages anyway"
+A secondary button that creates one placeholder task per page (just the page label, no bundle) so PMs can scaffold pages before the template is finished. Off by default; only add if you want it.
 
 ## Files touched
-- **Edited**: `src/components/pm/project/NewTaskDialog.tsx` (only file).
+- `src/components/pm/project/AddPageDialog.tsx` — slot count fetch, chip labels, empty-state panel, deep link, disabled submit.
+- No DB / no schema / no scheduler changes.
+
+## How to actually fix *your* current project today
+While the above ships, the immediate unblock is: open the template this project was created from, go to the **Build** page group, and add the task slots that should repeat per page. Then come back to **Add Pages** and it will stamp them across Home / Search / Job Description.
+
+Want me to also add the optional "Add as empty pages anyway" escape hatch (step 5)?
