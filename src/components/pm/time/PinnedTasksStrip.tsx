@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 export function PinnedTasksStrip({ onLogged }: { onLogged?: () => void }) {
   const { user } = useCurrentUser();
   const { tasks, reload } = usePinnedTasks(user?.id);
-  const { current, elapsedMs, startTask, stop, isRunningTask } = useActiveTimer();
+  const { elapsedMs, start, stop, isRunning } = useActiveTimer();
   const [runningNote, setRunningNote] = useState("");
 
   async function quickLog(task: PinnedTask, mins: number, note = "") {
