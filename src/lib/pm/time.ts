@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface TimeEntry {
   id: string;
-  task_id: string;
+  task_id: string | null;
+  activity_id: string | null;
   user_id: string;
   minutes: number;
   note: string | null;
@@ -19,6 +20,11 @@ export interface EnrichedEntry extends TimeEntry {
   client_name: string | null;
   task_type: string | null;
   task_track: string | null;
+  activity_name: string | null;
+  activity_color: string | null;
+  activity_icon: string | null;
+  /** True when this entry is an overhead activity (no task). */
+  is_activity: boolean;
 }
 
 export function fmtDur(mins: number): string {
