@@ -226,3 +226,18 @@ function CollapsedSection({ label, children }: { label: string; children: React.
     </div>
   );
 }
+
+function PinTaskButton({ taskId, userId }: { taskId: string; userId: string | null }) {
+  const { pinned, setPinned } = useIsTaskPinned(userId, taskId);
+  if (!userId) return null;
+  async function toggle() {
+    if (pinned) { await unpinTask(userId, taskId); setPinned(false); toast.success("Unpinned from your timesheet"); }
+    else { await pinTask(userId, taskId); setPinned(true); toast.success("Pinned to your timesheet"); }
+  }
+  return (
+    <Button variant="outline" size="sm" onClick={toggle} title={pinned ? "Unpin from timesheet quick-add" : "Pin to timesheet quick-add"}>
+      <Star className={cn("h-3 w-3 mr-1", pinned && "fill-amber-500 text-amber-500")} />
+      {pinned ? "Pinned" : "Pin"}
+    </Button>
+  );
+}
