@@ -108,6 +108,7 @@ export default function Timesheet() {
         </div>
       )}
 
+      <PinnedTasksStrip onLogged={reload} />
       <ActivitiesStrip onLogged={reload} />
 
       {/* Summary tiles */}
