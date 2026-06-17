@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { fetchTasks } from "@/lib/pm/api";
+import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import { buildQueueLink } from "@/lib/pm/links";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask, TEAM_LABEL } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
-import type { PmTask } from "@/types/pm";
+import type { PmTask, PmProject } from "@/types/pm";
 
 interface Props {
   /** Limit to a single project (used on ProjectDetail). */
@@ -26,22 +26,38 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const { user, role } = useCurrentUser();
   const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
+  const [projects, setProjects] = useState<PmProject[]>([]);
   const [dismissedAt, setDismissedAt] = useState<number>(0);
 
-  const reload = async () => setTasks(await fetchTasks(projectId));
+  const reload = async () => {
+    const [t, p] = await Promise.all([
+      fetchTasks(projectId),
+      projectId ? Promise.resolve([] as PmProject[]) : fetchProjects(),
+    ]);
+    setTasks(t);
+    setProjects(p);
+  };
   useEffect(() => { reload(); }, [projectId]);
   useTasksChanged(reload);
 
   const myTeam = useMemo(() => teamForRole(role), [role]);
 
+  const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+
   const unclaimed = useMemo(() => {
     return tasks.filter(t => {
       if (t.status !== "unclaimed") return false;
+      // In global views, only surface unclaimed quick tasks — project tasks
+      // can legitimately sit unclaimed for a while and should not spam the banner.
+      if (!projectId) {
+        const p = projById.get(t.project_id);
+        if ((p as any)?.work_type !== "request") return false;
+      }
       // In "All" mode everyone sees every team's unclaimed work.
       if (!isMe || role === "pm") return true;
       return teamForTask(t) === myTeam;
     });
-  }, [tasks, role, myTeam, isMe]);
+  }, [tasks, role, myTeam, isMe, projectId, projById]);
 
   if (!unclaimed.length || unclaimed.length <= dismissedAt) return null;
 
@@ -49,7 +65,9 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
     ? `/pm/projects/${projectId}`
-    : buildQueueLink({ chips: ["unclaimed"] });
+    : buildQueueLink({ chips: ["unclaimed"], workType: "request" });
+
+  const noun = projectId ? "task" : "quick task";
 
   return (
     <div className="sticky top-0 z-30 -mx-6 -mt-6 mb-2 px-6 py-2.5 bg-amber-500/10 border-b border-amber-500/40 backdrop-blur">
@@ -60,7 +78,7 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
           </span>
           <span>
             <strong>{unclaimed.length}</strong>{" "}
-            unclaimed {teamLabel} {unclaimed.length === 1 ? "task" : "tasks"} waiting to be grabbed.
+            unclaimed {teamLabel} {unclaimed.length === 1 ? noun : `${noun}s`} waiting to be grabbed.
           </span>
         </Link>
         <div className="flex items-center gap-1">
