@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
-import { logActivity, updateTask } from "@/lib/pm/api";
+import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { TASK_STATUSES, type PmTask, type TaskStatus } from "@/types/pm";
 import { toast } from "sonner";
-import { Maximize2, Send } from "lucide-react";
+import { Maximize2, Send, Trash2 } from "lucide-react";
 
 /**
  * Drawer is now Quick Edit only.
