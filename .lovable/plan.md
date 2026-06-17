@@ -1,42 +1,100 @@
-## What the error means
+# Overhead time tracking (no more "forever tasks")
 
-The project was created from a template (e.g. a Career Site template). That template defines **page groups** (like "Build") which are meant to act as reusable bundles of tasks that get stamped onto every page you add. Example: a "Build" page group might contain slots like *Design page → Dev page → QA page → Content review*.
+## The problem
+Today, time can only be logged against a `pm_task`. To capture meetings, learning, admin, etc., people create permanent placeholder tasks (like the ClickUp screenshot: Meetings, General Items, UI/UX Learning, Inspiration Searches…). These pollute boards, the briefing, workload, and Gantt — they're not real work, they never close, and they make every "open tasks" count lie.
 
-When you click **+ Add 3 pages**, the app looks up every template task tagged with `page_group_id = Build` and clones it for each page name you entered (Home, Search, Job Description). The toast `Page group has no task slots defined yet` means the **Build page group exists, but zero template tasks are attached to it** — so there is nothing to clone, and 0 tasks get inserted. The pages would be added as empty shells, which is why we block it instead.
+## The fix: Overhead Activities
+Introduce a separate, lightweight concept — **Activities** — that exists ONLY for time logging. They are not tasks. They never appear in Work Queue, Briefing, Board, Gantt, Workload counts, or project task lists. They only show up where time is logged or summarized.
 
-The fix lives in the **Template editor**, not the project. Someone needs to open the template behind this project, select the Build page group, and attach the task slots (Design / Dev / QA / etc.) that should fan out per page. After that, `+ Add pages` will work and stamp the full bundle.
+Think of them as time-tracking categories with a name and an optional client/project tag.
 
-## Plan
+```text
+TIME ENTRY can now point to either:
+  ├─ task_id  (real work — unchanged)
+  └─ activity_id  (overhead bucket — new)
+```
 
-Make this self-explanatory and recoverable from the dialog (no code spelunking needed).
+## What users see
 
-### 1. Detect empty page groups up front
-In `AddPageDialog.tsx`, when groups load also fetch `pm_template_tasks` counts grouped by `page_group_id` for the template. Build a `slotCountByGroup: Record<groupId, number>` map.
+### 1. New "Activity" picker in every time-logging surface
+Anywhere a user logs time today (TimerPill, TimeTrackerCard, TimeLogDialog, Timesheet EntryPopover, manual entries), the "What are you working on?" picker becomes a 2-tab combobox:
+- **Tasks** (default) — existing search
+- **Activities** — pick from their personal + team activities; "+ New activity" inline
 
-### 2. Show slot count on each page-group chip
-Render the chip as `Build · 0 slots` (muted) vs `Build · 4 slots`. Empty groups are visually dimmed but still selectable so the user can see what's wrong.
+Starting the global timer on an Activity works identically — FloatingTimerTray shows the activity name with a small `Activity` chip instead of a task title.
 
-### 3. Replace the cryptic toast with an inline explainer + CTA
-When the selected group has 0 slots, replace the "Bulk add" textarea area with an inline panel:
+### 2. Default activity catalog (seeded once)
+- Meetings
+- Learning & Development
+- General / Admin
+- Internal Projects (catch-all)
 
-> **"Build" has no task slots yet.**
-> Page groups stamp a bundle of tasks onto every page you add (e.g. Design → Dev → QA). This group has none defined, so adding pages would create empty shells.
->
-> [Open template editor →]  (deep-links to `/pm/templates/{templateId}/edit#group={groupId}`)
+PMs can add/rename/archive in a simple `/pm/time/activities` settings panel. Each activity has: name, icon/color, optional default client (e.g. tag all "Internal Projects" hours to HireClix), billable default (off), archived flag.
 
-The **Add pages** button is disabled in this state with a tooltip pointing at the same fix.
+### 3. Timesheet & entries view
+`/pm/time` already groups by task. New behavior:
+- Activity rows render with an `Activity` pill and the activity name instead of project/task breadcrumbs.
+- "By client" tile gains an **Overhead** bucket for activities with no client.
+- New summary tile: **Overhead** (sum of activity minutes) alongside Total / Billable / Non-billable.
 
-### 4. Keep the existing happy path intact
-If the group has slots, behavior is unchanged — bulk-add still stamps the full bundle and consumes reserved time.
+### 4. Nothing changes for real tasks
+Boards, Briefing unclaimed counts, Workload bars, Gantt, project task counts — none of them ever see activities. The "15 open subtasks" problem goes away because Meetings/L&D/General are no longer tasks at all.
 
-### 5. (Optional, ask before doing) Allow "Add as empty pages anyway"
-A secondary button that creates one placeholder task per page (just the page label, no bundle) so PMs can scaffold pages before the template is finished. Off by default; only add if you want it.
+## Why this beats alternatives
+- **vs. a hidden "Overhead" project with tasks**: still pollutes task tables, still needs status, still shows up in queries that filter by project.
+- **vs. a `task.is_overhead` flag**: every existing view would need a filter; easy to forget and leak.
+- **vs. free-text notes on entries**: no aggregation, no per-category totals, no consistency across people.
 
-## Files touched
-- `src/components/pm/project/AddPageDialog.tsx` — slot count fetch, chip labels, empty-state panel, deep link, disabled submit.
-- No DB / no schema / no scheduler changes.
+A separate table is one migration and one picker change, and it keeps the task model clean forever.
 
-## How to actually fix *your* current project today
-While the above ships, the immediate unblock is: open the template this project was created from, go to the **Build** page group, and add the task slots that should repeat per page. Then come back to **Add Pages** and it will stamp them across Home / Search / Job Description.
+---
 
-Want me to also add the optional "Add as empty pages anyway" escape hatch (step 5)?
+## Technical section
+
+### Schema (one migration)
+```sql
+create table public.pm_activities (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  icon text,                       -- lucide name
+  color text,                      -- hex for pill
+  default_client_id uuid references public.clients(id) on delete set null,
+  billable_default boolean not null default false,
+  is_archived boolean not null default false,
+  created_by uuid,                 -- mock_users.id (nullable while auth off)
+  created_at timestamptz not null default now()
+);
+grant select, insert, update, delete on public.pm_activities to authenticated;
+grant select on public.pm_activities to anon;     -- read-only for switcher
+grant all on public.pm_activities to service_role;
+alter table public.pm_activities enable row level security;
+create policy "activities readable" on public.pm_activities for select using (true);
+create policy "activities writable" on public.pm_activities for all using (true) with check (true);
+-- (permissive while VITE_PM_AUTH_ENABLED is off, matches existing pm_* tables)
+
+alter table public.pm_time_entries
+  add column activity_id uuid references public.pm_activities(id) on delete set null,
+  alter column task_id drop not null,
+  add constraint pm_time_entries_target_chk
+    check ((task_id is not null) <> (activity_id is not null));
+```
+
+Seed: insert the 4 default activities in the same migration.
+
+### Code touchpoints (frontend only after migration)
+- `src/lib/pm/time.ts` — `TimeEntry`/`EnrichedEntry` gain `activity_id`, `activity_name`, `activity_color`; `addTimeEntry` accepts `activity_id` xor `task_id`; `fetchEnrichedEntries` joins `pm_activities`. `buildWeekGrid` keys by `task_id ?? activity_id`.
+- `src/lib/pm/activities.ts` (new) — `useActivities()`, `createActivity()`, `archiveActivity()`.
+- `src/components/pm/time/ActivityPicker.tsx` (new) — combobox used inside…
+- `src/components/pm/workspace/TimeLogDialog.tsx`, `src/components/pm/time/EntryPopover.tsx`, `src/components/pm/time/TimeTrackerCard.tsx`, `src/components/pm/timer/ActiveTimerProvider.tsx` (timer state gains optional `activityId`), `FloatingTimerTray.tsx`, `TimerPill.tsx`.
+- `src/pages/pm/Timesheet.tsx` + `TimesheetGrid` / `TimeEntriesList` — render activity rows with `Activity` pill; add **Overhead** summary tile.
+- `src/pages/pm/TimeActivities.tsx` (new) + sidebar entry under Time — PM-only manage screen (list / add / rename / archive).
+
+### Out of scope
+- No changes to tasks, board, briefing, workload, Gantt.
+- No new permissions model; reuse PM role check for the manage screen.
+- Reporting/exports beyond what Timesheet already shows.
+
+## Open questions
+1. Should non-PMs be able to create personal activities, or only PMs manage the global list? (Plan assumes PM-only.)
+2. Default billable = **false** for all seeded activities — confirm?
+3. Want a hard cap so activities can't exceed e.g. 8h/day per user, or leave uncapped?
