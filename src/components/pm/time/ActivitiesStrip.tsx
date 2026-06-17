@@ -74,7 +74,7 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
               )}
             >
               <button
-                onClick={() => running ? stop() : startActivity(a.id, a.name)}
+                onClick={() => running ? handleStop() : handleStart(a)}
                 className={cn(
                   "h-7 w-7 rounded-full inline-flex items-center justify-center text-white",
                   running ? "bg-destructive" : ""
@@ -86,11 +86,19 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
               </button>
               <span className="text-sm font-medium px-1.5">{a.name}</span>
               {running && (
-                <span className="text-xs tabular-nums text-primary px-1.5">
-                  {formatHMS(elapsedMs)}
-                </span>
+                <>
+                  <span className="text-xs tabular-nums text-primary px-1.5">
+                    {formatHMS(elapsedMs)}
+                  </span>
+                  <Input
+                    value={runningNote}
+                    onChange={e => setRunningNote(e.target.value)}
+                    placeholder="What are you working on?"
+                    className="h-7 w-56 text-xs"
+                  />
+                </>
               )}
-              <QuickLogMenu onPick={(m) => quickLog(a, m)} />
+              <QuickLogMenu onPick={(m, n) => quickLog(a, m, n)} />
             </div>
           );
         })}
@@ -101,17 +109,22 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
   );
 }
 
-function QuickLogMenu({ onPick }: { onPick: (mins: number) => void }) {
+function QuickLogMenu({ onPick }: { onPick: (mins: number, note: string) => void }) {
   const [open, setOpen] = useState(false);
   const [h, setH] = useState("");
   const [m, setM] = useState("");
+  const [note, setNote] = useState("");
+
+  function pick(mins: number) {
+    onPick(mins, note);
+    setH(""); setM(""); setNote("");
+    setOpen(false);
+  }
 
   function save() {
     const mins = (Number(h) || 0) * 60 + (Number(m) || 0);
     if (!mins) { toast.error("Enter a duration"); return; }
-    onPick(mins);
-    setH(""); setM("");
-    setOpen(false);
+    pick(mins);
   }
 
   return (
