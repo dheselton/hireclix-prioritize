@@ -33,7 +33,7 @@ export function StatusPickerPopover({
         onPointerDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
       >
-        {STATUS_GROUPS.map(g => (
+        {groups.map(g => (
           <button
             key={g.id}
             type="button"
