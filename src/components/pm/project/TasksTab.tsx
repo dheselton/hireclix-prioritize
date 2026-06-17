@@ -109,7 +109,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   }, [filtered]);
 
   const boardByGroup = useMemo(() => {
-    const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
+    const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
     for (const t of boardTasks) m[groupForStatus(t.status).id].push(t);
     return m;
   }, [boardTasks]);
