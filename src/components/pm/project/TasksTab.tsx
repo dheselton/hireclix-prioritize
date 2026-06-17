@@ -54,6 +54,13 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
+  // Project boards don't surface the "Claimed" concept — that's only meaningful
+  // for unclaimed quick-task requests. Group claimed tasks into Ready.
+  const PROJECT_GROUPS = useMemo(() => STATUS_GROUPS.filter(g => g.id !== "claimed"), []);
+  const groupIdFor = (s: TaskStatus): StatusGroupId => {
+    const g = groupForStatus(s).id;
+    return g === "claimed" ? "ready" : g;
+  };
   const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
     // Default to TRUE so new projects (where every task is dependency-blocked)
     // aren't blank on first load. Only hide when the user has explicitly opted out.
