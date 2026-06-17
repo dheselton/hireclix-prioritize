@@ -48,6 +48,13 @@ export function ControlPanel({
   setTask: (t: PmTask) => void;
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
+  // Refetch the task row after assignee changes — addAssignee may promote a user to primary
+  // (writes pm_tasks.assignee_id directly), so the local task state needs to resync.
+  async function refetchAssignee() {
+    const { data } = await supabase.from("pm_tasks").select("assignee_id").eq("id", task.id).maybeSingle();
+    const next = (data as any)?.assignee_id ?? null;
+    if (next !== task.assignee_id) setTask({ ...task, assignee_id: next });
+  }
   const showEnv = task.type === "dev" || !!task.dev_environment;
 
   return (
@@ -82,7 +89,7 @@ export function ControlPanel({
 
       {/* Assignees */}
       <Row label="Assignees">
-        <AssigneeChips taskId={task.id} primaryId={task.assignee_id} />
+        <AssigneeChips taskId={task.id} primaryId={task.assignee_id} onChanged={refetchAssignee} />
       </Row>
 
       {/* Teams */}
@@ -117,7 +124,7 @@ export function ControlPanel({
   );
 }
 
-function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: string | null }) {
+function AssigneeChips({ taskId, primaryId, onChanged }: { taskId: string; primaryId: string | null; onChanged?: () => void | Promise<void> }) {
   const users = useMockUsers();
   const co = useTaskCoAssignees(taskId);
   const all = combineAssignees(primaryId, co);
@@ -126,6 +133,7 @@ function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: strin
   async function remove(uid: string) {
     await removeAssignee(taskId, uid);
     invalidate();
+    await onChanged?.();
   }
 
   return (
@@ -164,6 +172,7 @@ function AssigneeChips({ taskId, primaryId }: { taskId: string; primaryId: strin
         taskId={taskId}
         assigneeId={primaryId}
         mode="multi"
+        onChanged={onChanged}
         trigger={
           <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
             <Plus className="h-3 w-3" />
