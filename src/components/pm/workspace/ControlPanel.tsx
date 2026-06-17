@@ -48,6 +48,13 @@ export function ControlPanel({
   setTask: (t: PmTask) => void;
   patch: (p: Partial<PmTask>) => Promise<void>;
 }) {
+  // Refetch the task row after assignee changes — addAssignee may promote a user to primary
+  // (writes pm_tasks.assignee_id directly), so the local task state needs to resync.
+  async function refetchAssignee() {
+    const { data } = await supabase.from("pm_tasks").select("assignee_id").eq("id", task.id).maybeSingle();
+    const next = (data as any)?.assignee_id ?? null;
+    if (next !== task.assignee_id) setTask({ ...task, assignee_id: next });
+  }
   const showEnv = task.type === "dev" || !!task.dev_environment;
 
   return (
