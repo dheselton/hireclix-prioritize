@@ -438,8 +438,8 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               <Input
                 id="new-task-dur"
                 type="number"
-                min={0.5}
-                step={0.5}
+                min={1}
+                step={1}
                 value={duration}
                 onChange={e => handleDurationChange(e.target.value)}
               />
