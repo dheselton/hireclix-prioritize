@@ -172,6 +172,17 @@ All colors MUST be HSL.
     opacity: 1;
   }
 
+  /* Project tasks that have no assignee yet: subtle amber glow so they
+     stand out without screaming. Pulses gently like a "needs owner" beacon. */
+  .task-needs-assignee {
+    box-shadow: 0 0 0 1px hsl(38 92% 50% / 0.55), 0 0 14px -2px hsl(38 92% 50% / 0.45);
+    animation: needs-assignee-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes needs-assignee-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px hsl(38 92% 50% / 0.45), 0 0 10px -2px hsl(38 92% 50% / 0.35); }
+    50%      { box-shadow: 0 0 0 1px hsl(38 92% 50% / 0.75), 0 0 18px -2px hsl(38 92% 50% / 0.55); }
+  }
+
   /* Card hover: subtle lift + colored ring. Use on any always-stroked card. */
   .card-lift {
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
