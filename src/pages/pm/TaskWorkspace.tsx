@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronDown, Pencil, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask } from "@/lib/pm/api";
