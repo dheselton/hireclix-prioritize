@@ -74,7 +74,7 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
               </button>
               <span className="text-sm font-medium px-1.5">{a.name}</span>
               {running && (
-                <span className="text-xs font-mono tabular-nums text-primary px-1.5">
+                <span className="text-xs tabular-nums text-primary px-1.5">
                   {formatHMS(elapsedMs)}
                 </span>
               )}

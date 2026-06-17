@@ -28,7 +28,7 @@ export function FloatingTimerTray() {
             {isActivity && <span className="text-[10px] uppercase tracking-wide text-amber-600 mr-1">Activity ·</span>}
             {current.taskTitle}
           </div>
-          <div className="text-sm font-mono tabular-nums">{formatHMS(elapsedMs)}</div>
+          <div className="text-sm tabular-nums">{formatHMS(elapsedMs)}</div>
         </div>
       </button>
       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => stop()}>

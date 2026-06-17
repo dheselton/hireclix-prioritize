@@ -10,7 +10,7 @@ export function TimerControls({ taskId, taskTitle }: { taskId: string; taskTitle
   if (running) {
     return (
       <div className="flex items-center gap-2">
-        <div className="text-sm font-mono tabular-nums text-primary px-2 py-1 rounded bg-primary/10">
+        <div className="text-sm tabular-nums text-primary px-2 py-1 rounded bg-primary/10">
           {formatHMS(elapsedMs)}
         </div>
         <Button size="sm" variant="destructive" onClick={() => stop()}>

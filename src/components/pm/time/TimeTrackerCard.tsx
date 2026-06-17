@@ -63,7 +63,7 @@ export function TimeTrackerCard({ taskId, taskTitle }: { taskId: string; taskTit
 
       {/* Timer */}
       <div className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2">
-        <div className="font-mono tabular-nums text-lg font-semibold">
+        <div className="tabular-nums text-lg font-semibold">
           {running ? formatHMS(elapsedMs) : "00:00:00"}
         </div>
         {running ? (
@@ -113,7 +113,7 @@ export function TimeTrackerCard({ taskId, taskTitle }: { taskId: string; taskTit
               <UserAvatar userId={e.user_id} size="xs" />
               <span className="font-medium truncate flex-1 min-w-0">{u?.name ?? "—"}</span>
               <span className="text-muted-foreground">{fmtDate(e.logged_at.slice(0, 10))}</span>
-              <span className="font-mono tabular-nums w-14 text-right">{fmtDur(e.minutes)}</span>
+              <span className="tabular-nums w-14 text-right">{fmtDur(e.minutes)}</span>
               {canDelete && (
                 <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={async () => { await deleteTimeEntry(e.id); reload(); }}>
                   <Trash2 className="h-3 w-3" />

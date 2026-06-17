@@ -100,7 +100,7 @@ export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[
                       </Link>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums whitespace-nowrap">{fmtDur(e.minutes)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{fmtDur(e.minutes)}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground max-w-[260px] truncate">{e.note}</td>
                   <td className="px-2 py-2">
                     {canDelete && (
