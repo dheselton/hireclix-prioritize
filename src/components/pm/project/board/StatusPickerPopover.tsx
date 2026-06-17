@@ -6,12 +6,15 @@ import { useState } from "react";
 export function StatusPickerPopover({
   currentGroup,
   onPick,
+  hideClaimed = false,
 }: {
   currentGroup: StatusGroupId;
   onPick: (g: StatusGroupId) => void;
+  hideClaimed?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const current = STATUS_GROUPS.find(g => g.id === currentGroup)!;
+  const groups = hideClaimed ? STATUS_GROUPS.filter(g => g.id !== "claimed") : STATUS_GROUPS;
+  const current = groups.find(g => g.id === currentGroup) ?? STATUS_GROUPS.find(g => g.id === currentGroup)!;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
