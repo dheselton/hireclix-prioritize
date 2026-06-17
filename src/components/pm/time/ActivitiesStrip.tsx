@@ -19,18 +19,30 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
   const { user, role } = useCurrentUser();
   const { current, elapsedMs, startActivity, stop, isRunningActivity } = useActiveTimer();
   const [manageOpen, setManageOpen] = useState(false);
+  const [runningNote, setRunningNote] = useState("");
 
-  async function quickLog(activity: PmActivity, mins: number) {
+  async function quickLog(activity: PmActivity, mins: number, note = "") {
     if (!user) { toast.error("Select a user first"); return; }
     await addTimeEntry({
       activity_id: activity.id,
       user_id: user.id,
       minutes: mins,
+      note,
       logged_at: localDateISO(new Date()),
       billable: activity.billable_default,
     });
     toast.success(`Logged ${fmtDur(mins)} to ${activity.name}`);
     onLogged?.();
+  }
+
+  async function handleStop() {
+    await stop(runningNote);
+    setRunningNote("");
+  }
+
+  async function handleStart(a: PmActivity) {
+    setRunningNote("");
+    await startActivity(a.id, a.name);
   }
 
   return (
@@ -62,7 +74,7 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
               )}
             >
               <button
-                onClick={() => running ? stop() : startActivity(a.id, a.name)}
+                onClick={() => running ? handleStop() : handleStart(a)}
                 className={cn(
                   "h-7 w-7 rounded-full inline-flex items-center justify-center text-white",
                   running ? "bg-destructive" : ""
@@ -74,11 +86,19 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
               </button>
               <span className="text-sm font-medium px-1.5">{a.name}</span>
               {running && (
-                <span className="text-xs font-mono tabular-nums text-primary px-1.5">
-                  {formatHMS(elapsedMs)}
-                </span>
+                <>
+                  <span className="text-xs tabular-nums text-primary px-1.5">
+                    {formatHMS(elapsedMs)}
+                  </span>
+                  <Input
+                    value={runningNote}
+                    onChange={e => setRunningNote(e.target.value)}
+                    placeholder="What are you working on?"
+                    className="h-7 w-56 text-xs"
+                  />
+                </>
               )}
-              <QuickLogMenu onPick={(m) => quickLog(a, m)} />
+              <QuickLogMenu onPick={(m, n) => quickLog(a, m, n)} />
             </div>
           );
         })}
@@ -89,17 +109,22 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
   );
 }
 
-function QuickLogMenu({ onPick }: { onPick: (mins: number) => void }) {
+function QuickLogMenu({ onPick }: { onPick: (mins: number, note: string) => void }) {
   const [open, setOpen] = useState(false);
   const [h, setH] = useState("");
   const [m, setM] = useState("");
+  const [note, setNote] = useState("");
+
+  function pick(mins: number) {
+    onPick(mins, note);
+    setH(""); setM(""); setNote("");
+    setOpen(false);
+  }
 
   function save() {
     const mins = (Number(h) || 0) * 60 + (Number(m) || 0);
     if (!mins) { toast.error("Enter a duration"); return; }
-    onPick(mins);
-    setH(""); setM("");
-    setOpen(false);
+    pick(mins);
   }
 
   return (
@@ -111,10 +136,16 @@ function QuickLogMenu({ onPick }: { onPick: (mins: number) => void }) {
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3 z-50 bg-popover" align="end">
         <div className="text-xs font-medium text-muted-foreground mb-2">Log time today</div>
+        <Input
+          placeholder="Note (optional)"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          className="h-8 mb-2"
+        />
         <div className="flex gap-1.5 mb-2">
-          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => onPick(15)}>+15m</Button>
-          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => onPick(30)}>+30m</Button>
-          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => onPick(60)}>+1h</Button>
+          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => pick(15)}>+15m</Button>
+          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => pick(30)}>+30m</Button>
+          <Button size="sm" variant="outline" className="flex-1 h-8" onClick={() => pick(60)}>+1h</Button>
         </div>
         <div className="flex gap-1.5">
           <Input type="number" min={0} placeholder="h" value={h} onChange={e => setH(e.target.value)} className="h-8 w-14" />

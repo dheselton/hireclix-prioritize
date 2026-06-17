@@ -119,7 +119,7 @@ export function TimesheetGrid({
                     </td>
                   );
                 })}
-                <td className="px-3 py-2 text-right font-mono tabular-nums font-semibold">{fmtDur(row.total)}</td>
+                <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtDur(row.total)}</td>
               </tr>
             ))}
           </tbody>

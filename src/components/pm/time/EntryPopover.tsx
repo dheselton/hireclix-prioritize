@@ -124,7 +124,7 @@ function EntryRow({ entry, canEdit, onChange }: { entry: EnrichedEntry; canEdit:
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <span className="font-medium truncate">{u?.name ?? "Unknown"}</span>
-          <span className="text-xs font-mono tabular-nums">{fmtDur(entry.minutes)}</span>
+          <span className="text-xs tabular-nums">{fmtDur(entry.minutes)}</span>
         </div>
         {entry.note && <div className="text-xs text-muted-foreground truncate">{entry.note}</div>}
       </div>
