@@ -31,6 +31,7 @@ import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection"
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
 import { TaskDrawer } from "@/components/pm/TaskDrawer";
+import { pinTask, unpinTask, useIsTaskPinned } from "@/lib/pm/pinnedTasks";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
