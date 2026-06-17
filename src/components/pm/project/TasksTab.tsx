@@ -486,6 +486,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                 onDateChange={() => {}}
                 allTasks={boardTasks}
                 deps={deps}
+                isProject
                 overlay
               />
             ) : null}
