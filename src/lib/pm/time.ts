@@ -188,12 +188,17 @@ export function useEnrichedEntries(opts: Parameters<typeof fetchEnrichedEntries>
 }
 
 export interface WeekGridRow {
-  taskId: string;
-  taskTitle: string;
+  rowKey: string;
+  taskId: string | null;
+  activityId: string | null;
+  taskTitle: string;        // display label (task title OR activity name)
   taskType: string | null;
   projectId: string;
   projectTitle: string;
   clientName: string | null;
+  activityColor: string | null;
+  activityIcon: string | null;
+  isActivity: boolean;
   perDay: number[]; // length 7
   total: number;
   entries: EnrichedEntry[];
@@ -205,20 +210,26 @@ export function buildWeekGrid(entries: EnrichedEntry[], days: string[]): { rows:
     const day = e.logged_at.slice(0, 10);
     const idx = days.indexOf(day);
     if (idx < 0) continue;
-    let row = map.get(e.task_id);
+    const key = e.is_activity ? `a:${e.activity_id}` : `t:${e.task_id}`;
+    let row = map.get(key);
     if (!row) {
       row = {
+        rowKey: key,
         taskId: e.task_id,
-        taskTitle: e.task_title,
+        activityId: e.activity_id,
+        taskTitle: e.is_activity ? (e.activity_name ?? "Activity") : e.task_title,
         taskType: e.task_type,
         projectId: e.project_id,
         projectTitle: e.project_title,
         clientName: e.client_name,
+        activityColor: e.activity_color,
+        activityIcon: e.activity_icon,
+        isActivity: e.is_activity,
         perDay: Array(7).fill(0),
         total: 0,
         entries: [],
       };
-      map.set(e.task_id, row);
+      map.set(key, row);
     }
     row.perDay[idx] += e.minutes;
     row.total += e.minutes;
