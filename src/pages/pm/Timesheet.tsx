@@ -79,7 +79,7 @@ export default function Timesheet() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="z-50 bg-popover">
-                <SelectItem value={me?.id ?? ""}>Me ({me?.name})</SelectItem>
+                {me?.id && <SelectItem value={me.id}>Me ({me.name})</SelectItem>}
                 <SelectItem value={ALL_USERS}>Whole team</SelectItem>
                 <div className="border-t border-border my-1" />
                 {allUsers.filter(u => u.id !== me?.id).map(u => (
