@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronDown, Pencil, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask } from "@/lib/pm/api";
@@ -31,6 +31,7 @@ import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection"
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
 import { TaskDrawer } from "@/components/pm/TaskDrawer";
+import { pinTask, unpinTask, useIsTaskPinned } from "@/lib/pm/pinnedTasks";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
@@ -138,6 +139,7 @@ export default function TaskWorkspace() {
             </div>
             <div className="ml-auto flex items-center gap-2">
               <TimerPill taskId={task.id} taskTitle={task.title} />
+              <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
               <Button variant="outline" size="sm" onClick={openQuickEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Quick edit
               </Button>
@@ -222,5 +224,20 @@ function CollapsedSection({ label, children }: { label: string; children: React.
       </button>
       {open && <div className="px-3 pb-3 pt-1 border-t border-border">{children}</div>}
     </div>
+  );
+}
+
+function PinTaskButton({ taskId, userId }: { taskId: string; userId: string | null }) {
+  const { pinned, setPinned } = useIsTaskPinned(userId, taskId);
+  if (!userId) return null;
+  async function toggle() {
+    if (pinned) { await unpinTask(userId, taskId); setPinned(false); toast.success("Unpinned from your timesheet"); }
+    else { await pinTask(userId, taskId); setPinned(true); toast.success("Pinned to your timesheet"); }
+  }
+  return (
+    <Button variant="outline" size="sm" onClick={toggle} title={pinned ? "Unpin from timesheet quick-add" : "Pin to timesheet quick-add"}>
+      <Star className={cn("h-3 w-3 mr-1", pinned && "fill-amber-500 text-amber-500")} />
+      {pinned ? "Pinned" : "Pin"}
+    </Button>
   );
 }

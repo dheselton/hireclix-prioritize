@@ -2082,6 +2082,45 @@ export type Database = {
           },
         ]
       }
+      pm_user_pinned_tasks: {
+        Row: {
+          created_at: string
+          id: string
+          sort_order: number
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sort_order?: number
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sort_order?: number
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_user_pinned_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_user_pinned_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_webhook_deliveries: {
         Row: {
           attempted_at: string
