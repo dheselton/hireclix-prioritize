@@ -52,7 +52,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [addPageOpen, setAddPageOpen] = useState(false);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
-    ready: false, in_progress: false, in_review: false, complete: true,
+    ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
   const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
     // Default to TRUE so new projects (where every task is dependency-blocked)
@@ -87,7 +87,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming, team]);
 
   const byGroup = useMemo(() => {
-    const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
+    const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
     for (const t of filtered) m[groupForStatus(t.status).id].push(t);
     return m;
   }, [filtered]);
@@ -109,7 +109,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   }, [filtered]);
 
   const boardByGroup = useMemo(() => {
-    const m: Record<StatusGroupId, PmTask[]> = { ready: [], in_progress: [], in_review: [], complete: [] };
+    const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
     for (const t of boardTasks) m[groupForStatus(t.status).id].push(t);
     return m;
   }, [boardTasks]);
