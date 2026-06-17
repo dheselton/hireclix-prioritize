@@ -138,6 +138,27 @@ export function TaskDrawer() {
             <div className="text-xs text-muted-foreground text-center pt-2">
               Need attachments, links, time tracking? <button onClick={openFull} className="underline text-primary">Open full task</button>
             </div>
+
+            <div className="border-t border-border pt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!confirm("Delete this task? This cannot be undone.")) return;
+                  try {
+                    await deleteTask(task.id);
+                    emitTasksChanged();
+                    toast.success("Task deleted");
+                    close();
+                  } catch (err: any) {
+                    toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+                  }
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" /> Delete task
+              </Button>
+            </div>
           </div>
         )}
       </SheetContent>
