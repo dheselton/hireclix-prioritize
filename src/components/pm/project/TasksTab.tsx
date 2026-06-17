@@ -54,6 +54,13 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
+  // Project boards don't surface the "Claimed" concept — that's only meaningful
+  // for unclaimed quick-task requests. Group claimed tasks into Ready.
+  const PROJECT_GROUPS = useMemo(() => STATUS_GROUPS.filter(g => g.id !== "claimed"), []);
+  const groupIdFor = (s: TaskStatus): StatusGroupId => {
+    const g = groupForStatus(s).id;
+    return g === "claimed" ? "ready" : g;
+  };
   const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
     // Default to TRUE so new projects (where every task is dependency-blocked)
     // aren't blank on first load. Only hide when the user has explicitly opted out.
@@ -88,7 +95,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
-    for (const t of filtered) m[groupForStatus(t.status).id].push(t);
+    for (const t of filtered) m[groupIdFor(t.status)].push(t);
     return m;
   }, [filtered]);
 
@@ -110,7 +117,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 
   const boardByGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
-    for (const t of boardTasks) m[groupForStatus(t.status).id].push(t);
+    for (const t of boardTasks) m[groupIdFor(t.status)].push(t);
     return m;
   }, [boardTasks]);
 
@@ -126,7 +133,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   function findContainer(id: string): StatusGroupId | null {
     if (id.startsWith("col:")) return id.slice(4) as StatusGroupId;
     const t = boardTasks.find(x => x.id === id);
-    return t ? groupForStatus(t.status).id : null;
+    return t ? groupIdFor(t.status) : null;
   }
 
   function handleDragStart(e: DragStartEvent) {
@@ -151,7 +158,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       // Move to end of new container
       const without = updated.filter(t => t.id !== active.id);
       const moved = updated.find(t => t.id === active.id)!;
-      const targetList = updated.filter(t => groupForStatus(t.status).id === overContainer && t.id !== active.id);
+      const targetList = updated.filter(t => groupIdFor(t.status) === overContainer && t.id !== active.id);
       const lastTargetId = targetList[targetList.length - 1]?.id;
       const insertIdx = lastTargetId
         ? without.findIndex(t => t.id === lastTargetId) + 1
@@ -179,11 +186,11 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       overContainer = overId.slice(4) as StatusGroupId;
     } else {
       const overTask = snapshot.find(t => t.id === overId);
-      if (overTask) overContainer = groupForStatus(overTask.status).id;
+      if (overTask) overContainer = groupIdFor(overTask.status);
     }
     if (!overContainer) { snapshotRef.current = null; return; }
 
-    const originalContainer = groupForStatus(originalTask.status).id;
+    const originalContainer = groupIdFor(originalTask.status);
     const targetGroup = STATUS_GROUPS.find(g => g.id === overContainer)!;
     const newStatus: TaskStatus = targetGroup.statuses.includes(originalTask.status)
       ? originalTask.status
@@ -197,18 +204,18 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     let nextTasks: PmTask[];
     if (overContainer === originalContainer && overId !== activeId && !overId.startsWith("col:")) {
       // Same-column reorder: arrayMove within the column ids.
-      const colIds = snapshot.filter(t => groupForStatus(t.status).id === originalContainer).map(t => t.id);
+      const colIds = snapshot.filter(t => groupIdFor(t.status) === originalContainer).map(t => t.id);
       const oldIdx = colIds.indexOf(activeId);
       const newIdx = colIds.indexOf(overId);
       const reorderedIds = (oldIdx !== -1 && newIdx !== -1) ? arrayMove(colIds, oldIdx, newIdx) : colIds;
       const colMap = new Map(snapshot.map(t => [t.id, t]));
       let r = 0;
       nextTasks = snapshot.map(t =>
-        groupForStatus(t.status).id === originalContainer ? colMap.get(reorderedIds[r++])! : t,
+        groupIdFor(t.status) === originalContainer ? colMap.get(reorderedIds[r++])! : t,
       );
     } else {
       // Cross-column move (or drop-on-column): insert at end of target column.
-      const targetColIds = snapshot.filter(t => groupForStatus(t.status).id === overContainer && t.id !== activeId).map(t => t.id);
+      const targetColIds = snapshot.filter(t => groupIdFor(t.status) === overContainer && t.id !== activeId).map(t => t.id);
       const lastTargetId = targetColIds[targetColIds.length - 1];
       const next = [...others];
       const insertIdx = lastTargetId ? next.findIndex(t => t.id === lastTargetId) + 1 : next.length;
@@ -224,7 +231,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     try {
       const updates: Promise<unknown>[] = [];
       for (const gid of affectedGroups) {
-        const list = nextTasks.filter(t => groupForStatus(t.status).id === gid);
+        const list = nextTasks.filter(t => groupIdFor(t.status) === gid);
         list.forEach((t, idx) => {
           const patch: Record<string, unknown> = { sort_order: idx };
           if (t.id === activeId && statusChanged) patch.status = newStatus;
@@ -406,7 +413,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       {/* List */}
       {view === "list" && (
         <div className="space-y-2">
-          {STATUS_GROUPS.map(g => {
+          {PROJECT_GROUPS.map(g => {
             const list = byGroup[g.id];
             const isCollapsed = collapsed[g.id];
             return (
@@ -451,7 +458,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
           }}
         >
           <div className="grid grid-cols-4 gap-3">
-            {STATUS_GROUPS.map(g => (
+            {PROJECT_GROUPS.map(g => (
               <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
                 {boardByGroup[g.id].map(t => (
                   <BoardTaskCard
@@ -463,6 +470,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                     onDateChange={(iso) => changeDate(t.id, iso)}
                     allTasks={boardTasks}
                     deps={deps}
+                    isProject
                   />
                 ))}
               </BoardColumn>
@@ -478,6 +486,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                 onDateChange={() => {}}
                 allTasks={boardTasks}
                 deps={deps}
+                isProject
                 overlay
               />
             ) : null}
