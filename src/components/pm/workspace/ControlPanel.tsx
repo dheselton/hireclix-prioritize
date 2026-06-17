@@ -89,7 +89,7 @@ export function ControlPanel({
 
       {/* Assignees */}
       <Row label="Assignees">
-        <AssigneeChips taskId={task.id} primaryId={task.assignee_id} />
+        <AssigneeChips taskId={task.id} primaryId={task.assignee_id} onChanged={refetchAssignee} />
       </Row>
 
       {/* Teams */}
