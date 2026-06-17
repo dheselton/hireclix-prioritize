@@ -138,6 +138,45 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setAssigneeIds([uid, ...assigneeIds.filter(x => x !== uid)]);
   }
 
+  // Bidirectional sync: Start ⇄ Duration ⇄ Due, using business days (inclusive of start).
+  // 1 day means start === due. Half-days round up for date math but keep the input value.
+  function parseDur(s: string): number {
+    const n = parseFloat(s);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+  function durToOffset(s: string): number {
+    return Math.max(1, Math.ceil(parseDur(s))) - 1;
+  }
+  function handleStartChange(d: Date | undefined) {
+    setStartDate(d);
+    if (!d) return;
+    if (dueDate) {
+      const diff = differenceInBusinessDays(dueDate, d) + 1;
+      if (diff >= 1) setDuration(String(diff));
+      else setDueDate(addBusinessDays(d, durToOffset(duration)));
+    } else {
+      setDueDate(addBusinessDays(d, durToOffset(duration)));
+    }
+  }
+  function handleDueChange(d: Date | undefined) {
+    setDueDate(d);
+    if (!d) return;
+    if (startDate) {
+      const diff = differenceInBusinessDays(d, startDate) + 1;
+      if (diff >= 1) setDuration(String(diff));
+      else setStartDate(subBusinessDays(d, durToOffset(duration)));
+    } else {
+      setStartDate(subBusinessDays(d, durToOffset(duration)));
+    }
+  }
+  function handleDurationChange(v: string) {
+    setDuration(v);
+    if (!v.trim()) return;
+    const off = durToOffset(v);
+    if (startDate) setDueDate(addBusinessDays(startDate, off));
+    else if (dueDate) setStartDate(subBusinessDays(dueDate, off));
+  }
+
   async function handleSave() {
     if (!title.trim() || saving) return;
     setSaving(true);
