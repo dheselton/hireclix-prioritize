@@ -138,14 +138,14 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setAssigneeIds([uid, ...assigneeIds.filter(x => x !== uid)]);
   }
 
-  // Bidirectional sync: Start ⇄ Duration ⇄ Due, using business days (inclusive of start).
-  // 1 day means start === due. Half-days round up for date math but keep the input value.
+  // Bidirectional sync: Start ⇄ Duration ⇄ Due, whole business days only (weekends excluded).
+  // 1 day means start === due.
   function parseDur(s: string): number {
-    const n = parseFloat(s);
+    const n = parseInt(s, 10);
     return Number.isFinite(n) && n > 0 ? n : 1;
   }
   function durToOffset(s: string): number {
-    return Math.max(1, Math.ceil(parseDur(s))) - 1;
+    return Math.max(1, parseDur(s)) - 1;
   }
   function handleStartChange(d: Date | undefined) {
     setStartDate(d);
