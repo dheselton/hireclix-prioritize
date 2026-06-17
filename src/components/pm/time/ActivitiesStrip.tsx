@@ -19,18 +19,30 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
   const { user, role } = useCurrentUser();
   const { current, elapsedMs, startActivity, stop, isRunningActivity } = useActiveTimer();
   const [manageOpen, setManageOpen] = useState(false);
+  const [runningNote, setRunningNote] = useState("");
 
-  async function quickLog(activity: PmActivity, mins: number) {
+  async function quickLog(activity: PmActivity, mins: number, note = "") {
     if (!user) { toast.error("Select a user first"); return; }
     await addTimeEntry({
       activity_id: activity.id,
       user_id: user.id,
       minutes: mins,
+      note,
       logged_at: localDateISO(new Date()),
       billable: activity.billable_default,
     });
     toast.success(`Logged ${fmtDur(mins)} to ${activity.name}`);
     onLogged?.();
+  }
+
+  async function handleStop() {
+    await stop(runningNote);
+    setRunningNote("");
+  }
+
+  async function handleStart(a: PmActivity) {
+    setRunningNote("");
+    await startActivity(a.id, a.name);
   }
 
   return (
