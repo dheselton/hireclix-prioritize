@@ -35,6 +35,7 @@ export function BoardTaskCard({
   overlay,
   allTasks,
   deps,
+  isProject = false,
 }: {
   task: PmTask;
   count?: SubtaskCount;
@@ -44,6 +45,7 @@ export function BoardTaskCard({
   overlay?: boolean;
   allTasks?: PmTask[];
   deps?: PmDependency[];
+  isProject?: boolean;
 }) {
   const sortable = useSortable({ id: task.id, disabled: overlay });
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
