@@ -138,14 +138,14 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setAssigneeIds([uid, ...assigneeIds.filter(x => x !== uid)]);
   }
 
-  // Bidirectional sync: Start ⇄ Duration ⇄ Due, using business days (inclusive of start).
-  // 1 day means start === due. Half-days round up for date math but keep the input value.
+  // Bidirectional sync: Start ⇄ Duration ⇄ Due, whole business days only (weekends excluded).
+  // 1 day means start === due.
   function parseDur(s: string): number {
-    const n = parseFloat(s);
+    const n = parseInt(s, 10);
     return Number.isFinite(n) && n > 0 ? n : 1;
   }
   function durToOffset(s: string): number {
-    return Math.max(1, Math.ceil(parseDur(s))) - 1;
+    return Math.max(1, parseDur(s)) - 1;
   }
   function handleStartChange(d: Date | undefined) {
     setStartDate(d);
@@ -184,7 +184,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
       const userTags = tagsInput.split(",").map(s => s.trim()).filter(Boolean);
       const extraTypeTags = types.slice(1).map(t => `type:${t}`);
       const allTags = Array.from(new Set([...userTags, ...extraTypeTags]));
-      const dur = Math.max(0.5, parseFloat(duration) || 1);
+      const dur = Math.max(1, parseInt(duration, 10) || 1);
 
       const created = await createTask({
         project_id: project.id,
@@ -438,8 +438,8 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               <Input
                 id="new-task-dur"
                 type="number"
-                min={0.5}
-                step={0.5}
+                min={1}
+                step={1}
                 value={duration}
                 onChange={e => handleDurationChange(e.target.value)}
               />
@@ -499,6 +499,7 @@ function DateField({ value, onChange }: { value: Date | undefined; onChange: (d:
           mode="single"
           selected={value}
           onSelect={onChange}
+          disabled={(d) => { const w = d.getDay(); return w === 0 || w === 6; }}
           initialFocus
           className={cn("p-3 pointer-events-auto")}
         />
