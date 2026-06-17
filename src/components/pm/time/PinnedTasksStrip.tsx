@@ -39,7 +39,7 @@ export function PinnedTasksStrip({ onLogged }: { onLogged?: () => void }) {
 
   async function handleStart(t: PinnedTask) {
     setRunningNote("");
-    await startTask(t.id, t.title);
+    await start(t.id, t.title);
   }
 
   async function handleUnpin(t: PinnedTask) {
@@ -64,7 +64,7 @@ export function PinnedTasksStrip({ onLogged }: { onLogged?: () => void }) {
           </span>
         )}
         {tasks.map(t => {
-          const running = isRunningTask(t.id);
+          const running = isRunning(t.id);
           return (
             <div
               key={t.id}
