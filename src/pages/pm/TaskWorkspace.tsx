@@ -3,10 +3,10 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, Pencil, Star } from "lucide-react";
+import { ArrowLeft, ChevronDown, Pencil, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { logActivity, updateTask } from "@/lib/pm/api";
+import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
 import { recordTaskActivity } from "@/lib/pm/activity";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import type { PmTask, TaskStatus } from "@/types/pm";
@@ -142,6 +142,24 @@ export default function TaskWorkspace() {
               <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
               <Button variant="outline" size="sm" onClick={openQuickEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Quick edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!confirm("Delete this task? This cannot be undone.")) return;
+                  try {
+                    await deleteTask(task.id);
+                    emitTasksChanged();
+                    toast.success("Task deleted");
+                    navigate(`/pm/projects/${task.project_id}`);
+                  } catch (err: any) {
+                    toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+                  }
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" /> Delete
               </Button>
             </div>
           </div>

@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
-import { logActivity, updateTask } from "@/lib/pm/api";
+import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { TASK_STATUSES, type PmTask, type TaskStatus } from "@/types/pm";
 import { toast } from "sonner";
-import { Maximize2, Send } from "lucide-react";
+import { Maximize2, Send, Trash2 } from "lucide-react";
 
 /**
  * Drawer is now Quick Edit only.
@@ -137,6 +137,27 @@ export function TaskDrawer() {
 
             <div className="text-xs text-muted-foreground text-center pt-2">
               Need attachments, links, time tracking? <button onClick={openFull} className="underline text-primary">Open full task</button>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={async () => {
+                  if (!confirm("Delete this task? This cannot be undone.")) return;
+                  try {
+                    await deleteTask(task.id);
+                    emitTasksChanged();
+                    toast.success("Task deleted");
+                    close();
+                  } catch (err: any) {
+                    toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+                  }
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" /> Delete task
+              </Button>
             </div>
           </div>
         )}
