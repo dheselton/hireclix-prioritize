@@ -107,11 +107,14 @@ export default function Timesheet() {
         </div>
       )}
 
+      <ActivitiesStrip onLogged={reload} />
+
       {/* Summary tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <SummaryTile label="Total" value={fmtDur(totalMins)} />
         <SummaryTile label="Billable" value={fmtDur(billableMins)} accent />
         <SummaryTile label="Non-billable" value={fmtDur(totalMins - billableMins)} muted />
+        <SummaryTile label="Overhead" value={fmtDur(entries.filter(e => e.is_activity).reduce((s, e) => s + e.minutes, 0))} muted />
         <SummaryTile label="Avg / day" value={fmtDur(Math.round(totalMins / 7))} />
       </div>
 
