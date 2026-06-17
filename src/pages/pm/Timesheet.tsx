@@ -11,6 +11,7 @@ import { WeekPaginator } from "@/components/pm/time/WeekPaginator";
 import { TimesheetGrid } from "@/components/pm/time/TimesheetGrid";
 import { TimeEntriesList } from "@/components/pm/time/TimeEntriesList";
 import { ActivitiesStrip } from "@/components/pm/time/ActivitiesStrip";
+import { PinnedTasksStrip } from "@/components/pm/time/PinnedTasksStrip";
 
 const ALL_USERS = "__all__";
 
