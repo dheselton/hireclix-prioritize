@@ -423,26 +423,27 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start date</Label>
-              <DateField value={startDate} onChange={setStartDate} />
+              <DateField value={startDate} onChange={handleStartChange} />
             </div>
             <div className="space-y-1.5">
               <Label>Due date</Label>
-              <DateField value={dueDate} onChange={setDueDate} />
+              <DateField value={dueDate} onChange={handleDueChange} />
             </div>
           </div>
 
           {/* Duration + Tags */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="new-task-dur">Duration (days)</Label>
+              <Label htmlFor="new-task-dur">Duration (business days)</Label>
               <Input
                 id="new-task-dur"
                 type="number"
                 min={0.5}
                 step={0.5}
                 value={duration}
-                onChange={e => setDuration(e.target.value)}
+                onChange={e => handleDurationChange(e.target.value)}
               />
+              <p className="text-[11px] text-muted-foreground">Syncs with Start &amp; Due (weekends excluded).</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="new-task-tags">Tags <span className="text-xs text-muted-foreground font-normal">(comma-separated)</span></Label>
