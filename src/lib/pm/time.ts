@@ -68,42 +68,52 @@ export function localDateISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Fetch entries with task/project/client joined. */
+/** Fetch entries with task/project/client + activity joined. */
 export async function fetchEnrichedEntries(opts: {
   userId?: string | null;
   userIds?: string[];
   taskId?: string;
+  activityId?: string;
   from?: string; // ISO date inclusive
   to?: string;   // ISO date inclusive
 }): Promise<EnrichedEntry[]> {
   let q = supabase
     .from("pm_time_entries")
     .select(
-      "id, task_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name)))"
+      "id, task_id, activity_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name))), pm_activities(name, color, icon, default_client_id, clients(name))"
     );
   if (opts.userId) q = q.eq("user_id", opts.userId);
   if (opts.userIds?.length) q = q.in("user_id", opts.userIds);
   if (opts.taskId) q = q.eq("task_id", opts.taskId);
+  if (opts.activityId) q = q.eq("activity_id", opts.activityId);
   if (opts.from) q = q.gte("logged_at", `${opts.from}T00:00:00`);
   if (opts.to) q = q.lte("logged_at", `${opts.to}T23:59:59.999`);
   const { data, error } = await q.order("logged_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map((r: any) => ({
-    id: r.id,
-    task_id: r.task_id,
-    user_id: r.user_id,
-    minutes: r.minutes,
-    note: r.note,
-    logged_at: r.logged_at,
-    billable: r.billable ?? true,
-    task_title: r.pm_tasks?.title ?? "Untitled task",
-    task_type: r.pm_tasks?.type ?? null,
-    task_track: r.pm_tasks?.track ?? null,
-    project_id: r.pm_tasks?.project_id ?? "",
-    project_title: r.pm_tasks?.pm_projects?.title ?? "",
-    client_id: r.pm_tasks?.pm_projects?.client_id ?? null,
-    client_name: r.pm_tasks?.pm_projects?.clients?.name ?? null,
-  }));
+  return (data || []).map((r: any): EnrichedEntry => {
+    const isActivity = !!r.activity_id;
+    return {
+      id: r.id,
+      task_id: r.task_id,
+      activity_id: r.activity_id,
+      user_id: r.user_id,
+      minutes: r.minutes,
+      note: r.note,
+      logged_at: r.logged_at,
+      billable: r.billable ?? true,
+      task_title: isActivity ? (r.pm_activities?.name ?? "Activity") : (r.pm_tasks?.title ?? "Untitled task"),
+      task_type: r.pm_tasks?.type ?? null,
+      task_track: r.pm_tasks?.track ?? null,
+      project_id: r.pm_tasks?.project_id ?? "",
+      project_title: r.pm_tasks?.pm_projects?.title ?? "",
+      client_id: isActivity ? (r.pm_activities?.default_client_id ?? null) : (r.pm_tasks?.pm_projects?.client_id ?? null),
+      client_name: isActivity ? (r.pm_activities?.clients?.name ?? null) : (r.pm_tasks?.pm_projects?.clients?.name ?? null),
+      activity_name: r.pm_activities?.name ?? null,
+      activity_color: r.pm_activities?.color ?? null,
+      activity_icon: r.pm_activities?.icon ?? null,
+      is_activity: isActivity,
+    };
+  });
 }
 
 export async function addTimeEntry(input: {
