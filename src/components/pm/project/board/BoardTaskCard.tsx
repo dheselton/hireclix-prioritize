@@ -108,7 +108,7 @@ export function BoardTaskCard({
               {task.title}
             </div>
             <span onClick={(e) => e.stopPropagation()} className="shrink-0">
-              <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={unclaimed || vis.waiting} />
+              <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={mutedNoOwner || vis.waiting} />
             </span>
           </div>
           {preview && (
@@ -120,6 +120,10 @@ export function BoardTaskCard({
           <div className="flex items-center gap-1.5 flex-wrap">
             {vis.waiting ? (
               <WaitingChip reason={vis.waitingReason} />
+            ) : isProject ? (
+              <span className={cn("text-[10px] py-0 px-1.5 rounded-full font-medium", group.text, "bg-muted")}>
+                {group.label}
+              </span>
             ) : (
               <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
             )}
@@ -134,11 +138,11 @@ export function BoardTaskCard({
             )}
           </div>
           <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
-            <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} />
+            <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} hideClaimed={isProject} />
             <div className="flex items-center gap-2">
               <InlineDatePopover value={task.due_date} onChange={onDateChange} />
               {team.length > 1 && (
-                <AvatarStack userIds={team} max={3} size="xs" muted={unclaimed || vis.waiting} />
+                <AvatarStack userIds={team} max={3} size="xs" muted={mutedNoOwner || vis.waiting} />
               )}
             </div>
           </div>
