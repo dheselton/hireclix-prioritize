@@ -499,6 +499,7 @@ function DateField({ value, onChange }: { value: Date | undefined; onChange: (d:
           mode="single"
           selected={value}
           onSelect={onChange}
+          disabled={(d) => { const w = d.getDay(); return w === 0 || w === 6; }}
           initialFocus
           className={cn("p-3 pointer-events-auto")}
         />
