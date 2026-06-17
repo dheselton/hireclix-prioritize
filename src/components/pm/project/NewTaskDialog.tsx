@@ -184,7 +184,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
       const userTags = tagsInput.split(",").map(s => s.trim()).filter(Boolean);
       const extraTypeTags = types.slice(1).map(t => `type:${t}`);
       const allTags = Array.from(new Set([...userTags, ...extraTypeTags]));
-      const dur = Math.max(0.5, parseFloat(duration) || 1);
+      const dur = Math.max(1, parseInt(duration, 10) || 1);
 
       const created = await createTask({
         project_id: project.id,
