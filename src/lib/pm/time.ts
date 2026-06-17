@@ -117,20 +117,24 @@ export async function fetchEnrichedEntries(opts: {
 }
 
 export async function addTimeEntry(input: {
-  task_id: string;
+  task_id?: string | null;
+  activity_id?: string | null;
   user_id: string;
   minutes: number;
   note?: string;
   logged_at?: string; // ISO date or full timestamp
   billable?: boolean;
 }) {
+  if (!input.task_id && !input.activity_id) throw new Error("task_id or activity_id required");
+  if (input.task_id && input.activity_id) throw new Error("Provide either task_id OR activity_id, not both");
   const logged_at = input.logged_at
     ? (input.logged_at.length === 10 ? `${input.logged_at}T12:00:00` : input.logged_at)
     : new Date().toISOString();
   const { data, error } = await supabase
     .from("pm_time_entries")
     .insert({
-      task_id: input.task_id,
+      task_id: input.task_id ?? null,
+      activity_id: input.activity_id ?? null,
       user_id: input.user_id,
       minutes: input.minutes,
       note: input.note ?? "",
