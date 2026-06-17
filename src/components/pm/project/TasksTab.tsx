@@ -52,7 +52,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [addPageOpen, setAddPageOpen] = useState(false);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
-    ready: false, in_progress: false, in_review: false, complete: true,
+    ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
   const [showUpcoming, setShowUpcoming] = useState<boolean>(() => {
     // Default to TRUE so new projects (where every task is dependency-blocked)
