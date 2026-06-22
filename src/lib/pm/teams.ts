@@ -49,6 +49,28 @@ export const ROLE_TO_TEAM: Record<PmRole, Team | null> = {
   submitter: null,
 };
 
+/**
+ * Peer teams that share a "My team" view. Designers + developers work as one
+ * combined production team and need to see each other's tasks by default.
+ * Every other team is solo.
+ */
+export const TEAM_PEERS: Record<Team, Team[]> = {
+  design: ["design", "dev"],
+  dev: ["design", "dev"],
+  pm: ["pm"],
+  qa: ["qa"],
+  strategy: ["strategy"],
+  analytics: ["analytics"],
+  csm: ["csm"],
+  support: ["support"],
+};
+
+/** Human label for the peer-set chip. */
+export const TEAM_PEER_LABEL: Partial<Record<Team, string>> = {
+  design: "Creative + Dev",
+  dev: "Creative + Dev",
+};
+
 /** Default team set per task type (matches the DB trigger). */
 export const DEFAULT_TEAMS_FOR_TYPE: Record<TaskType, Team[]> = {
   design: ["design"],
