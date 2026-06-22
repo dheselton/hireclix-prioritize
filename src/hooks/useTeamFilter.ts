@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { ROLE_TO_TEAM, TEAM_LABEL, teamsFromTask, type Team } from "@/lib/pm/teams";
+import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, teamsFromTask, type Team } from "@/lib/pm/teams";
 import type { PmTask } from "@/types/pm";
 
 const key = (scope: string, userId: string | null | undefined) =>
@@ -38,13 +38,17 @@ export function useTeamFilter(scope: string) {
     if (meId && t.assignee_id === meId) return true;
     const teams = teamsFromTask(t);
     if (!teams.length) return true; // untagged tasks visible to all (avoids stranding)
-    return !!myTeam && teams.includes(myTeam);
+    if (!myTeam) return true;
+    const peers = TEAM_PEERS[myTeam] ?? [myTeam];
+    return teams.some((tm) => peers.includes(tm));
   }, [showAll, bypass, meId, myTeam]);
 
   const label = useMemo(() => {
     if (bypass) return "All tasks";
     if (showAll) return "All tasks";
-    return myTeam ? `My team (${TEAM_LABEL[myTeam]})` : "All tasks";
+    if (!myTeam) return "All tasks";
+    const peerLabel = TEAM_PEER_LABEL[myTeam];
+    return `My team (${peerLabel ?? TEAM_LABEL[myTeam]})`;
   }, [bypass, showAll, myTeam]);
 
   return { showAll, setShowAll, filterTask, myTeam, bypass, label };

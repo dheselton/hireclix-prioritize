@@ -1,18 +1,19 @@
-## Add task delete
+## Goal
 
-`deleteTask(id)` already exists in `src/lib/pm/api.ts` (deletes from `pm_tasks`). Just need to expose it in the UI.
+Designers and developers are one combined production team — they should see each other's tasks by default, not just their own team's. Today the project board's "My team" filter shows only the user's mapped team (designer → design tasks, developer → dev tasks).
 
-### Edits
+## Change
 
-1. **`src/pages/pm/TaskWorkspace.tsx`** — In the header action row (next to Quick edit), add a destructive "Delete" button (Trash2 icon, `variant="ghost"`, red text).
-   - On click: `confirm("Delete this task? This cannot be undone.")` → `await deleteTask(task.id)` → `emitTasksChanged()` → toast → `navigate` back to `/pm/projects/{task.project_id}`.
+Treat design + dev as a single peer group inside the team filter. QA, strategy, analytics, etc. stay scoped to themselves. PM and submitter continue to bypass the filter.
 
-2. **`src/components/pm/TaskDrawer.tsx`** — Add a small "Delete task" link/button at the bottom of the Quick Edit drawer (below the existing content).
-   - Same confirm + `deleteTask` + `emitTasksChanged()` + close drawer.
+### `src/lib/pm/teams.ts`
+- Add a `TEAM_PEERS: Record<Team, Team[]>` map. Default = `[team]`. Override: `design: ["design","dev"]` and `dev: ["design","dev"]`.
 
-That's it — no schema, no new tables. Page-group deletion (already in TasksTab) stays untouched. Lists/boards refresh automatically via the existing `useTasksChanged(reload)` listener.
+### `src/hooks/useTeamFilter.ts`
+- Replace the single-team check in `filterTask` with a peer-set check: a task is in-scope if any of its `teams` is in `TEAM_PEERS[myTeam]`.
+- Update the chip label so designers and developers see `"My team (Creative + Dev)"` instead of just `"Design"` / `"Dev"`. Other roles keep their existing single-team label.
 
-### Out of scope
-
-- Per-card hover trash on the board/list (keeps cards uncluttered; user can open the task to delete). Can add later if requested.
-- Soft-delete / undo. Current behavior is hard delete via the existing helper.
+### Scope check
+- `useTeamFilter` is only consumed by `src/components/pm/project/TasksTab.tsx`, so no other call sites need touching.
+- No DB changes — `pm_tasks.teams` already stores the array we filter on.
+- Doesn't affect the new project-board "Ready/no-Claimed" + unassigned-glow work from the previous turn.
