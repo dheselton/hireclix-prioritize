@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { canSee } from "@/lib/pm/permissions";
 import {
   createSnippet,
   deleteSnippet,
