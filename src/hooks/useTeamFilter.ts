@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { ROLE_TO_TEAM, TEAM_LABEL, teamsFromTask, type Team } from "@/lib/pm/teams";
+import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, teamsFromTask, type Team } from "@/lib/pm/teams";
 import type { PmTask } from "@/types/pm";
 
 const key = (scope: string, userId: string | null | undefined) =>
