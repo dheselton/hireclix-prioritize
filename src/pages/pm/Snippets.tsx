@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { canSee } from "@/lib/pm/permissions";
 import {
   createSnippet,
   deleteSnippet,
@@ -34,7 +35,7 @@ type SortKey = "newest" | "az" | "used";
 
 export default function Snippets() {
   const { role } = useCurrentUser();
-  const allowed = role === "developer" || role === "designer";
+  const allowed = canSee(role, "snippets");
 
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [categories, setCategories] = useState<SnippetCategory[]>([]);
