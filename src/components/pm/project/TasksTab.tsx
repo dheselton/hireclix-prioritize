@@ -514,6 +514,52 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         </DndContext>
       )}
 
+      {/* Build Archive — visible only in Support mode. Grayed, collapsed by default. */}
+      {supportMode && buildArchive.length > 0 && (
+        <Card className="opacity-80">
+          <CardContent className="p-2">
+            <button
+              type="button"
+              onClick={() => setArchiveOpen(o => !o)}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40"
+            >
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${archiveOpen ? "rotate-90" : ""}`} />
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Build archive
+              </span>
+              <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">
+                {buildArchive.length}
+              </span>
+              <span className="ml-auto text-[11px] text-muted-foreground italic">
+                Original project tasks — read-only history
+              </span>
+            </button>
+            {archiveOpen && (
+              <div className="mt-1 space-y-1 grayscale opacity-70">
+                {[...buildArchive]
+                  .sort((a, b) => {
+                    const ai = STATUS_GROUPS.findIndex(g => g.statuses.includes(a.status));
+                    const bi = STATUS_GROUPS.findIndex(g => g.statuses.includes(b.status));
+                    return ai - bi;
+                  })
+                  .map(t => {
+                    const g = groupForStatus(t.status);
+                    return (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        groupColorBg={g.bg}
+                        count={counts.get(t.id)}
+                        onClick={() => openTask(t.id)}
+                      />
+                    );
+                  })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {templateId && (
         <AddPageDialog projectId={projectId} templateId={templateId} open={addPageOpen} onOpenChange={setAddPageOpen} />
       )}
