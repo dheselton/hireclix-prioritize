@@ -49,6 +49,9 @@ interface Props {
   meId: string | null;
   meRole: PmRole | null;
   onCreated?: () => void;
+  /** When true, prefills tags + custom_fields so this task is treated as a
+   *  Support request (lives in the support board, not the build archive). */
+  initialSupport?: boolean;
 }
 
 function teamsForTypes(types: TaskType[]): Team[] {
