@@ -88,9 +88,15 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
             <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
           )}
           {isInternal && <span className="internal-pill">Internal · HireClix</span>}
-          <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
-            {project.status.replace(/_/g, " ")}
-          </Badge>
+          {inSupport ? (
+            <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
+              <Headphones className="h-3 w-3" /> Support mode
+            </Badge>
+          ) : (
+            <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
+              {project.status.replace(/_/g, " ")}
+            </Badge>
+          )}
           <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
             {(project.work_type ?? "project")}
           </Badge>
@@ -106,10 +112,15 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
               ))}
             </div>
           )}
+          {inSupport && onLogSupportRequest && (
+            <Button size="sm" onClick={onLogSupportRequest}>
+              <LifeBuoy className="h-4 w-4 mr-1" /> Log support request
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onAddTask}>
             <Plus className="h-4 w-4 mr-1" /> Add Task
           </Button>
-          <Button size="sm" onClick={share}>
+          <Button size="sm" variant={inSupport ? "outline" : "default"} onClick={share}>
             <Share2 className="h-4 w-4 mr-1" /> Share
           </Button>
           {isPM && (
@@ -123,6 +134,54 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditOpen(true); }}>
                   <Pencil className="h-4 w-4 mr-2" /> Edit project
                 </DropdownMenuItem>
+                {isCareerSite && !inSupport && (
+                  <DropdownMenuItem
+                    disabled={supportBusy}
+                    onSelect={async (e) => {
+                      e.preventDefault();
+                      setSupportBusy(true);
+                      try {
+                        const next = { ...(project.custom_fields ?? {}), support_mode_at: new Date().toISOString() };
+                        const { error } = await supabase.from("pm_projects")
+                          .update({ custom_fields: next }).eq("id", project.id);
+                        if (error) throw error;
+                        toast.success("Project is now in Support mode");
+                        emitTasksChanged();
+                      } catch (err: any) {
+                        toast.error(err?.message ?? "Could not enter Support mode");
+                      } finally {
+                        setSupportBusy(false);
+                      }
+                    }}
+                  >
+                    <Headphones className="h-4 w-4 mr-2" /> Enter Support mode
+                  </DropdownMenuItem>
+                )}
+                {inSupport && (
+                  <DropdownMenuItem
+                    disabled={supportBusy}
+                    onSelect={async (e) => {
+                      e.preventDefault();
+                      if (!confirm("Exit Support mode? Build tasks will return to the main board.")) return;
+                      setSupportBusy(true);
+                      try {
+                        const next = { ...(project.custom_fields ?? {}) };
+                        delete next.support_mode_at;
+                        const { error } = await supabase.from("pm_projects")
+                          .update({ custom_fields: next }).eq("id", project.id);
+                        if (error) throw error;
+                        toast.success("Exited Support mode");
+                        emitTasksChanged();
+                      } catch (err: any) {
+                        toast.error(err?.message ?? "Could not exit Support mode");
+                      } finally {
+                        setSupportBusy(false);
+                      }
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" /> Exit Support mode
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onSelect={(e) => { e.preventDefault(); setConfirmDelete(true); }}
