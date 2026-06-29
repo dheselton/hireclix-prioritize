@@ -111,7 +111,11 @@ export default function ProjectDetail() {
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <UnclaimedBanner projectId={project.id} />
 
-      <ProjectHeader project={project} onAddTask={() => { setTab("tasks"); setNewTaskOpen(true); }} />
+      <ProjectHeader
+        project={project}
+        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskOpen(true); }}
+      />
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (
