@@ -29,16 +29,22 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-export function ProjectHeader({ project, onAddTask }: {
+export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
   project: PmProject; onAddTask: () => void;
+  onLogSupportRequest?: () => void;
 }) {
   const [clientName, setClientName] = useState<string>("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [supportBusy, setSupportBusy] = useState(false);
   const internalIds = useInternalClientIds();
+  const careerSiteMap = useCareerSiteProjects();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
+  const isCareerSite = careerSiteMap.has(project.id);
+  const supportModeAt = (project.custom_fields as any)?.support_mode_at as string | undefined;
+  const inSupport = !!supportModeAt;
   const { user } = useCurrentUser();
   const isPM = user?.role === "pm";
   const navigate = useNavigate();
