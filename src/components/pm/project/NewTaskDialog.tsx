@@ -60,7 +60,7 @@ function teamsForTypes(types: TaskType[]): Team[] {
   return Array.from(set);
 }
 
-export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated }: Props) {
+export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport }: Props) {
   const users = useMockUsers();
   const defaultType: TaskType = meRole ? ROLE_DEFAULT_TYPE[meRole] : "design";
 
@@ -77,7 +77,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [duration, setDuration] = useState<string>("1");
   const [teams, setTeams] = useState<Team[]>(teamsForTypes([defaultType]));
   const [teamsDirty, setTeamsDirty] = useState(false);
-  const [tagsInput, setTagsInput] = useState("");
+  const [tagsInput, setTagsInput] = useState(initialSupport ? "support" : "");
   const [devEnv, setDevEnv] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -97,9 +97,9 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setDuration("1");
     setTeams(teamsForTypes([defaultType]));
     setTeamsDirty(false);
-    setTagsInput("");
+    setTagsInput(initialSupport ? "support" : "");
     setDevEnv("");
-  }, [open, defaultType, meId]);
+  }, [open, defaultType, meId, initialSupport]);
 
   // Auto-sync status with assignees unless user touched it
   useEffect(() => {
