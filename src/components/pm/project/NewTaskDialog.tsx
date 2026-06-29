@@ -227,7 +227,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New task</DialogTitle>
+          <DialogTitle>{initialSupport ? "New support request" : "New task"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
