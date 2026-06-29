@@ -91,6 +91,7 @@ export default function ProjectDetail() {
   const p: any = project;
   const isRequest = (p.work_type ?? "project") === "request";
   const isPM = user?.role === "pm";
+  const inSupport = !!(project.custom_fields as any)?.support_mode_at;
 
   const canSeeSnippets = user?.role === "developer" || user?.role === "designer";
 
@@ -102,6 +103,7 @@ export default function ProjectDetail() {
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
+    ...(inSupport ? [{ id: "documentation" as const, label: "Documentation" }] : []),
   ];
 
 
