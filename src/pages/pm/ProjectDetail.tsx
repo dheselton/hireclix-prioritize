@@ -27,6 +27,7 @@ import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
+import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
