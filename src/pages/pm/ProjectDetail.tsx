@@ -44,6 +44,7 @@ export default function ProjectDetail() {
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [convertOpen, setConvertOpen] = useState(false);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [newTaskSupport, setNewTaskSupport] = useState(false);
 
   const reload = async () => {
     if (!id) return;
