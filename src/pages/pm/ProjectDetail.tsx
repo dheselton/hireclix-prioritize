@@ -174,9 +174,14 @@ export default function ProjectDetail() {
             projectId={project.id}
             meId={user?.id ?? null}
             templateId={project.template_id}
-            onAddTask={() => setNewTaskOpen(true)}
+            onAddTask={() => { setNewTaskSupport(false); setNewTaskOpen(true); }}
+            supportMode={inSupport}
           />
         </div>
+      )}
+
+      {tab === "documentation" && inSupport && (
+        <DocumentationTab project={project} canEdit={isPM} onProjectChange={setProject} />
       )}
 
       {tab === "timeline" && !isRequest && (
