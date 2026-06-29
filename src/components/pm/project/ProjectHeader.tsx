@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy, RotateCcw, Headphones } from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useInternalClientIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { deleteProject } from "@/lib/pm/api";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
