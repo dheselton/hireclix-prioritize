@@ -49,6 +49,9 @@ interface Props {
   meId: string | null;
   meRole: PmRole | null;
   onCreated?: () => void;
+  /** When true, prefills tags + custom_fields so this task is treated as a
+   *  Support request (lives in the support board, not the build archive). */
+  initialSupport?: boolean;
 }
 
 function teamsForTypes(types: TaskType[]): Team[] {
@@ -57,7 +60,7 @@ function teamsForTypes(types: TaskType[]): Team[] {
   return Array.from(set);
 }
 
-export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated }: Props) {
+export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport }: Props) {
   const users = useMockUsers();
   const defaultType: TaskType = meRole ? ROLE_DEFAULT_TYPE[meRole] : "design";
 
@@ -74,7 +77,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [duration, setDuration] = useState<string>("1");
   const [teams, setTeams] = useState<Team[]>(teamsForTypes([defaultType]));
   const [teamsDirty, setTeamsDirty] = useState(false);
-  const [tagsInput, setTagsInput] = useState("");
+  const [tagsInput, setTagsInput] = useState(initialSupport ? "support" : "");
   const [devEnv, setDevEnv] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -94,9 +97,9 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setDuration("1");
     setTeams(teamsForTypes([defaultType]));
     setTeamsDirty(false);
-    setTagsInput("");
+    setTagsInput(initialSupport ? "support" : "");
     setDevEnv("");
-  }, [open, defaultType, meId]);
+  }, [open, defaultType, meId, initialSupport]);
 
   // Auto-sync status with assignees unless user touched it
   useEffect(() => {
@@ -224,7 +227,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New task</DialogTitle>
+          <DialogTitle>{initialSupport ? "New support request" : "New task"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">

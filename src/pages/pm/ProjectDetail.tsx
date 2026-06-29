@@ -27,6 +27,7 @@ import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
+import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +44,7 @@ export default function ProjectDetail() {
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [convertOpen, setConvertOpen] = useState(false);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [newTaskSupport, setNewTaskSupport] = useState(false);
 
   const reload = async () => {
     if (!id) return;
@@ -89,6 +91,7 @@ export default function ProjectDetail() {
   const p: any = project;
   const isRequest = (p.work_type ?? "project") === "request";
   const isPM = user?.role === "pm";
+  const inSupport = !!(project.custom_fields as any)?.support_mode_at;
 
   const canSeeSnippets = user?.role === "developer" || user?.role === "designer";
 
@@ -100,6 +103,7 @@ export default function ProjectDetail() {
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
+    ...(inSupport ? [{ id: "documentation" as const, label: "Documentation" }] : []),
   ];
 
 
@@ -107,7 +111,11 @@ export default function ProjectDetail() {
     <div className="p-6 max-w-[1400px] mx-auto space-y-4">
       <UnclaimedBanner projectId={project.id} />
 
-      <ProjectHeader project={project} onAddTask={() => { setTab("tasks"); setNewTaskOpen(true); }} />
+      <ProjectHeader
+        project={project}
+        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskOpen(true); }}
+      />
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (
@@ -166,9 +174,14 @@ export default function ProjectDetail() {
             projectId={project.id}
             meId={user?.id ?? null}
             templateId={project.template_id}
-            onAddTask={() => setNewTaskOpen(true)}
+            onAddTask={() => { setNewTaskSupport(false); setNewTaskOpen(true); }}
+            supportMode={inSupport}
           />
         </div>
+      )}
+
+      {tab === "documentation" && inSupport && (
+        <DocumentationTab project={project} canEdit={isPM} onProjectChange={setProject} />
       )}
 
       {tab === "timeline" && !isRequest && (
@@ -197,12 +210,13 @@ export default function ProjectDetail() {
       <TaskDrawer />
       <NewTaskDialog
         open={newTaskOpen}
-        onOpenChange={setNewTaskOpen}
+        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) setNewTaskSupport(false); }}
         project={project}
         phases={phases}
         meId={user?.id ?? null}
         meRole={user?.role ?? null}
         onCreated={reload}
+        initialSupport={newTaskSupport}
       />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}

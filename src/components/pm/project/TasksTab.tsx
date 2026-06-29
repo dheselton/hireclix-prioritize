@@ -41,9 +41,17 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask }: {
+function isSupportTask(t: PmTask): boolean {
+  const tags = Array.isArray((t as any).tags) ? (t as any).tags as string[] : [];
+  if (tags.includes("support")) return true;
+  const cf = (t as any).custom_fields;
+  return !!(cf && cf.is_support);
+}
+
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask, supportMode }: {
   tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
   onAddTask?: () => void;
+  supportMode?: boolean;
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
@@ -82,16 +90,28 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 
   const team = useTeamFilter(`project.${projectId}`);
 
+  // When the project is in Support mode, only "support" tasks drive the board.
+  // Build-phase tasks slide to an archive below.
+  const activeSource = useMemo(
+    () => supportMode ? tasks.filter(isSupportTask) : tasks,
+    [tasks, supportMode],
+  );
+  const buildArchive = useMemo(
+    () => supportMode ? tasks.filter(t => !isSupportTask(t)) : [],
+    [tasks, supportMode],
+  );
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
   const filtered = useMemo(() => {
     // Safety net: if hiding upcoming would leave nothing visible, override and show all.
-    const effectiveShowUpcoming = showUpcoming || (tasks.length > 0 && tasks.every(t => hiddenIds.has(t.id)));
-    let out = tasks;
+    const effectiveShowUpcoming = showUpcoming || (activeSource.length > 0 && activeSource.every(t => hiddenIds.has(t.id)));
+    let out = activeSource;
     if (!effectiveShowUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     out = out.filter(t => team.filterTask(t));
     return out;
-  }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming, team]);
+  }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team]);
 
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
@@ -492,6 +512,52 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             ) : null}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {/* Build Archive — visible only in Support mode. Grayed, collapsed by default. */}
+      {supportMode && buildArchive.length > 0 && (
+        <Card className="opacity-80">
+          <CardContent className="p-2">
+            <button
+              type="button"
+              onClick={() => setArchiveOpen(o => !o)}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40"
+            >
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${archiveOpen ? "rotate-90" : ""}`} />
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Build archive
+              </span>
+              <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">
+                {buildArchive.length}
+              </span>
+              <span className="ml-auto text-[11px] text-muted-foreground italic">
+                Original project tasks — read-only history
+              </span>
+            </button>
+            {archiveOpen && (
+              <div className="mt-1 space-y-1 grayscale opacity-70">
+                {[...buildArchive]
+                  .sort((a, b) => {
+                    const ai = STATUS_GROUPS.findIndex(g => g.statuses.includes(a.status));
+                    const bi = STATUS_GROUPS.findIndex(g => g.statuses.includes(b.status));
+                    return ai - bi;
+                  })
+                  .map(t => {
+                    const g = groupForStatus(t.status);
+                    return (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        groupColorBg={g.bg}
+                        count={counts.get(t.id)}
+                        onClick={() => openTask(t.id)}
+                      />
+                    );
+                  })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {templateId && (

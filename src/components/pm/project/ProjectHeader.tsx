@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy, RotateCcw, Headphones } from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useInternalClientIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { deleteProject } from "@/lib/pm/api";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -28,16 +29,22 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-export function ProjectHeader({ project, onAddTask }: {
+export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
   project: PmProject; onAddTask: () => void;
+  onLogSupportRequest?: () => void;
 }) {
   const [clientName, setClientName] = useState<string>("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [supportBusy, setSupportBusy] = useState(false);
   const internalIds = useInternalClientIds();
+  const careerSiteMap = useCareerSiteProjects();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
+  const isCareerSite = careerSiteMap.has(project.id);
+  const supportModeAt = (project.custom_fields as any)?.support_mode_at as string | undefined;
+  const inSupport = !!supportModeAt;
   const { user } = useCurrentUser();
   const isPM = user?.role === "pm";
   const navigate = useNavigate();
@@ -81,9 +88,15 @@ export function ProjectHeader({ project, onAddTask }: {
             <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
           )}
           {isInternal && <span className="internal-pill">Internal · HireClix</span>}
-          <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
-            {project.status.replace(/_/g, " ")}
-          </Badge>
+          {inSupport ? (
+            <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
+              <Headphones className="h-3 w-3" /> Support mode
+            </Badge>
+          ) : (
+            <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
+              {project.status.replace(/_/g, " ")}
+            </Badge>
+          )}
           <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
             {(project.work_type ?? "project")}
           </Badge>
@@ -99,10 +112,15 @@ export function ProjectHeader({ project, onAddTask }: {
               ))}
             </div>
           )}
+          {inSupport && onLogSupportRequest && (
+            <Button size="sm" onClick={onLogSupportRequest}>
+              <LifeBuoy className="h-4 w-4 mr-1" /> Log support request
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onAddTask}>
             <Plus className="h-4 w-4 mr-1" /> Add Task
           </Button>
-          <Button size="sm" onClick={share}>
+          <Button size="sm" variant={inSupport ? "outline" : "default"} onClick={share}>
             <Share2 className="h-4 w-4 mr-1" /> Share
           </Button>
           {isPM && (
@@ -116,6 +134,54 @@ export function ProjectHeader({ project, onAddTask }: {
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditOpen(true); }}>
                   <Pencil className="h-4 w-4 mr-2" /> Edit project
                 </DropdownMenuItem>
+                {isCareerSite && !inSupport && (
+                  <DropdownMenuItem
+                    disabled={supportBusy}
+                    onSelect={async (e) => {
+                      e.preventDefault();
+                      setSupportBusy(true);
+                      try {
+                        const next = { ...(project.custom_fields ?? {}), support_mode_at: new Date().toISOString() };
+                        const { error } = await supabase.from("pm_projects")
+                          .update({ custom_fields: next }).eq("id", project.id);
+                        if (error) throw error;
+                        toast.success("Project is now in Support mode");
+                        emitTasksChanged();
+                      } catch (err: any) {
+                        toast.error(err?.message ?? "Could not enter Support mode");
+                      } finally {
+                        setSupportBusy(false);
+                      }
+                    }}
+                  >
+                    <Headphones className="h-4 w-4 mr-2" /> Enter Support mode
+                  </DropdownMenuItem>
+                )}
+                {inSupport && (
+                  <DropdownMenuItem
+                    disabled={supportBusy}
+                    onSelect={async (e) => {
+                      e.preventDefault();
+                      if (!confirm("Exit Support mode? Build tasks will return to the main board.")) return;
+                      setSupportBusy(true);
+                      try {
+                        const next = { ...(project.custom_fields ?? {}) };
+                        delete next.support_mode_at;
+                        const { error } = await supabase.from("pm_projects")
+                          .update({ custom_fields: next }).eq("id", project.id);
+                        if (error) throw error;
+                        toast.success("Exited Support mode");
+                        emitTasksChanged();
+                      } catch (err: any) {
+                        toast.error(err?.message ?? "Could not exit Support mode");
+                      } finally {
+                        setSupportBusy(false);
+                      }
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" /> Exit Support mode
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onSelect={(e) => { e.preventDefault(); setConfirmDelete(true); }}
