@@ -90,16 +90,28 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 
   const team = useTeamFilter(`project.${projectId}`);
 
+  // When the project is in Support mode, only "support" tasks drive the board.
+  // Build-phase tasks slide to an archive below.
+  const activeSource = useMemo(
+    () => supportMode ? tasks.filter(isSupportTask) : tasks,
+    [tasks, supportMode],
+  );
+  const buildArchive = useMemo(
+    () => supportMode ? tasks.filter(t => !isSupportTask(t)) : [],
+    [tasks, supportMode],
+  );
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
   const filtered = useMemo(() => {
     // Safety net: if hiding upcoming would leave nothing visible, override and show all.
-    const effectiveShowUpcoming = showUpcoming || (tasks.length > 0 && tasks.every(t => hiddenIds.has(t.id)));
-    let out = tasks;
+    const effectiveShowUpcoming = showUpcoming || (activeSource.length > 0 && activeSource.every(t => hiddenIds.has(t.id)));
+    let out = activeSource;
     if (!effectiveShowUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     out = out.filter(t => team.filterTask(t));
     return out;
-  }, [tasks, pill, isMe, meId, hiddenIds, showUpcoming, team]);
+  }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team]);
 
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
