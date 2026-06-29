@@ -41,9 +41,17 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask }: {
+function isSupportTask(t: PmTask): boolean {
+  const tags = Array.isArray((t as any).tags) ? (t as any).tags as string[] : [];
+  if (tags.includes("support")) return true;
+  const cf = (t as any).custom_fields;
+  return !!(cf && cf.is_support);
+}
+
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask, supportMode }: {
   tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
   onAddTask?: () => void;
+  supportMode?: boolean;
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
