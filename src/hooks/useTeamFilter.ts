@@ -17,7 +17,7 @@ export function useTeamFilter(scope: string) {
   const meId = user?.id ?? null;
   const myTeam: Team | null = role ? ROLE_TO_TEAM[role] : null;
   const override = meId ? USER_TEAM_OVERRIDES[meId] : undefined;
-  const bypass = role === "pm" || role === "submitter" || (!myTeam && !override);
+  const bypass = !override && (role === "pm" || role === "submitter" || !myTeam);
 
   const read = useCallback((): boolean => {
     if (bypass) return true;
