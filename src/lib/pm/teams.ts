@@ -71,6 +71,19 @@ export const TEAM_PEER_LABEL: Partial<Record<Team, string>> = {
   dev: "Creative + Dev",
 };
 
+/**
+ * Per-user peer-team overrides. Some folks wear multiple hats — e.g. Dan
+ * Heselton is a PM who also designs and develops, so he needs visibility into
+ * design + dev tasks alongside his PM queue. Keyed by mock_users.id.
+ */
+export const USER_TEAM_OVERRIDES: Record<string, { peers: Team[]; label: string }> = {
+  // Dan Heselton — PM + Designer + Developer
+  "2cd08a7f-035c-4956-b2a9-ee202fb67a8a": {
+    peers: ["pm", "design", "dev"],
+    label: "My team (PM + Creative + Dev)",
+  },
+};
+
 /** Default team set per task type (matches the DB trigger). */
 export const DEFAULT_TEAMS_FOR_TYPE: Record<TaskType, Team[]> = {
   design: ["design"],
