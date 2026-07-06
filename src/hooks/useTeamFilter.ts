@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, teamsFromTask, type Team } from "@/lib/pm/teams";
+import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, USER_TEAM_OVERRIDES, teamsFromTask, type Team } from "@/lib/pm/teams";
 import type { PmTask } from "@/types/pm";
 
 const key = (scope: string, userId: string | null | undefined) =>
@@ -16,7 +16,8 @@ export function useTeamFilter(scope: string) {
   const role = user?.role ?? null;
   const meId = user?.id ?? null;
   const myTeam: Team | null = role ? ROLE_TO_TEAM[role] : null;
-  const bypass = role === "pm" || role === "submitter" || !myTeam;
+  const override = meId ? USER_TEAM_OVERRIDES[meId] : undefined;
+  const bypass = !override && (role === "pm" || role === "submitter" || !myTeam);
 
   const read = useCallback((): boolean => {
     if (bypass) return true;
@@ -38,18 +39,19 @@ export function useTeamFilter(scope: string) {
     if (meId && t.assignee_id === meId) return true;
     const teams = teamsFromTask(t);
     if (!teams.length) return true; // untagged tasks visible to all (avoids stranding)
-    if (!myTeam) return true;
-    const peers = TEAM_PEERS[myTeam] ?? [myTeam];
+    const peers = override?.peers ?? (myTeam ? (TEAM_PEERS[myTeam] ?? [myTeam]) : null);
+    if (!peers) return true;
     return teams.some((tm) => peers.includes(tm));
-  }, [showAll, bypass, meId, myTeam]);
+  }, [showAll, bypass, meId, myTeam, override]);
 
   const label = useMemo(() => {
     if (bypass) return "All tasks";
     if (showAll) return "All tasks";
+    if (override) return override.label;
     if (!myTeam) return "All tasks";
     const peerLabel = TEAM_PEER_LABEL[myTeam];
     return `My team (${peerLabel ?? TEAM_LABEL[myTeam]})`;
-  }, [bypass, showAll, myTeam]);
+  }, [bypass, showAll, myTeam, override]);
 
   return { showAll, setShowAll, filterTask, myTeam, bypass, label };
 }
