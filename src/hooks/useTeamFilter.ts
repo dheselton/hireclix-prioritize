@@ -39,18 +39,19 @@ export function useTeamFilter(scope: string) {
     if (meId && t.assignee_id === meId) return true;
     const teams = teamsFromTask(t);
     if (!teams.length) return true; // untagged tasks visible to all (avoids stranding)
-    if (!myTeam) return true;
-    const peers = TEAM_PEERS[myTeam] ?? [myTeam];
+    const peers = override?.peers ?? (myTeam ? (TEAM_PEERS[myTeam] ?? [myTeam]) : null);
+    if (!peers) return true;
     return teams.some((tm) => peers.includes(tm));
-  }, [showAll, bypass, meId, myTeam]);
+  }, [showAll, bypass, meId, myTeam, override]);
 
   const label = useMemo(() => {
     if (bypass) return "All tasks";
     if (showAll) return "All tasks";
+    if (override) return override.label;
     if (!myTeam) return "All tasks";
     const peerLabel = TEAM_PEER_LABEL[myTeam];
     return `My team (${peerLabel ?? TEAM_LABEL[myTeam]})`;
-  }, [bypass, showAll, myTeam]);
+  }, [bypass, showAll, myTeam, override]);
 
   return { showAll, setShowAll, filterTask, myTeam, bypass, label };
 }
