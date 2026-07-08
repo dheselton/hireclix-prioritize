@@ -19,6 +19,7 @@ import { StatusPickerPopover } from "./StatusPickerPopover";
 import { InlineDatePopover } from "./InlineDatePopover";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 import { cn } from "@/lib/utils";
+import { TagPillList } from "@/components/pm/tags/TagPill";
 
 
 function stripHtml(html?: string | null): string {
