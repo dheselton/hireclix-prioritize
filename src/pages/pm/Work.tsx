@@ -105,6 +105,7 @@ export default function Work() {
   }, [coMap, user?.id]);
 
   const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
+  const tagFilter = useTagFilter("board");
 
   const visibleTasks = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
@@ -116,8 +117,16 @@ export default function Work() {
         return wt === workType.value;
       });
     }
+    if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags]);
+
+  // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
+  const clientTagsInUse = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tasks) for (const tag of (t.tags ?? [])) if (tag.startsWith("client:")) s.add(tag);
+    return [...s];
+  }, [tasks]);
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visibleTasks.filter(t => t.status === s).length }));
