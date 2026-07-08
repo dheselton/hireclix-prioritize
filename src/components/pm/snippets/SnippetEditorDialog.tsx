@@ -26,6 +26,7 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: Snippet | null;
+  initialProjectIds?: string[];
   categories: SnippetCategory[];
   allTags: string[];
   projects: { id: string; title: string }[];
@@ -36,6 +37,7 @@ export function SnippetEditorDialog({
   open,
   onOpenChange,
   initial,
+  initialProjectIds,
   categories,
   allTags,
   projects,
