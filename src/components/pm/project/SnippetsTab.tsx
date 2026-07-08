@@ -220,6 +220,15 @@ export function SnippetsTab({ projectId, projectTitle, tasks }: Props) {
           </Card>
         );
       })}
+      <SnippetEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        categories={categories}
+        allTags={allTags}
+        projects={projects}
+        onSave={handleSave}
+        initial={null}
+      />
     </div>
   );
 }
