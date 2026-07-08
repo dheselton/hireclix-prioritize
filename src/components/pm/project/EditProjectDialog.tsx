@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { updateProject } from "@/lib/pm/api";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { TagPicker } from "@/components/pm/tags/TagPicker";
-import { clientTag, mergeInheritedTags } from "@/lib/pm/tags";
+import { clientTag } from "@/lib/pm/tags";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus, WorkType } from "@/types/pm";
 
