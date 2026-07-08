@@ -110,6 +110,19 @@ export function ControlPanel({
         />
       </Row>
 
+      {/* Tags */}
+      <Row label="Tags">
+        <div className="flex justify-end">
+          <TagPicker
+            value={task.tags ?? []}
+            onChange={(next) => patch({ tags: next })}
+            readOnlyInherited
+            editableNamespaces={["feature", "type"]}
+            placeholder="Tag"
+          />
+        </div>
+      </Row>
+
       {showEnv && (
         <Row label="Environment">
           <Input
