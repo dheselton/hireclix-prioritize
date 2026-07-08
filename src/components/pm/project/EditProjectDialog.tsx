@@ -75,6 +75,14 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
     try {
       const nextClient = clientId || null;
       const clientChanged = (project.client_id ?? null) !== nextClient;
+      // Refresh the client:<slug> tag when the client changes
+      let nextTags = tags;
+      if (clientChanged) {
+        const nonClient = tags.filter(t => !t.startsWith("client:"));
+        const c = clients.find(x => x.id === nextClient);
+        const ct = clientTag(c?.name);
+        nextTags = ct ? [...nonClient, ct] : nonClient;
+      }
       await updateProject(project.id, {
         title: title.trim(),
         status,
@@ -85,7 +93,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
         kickoff_date: kickoff || null,
         start_date: startDate || null,
         description: description.trim() || null,
-        tags: tags.split(",").map(t => t.trim()).filter(Boolean),
+        tags: nextTags,
       } as any);
       if (clientChanged && nextClient) {
         await applyClientWatchers(project.id, nextClient, null);
