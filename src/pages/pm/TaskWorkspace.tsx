@@ -299,3 +299,70 @@ function WatchProjectButton({ projectId, userId }: { projectId: string | null; u
     </Button>
   );
 }
+
+function MobileActionsMenu({
+  taskId, projectId, userId, onQuickEdit, onDeleted,
+}: {
+  taskId: string;
+  projectId: string | null;
+  userId: string | null;
+  onQuickEdit: () => void;
+  onDeleted: () => void;
+}) {
+  const { pinned, setPinned } = useIsTaskPinned(userId, taskId);
+  const { watching, setWatching } = useIsWatchingProject(userId, projectId);
+  async function togglePin() {
+    if (!userId) return;
+    if (pinned) { await unpinTask(userId, taskId); setPinned(false); toast.success("Unpinned"); }
+    else { await pinTask(userId, taskId); setPinned(true); toast.success("Pinned"); }
+  }
+  async function toggleWatch() {
+    if (!userId || !projectId) return;
+    if (watching) { await unwatchProject(userId, projectId); setWatching(false); toast.success("Stopped watching"); }
+    else { await watchProject(userId, projectId); setWatching(true); toast.success("Watching project"); }
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden h-10 w-10" aria-label="Task actions">
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="z-50 bg-popover w-56">
+        <DropdownMenuItem onSelect={onQuickEdit}>
+          <Pencil className="h-4 w-4 mr-2" /> Quick edit
+        </DropdownMenuItem>
+        {userId && (
+          <DropdownMenuItem onSelect={togglePin}>
+            <Star className={cn("h-4 w-4 mr-2", pinned && "fill-amber-500 text-amber-500")} />
+            {pinned ? "Unpin from timesheet" : "Pin to timesheet"}
+          </DropdownMenuItem>
+        )}
+        {userId && projectId && (
+          <DropdownMenuItem onSelect={toggleWatch}>
+            {watching ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {watching ? "Unwatch project" : "Watch project"}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onSelect={async () => {
+            if (!confirm("Delete this task? This cannot be undone.")) return;
+            try {
+              await deleteTask(taskId);
+              emitTasksChanged();
+              toast.success("Task deleted");
+              onDeleted();
+            } catch (err: any) {
+              toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+            }
+          }}
+        >
+          <Trash2 className="h-4 w-4 mr-2" /> Delete task
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
