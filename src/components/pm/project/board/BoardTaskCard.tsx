@@ -19,6 +19,7 @@ import { StatusPickerPopover } from "./StatusPickerPopover";
 import { InlineDatePopover } from "./InlineDatePopover";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 import { cn } from "@/lib/utils";
+import { TagPillList } from "@/components/pm/tags/TagPill";
 
 
 function stripHtml(html?: string | null): string {
@@ -137,6 +138,7 @@ export function BoardTaskCard({
               <span className="text-[11px] text-muted-foreground">{count.done}/{count.total} subtasks</span>
             )}
           </div>
+          <TagPillList tags={task.tags ?? []} max={3} />
           <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
             <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} hideClaimed={isProject} />
             <div className="flex items-center gap-2">

@@ -10,6 +10,8 @@ import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { updateProject } from "@/lib/pm/api";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
+import { TagPicker } from "@/components/pm/tags/TagPicker";
+import { clientTag } from "@/lib/pm/tags";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus, WorkType } from "@/types/pm";
 
@@ -35,7 +37,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
   const [kickoff, setKickoff] = useState<string>(project.kickoff_date ?? "");
   const [startDate, setStartDate] = useState<string>(project.start_date ?? "");
   const [description, setDescription] = useState<string>(project.description ?? "");
-  const [tags, setTags] = useState<string>((project.tags ?? []).join(", "));
+  const [tags, setTags] = useState<string[]>(project.tags ?? []);
   const [clients, setClients] = useState<Client[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -51,7 +53,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
     setKickoff(project.kickoff_date ?? "");
     setStartDate(project.start_date ?? "");
     setDescription(project.description ?? "");
-    setTags((project.tags ?? []).join(", "));
+    setTags(project.tags ?? []);
   }, [open, project]);
 
   useEffect(() => {
@@ -73,6 +75,14 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
     try {
       const nextClient = clientId || null;
       const clientChanged = (project.client_id ?? null) !== nextClient;
+      // Refresh the client:<slug> tag when the client changes
+      let nextTags = tags;
+      if (clientChanged) {
+        const nonClient = tags.filter(t => !t.startsWith("client:"));
+        const c = clients.find(x => x.id === nextClient);
+        const ct = clientTag(c?.name);
+        nextTags = ct ? [...nonClient, ct] : nonClient;
+      }
       await updateProject(project.id, {
         title: title.trim(),
         status,
@@ -83,7 +93,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
         kickoff_date: kickoff || null,
         start_date: startDate || null,
         description: description.trim() || null,
-        tags: tags.split(",").map(t => t.trim()).filter(Boolean),
+        tags: nextTags,
       } as any);
       if (clientChanged && nextClient) {
         await applyClientWatchers(project.id, nextClient, null);
@@ -176,7 +186,10 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
 
           <div>
             <Label>Tags</Label>
-            <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="comma, separated, tags" />
+            <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+              <TagPicker value={tags} onChange={setTags} editableNamespaces={["feature", "type"]} placeholder="Tag" />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">Client tag updates automatically when you change client.</p>
           </div>
         </div>
 

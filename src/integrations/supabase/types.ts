@@ -1550,6 +1550,36 @@ export type Database = {
           },
         ]
       }
+      pm_tag_catalog: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          namespace: string
+          slug: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label: string
+          namespace: string
+          slug: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          namespace?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       pm_task_assignees: {
         Row: {
           created_at: string

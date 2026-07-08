@@ -14,6 +14,7 @@ import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from 
 import { teamsFromTask } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmTask } from "@/types/pm";
+import { TagPillList } from "@/components/pm/tags/TagPill";
 
 
 interface Props {
@@ -81,6 +82,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
               Due {fmtDate(task.due_date)}
             </span>
           )}
+          <TagPillList tags={task.tags ?? []} max={2} />
         </div>
       </div>
       <StatusPill status={task.status} />

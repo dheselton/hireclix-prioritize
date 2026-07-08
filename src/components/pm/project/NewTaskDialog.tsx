@@ -18,6 +18,7 @@ import { addAssignee } from "@/lib/pm/assignees";
 import { DEFAULT_TEAMS_FOR_TYPE, type Team } from "@/lib/pm/teams";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TagPicker } from "@/components/pm/tags/TagPicker";
 import {
   TASK_TYPES, TASK_STATUSES, PRIORITIES,
   type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority,
@@ -77,7 +78,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [duration, setDuration] = useState<string>("1");
   const [teams, setTeams] = useState<Team[]>(teamsForTypes([defaultType]));
   const [teamsDirty, setTeamsDirty] = useState(false);
-  const [tagsInput, setTagsInput] = useState(initialSupport ? "support" : "");
+  const [tags, setTags] = useState<string[]>([]);
   const [devEnv, setDevEnv] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -97,7 +98,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setDuration("1");
     setTeams(teamsForTypes([defaultType]));
     setTeamsDirty(false);
-    setTagsInput(initialSupport ? "support" : "");
+    setTags([]);
     setDevEnv("");
   }, [open, defaultType, meId, initialSupport]);
 
@@ -184,9 +185,9 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     if (!title.trim() || saving) return;
     setSaving(true);
     try {
-      const userTags = tagsInput.split(",").map(s => s.trim()).filter(Boolean);
       const extraTypeTags = types.slice(1).map(t => `type:${t}`);
-      const allTags = Array.from(new Set([...userTags, ...extraTypeTags]));
+      const supportFlag = initialSupport ? ['support'] : [];
+      const allTags = Array.from(new Set([...tags, ...extraTypeTags, ...supportFlag]));
       const dur = Math.max(1, parseInt(duration, 10) || 1);
 
       const created = await createTask({
@@ -449,13 +450,16 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               <p className="text-[11px] text-muted-foreground">Syncs with Start &amp; Due (weekends excluded).</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="new-task-tags">Tags <span className="text-xs text-muted-foreground font-normal">(comma-separated)</span></Label>
-              <Input
-                id="new-task-tags"
-                value={tagsInput}
-                onChange={e => setTagsInput(e.target.value)}
-                placeholder="urgent, q4, launch"
-              />
+              <Label>Tags</Label>
+              <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+                <TagPicker
+                  value={tags}
+                  onChange={setTags}
+                  editableNamespaces={["feature", "type"]}
+                  placeholder="Tag"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Client & project-type tags are added automatically from the project.</p>
             </div>
           </div>
 
