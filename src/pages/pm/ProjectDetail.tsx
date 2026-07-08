@@ -204,7 +204,7 @@ export default function ProjectDetail() {
       )}
 
       {tab === "snippets" && canSeeSnippets && (
-        <SnippetsTab projectId={project.id} tasks={tasks} />
+        <SnippetsTab projectId={project.id} projectTitle={project.title} tasks={tasks} />
       )}
 
       <TaskDrawer />
