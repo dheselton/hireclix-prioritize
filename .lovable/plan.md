@@ -1,57 +1,35 @@
-## Goal
+Refine the AppSidebar hierarchy so sections and counts read more clearly without increasing font size.
 
-Make tags *mean something*. Instead of a free-text field nobody sees, tags become a small, curated vocabulary organized into three namespaces — **client**, **type**, and **feature** — surfaced consistently on cards, in filters, and in search.
+### What we'll change
 
-## The taxonomy
+1. **Section dividers**
+   - Add a subtle `border-t` / `Separator` between major sections (Navigate → My Work → Configure → Resources → Roadmap).
+   - Keep spacing compact; the line is the cue, not whitespace.
 
-Every tag is stored as a namespaced string in `pm_tasks.tags` / `pm_projects.tags`:
+2. **Differentiated section labels**
+   - **My Work** label becomes the strongest: use `text-foreground` with a small primary-colored indicator (e.g. a `bg-primary` pip or left accent) so the user's own content is the visual anchor.
+   - **Navigate / Configure / Resources / Roadmap** labels stay muted but consistent: `text-[10px] uppercase tracking-wider text-muted-foreground`.
 
-- `client:hireclix`, `client:acme` — who the work is for (auto-applied from the project's client; users don't type these)
-- `type:careersite`, `type:webflow`, `type:integration`, `type:sow`, `type:support` — project shape / delivery model (managed by PM on the project, inherited by tasks)
-- `feature:job-feed`, `feature:apply-flow`, `feature:analytics`, `feature:seo`, `feature:accessibility` — the *thing* the work touches (chosen from a curated list, addable by PMs)
+3. **Subtle "My Work" band**
+   - Wrap the My Work content in a very light rounded container (`bg-card/60` or `bg-accent/25`) with a thin border. This separates personal work from global navigation without calling attention to itself.
 
-Internal flags stay as-is (`support`, `type:dev`, etc.) but move to a hidden `custom_fields.system_tags` array so they stop polluting the visible tag surface.
+4. **Count badge hierarchy**
+   - Quick Tasks count: switch from tiny muted text to a compact pill (`bg-primary/10 text-primary text-[11px] font-semibold tabular-nums min-w-[1.25rem]`), mirroring the active project count.
+   - Active Projects count: upgrade from `bg-muted text-muted-foreground` to the same primary-pill style when inactive, and a stronger filled/foreground variant when the project is active.
+   - Unclaimed Work Queue badge stays as-is (amber pulse) — it already has enough hierarchy.
 
-## What changes
+5. **Subsection header polish**
+   - "Quick Tasks" and "Active Projects" headers get a slightly more deliberate row: icon + label left-aligned, count badge right-aligned, with consistent `text-[11px] font-semibold text-foreground/80`.
+   - Empty state stays italic muted.
 
-### 1. Curated tag catalog
-- New table `pm_tag_catalog` (namespace, slug, label, color, created_by).
-- Seed with the type + feature tags above; PMs can add more from a small "Manage tags" screen at `/pm/settings/tags` (PM-only).
-- Client tags are generated on the fly from `clients` — not stored in the catalog.
+6. **Alignment and tabular numbers**
+   - All counts use `tabular-nums` and equal minimum widths so rows with single-digit and double-digit counts align cleanly.
 
-### 2. Auto-application
-- On project create / client change: project gets `client:<slug>` + selected `type:*` tags.
-- On task create: task inherits its project's `client:*` and `type:*` tags automatically. `feature:*` tags are chosen per-task (or per-project, and inherited).
-- `instantiateTemplateIntoProject` carries template `feature:*` tags to live tasks.
+### Files to edit
+- `src/components/AppSidebar.tsx` — layout, labels, counts, dividers.
+- No new files; purely presentational refinements.
 
-### 3. Intentional input UI
-- New `TagPicker` component (combobox grouped by namespace) replaces the current free-text `tags` input.
-  - Used in `NewTaskDialog`, `TaskWorkspace` right rail, `EditProjectDialog`, and template task editor.
-  - Client + type tags render as read-only chips (inherited); only `feature:*` is editable inline.
-  - "+ New feature tag" inside the picker (PM-only) writes to `pm_tag_catalog`.
-
-### 4. Visible on cards
-- `TagPill` component with per-namespace styling (client = neutral, type = brand accent, feature = teal).
-- Render up to 3 pills on `BoardTaskCard`, `ProjectTaskCard`, `RequestTaskCard`, and TaskWorkspace header, with a "+N" overflow tooltip.
-- Project header shows its type + feature pills.
-
-### 5. Filter + search
-- Add a **Tags** filter chip on `/pm/work` (multi-select, grouped by namespace). Wired through `applyTaskChips` + `buildQueueLink` (`tags=feature:seo,type:careersite`) so deep links work everywhere per the clickable-callouts rule.
-- Global search (⌘K if present, otherwise the Work search box) matches on tag label + slug.
-
-### 6. Cleanup
-- Migration strips existing free-text tags that don't match a namespace (moves them to `custom_fields.legacy_tags` for safety) and rewrites `support` / `type:dev` style internal flags into `custom_fields.system_tags`.
-- Existing "support mode" logic reads from `system_tags` instead of `tags`.
-
-## Out of scope (for now)
-
-- Tag analytics / reporting.
-- Bulk retag tools beyond the migration.
-- Client-facing tag visibility.
-
-## Technical notes
-
-- New table: `pm_tag_catalog(id, namespace text check in ('type','feature'), slug text, label text, color text, created_by uuid, created_at)`, unique on `(namespace, slug)`. GRANTs + RLS mirroring other `pm_*` tables (permissive while auth off).
-- Helpers in new `src/lib/pm/tags.ts`: `parseTag`, `groupTags`, `useTagCatalog`, `applyProjectTagsToTask`, `mergeInheritedTags`.
-- Filter integration in `src/lib/pm/filters.ts` extends the existing chip contract; URL param `tags` parsed in `Work.tsx` and passed through `applyTaskChips`.
-- Migration order: create catalog → seed → backfill client/type tags on existing projects+tasks → move internal flags to `system_tags`.
+### Out of scope
+- No font-size increases beyond 1px where noted.
+- No new data or features.
+- No sidebar collapse behavior changes.
