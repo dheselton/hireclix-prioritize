@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssignees } from "@/lib/pm/assignees";
 import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
 import { teamsFromTask, type Team } from "@/lib/pm/teams";
+import { TagPicker } from "@/components/pm/tags/TagPicker";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
