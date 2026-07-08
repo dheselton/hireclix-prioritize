@@ -26,6 +26,7 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: Snippet | null;
+  initialProjectIds?: string[];
   categories: SnippetCategory[];
   allTags: string[];
   projects: { id: string; title: string }[];
@@ -36,6 +37,7 @@ export function SnippetEditorDialog({
   open,
   onOpenChange,
   initial,
+  initialProjectIds,
   categories,
   allTags,
   projects,
@@ -79,11 +81,11 @@ export function SnippetEditorDialog({
       setCategoryId(categories[0]?.id ?? "");
       setLanguage("JavaScript");
       setTags([]);
-      setProjectIds([]);
+      setProjectIds(initialProjectIds ?? []);
       setVariations([{ name: "Default", code: "" }]);
     }
     setTagInput("");
-  }, [open, initial, categories]);
+  }, [open, initial, initialProjectIds, categories]);
 
   const addTag = (t: string) => {
     const v = t.trim();

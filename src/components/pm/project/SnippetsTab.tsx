@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
-import { Code2, Copy, Check } from "lucide-react";
+import { Code2, Copy, Check, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PmTask } from "@/types/pm";
+import { SnippetEditorDialog } from "@/components/pm/snippets/SnippetEditorDialog";
+import {
+  createSnippet,
+  fetchCategories,
+  type SnippetCategory,
+  type SnippetInput,
+} from "@/lib/pm/snippets";
 
 interface Props {
   projectId: string;
@@ -29,43 +36,62 @@ export function SnippetsTab({ projectId, tasks }: Props) {
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [categories, setCategories] = useState<SnippetCategory[]>([]);
+  const [projects, setProjects] = useState<{ id: string; title: string }[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
+
+  async function loadRows() {
+    const taskIds = tasks.map(t => t.id);
+    if (!taskIds.length) {
+      setRows([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("pm_task_snippets")
+      .select(
+        "id, task_id, snippet:pm_snippets(id, title, language, variations:pm_snippet_variations(code, sort_order))",
+      )
+      .in("task_id", taskIds);
+    const byTask = new Map(tasks.map(t => [t.id, t]));
+    const out: Row[] = [];
+    for (const r of (data ?? []) as any[]) {
+      const t = byTask.get(r.task_id);
+      if (!t || !r.snippet) continue;
+      const variations = (r.snippet.variations ?? []).slice().sort(
+        (a: any, b: any) => a.sort_order - b.sort_order,
+      );
+      out.push({
+        link_id: r.id,
+        task_id: t.id,
+        task_title: t.title,
+        task_type: t.type,
+        task_status: t.status,
+        snippet_id: r.snippet.id,
+        snippet_title: r.snippet.title,
+        language: r.snippet.language ?? null,
+        code: variations[0]?.code ?? "",
+      });
+    }
+    setRows(out);
+  }
+
   useEffect(() => {
     let cancel = false;
     (async () => {
       setLoading(true);
-      const taskIds = tasks.map(t => t.id);
-      if (!taskIds.length) {
-        if (!cancel) { setRows([]); setLoading(false); }
-        return;
-      }
-      const { data } = await supabase
-        .from("pm_task_snippets")
-        .select(
-          "id, task_id, snippet:pm_snippets(id, title, language, variations:pm_snippet_variations(code, sort_order))",
-        )
-        .in("task_id", taskIds);
+      const [c, p, s] = await Promise.all([
+        fetchCategories(),
+        supabase.from("pm_projects").select("id,title").order("title").then(({ data }) => (data ?? []) as any[]),
+        supabase.from("pm_snippets").select("tags").then(({ data }) => (data ?? []) as any[]),
+      ]);
       if (cancel) return;
-      const byTask = new Map(tasks.map(t => [t.id, t]));
-      const out: Row[] = [];
-      for (const r of (data ?? []) as any[]) {
-        const t = byTask.get(r.task_id);
-        if (!t || !r.snippet) continue;
-        const variations = (r.snippet.variations ?? []).slice().sort(
-          (a: any, b: any) => a.sort_order - b.sort_order,
-        );
-        out.push({
-          link_id: r.id,
-          task_id: t.id,
-          task_title: t.title,
-          task_type: t.type,
-          task_status: t.status,
-          snippet_id: r.snippet.id,
-          snippet_title: r.snippet.title,
-          language: r.snippet.language ?? null,
-          code: variations[0]?.code ?? "",
-        });
-      }
-      setRows(out);
+      setCategories(c);
+      setProjects(p.map((x: any) => ({ id: x.id, title: x.title })));
+      const tagSet = new Set<string>();
+      s.forEach((x: any) => (x.tags ?? []).forEach((t: string) => tagSet.add(t)));
+      setAllTags(Array.from(tagSet).sort());
+      await loadRows();
       setLoading(false);
     })();
     return () => { cancel = true; };
@@ -81,21 +107,45 @@ export function SnippetsTab({ projectId, tasks }: Props) {
     }
   };
 
+  const handleSave = async (input: SnippetInput) => {
+    await createSnippet(input);
+    toast.success("Snippet created");
+    await loadRows();
+  };
+
   if (loading) {
     return <div className="text-sm text-muted-foreground p-4">Loading snippets…</div>;
   }
 
   if (rows.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 flex flex-col items-center text-center gap-2">
-          <Code2 className="h-10 w-10 text-muted-foreground/40" />
-          <div className="text-sm font-medium">No snippets linked yet</div>
-          <div className="text-xs text-muted-foreground">
-            Go to Tasks to link snippets to individual tasks.
-          </div>
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="py-12 flex flex-col items-center text-center gap-2">
+            <Code2 className="h-10 w-10 text-muted-foreground/40" />
+            <div className="text-sm font-medium">No snippets linked yet</div>
+            <div className="text-xs text-muted-foreground">
+              Go to Tasks to link snippets to individual tasks, or create a new snippet below.
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setEditorOpen(true)}
+              className="mt-2 gap-1"
+            >
+              <Plus className="h-4 w-4" /> Add Snippet
+            </Button>
+          </CardContent>
+        </Card>
+        <SnippetEditorDialog
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          categories={categories}
+          allTags={allTags}
+          projects={projects}
+          onSave={handleSave}
+          initialProjectIds={[projectId]}
+        />
+      </>
     );
   }
 
@@ -110,9 +160,18 @@ export function SnippetsTab({ projectId, tasks }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[13px] text-muted-foreground">
-        All snippets linked to tasks in this project.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] text-muted-foreground">
+          All snippets linked to tasks in this project.
+        </p>
+        <Button
+          size="sm"
+          onClick={() => setEditorOpen(true)}
+          className="gap-1"
+        >
+          <Plus className="h-4 w-4" /> Add Snippet
+        </Button>
+      </div>
       {orderedTaskIds.map(tid => {
         const taskRows = groups.get(tid)!;
         const head = taskRows[0];
@@ -160,6 +219,15 @@ export function SnippetsTab({ projectId, tasks }: Props) {
           </Card>
         );
       })}
+      <SnippetEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        categories={categories}
+        allTags={allTags}
+        projects={projects}
+        onSave={handleSave}
+        initialProjectIds={[projectId]}
+      />
     </div>
   );
 }
