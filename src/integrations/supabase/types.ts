@@ -1033,6 +1033,41 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_notification_prefs: {
+        Row: {
+          created_at: string
+          email: boolean
+          event_type: string
+          id: string
+          in_app: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: boolean
+          event_type: string
+          id?: string
+          in_app?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: boolean
+          event_type?: string
+          id?: string
+          in_app?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_notifications: {
         Row: {
           body: string | null
