@@ -38,14 +38,17 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
       body, mentions, pinned: false,
     } as any);
     if (mentions.length) {
-      const rows = mentions.filter(id => id !== user.id).map(uid => ({
-        user_id: uid, type: "mention",
-        title: `${user.name} mentioned you in ${taskTitle}`,
-        body: body.slice(0, 200),
-        link: `?task=${taskId}`,
-        read: false,
-      }));
-      if (rows.length) await supabase.from("pm_notifications").insert(rows as any);
+      const { createNotification } = await import("@/lib/pm/notifications");
+      for (const uid of mentions) {
+        if (uid === user.id) continue;
+        await createNotification({
+          user_id: uid,
+          event_type: "mention",
+          title: `${user.name} mentioned you in ${taskTitle}`,
+          body: body.slice(0, 200),
+          link: `/pm/tasks/${taskId}`,
+        });
+      }
     }
     setDraft(""); setMentions([]);
     await load();
