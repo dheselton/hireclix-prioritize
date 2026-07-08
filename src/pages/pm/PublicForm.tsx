@@ -127,7 +127,7 @@ export default function PublicForm() {
     }
   }
 
-  if (!form) return <div ref={rootRef} className="p-6 max-w-xl mx-auto">Form not found.</div>;
+  if (!form) return <div ref={rootRef} className="p-3 md:p-6 max-w-xl mx-auto">Form not found.</div>;
   if (submitted) return (
     <div ref={rootRef} className={embed ? "p-4" : "p-6 max-w-xl mx-auto"}>
       <SubmissionSuccess

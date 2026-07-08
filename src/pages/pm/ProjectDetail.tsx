@@ -108,7 +108,7 @@ export default function ProjectDetail() {
 
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
       <UnclaimedBanner projectId={project.id} />
 
       <ProjectHeader

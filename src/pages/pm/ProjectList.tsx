@@ -47,7 +47,7 @@ export default function ProjectList() {
   }, [projects, tasks, isMe, user?.id, memberIds, chips.active, wt.value]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       <CollectionToolbar
         title="Projects"
         subtitle={`${visible.length} of ${projects.length} total`}

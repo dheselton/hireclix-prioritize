@@ -46,7 +46,7 @@ export default function Forms() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       <CollectionToolbar
         title="Forms"
         mode={mode}

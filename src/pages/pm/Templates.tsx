@@ -39,7 +39,7 @@ export default function Templates() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-unbounded">Project Templates</h1>
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> New Template</Button>

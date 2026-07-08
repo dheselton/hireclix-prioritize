@@ -55,7 +55,7 @@ export default function GlobalTimeline() {
   }, [tasks, filter, isMe, user?.id, chips.active, types, workType.value, projById]);
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
       <CollectionToolbar
         title="Global Timeline"
         mode={mode}

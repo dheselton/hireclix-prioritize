@@ -49,7 +49,7 @@ export default function FormBuilder() {
   if (!form) return <div className="p-6">Loading…</div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       <Link to="/pm/forms" className="text-sm text-muted-foreground inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Forms</Link>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Palette */}
