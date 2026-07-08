@@ -40,7 +40,7 @@ const helpItem: NavItem = { title: "Help", url: "/pm/help", icon: BookOpen, key:
 
 const roadmapItems = [
   { title: "Roadmap Dashboard", url: "/roadmap/dashboard", icon: BarChart3 },
-  { title: "Product Roadmap", url: "/roadmap", icon: Map },
+  { title: "Product Roadmap", url: "/roadmap", icon: MapIcon },
 ];
 
 function useMyWork() {
