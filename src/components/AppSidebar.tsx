@@ -35,7 +35,8 @@ const roadmapItems = [
 ];
 
 function useMyWork() {
-  const { id: userId } = useCurrentUser();
+  const { user } = useCurrentUser();
+  const userId = user?.id ?? null;
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const reload = async () => {
@@ -45,11 +46,11 @@ function useMyWork() {
   useEffect(() => { reload(); }, []);
   useTasksChanged(reload);
   return useMemo(() => {
-    const myTasks = tasks
-      .filter(t => t.assignee_id === userId && t.status !== "done")
-      .slice(0, 8);
+    if (!userId) return { myTasks: [] as PmTask[], myProjects: [] as PmProject[] };
+    const active = (s: PmTask["status"]) => s !== "complete" && s !== "approved";
+    const myTasks = tasks.filter(t => t.assignee_id === userId && active(t.status)).slice(0, 8);
     const projectIds = new Set<string>();
-    tasks.forEach(t => { if (t.assignee_id === userId && t.status !== "done" && t.project_id) projectIds.add(t.project_id); });
+    tasks.forEach(t => { if (t.assignee_id === userId && active(t.status) && t.project_id) projectIds.add(t.project_id); });
     const myProjects = projects.filter(p => projectIds.has(p.id)).slice(0, 8);
     return { myTasks, myProjects };
   }, [tasks, projects, userId]);
