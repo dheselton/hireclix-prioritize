@@ -37,7 +37,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
   const [kickoff, setKickoff] = useState<string>(project.kickoff_date ?? "");
   const [startDate, setStartDate] = useState<string>(project.start_date ?? "");
   const [description, setDescription] = useState<string>(project.description ?? "");
-  const [tags, setTags] = useState<string>((project.tags ?? []).join(", "));
+  const [tags, setTags] = useState<string[]>(project.tags ?? []);
   const [clients, setClients] = useState<Client[]>([]);
   const [saving, setSaving] = useState(false);
 
