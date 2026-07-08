@@ -120,15 +120,33 @@ export function SnippetsTab({ projectId, projectTitle, tasks }: Props) {
 
   if (rows.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 flex flex-col items-center text-center gap-2">
-          <Code2 className="h-10 w-10 text-muted-foreground/40" />
-          <div className="text-sm font-medium">No snippets linked yet</div>
-          <div className="text-xs text-muted-foreground">
-            Go to Tasks to link snippets to individual tasks.
-          </div>
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="py-12 flex flex-col items-center text-center gap-2">
+            <Code2 className="h-10 w-10 text-muted-foreground/40" />
+            <div className="text-sm font-medium">No snippets linked yet</div>
+            <div className="text-xs text-muted-foreground">
+              Go to Tasks to link snippets to individual tasks, or create a new snippet below.
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setEditorOpen(true)}
+              className="mt-2 gap-1"
+            >
+              <Plus className="h-4 w-4" /> Add Snippet
+            </Button>
+          </CardContent>
+        </Card>
+        <SnippetEditorDialog
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          categories={categories}
+          allTags={allTags}
+          projects={projects}
+          onSave={handleSave}
+          initial={null}
+        />
+      </>
     );
   }
 
