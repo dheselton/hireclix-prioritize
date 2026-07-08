@@ -144,7 +144,7 @@ export function SnippetsTab({ projectId, projectTitle, tasks }: Props) {
           allTags={allTags}
           projects={projects}
           onSave={handleSave}
-          initial={null}
+          initialProjectIds={[projectId]}
         />
       </>
     );
