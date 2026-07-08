@@ -160,6 +160,12 @@ export default function Work() {
         actions={
           <div className="flex items-center gap-2">
             <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+            <TagFilterChip
+              value={tagFilter.tags}
+              onToggle={tagFilter.toggle}
+              onClear={tagFilter.clear}
+              extraTags={clientTagsInUse}
+            />
             {user?.role !== "submitter" && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
