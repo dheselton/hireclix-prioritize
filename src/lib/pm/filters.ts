@@ -39,8 +39,9 @@ export function applyTaskChips(
         case "created_by_me":
           if (!meId || t.created_by !== meId) return false; break;
         case "watching": {
-          const watched = watcherTaskIds ? watcherTaskIds.has(t.id) : isMine(t);
-          if (!watched) return false; break;
+          if (!watcherTaskIds) return false;
+          if (!watcherTaskIds.has(t.id)) return false;
+          break;
         }
         case "overdue":
           if (!t.due_date) return false;

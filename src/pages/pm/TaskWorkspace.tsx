@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, Pencil, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, EyeOff, Pencil, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
@@ -32,6 +32,7 @@ import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection"
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
 import { TaskDrawer } from "@/components/pm/TaskDrawer";
 import { pinTask, unpinTask, useIsTaskPinned } from "@/lib/pm/pinnedTasks";
+import { useIsWatchingProject, watchProject, unwatchProject } from "@/lib/pm/watchers";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
@@ -140,6 +141,7 @@ export default function TaskWorkspace() {
             <div className="ml-auto flex items-center gap-2">
               <TimerPill taskId={task.id} taskTitle={task.title} />
               <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
+              <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
               <Button variant="outline" size="sm" onClick={openQuickEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Quick edit
               </Button>
@@ -256,6 +258,33 @@ function PinTaskButton({ taskId, userId }: { taskId: string; userId: string | nu
     <Button variant="outline" size="sm" onClick={toggle} title={pinned ? "Unpin from timesheet quick-add" : "Pin to timesheet quick-add"}>
       <Star className={cn("h-3 w-3 mr-1", pinned && "fill-amber-500 text-amber-500")} />
       {pinned ? "Pinned" : "Pin"}
+    </Button>
+  );
+}
+
+function WatchProjectButton({ projectId, userId }: { projectId: string | null; userId: string | null }) {
+  const { watching, setWatching } = useIsWatchingProject(userId, projectId);
+  if (!userId || !projectId) return null;
+  async function toggle() {
+    if (watching) {
+      await unwatchProject(userId!, projectId!);
+      setWatching(false);
+      toast.success("Stopped watching this project");
+    } else {
+      await watchProject(userId!, projectId!);
+      setWatching(true);
+      toast.success("Watching this project — it'll show under the Watching filter");
+    }
+  }
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={toggle}
+      title={watching ? "Stop watching this project" : "Watch this project (adds tasks to your Watching filter)"}
+    >
+      {watching ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+      {watching ? "Watching" : "Watch"}
     </Button>
   );
 }
