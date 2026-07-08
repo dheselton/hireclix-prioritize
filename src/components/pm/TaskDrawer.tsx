@@ -77,9 +77,15 @@ export function TaskDrawer() {
     navigate(`/pm/tasks/${task.id}`);
   }
 
+  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   return (
     <Sheet open={!!taskId} onOpenChange={(v) => { if (!v) close(); }}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent
+        side={isMobile ? "bottom" : "right"}
+        className={isMobile
+          ? "h-[92dvh] w-full sm:max-w-none rounded-t-2xl p-4 overflow-y-auto safe-bottom"
+          : "w-full sm:max-w-md overflow-y-auto"}
+      >
         <SheetHeader className="mb-4">
           <SheetTitle>{loading ? "Loading…" : task ? "Quick Edit" : "Not found"}</SheetTitle>
         </SheetHeader>
