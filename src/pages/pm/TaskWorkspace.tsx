@@ -195,10 +195,10 @@ export default function TaskWorkspace() {
       </div>
 
       {/* BODY: 1fr / 300px */}
-      <div className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className="grid gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
+      <div className="max-w-[1400px] mx-auto px-3 md:px-4 py-4 md:py-6">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
           {/* LEFT */}
-          <div className="space-y-6 min-w-0">
+          <div className="space-y-4 md:space-y-6 min-w-0">
             <RequestContextPanel projectId={task.project_id} />
             <UpcomingBanner taskId={task.id} />
             {(task.custom_fields as any)?.snippet_incident_id && (
