@@ -18,6 +18,7 @@ import { addAssignee } from "@/lib/pm/assignees";
 import { DEFAULT_TEAMS_FOR_TYPE, type Team } from "@/lib/pm/teams";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TagPicker } from "@/components/pm/tags/TagPicker";
 import {
   TASK_TYPES, TASK_STATUSES, PRIORITIES,
   type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority,
