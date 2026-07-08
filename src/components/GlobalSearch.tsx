@@ -171,7 +171,7 @@ export function GlobalSearch() {
               >
                 <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <span className="flex-1 min-w-0 truncate">{r.title}</span>
-                {r.sub && (
+                {"sub" in r && r.sub && (
                   <span className="text-xs text-muted-foreground truncate max-w-[45%]">{r.sub}</span>
                 )}
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70 ml-2">
