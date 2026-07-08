@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { Search, Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
+import { Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,10 +37,7 @@ export function TopBar() {
     <header className="h-16 border-b border-border bg-card flex items-center px-4 gap-4 sticky top-0 z-40">
       <SidebarTrigger className="flex-shrink-0" />
       <div className="flex-1 max-w-xl">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input type="search" placeholder="Search projects, tasks, clients..." className="pl-10 bg-background" />
-        </div>
+        <GlobalSearch />
       </div>
 
       {user?.role && (
