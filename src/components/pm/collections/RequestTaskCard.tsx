@@ -82,6 +82,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
               Due {fmtDate(task.due_date)}
             </span>
           )}
+          <TagPillList tags={task.tags ?? []} max={2} />
         </div>
       </div>
       <StatusPill status={task.status} />
