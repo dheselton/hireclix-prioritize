@@ -161,9 +161,18 @@ export function SnippetsTab({ projectId, projectTitle, tasks }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[13px] text-muted-foreground">
-        All snippets linked to tasks in this project.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] text-muted-foreground">
+          All snippets linked to tasks in this project.
+        </p>
+        <Button
+          size="sm"
+          onClick={() => setEditorOpen(true)}
+          className="gap-1"
+        >
+          <Plus className="h-4 w-4" /> Add Snippet
+        </Button>
+      </div>
       {orderedTaskIds.map(tid => {
         const taskRows = groups.get(tid)!;
         const head = taskRows[0];
