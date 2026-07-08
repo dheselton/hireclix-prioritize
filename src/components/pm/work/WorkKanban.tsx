@@ -72,7 +72,7 @@ export function WorkKanban({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-3">
+      <div className="flex gap-3 touch-scroll-x no-scrollbar snap-x snap-mandatory md:snap-none pb-3 -mx-3 px-3 md:mx-0 md:px-0">
         {columns.map(s => {
           const items = displayTasks.filter(t => t.status === s);
           return (
@@ -96,7 +96,7 @@ export function WorkKanban({
 function KColumn({ status, count, children }: { status: TaskStatus; count: number; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${status}` });
   return (
-    <div className="flex-shrink-0 w-72 bg-muted/30 rounded-lg p-2">
+    <div className="flex-shrink-0 w-[85vw] sm:w-72 snap-center md:snap-align-none bg-muted/30 rounded-lg p-2">
       <div className="flex items-center justify-between px-1 mb-2">
         <div className="text-xs font-semibold uppercase tracking-wide">{COL_LABELS[status]}</div>
         <Badge variant="outline" className="text-[10px]">{count}</Badge>
