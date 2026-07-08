@@ -32,6 +32,7 @@ import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection"
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
 import { TaskDrawer } from "@/components/pm/TaskDrawer";
 import { pinTask, unpinTask, useIsTaskPinned } from "@/lib/pm/pinnedTasks";
+import { useIsWatchingProject, watchProject, unwatchProject } from "@/lib/pm/watchers";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
