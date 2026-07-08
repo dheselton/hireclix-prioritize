@@ -81,7 +81,7 @@ export function SnippetEditorDialog({
       setCategoryId(categories[0]?.id ?? "");
       setLanguage("JavaScript");
       setTags([]);
-      setProjectIds([]);
+      setProjectIds(initialProjectIds ?? []);
       setVariations([{ name: "Default", code: "" }]);
     }
     setTagInput("");
