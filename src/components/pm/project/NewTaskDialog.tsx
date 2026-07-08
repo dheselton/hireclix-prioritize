@@ -449,13 +449,16 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               <p className="text-[11px] text-muted-foreground">Syncs with Start &amp; Due (weekends excluded).</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="new-task-tags">Tags <span className="text-xs text-muted-foreground font-normal">(comma-separated)</span></Label>
-              <Input
-                id="new-task-tags"
-                value={tagsInput}
-                onChange={e => setTagsInput(e.target.value)}
-                placeholder="urgent, q4, launch"
-              />
+              <Label>Tags</Label>
+              <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+                <TagPicker
+                  value={tags}
+                  onChange={setTags}
+                  editableNamespaces={["feature", "type"]}
+                  placeholder="Tag"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Client & project-type tags are added automatically from the project.</p>
             </div>
           </div>
 
