@@ -141,6 +141,7 @@ export default function TaskWorkspace() {
             <div className="ml-auto flex items-center gap-2">
               <TimerPill taskId={task.id} taskTitle={task.title} />
               <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
+              <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
               <Button variant="outline" size="sm" onClick={openQuickEdit}>
                 <Pencil className="h-3 w-3 mr-1" /> Quick edit
               </Button>
