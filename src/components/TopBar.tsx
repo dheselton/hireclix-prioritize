@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import { Search, Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
+import { Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
