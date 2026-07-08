@@ -53,7 +53,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
     setKickoff(project.kickoff_date ?? "");
     setStartDate(project.start_date ?? "");
     setDescription(project.description ?? "");
-    setTags((project.tags ?? []).join(", "));
+    setTags(project.tags ?? []);
   }, [open, project]);
 
   useEffect(() => {
