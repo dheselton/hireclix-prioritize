@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Columns3, Zap, FolderKanban, Plus } from "lucide-react";
+import { Columns3, Plus } from "lucide-react";
 import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
@@ -152,10 +152,10 @@ export default function Work() {
             {user?.role !== "submitter" && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
-                  <Plus className="h-4 w-4 mr-0.5" /> <Zap className="h-4 w-4 mr-1" /> Quick Request
+                  <Plus className="h-4 w-4 mr-1" /> Quick Request
                 </Button>
                 <Button size="sm" onClick={() => setOpenCreate("project")} title="Multi-phase project with timeline">
-                  <Plus className="h-4 w-4 mr-0.5" /> <FolderKanban className="h-4 w-4 mr-1" /> Project
+                  <Plus className="h-4 w-4 mr-1" /> Project
                 </Button>
               </>
             )}
