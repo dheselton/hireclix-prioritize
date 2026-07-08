@@ -91,9 +91,7 @@ export function TopBar() {
       </Select>
       )}
 
-      <Button variant="ghost" size="icon" aria-label="Notifications">
-        <Bell className="h-5 w-5" />
-      </Button>
+      <NotificationsBell />
 
       <Avatar className="h-9 w-9">
         <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.name} />
