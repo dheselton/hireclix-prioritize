@@ -77,7 +77,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [duration, setDuration] = useState<string>("1");
   const [teams, setTeams] = useState<Team[]>(teamsForTypes([defaultType]));
   const [teamsDirty, setTeamsDirty] = useState(false);
-  const [tagsInput, setTagsInput] = useState(initialSupport ? "support" : "");
+  const [tags, setTags] = useState<string[]>([]);
   const [devEnv, setDevEnv] = useState("");
   const [saving, setSaving] = useState(false);
 
