@@ -28,7 +28,7 @@ export function FloatingTimerTray() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 shadow-lg border border-border bg-card rounded-lg px-3 py-2 flex items-center gap-3 min-w-[280px]">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 shadow-lg border border-border bg-card rounded-lg px-3 py-2 flex items-center gap-3 sm:min-w-[280px] sm:max-w-[calc(100vw-2rem)] safe-bottom">
       <button
         onClick={() => navigate(href)}
         className="flex items-center gap-2 min-w-0 text-left hover:opacity-80"

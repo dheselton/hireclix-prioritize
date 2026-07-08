@@ -12,14 +12,11 @@ interface Props {
   title: string;
   subtitle?: ReactNode;
   actions?: ReactNode;
-  /** when omitted, no view toggle is rendered */
   mode?: Mode;
   onModeChange?: (m: Mode) => void;
   modes?: Mode[];
   showMeMode?: boolean;
-  /** page key for the role-aware type filter label; omit to hide */
   typeFilterPage?: string;
-  /** filter-chip wiring; when omitted the chip row is hidden */
   chipState?: {
     active: Set<ChipId>;
     toggle: (id: ChipId) => void;
@@ -27,7 +24,6 @@ interface Props {
     hide?: ChipId[];
     counts?: Partial<Record<ChipId, number>>;
   };
-  /** extra controls (e.g. project filter Select) placed before Me|All */
   extraControls?: ReactNode;
 }
 
@@ -37,20 +33,32 @@ export function CollectionToolbar({
 }: Props) {
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold font-unbounded">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+      {/* Row 1: Title + primary actions */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold font-unbounded truncate">{title}</h1>
+          {subtitle && <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {actions}
-          {extraControls}
-          {showMeMode && <MeModeToggle />}
-          {mode && onModeChange && (
-            <ViewToggle value={mode} onChange={onModeChange} modes={modes} />
-          )}
-        </div>
+        {actions && (
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {actions}
+          </div>
+        )}
       </div>
+
+      {/* Row 2: Secondary controls — stacks on mobile, inline on ≥sm */}
+      {(extraControls || showMeMode || (mode && onModeChange)) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {extraControls}
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
+            {showMeMode && <MeModeToggle />}
+            {mode && onModeChange && (
+              <ViewToggle value={mode} onChange={onModeChange} modes={modes} />
+            )}
+          </div>
+        </div>
+      )}
+
       {chipState && (
         <FilterChipBar
           active={chipState.active}

@@ -3,7 +3,8 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, Eye, EyeOff, Pencil, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, EyeOff, MoreVertical, Pencil, Star, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
@@ -140,29 +141,38 @@ export default function TaskWorkspace() {
             </div>
             <div className="ml-auto flex items-center gap-2">
               <TimerPill taskId={task.id} taskTitle={task.title} />
-              <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
-              <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
-              <Button variant="outline" size="sm" onClick={openQuickEdit}>
-                <Pencil className="h-3 w-3 mr-1" /> Quick edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={async () => {
-                  if (!confirm("Delete this task? This cannot be undone.")) return;
-                  try {
-                    await deleteTask(task.id);
-                    emitTasksChanged();
-                    toast.success("Task deleted");
-                    navigate(`/pm/projects/${task.project_id}`);
-                  } catch (err: any) {
-                    toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
-                  }
-                }}
-              >
-                <Trash2 className="h-3 w-3 mr-1" /> Delete
-              </Button>
+              <div className="hidden md:flex items-center gap-2">
+                <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
+                <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
+                <Button variant="outline" size="sm" onClick={openQuickEdit}>
+                  <Pencil className="h-3 w-3 mr-1" /> Quick edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    if (!confirm("Delete this task? This cannot be undone.")) return;
+                    try {
+                      await deleteTask(task.id);
+                      emitTasksChanged();
+                      toast.success("Task deleted");
+                      navigate(`/pm/projects/${task.project_id}`);
+                    } catch (err: any) {
+                      toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
+                </Button>
+              </div>
+              <MobileActionsMenu
+                taskId={task.id}
+                projectId={task.project_id}
+                userId={user?.id ?? null}
+                onQuickEdit={openQuickEdit}
+                onDeleted={() => navigate(`/pm/projects/${task.project_id}`)}
+              />
             </div>
           </div>
 
@@ -185,10 +195,10 @@ export default function TaskWorkspace() {
       </div>
 
       {/* BODY: 1fr / 300px */}
-      <div className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className="grid gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
+      <div className="max-w-[1400px] mx-auto px-3 md:px-4 py-4 md:py-6">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
           {/* LEFT */}
-          <div className="space-y-6 min-w-0">
+          <div className="space-y-4 md:space-y-6 min-w-0">
             <RequestContextPanel projectId={task.project_id} />
             <UpcomingBanner taskId={task.id} />
             {(task.custom_fields as any)?.snippet_incident_id && (
@@ -288,3 +298,70 @@ function WatchProjectButton({ projectId, userId }: { projectId: string | null; u
     </Button>
   );
 }
+
+function MobileActionsMenu({
+  taskId, projectId, userId, onQuickEdit, onDeleted,
+}: {
+  taskId: string;
+  projectId: string | null;
+  userId: string | null;
+  onQuickEdit: () => void;
+  onDeleted: () => void;
+}) {
+  const { pinned, setPinned } = useIsTaskPinned(userId, taskId);
+  const { watching, setWatching } = useIsWatchingProject(userId, projectId);
+  async function togglePin() {
+    if (!userId) return;
+    if (pinned) { await unpinTask(userId, taskId); setPinned(false); toast.success("Unpinned"); }
+    else { await pinTask(userId, taskId); setPinned(true); toast.success("Pinned"); }
+  }
+  async function toggleWatch() {
+    if (!userId || !projectId) return;
+    if (watching) { await unwatchProject(userId, projectId); setWatching(false); toast.success("Stopped watching"); }
+    else { await watchProject(userId, projectId); setWatching(true); toast.success("Watching project"); }
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden h-10 w-10" aria-label="Task actions">
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="z-50 bg-popover w-56">
+        <DropdownMenuItem onSelect={onQuickEdit}>
+          <Pencil className="h-4 w-4 mr-2" /> Quick edit
+        </DropdownMenuItem>
+        {userId && (
+          <DropdownMenuItem onSelect={togglePin}>
+            <Star className={cn("h-4 w-4 mr-2", pinned && "fill-amber-500 text-amber-500")} />
+            {pinned ? "Unpin from timesheet" : "Pin to timesheet"}
+          </DropdownMenuItem>
+        )}
+        {userId && projectId && (
+          <DropdownMenuItem onSelect={toggleWatch}>
+            {watching ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {watching ? "Unwatch project" : "Watch project"}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onSelect={async () => {
+            if (!confirm("Delete this task? This cannot be undone.")) return;
+            try {
+              await deleteTask(taskId);
+              emitTasksChanged();
+              toast.success("Task deleted");
+              onDeleted();
+            } catch (err: any) {
+              toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+            }
+          }}
+        >
+          <Trash2 className="h-4 w-4 mr-2" /> Delete task
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+

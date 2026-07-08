@@ -378,4 +378,15 @@ All colors MUST be HSL.
     outline: none;
     box-shadow: 0 0 0 2px hsl(var(--hover-ring)), 0 0 0 4px white;
   }
+
+  /* Hide scrollbars on horizontally scrollable strips (chips, kanban) */
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Safe-area helpers for iOS home indicator / notch */
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+  .safe-top { padding-top: max(env(safe-area-inset-top), 0px); }
+
+  /* Momentum scroll for touch surfaces */
+  .touch-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 }
