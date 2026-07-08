@@ -24,7 +24,7 @@ export function NotificationsBell() {
         <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
           <Bell className="h-5 w-5" />
           {unread > 0 && (
-            <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold">
+            <span className="pointer-events-none absolute top-1 right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
