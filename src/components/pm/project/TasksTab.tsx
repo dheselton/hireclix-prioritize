@@ -123,11 +123,21 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     return out;
   }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team]);
 
+  const sortedFiltered = useMemo(() => {
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      const da = new Date(a.created_at).getTime();
+      const db = new Date(b.created_at).getTime();
+      return sortOrder === "newest" ? db - da : da - db;
+    });
+    return sorted;
+  }, [filtered, sortOrder]);
+
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
-    for (const t of filtered) m[groupIdFor(t.status)].push(t);
+    for (const t of sortedFiltered) m[groupIdFor(t.status)].push(t);
     return m;
-  }, [filtered]);
+  }, [sortedFiltered]);
 
   const counts = useSubtaskCounts(filtered.map(t => t.id));
 
