@@ -85,7 +85,7 @@ export function SnippetEditorDialog({
       setVariations([{ name: "Default", code: "" }]);
     }
     setTagInput("");
-  }, [open, initial, categories]);
+  }, [open, initial, initialProjectIds, categories]);
 
   const addTag = (t: string) => {
     const v = t.trim();
