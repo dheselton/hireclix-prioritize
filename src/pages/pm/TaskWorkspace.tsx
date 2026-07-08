@@ -261,3 +261,30 @@ function PinTaskButton({ taskId, userId }: { taskId: string; userId: string | nu
     </Button>
   );
 }
+
+function WatchProjectButton({ projectId, userId }: { projectId: string | null; userId: string | null }) {
+  const { watching, setWatching } = useIsWatchingProject(userId, projectId);
+  if (!userId || !projectId) return null;
+  async function toggle() {
+    if (watching) {
+      await unwatchProject(userId!, projectId!);
+      setWatching(false);
+      toast.success("Stopped watching this project");
+    } else {
+      await watchProject(userId!, projectId!);
+      setWatching(true);
+      toast.success("Watching this project — it'll show under the Watching filter");
+    }
+  }
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={toggle}
+      title={watching ? "Stop watching this project" : "Watch this project (adds tasks to your Watching filter)"}
+    >
+      {watching ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+      {watching ? "Watching" : "Watch"}
+    </Button>
+  );
+}
