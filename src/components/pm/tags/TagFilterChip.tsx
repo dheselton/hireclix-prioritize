@@ -21,9 +21,8 @@ export function TagFilterChip({ value, onToggle, onClear, extraTags = [] }: Prop
   const groups = useMemo(() => {
     const clientSlugs = new Set<string>();
     for (const t of extraTags) if (t.startsWith("client:")) clientSlugs.add(t.slice("client:".length));
-    const clientEntries: CatalogEntry[] = [...clientSlugs].map(slug => ({
-      id: `client-${slug}`, namespace: "type" /* placeholder */, slug, label: titleCase(slug), color: null,
-    })).sort((a, b) => a.label.localeCompare(b.label));
+    const clientEntries = [...clientSlugs].map(slug => ({ slug, label: titleCase(slug) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
 
     const byNs = { type: [] as CatalogEntry[], feature: [] as CatalogEntry[] };
     for (const e of entries) byNs[e.namespace].push(e);
