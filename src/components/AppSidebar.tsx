@@ -171,9 +171,9 @@ export function AppSidebar() {
                                 key={p.id}
                                 to={`/pm/projects/${p.id}`}
                                 className="block text-xs px-2 py-1 rounded hover:bg-accent/40 truncate text-foreground/80"
-                                title={p.name}
+                                title={p.title}
                               >
-                                {p.name}
+                                {p.title}
                               </NavLink>
                             ))
                           )}
