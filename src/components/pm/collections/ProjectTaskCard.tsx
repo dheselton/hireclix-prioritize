@@ -98,6 +98,7 @@ export function ProjectTaskCard({
             {teams.map(t => <TeamPill key={t} team={t} />)}
           </div>
         )}
+        <TagPillList tags={task.tags ?? []} max={3} />
 
         <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-2 min-w-0">
