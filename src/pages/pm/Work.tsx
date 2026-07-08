@@ -102,10 +102,12 @@ export default function Work() {
     return s;
   }, [coMap, user?.id]);
 
+  const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
+
   const visibleTasks = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
-    v = applyTaskChips(v, chips.active, user?.id, undefined, myCoTaskIds);
+    v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds);
     if (workType.value !== "all") {
       v = v.filter(t => {
         const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
@@ -113,7 +115,7 @@ export default function Work() {
       });
     }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds]);
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visibleTasks.filter(t => t.status === s).length }));
