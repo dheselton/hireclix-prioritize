@@ -165,6 +165,18 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
   const uid = getCurrentUserId();
   const payload: any = { ...p };
   if (uid && payload.created_by === undefined) payload.created_by = uid;
+  // Auto-apply client:<slug> tag from the linked client so filtering by client works everywhere.
+  if (payload.client_id) {
+    try {
+      const { clientTag } = await import('./tags');
+      const { data: c } = await supabase.from('clients').select('name').eq('id', payload.client_id).maybeSingle();
+      const ct = clientTag((c as any)?.name);
+      if (ct) {
+        const existing = (payload.tags ?? []) as string[];
+        if (!existing.includes(ct)) payload.tags = [...existing, ct];
+      }
+    } catch {}
+  }
   const { data, error } = await supabase.from('pm_projects').insert(payload).select().single();
   if (error) throw error;
   const projectId = (data as any)?.id;
