@@ -142,29 +142,38 @@ export default function TaskWorkspace() {
             </div>
             <div className="ml-auto flex items-center gap-2">
               <TimerPill taskId={task.id} taskTitle={task.title} />
-              <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
-              <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
-              <Button variant="outline" size="sm" onClick={openQuickEdit}>
-                <Pencil className="h-3 w-3 mr-1" /> Quick edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={async () => {
-                  if (!confirm("Delete this task? This cannot be undone.")) return;
-                  try {
-                    await deleteTask(task.id);
-                    emitTasksChanged();
-                    toast.success("Task deleted");
-                    navigate(`/pm/projects/${task.project_id}`);
-                  } catch (err: any) {
-                    toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
-                  }
-                }}
-              >
-                <Trash2 className="h-3 w-3 mr-1" /> Delete
-              </Button>
+              <div className="hidden md:flex items-center gap-2">
+                <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
+                <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
+                <Button variant="outline" size="sm" onClick={openQuickEdit}>
+                  <Pencil className="h-3 w-3 mr-1" /> Quick edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    if (!confirm("Delete this task? This cannot be undone.")) return;
+                    try {
+                      await deleteTask(task.id);
+                      emitTasksChanged();
+                      toast.success("Task deleted");
+                      navigate(`/pm/projects/${task.project_id}`);
+                    } catch (err: any) {
+                      toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
+                </Button>
+              </div>
+              <MobileActionsMenu
+                taskId={task.id}
+                projectId={task.project_id}
+                userId={user?.id ?? null}
+                onQuickEdit={openQuickEdit}
+                onDeleted={() => navigate(`/pm/projects/${task.project_id}`)}
+              />
             </div>
           </div>
 
