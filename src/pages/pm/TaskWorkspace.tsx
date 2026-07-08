@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronDown, Eye, EyeOff, MoreVertical, Pencil, Star, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
