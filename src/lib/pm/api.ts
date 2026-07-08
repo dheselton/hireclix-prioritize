@@ -91,6 +91,20 @@ export const createTask = async (task: Partial<PmTask>) => {
       if (!payload.status || payload.status === 'unclaimed') payload.status = 'claimed';
     }
   }
+  // Inherit client:/type: tags from the parent project so tasks are searchable by
+  // client and project shape without manual entry.
+  if (payload.project_id) {
+    try {
+      const { mergeInheritedTags } = await import('./tags');
+      const { data: proj } = await supabase
+        .from('pm_projects')
+        .select('tags')
+        .eq('id', payload.project_id)
+        .maybeSingle();
+      const projTags = ((proj as any)?.tags ?? []) as string[];
+      payload.tags = mergeInheritedTags(payload.tags ?? [], projTags);
+    } catch {}
+  }
   const { data, error } = await supabase.from('pm_tasks').insert(payload).select().single();
   if (error) throw error;
   emitTasksChanged();
