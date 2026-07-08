@@ -186,7 +186,10 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
 
           <div>
             <Label>Tags</Label>
-            <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="comma, separated, tags" />
+            <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+              <TagPicker value={tags} onChange={setTags} editableNamespaces={["feature", "type"]} placeholder="Tag" />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">Client tag updates automatically when you change client.</p>
           </div>
         </div>
 
