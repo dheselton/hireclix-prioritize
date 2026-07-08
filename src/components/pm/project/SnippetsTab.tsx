@@ -31,7 +31,7 @@ type Row = {
   code: string;
 };
 
-export function SnippetsTab({ projectId, projectTitle, tasks }: Props) {
+export function SnippetsTab({ projectId, tasks }: Props) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
