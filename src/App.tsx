@@ -42,11 +42,11 @@ import { RoleRouteGuard } from "@/components/pm/SubmitterRouteGuard";
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-dvh flex w-full">
         <AppSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto overscroll-contain">
             <RoleRouteGuard>{children}</RoleRouteGuard>
           </main>
         </div>
