@@ -87,6 +87,7 @@ function App() {
                 <Route path="/snippets" element={<AppLayout><Snippets /></AppLayout>} />
                 <Route path="/pm/help" element={<AppLayout><Help /></AppLayout>} />
                 <Route path="/pm/time" element={<AppLayout><Timesheet /></AppLayout>} />
+                <Route path="/pm/settings/notifications" element={<AppLayout><NotificationsSettings /></AppLayout>} />
 
                 {/* Legacy roadmap */}
                 <Route path="/roadmap" element={<AppLayout><ProductRoadmap /></AppLayout>} />
