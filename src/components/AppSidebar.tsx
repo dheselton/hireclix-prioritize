@@ -8,6 +8,7 @@ import {
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
 } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
@@ -131,6 +132,35 @@ function NavRow({ item, active, badge }: { item: NavItem; active: boolean; badge
   );
 }
 
+/** Compact count pill with consistent alignment. */
+function CountBadge({ count, active }: { count: number; active?: boolean }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 rounded text-[10px] font-semibold tabular-nums leading-none",
+      active
+        ? "bg-background/80 text-foreground"
+        : "bg-primary/10 text-primary",
+    )}>
+      {count}
+    </span>
+  );
+}
+
+/** Section label. "featured" is used for the user's own content (My Work). */
+function SectionLabel({ children, featured }: { children: React.ReactNode; featured?: boolean }) {
+  return (
+    <SidebarGroupLabel className={cn(
+      "px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider",
+      featured ? "text-foreground" : "text-muted-foreground/70",
+    )}>
+      <span className="inline-flex items-center gap-2">
+        {featured && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />}
+        {children}
+      </span>
+    </SidebarGroupLabel>
+  );
+}
+
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
@@ -155,7 +185,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="w-60 border-r border-border bg-gradient-card">
-      <SidebarContent>
+      <SidebarContent className="py-1">
         <div className="p-4 border-b border-border/50">
           <h1 className="font-unbounded font-bold text-primary text-lg">HireClix</h1>
           <p className="text-[11px] text-muted-foreground mt-0.5">Project Management</p>
@@ -163,9 +193,7 @@ export function AppSidebar() {
 
         {/* NAVIGATE — small, iconic, quiet */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 pt-3 pb-1">
-            Navigate
-          </SidebarGroupLabel>
+          <SectionLabel>Navigate</SectionLabel>
           <SidebarGroupContent>
             <nav className="space-y-0.5 px-2">
               {visiblePrimary.map(item => {
@@ -188,126 +216,123 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        <Separator className="mx-3 w-auto bg-border/50" />
+
         {/* MY WORK — loud, content-forward */}
         {canSeeMyWork && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-foreground/70 px-3 pt-3 pb-1">
-              My Work
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <div className="px-2 space-y-3">
-                {/* Quick Tasks */}
-                <div>
-                  <div className="flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold text-muted-foreground">
-                    <Zap className="h-3 w-3" />
-                    Quick Tasks
-                    {myQuickTasks.length > 0 && (
-                      <span className="ml-auto text-[10px] font-normal">{myQuickTasks.length}</span>
-                    )}
-                  </div>
-                  {myQuickTasks.length === 0 ? (
-                    <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
-                  ) : (
-                    <div className="space-y-px">
-                      {visibleQuick.map(t => (
-                        <NavLink
-                          key={t.id}
-                          to={`/pm/tasks/${t.id}`}
-                          className={({ isActive }) => cn(
-                            "flex items-center gap-2 px-2 py-1 rounded text-[12px] hover:bg-accent/30 group",
-                            isActive ? "bg-accent/50 text-foreground font-medium" : "text-foreground/80",
-                          )}
-                          title={t.title}
-                        >
-                          <ProjectDot
-                            projectId={t.project_id}
-                            isInternal={internalIds.has(t.project_id)}
-                            isCareerSite={careerSiteIds.has(t.project_id)}
-                          />
-                          <span className="truncate flex-1">{t.title}</span>
-                        </NavLink>
-                      ))}
-                      {myQuickTasks.length > QUICK_LIMIT && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllQuick(v => !v)}
-                          className="w-full text-left px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                        >
-                          {showAllQuick ? "Show less" : `+ ${myQuickTasks.length - QUICK_LIMIT} more`}
-                        </button>
+            <div className="rounded-lg border border-border/40 bg-card/50 p-2">
+              <SectionLabel featured>My Work</SectionLabel>
+              <SidebarGroupContent>
+                <div className="space-y-3">
+                  {/* Quick Tasks */}
+                  <div>
+                    <div className="flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold text-foreground/80">
+                      <Zap className="h-3 w-3 text-muted-foreground" />
+                      <span className="truncate">Quick Tasks</span>
+                      {myQuickTasks.length > 0 && (
+                        <CountBadge count={myQuickTasks.length} />
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* Active Projects */}
-                <div>
-                  <div className="flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold text-muted-foreground">
-                    <Folder className="h-3 w-3" />
-                    Active Projects
-                    {myProjectsWithCounts.length > 0 && (
-                      <span className="ml-auto text-[10px] font-normal">{myProjectsWithCounts.length}</span>
-                    )}
-                  </div>
-                  {myProjectsWithCounts.length === 0 ? (
-                    <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
-                  ) : (
-                    <div className="space-y-px">
-                      {visibleProjects.map(({ project, openCount }) => {
-                        const isActive = pathname.startsWith(`/pm/projects/${project.id}`);
-                        const hsl = projectColorHsl(project.id, {
-                          isInternal: internalIds.has(project.id),
-                          isCareerSite: careerSiteIds.has(project.id),
-                        });
-                        return (
+                    {myQuickTasks.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
+                    ) : (
+                      <div className="space-y-px">
+                        {visibleQuick.map(t => (
                           <NavLink
-                            key={project.id}
-                            to={`/pm/projects/${project.id}`}
-                            className={cn(
-                              "relative flex items-center gap-2 pl-3 pr-2 py-1 rounded text-[12px] hover:bg-accent/30",
-                              isActive ? "bg-accent/50 text-foreground font-semibold" : "text-foreground/80",
+                            key={t.id}
+                            to={`/pm/tasks/${t.id}`}
+                            className={({ isActive }) => cn(
+                              "flex items-center gap-2 px-2 py-1 rounded text-[12px] hover:bg-accent/30 group",
+                              isActive ? "bg-accent/50 text-foreground font-medium" : "text-foreground/80",
                             )}
-                            title={project.title}
+                            title={t.title}
                           >
-                            <span
-                              className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r"
-                              style={{ backgroundColor: `hsl(${hsl})` }}
-                              aria-hidden
+                            <ProjectDot
+                              projectId={t.project_id}
+                              isInternal={internalIds.has(t.project_id)}
+                              isCareerSite={careerSiteIds.has(t.project_id)}
                             />
-                            <span className="truncate flex-1">{project.title}</span>
-                            <span className={cn(
-                              "text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded",
-                              isActive ? "bg-background/60 text-foreground" : "bg-muted text-muted-foreground",
-                            )}>
-                              {openCount}
-                            </span>
+                            <span className="truncate flex-1">{t.title}</span>
                           </NavLink>
-                        );
-                      })}
-                      {myProjectsWithCounts.length > PROJ_LIMIT && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllProjects(v => !v)}
-                          className="w-full text-left px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                        >
-                          <ChevronRight className={cn("h-3 w-3 transition-transform", showAllProjects && "rotate-90")} />
-                          {showAllProjects ? "Show less" : `${myProjectsWithCounts.length - PROJ_LIMIT} more`}
-                        </button>
+                        ))}
+                        {myQuickTasks.length > QUICK_LIMIT && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllQuick(v => !v)}
+                            className="w-full text-left px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                          >
+                            {showAllQuick ? "Show less" : `+ ${myQuickTasks.length - QUICK_LIMIT} more`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active Projects */}
+                  <div>
+                    <div className="flex items-center gap-1.5 px-2 pb-1 text-[11px] font-semibold text-foreground/80">
+                      <Folder className="h-3 w-3 text-muted-foreground" />
+                      <span className="truncate">Active Projects</span>
+                      {myProjectsWithCounts.length > 0 && (
+                        <CountBadge count={myProjectsWithCounts.length} />
                       )}
                     </div>
-                  )}
+                    {myProjectsWithCounts.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
+                    ) : (
+                      <div className="space-y-px">
+                        {visibleProjects.map(({ project, openCount }) => {
+                          const isActive = pathname.startsWith(`/pm/projects/${project.id}`);
+                          const hsl = projectColorHsl(project.id, {
+                            isInternal: internalIds.has(project.id),
+                            isCareerSite: careerSiteIds.has(project.id),
+                          });
+                          return (
+                            <NavLink
+                              key={project.id}
+                              to={`/pm/projects/${project.id}`}
+                              className={cn(
+                                "relative flex items-center gap-2 pl-3 pr-2 py-1 rounded text-[12px] hover:bg-accent/30",
+                                isActive ? "bg-accent/50 text-foreground font-semibold" : "text-foreground/80",
+                              )}
+                              title={project.title}
+                            >
+                              <span
+                                className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r"
+                                style={{ backgroundColor: `hsl(${hsl})` }}
+                                aria-hidden
+                              />
+                              <span className="truncate flex-1">{project.title}</span>
+                              <CountBadge count={openCount} active={isActive} />
+                            </NavLink>
+                          );
+                        })}
+                        {myProjectsWithCounts.length > PROJ_LIMIT && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllProjects(v => !v)}
+                            className="w-full text-left px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                          >
+                            <ChevronRight className={cn("h-3 w-3 transition-transform", showAllProjects && "rotate-90")} />
+                            {showAllProjects ? "Show less" : `${myProjectsWithCounts.length - PROJ_LIMIT} more`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </SidebarGroupContent>
+              </SidebarGroupContent>
+            </div>
           </SidebarGroup>
         )}
+
+        <Separator className="mx-3 w-auto bg-border/50" />
 
         {/* CONFIGURE — quiet, only visible to roles who can see it */}
         {visibleConfigure.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 pt-3 pb-1">
-              Configure
-            </SidebarGroupLabel>
+            <SectionLabel>Configure</SectionLabel>
             <SidebarGroupContent>
               <nav className="space-y-0.5 px-2">
                 {visibleConfigure.map(item => {
@@ -319,12 +344,14 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
+        {visibleConfigure.length > 0 && (canSeeSnippets || canSeeHelp) && (
+          <Separator className="mx-3 w-auto bg-border/50" />
+        )}
+
         {/* RESOURCES */}
         {(canSeeSnippets || canSeeHelp) && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 pt-3 pb-1">
-              Resources
-            </SidebarGroupLabel>
+            <SectionLabel>Resources</SectionLabel>
             <SidebarGroupContent>
               <nav className="space-y-0.5 px-2">
                 {canSeeSnippets && (
@@ -338,10 +365,11 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
+        <Separator className="mx-3 w-auto bg-border/50" />
+
+        {/* ROADMAP (LEGACY) */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3 pt-3 pb-1">
-            Roadmap (Legacy)
-          </SidebarGroupLabel>
+          <SectionLabel>Roadmap (Legacy)</SectionLabel>
           <SidebarGroupContent>
             <nav className="space-y-0.5 px-2">
               {roadmapItems.map(item => {
