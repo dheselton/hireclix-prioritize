@@ -17,6 +17,7 @@ import { teamsFromTask } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmProject, PmTask } from "@/types/pm";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { TagPillList } from "@/components/pm/tags/TagPill";
 
 interface Props {
   task: PmTask;
