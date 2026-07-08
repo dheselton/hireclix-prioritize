@@ -84,6 +84,13 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       return nv;
     });
   }
+  function toggleSort() {
+    setSortOrder(v => {
+      const nv = v === "newest" ? "oldest" : "newest";
+      try { localStorage.setItem(`pm.tasks.sort.${projectId}`, nv); } catch {}
+      return nv;
+    });
+  }
 
   const hiddenIds = useMemo(() => computeHiddenTaskIds(tasks, deps), [tasks, deps]);
   const upcomingCount = useMemo(
