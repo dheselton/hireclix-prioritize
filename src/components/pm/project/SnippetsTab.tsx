@@ -16,7 +16,6 @@ import {
 
 interface Props {
   projectId: string;
-  projectTitle: string;
   tasks: PmTask[];
 }
 
