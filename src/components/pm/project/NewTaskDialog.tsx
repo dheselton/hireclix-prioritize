@@ -97,7 +97,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setDuration("1");
     setTeams(teamsForTypes([defaultType]));
     setTeamsDirty(false);
-    setTagsInput(initialSupport ? "support" : "");
+    setTags([]);
     setDevEnv("");
   }, [open, defaultType, meId, initialSupport]);
 
