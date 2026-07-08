@@ -3,17 +3,18 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map, BarChart3, Code, BookOpen, Clock,
+  Plus, Minus, CheckSquare, Folder,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { fetchTasks } from "@/lib/pm/api";
+import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
 import { canSee, type Surface } from "@/lib/pm/permissions";
-import type { PmTask } from "@/types/pm";
+import type { PmTask, PmProject } from "@/types/pm";
 
 type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
 
@@ -32,6 +33,27 @@ const roadmapItems = [
   { title: "Roadmap Dashboard", url: "/roadmap/dashboard", icon: BarChart3 },
   { title: "Product Roadmap", url: "/roadmap", icon: Map },
 ];
+
+function useMyWork() {
+  const { id: userId } = useCurrentUser();
+  const [tasks, setTasks] = useState<PmTask[]>([]);
+  const [projects, setProjects] = useState<PmProject[]>([]);
+  const reload = async () => {
+    const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
+    setTasks(t); setProjects(p);
+  };
+  useEffect(() => { reload(); }, []);
+  useTasksChanged(reload);
+  return useMemo(() => {
+    const myTasks = tasks
+      .filter(t => t.assignee_id === userId && t.status !== "done")
+      .slice(0, 8);
+    const projectIds = new Set<string>();
+    tasks.forEach(t => { if (t.assignee_id === userId && t.status !== "done" && t.project_id) projectIds.add(t.project_id); });
+    const myProjects = projects.filter(p => projectIds.has(p.id)).slice(0, 8);
+    return { myTasks, myProjects };
+  }, [tasks, projects, userId]);
+}
 
 function useUnclaimedCount() {
   const { role } = useCurrentUser();
