@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
-import { Code2, Copy, Check } from "lucide-react";
+import { Code2, Copy, Check, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { PmTask } from "@/types/pm";
+import { SnippetEditorDialog } from "@/components/pm/snippets/SnippetEditorDialog";
+import {
+  createSnippet,
+  fetchCategories,
+  type SnippetCategory,
+  type SnippetInput,
+} from "@/lib/pm/snippets";
 
 interface Props {
   projectId: string;
+  projectTitle: string;
   tasks: PmTask[];
 }
 
