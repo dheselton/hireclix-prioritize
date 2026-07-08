@@ -30,6 +30,7 @@ import TaskWorkspace from "./pages/pm/TaskWorkspace";
 import Snippets from "./pages/pm/Snippets";
 import Help from "./pages/pm/Help";
 import Timesheet from "./pages/pm/Timesheet";
+import NotificationsSettings from "./pages/pm/NotificationsSettings";
 import { ActiveTimerProvider } from "@/components/pm/timer/ActiveTimerProvider";
 import { FloatingTimerTray } from "@/components/pm/timer/FloatingTimerTray";
 import { PreviewProvider } from "@/components/pm/attachments/PreviewProvider";
@@ -86,6 +87,7 @@ function App() {
                 <Route path="/snippets" element={<AppLayout><Snippets /></AppLayout>} />
                 <Route path="/pm/help" element={<AppLayout><Help /></AppLayout>} />
                 <Route path="/pm/time" element={<AppLayout><Timesheet /></AppLayout>} />
+                <Route path="/pm/settings/notifications" element={<AppLayout><NotificationsSettings /></AppLayout>} />
 
                 {/* Legacy roadmap */}
                 <Route path="/roadmap" element={<AppLayout><ProductRoadmap /></AppLayout>} />

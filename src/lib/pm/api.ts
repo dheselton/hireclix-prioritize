@@ -44,9 +44,39 @@ export const fetchDependencies = async (projectId: string) => {
 };
 
 export const updateTask = async (id: string, patch: Partial<PmTask>) => {
+  // Load prior state for change detection
+  const { data: prev } = await supabase.from('pm_tasks').select('assignee_id, status, title, project_id').eq('id', id).maybeSingle();
   const { data, error } = await supabase.from('pm_tasks').update(patch as any).eq('id', id).select().single();
   if (error) throw error;
   emitTasksChanged();
+  // Fire notifications (best-effort; never block on failure)
+  try {
+    const { createNotification } = await import('./notifications');
+    const actor = getCurrentUserId();
+    const newAssignee = (data as any).assignee_id as string | null;
+    const oldAssignee = (prev as any)?.assignee_id as string | null | undefined;
+    const link = `/pm/tasks/${id}`;
+    if (newAssignee && newAssignee !== oldAssignee && newAssignee !== actor) {
+      await createNotification({
+        user_id: newAssignee,
+        event_type: 'assigned',
+        title: `Assigned: ${(data as any).title}`,
+        body: 'You were assigned to a task',
+        link,
+      });
+    }
+    const newStatus = (data as any).status as string;
+    const oldStatus = (prev as any)?.status as string | undefined;
+    if (newStatus && oldStatus && newStatus !== oldStatus && newAssignee && newAssignee !== actor) {
+      await createNotification({
+        user_id: newAssignee,
+        event_type: 'status_change',
+        title: `Status: ${(data as any).title}`,
+        body: `Moved to ${newStatus.replace(/_/g, ' ')}`,
+        link,
+      });
+    }
+  } catch {}
   return data as unknown as PmTask;
 };
 
@@ -64,6 +94,33 @@ export const createTask = async (task: Partial<PmTask>) => {
   const { data, error } = await supabase.from('pm_tasks').insert(payload).select().single();
   if (error) throw error;
   emitTasksChanged();
+  try {
+    const { createNotification } = await import('./notifications');
+    const link = `/pm/tasks/${(data as any).id}`;
+    const assignee = (data as any).assignee_id as string | null;
+    if (assignee && assignee !== uid) {
+      await createNotification({
+        user_id: assignee,
+        event_type: 'assigned',
+        title: `Assigned: ${(data as any).title}`,
+        body: 'You were assigned to a task',
+        link,
+      });
+    }
+    // Notify PM/CSM on new unclaimed request-type tasks
+    if ((data as any).status === 'unclaimed') {
+      const { data: pms } = await supabase.from('mock_users').select('id, role').in('role', ['pm', 'csm']);
+      for (const u of (pms ?? []) as any[]) {
+        if (u.id === uid) continue;
+        await createNotification({
+          user_id: u.id,
+          event_type: 'new_request',
+          title: `New request: ${(data as any).title}`,
+          link,
+        });
+      }
+    }
+  } catch {}
   return data as unknown as PmTask;
 };
 

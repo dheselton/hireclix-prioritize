@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { Bell, List, LayoutGrid, Columns, Eye } from "lucide-react";
+import { List, LayoutGrid, Columns, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -90,9 +91,7 @@ export function TopBar() {
       </Select>
       )}
 
-      <Button variant="ghost" size="icon" aria-label="Notifications">
-        <Bell className="h-5 w-5" />
-      </Button>
+      <NotificationsBell />
 
       <Avatar className="h-9 w-9">
         <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.name} />
