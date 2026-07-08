@@ -390,6 +390,15 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
               {showUpcoming ? `Hide upcoming (${upcomingCount})` : `+ ${upcomingCount} upcoming`}
             </button>
           )}
+          <button
+            type="button"
+            onClick={toggleSort}
+            className={chipCls(false)}
+            title={sortOrder === "newest" ? "Sort: newest first" : "Sort: oldest first"}
+          >
+            <ArrowUpDown className="h-3 w-3" />
+            {sortOrder === "newest" ? "Newest" : "Oldest"}
+          </button>
           <div className="flex gap-1">
             <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
             <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
@@ -400,7 +409,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       {/* Pages (grouped) */}
       {view === "list" && (() => {
         const pageMap = new Map<string, { label: string; tasks: PmTask[] }>();
-        for (const t of filtered) {
+        for (const t of sortedFiltered) {
           if (!t.page_group_key) continue;
           if (!pageMap.has(t.page_group_key)) pageMap.set(t.page_group_key, { label: t.page_label || "Page", tasks: [] });
           pageMap.get(t.page_group_key)!.tasks.push(t);
