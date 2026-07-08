@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Plus, Trash2, FileText } from "lucide-react";
+import { ChevronRight, Plus, Trash2, FileText, ArrowUpDown } from "lucide-react";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
@@ -55,6 +55,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">(() => {
+    try { return (localStorage.getItem(`pm.tasks.sort.${projectId}`) as "newest" | "oldest") || "newest"; } catch { return "newest"; }
+  });
   const [pill, setPill] = useState<TypePill>("all");
   const { isMe, setMode: setMeMode } = useMeMode();
   const [addPageOpen, setAddPageOpen] = useState(false);
@@ -78,6 +81,13 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     setShowUpcoming(v => {
       const nv = !v;
       try { localStorage.setItem(`pm.showUpcoming.${projectId}`, nv ? "1" : "0"); } catch {}
+      return nv;
+    });
+  }
+  function toggleSort() {
+    setSortOrder(v => {
+      const nv = v === "newest" ? "oldest" : "newest";
+      try { localStorage.setItem(`pm.tasks.sort.${projectId}`, nv); } catch {}
       return nv;
     });
   }
@@ -113,11 +123,21 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     return out;
   }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team]);
 
+  const sortedFiltered = useMemo(() => {
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      const da = new Date(a.created_at).getTime();
+      const db = new Date(b.created_at).getTime();
+      return sortOrder === "newest" ? db - da : da - db;
+    });
+    return sorted;
+  }, [filtered, sortOrder]);
+
   const byGroup = useMemo(() => {
     const m: Record<StatusGroupId, PmTask[]> = { ready: [], claimed: [], in_progress: [], in_review: [], complete: [] };
-    for (const t of filtered) m[groupIdFor(t.status)].push(t);
+    for (const t of sortedFiltered) m[groupIdFor(t.status)].push(t);
     return m;
-  }, [filtered]);
+  }, [sortedFiltered]);
 
   const counts = useSubtaskCounts(filtered.map(t => t.id));
 
@@ -370,6 +390,15 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
               {showUpcoming ? `Hide upcoming (${upcomingCount})` : `+ ${upcomingCount} upcoming`}
             </button>
           )}
+          <button
+            type="button"
+            onClick={toggleSort}
+            className={chipCls(false)}
+            title={sortOrder === "newest" ? "Sort: newest first" : "Sort: oldest first"}
+          >
+            <ArrowUpDown className="h-3 w-3" />
+            {sortOrder === "newest" ? "Newest" : "Oldest"}
+          </button>
           <div className="flex gap-1">
             <button type="button" className={chipCls(view === "list")} onClick={() => setView("list")}>List</button>
             <button type="button" className={chipCls(view === "kanban")} onClick={() => setView("kanban")}>Board</button>
@@ -380,7 +409,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       {/* Pages (grouped) */}
       {view === "list" && (() => {
         const pageMap = new Map<string, { label: string; tasks: PmTask[] }>();
-        for (const t of filtered) {
+        for (const t of sortedFiltered) {
           if (!t.page_group_key) continue;
           if (!pageMap.has(t.page_group_key)) pageMap.set(t.page_group_key, { label: t.page_label || "Page", tasks: [] });
           pageMap.get(t.page_group_key)!.tasks.push(t);
@@ -538,6 +567,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
               <div className="mt-1 space-y-1 grayscale opacity-70">
                 {[...buildArchive]
                   .sort((a, b) => {
+                    const da = new Date(a.created_at).getTime();
+                    const db = new Date(b.created_at).getTime();
+                    if (da !== db) return sortOrder === "newest" ? db - da : da - db;
                     const ai = STATUS_GROUPS.findIndex(g => g.statuses.includes(a.status));
                     const bi = STATUS_GROUPS.findIndex(g => g.statuses.includes(b.status));
                     return ai - bi;
