@@ -33,6 +33,8 @@ import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
 import { WorkKanban } from "@/components/pm/work/WorkKanban";
+import { useTagFilter, taskMatchesTagFilter } from "@/hooks/useTagFilter";
+import { TagFilterChip } from "@/components/pm/tags/TagFilterChip";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
