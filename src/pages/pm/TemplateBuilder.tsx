@@ -74,7 +74,7 @@ export default function TemplateBuilder() {
   if (!tpl) return <div className="p-6">Loading…</div>;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
       <Link to="/pm/templates" className="text-sm text-muted-foreground inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Templates</Link>
       <Card><CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">

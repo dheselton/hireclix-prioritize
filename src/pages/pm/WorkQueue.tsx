@@ -71,7 +71,7 @@ export default function WorkQueue() {
 
   if (isSubmitter) {
     return (
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-6">
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <div className="text-sm">
@@ -114,7 +114,7 @@ export default function WorkQueue() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto">
       <UnclaimedBanner hideCta />
 
       <DailyBriefingHero firstName={firstName} counts={counts} />

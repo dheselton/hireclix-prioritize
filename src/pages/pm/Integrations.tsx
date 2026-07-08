@@ -40,7 +40,7 @@ export default function Integrations() {
   async function delHook(id: string) { await supabase.from("pm_webhooks").delete().eq("id", id); reload(); }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold font-unbounded">Integrations</h1>
       <Tabs defaultValue="outbound">
         <TabsList>

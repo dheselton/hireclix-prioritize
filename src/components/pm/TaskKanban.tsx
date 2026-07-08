@@ -43,13 +43,13 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3">
+    <div className="flex gap-3 touch-scroll-x no-scrollbar snap-x snap-mandatory md:snap-none pb-3 -mx-3 px-3 md:mx-0 md:px-0">
       {columns.map(s => {
         const items = tasks.filter(t => t.status === s);
         return (
           <div
             key={s}
-            className="flex-shrink-0 w-72 bg-muted/30 rounded-lg p-2"
+            className="flex-shrink-0 w-[85vw] sm:w-72 snap-center md:snap-align-none bg-muted/30 rounded-lg p-2"
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => { if (draggingId) { moveTo(draggingId, s); setDraggingId(null); } }}
           >

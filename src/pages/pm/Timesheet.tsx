@@ -64,7 +64,7 @@ export default function Timesheet() {
   const billableMins = entries.filter(e => e.billable).reduce((s, e) => s + e.minutes, 0);
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-4">
+    <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />

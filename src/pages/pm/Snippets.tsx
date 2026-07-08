@@ -119,7 +119,7 @@ export default function Snippets() {
     setActiveTags(a => (a.includes(t) ? a.filter(x => x !== t) : [...a, t]));
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
+    <div className="p-3 md:p-6 max-w-[1600px] mx-auto">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-[20px] font-medium flex items-center gap-2">

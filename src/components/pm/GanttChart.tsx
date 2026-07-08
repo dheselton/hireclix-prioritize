@@ -83,7 +83,7 @@ export function GanttChart({
   }
 
   return (
-    <div className="overflow-auto border border-border rounded-lg bg-card">
+    <div className="touch-scroll-x overflow-y-auto border border-border rounded-lg bg-card max-h-[70dvh]">
       <svg ref={svgRef} width={width} height={height} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
         <defs>
           <pattern id="lockedHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
