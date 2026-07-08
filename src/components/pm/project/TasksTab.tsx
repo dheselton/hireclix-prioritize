@@ -567,6 +567,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
               <div className="mt-1 space-y-1 grayscale opacity-70">
                 {[...buildArchive]
                   .sort((a, b) => {
+                    const da = new Date(a.created_at).getTime();
+                    const db = new Date(b.created_at).getTime();
+                    if (da !== db) return sortOrder === "newest" ? db - da : da - db;
                     const ai = STATUS_GROUPS.findIndex(g => g.statuses.includes(a.status));
                     const bi = STATUS_GROUPS.findIndex(g => g.statuses.includes(b.status));
                     return ai - bi;
