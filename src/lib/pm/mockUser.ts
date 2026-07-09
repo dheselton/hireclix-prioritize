@@ -59,7 +59,10 @@ export function useCurrentUser() {
   }, []);
 
   const user = users.find(u => u.id === currentId) ?? null;
-  return { user, users, setCurrent, role: (user?.role ?? 'pm') as PmRole };
+  const roles: PmRole[] = (user?.roles && user.roles.length
+    ? user.roles
+    : [user?.role, user?.secondary_role].filter(Boolean) as PmRole[]) as PmRole[];
+  return { user, users, setCurrent, role: (user?.role ?? 'pm') as PmRole, roles: roles.length ? roles : ['pm' as PmRole] };
 }
 
 /** Non-hook accessor for the active mock user id (reads localStorage). */
