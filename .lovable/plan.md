@@ -1,45 +1,38 @@
 ## Goal
-Support users holding multiple roles (e.g. Dan = PM + Designer + Developer) so their access is the **union** of all assigned roles. Fix the current issue where the "Project Manager" pill hides snippets, dev/design surfaces, and workspace sections from a multi-role user.
+Produce a standalone document that explains what this application is, who it's for, how it's used, and how it works under the hood — suitable for onboarding new team members or sharing with stakeholders.
 
-## Approach
-Move from a single `role` (+ optional `secondary_role`) to a **roles array**. Every permission check becomes "does ANY of the user's roles allow this?". Keep the existing `role` field as the *primary/display* role so pills and grouping stay unchanged.
+## Deliverable
+A single `.docx` written to `/mnt/documents/HireClix-PM-Overview.docx` and surfaced via a `<presentation-artifact>` tag so you can preview/download it directly.
 
-## Changes
+Format: Word doc (easy to edit, share, and paste into a wiki). If you'd prefer PDF or Markdown instead, say the word.
 
-### 1. Data model
-- Add `roles text[]` column to `mock_users` (backfilled from `role` + `secondary_role`).
-- Seed Dan Heselton with `{pm, designer, developer}`; keep others as their single role.
-- `MockUser` type gains `roles: PmRole[]`.
+## Document outline
 
-### 2. Permissions (`src/lib/pm/permissions.ts`)
-- Add `canSeeAny(roles: PmRole[], surface)` = `roles.some(r => canSee(r, surface))`.
-- New `blockedRoutePrefixesFor(roles)` and `fallbackPathFor(roles)` using the union.
-- `briefingScope` / `timesheetScope`: if roles include `pm`, use PM scope; else most-permissive of remaining.
-- `canSeeProject` / `canSeeTask`: pass roles, return true if any role grants access (PM in the set = full access).
+1. **What it is** — One-paragraph elevator pitch: an internal Agency Project Management platform built for HireClix's creative, dev, strategy, and analytics teams, living at `/pm/*`, with the legacy HireClix Roadmap kept under `/roadmap/*`.
+2. **Who it's for** — The role model: PM, Designer, Developer, Strategist, Analyst, QA, CSM, Support, Submitter. Explains multi-role users (e.g. PM+Designer+Dev) and how access is the union of all assigned roles.
+3. **Core principles** — Every stat/CTA/alert is a clickable deep link; date format mm/dd/yyyy; "actionable = important"; non-overwhelming daily view.
+4. **The main surfaces** — Short description of each nav item:
+   - `/pm` Daily Briefing (hero + Quick Tasks / Project Work / Notes)
+   - `/pm/work` Work Queue (list / projects / kanban / grid modes — the canonical "see everything" view)
+   - `/pm/workload` capacity view
+   - `/pm/timeline` global Gantt
+   - `/pm/time` Timesheet (weekly grid + entries, PM can view team)
+   - `/pm/forms` public + internal intake forms
+   - `/pm/templates` reusable project blueprints with page groups
+   - `/pm/integrations`
+   - `/snippets` code snippet library (Dev + Design only) with broken-snippet incident workflow
+5. **Key workflows** — Walk through the lifecycle:
+   - Intake (Quick Request or Public Form → attachments persist at project level → unclaimed task → someone claims it)
+   - Project creation from a template (auto-copies tasks, deps, snippets; page-group reservations)
+   - Scheduling (Configure Timeline → cascade confirm modal, critical path highlighted, reveal modes hide upcoming tasks in the UI without breaking scheduling)
+   - Task workspace (right-rail TimeTracker, TaskMetaCard, RequestContextPanel, Dependencies, Snippets)
+   - Time tracking (one global running timer, floating tray, timesheet grid)
+   - Career Site Support mode (finished projects flip into ongoing support with Documentation tab)
+6. **Visual language** — Internal (purple) vs Career Site (teal) accents; unclaimed amber glow; project team AvatarStacks; in-app attachment previews (image/pdf/video/office).
+7. **How it works technically** (short section, plain language) — React + Vite + Tailwind + shadcn; Lovable Cloud backend with `pm_*` tables and RLS; auth currently disabled in dev via a TopBar role switcher, flip-ready for real auth via `VITE_PM_AUTH_ENABLED`; scheduler and permission helpers live in `src/lib/pm/`.
+8. **Roadmap / not yet built** — Admin UI for editing user roles, tightened RLS once auth re-enables, transactional email wired to per-request-type aliases.
 
-### 3. Consumers
-- `useCurrentUser()` returns `roles: PmRole[]` alongside existing `role` (primary).
-- `RoleRouteGuard` (`SubmitterRouteGuard.tsx`): use `blockedRoutePrefixesFor(roles)`.
-- `AppSidebar`: swap `canSee(role, ...)` calls for `canSeeAny(roles, ...)` so snippets, templates, integrations, etc. appear for any qualifying role.
-- `TopBar` pill: still shows primary `role` label, but appends `+N` when `roles.length > 1` (tooltip lists all). User list rows already show `+Secondary` — update to list all extra roles.
-- Any other `role === "designer" || role === "developer"` style checks (snippets tab visibility, TaskWorkspace sections) switch to `roles.includes(...)`.
-- `useTeamFilter` / `USER_TEAM_OVERRIDES`: derive peers from union of roles' teams instead of the hard-coded Dan override (keeps override table for edge cases but no longer required for multi-role users).
-
-### 4. Backward compatibility
-- Keep `role` and `secondary_role` columns; new code reads `roles` with a fallback: `user.roles ?? [user.role, user.secondary_role].filter(Boolean)`.
-- Auth flag path (`getAuthUserId`) unaffected — when real auth lands, roles will come from `user_roles` table the same way.
-
-## Out of scope
-- No UI to edit a user's roles yet (still seeded in DB). Can add an admin editor later if wanted.
-- No changes to task assignment logic — assignees are still single-user.
-
-## Files touched (approx.)
-- migration: add `roles` column + backfill + Dan seed
-- `src/types/pm.ts`
-- `src/lib/pm/mockUser.ts`
-- `src/lib/pm/permissions.ts`
-- `src/components/pm/SubmitterRouteGuard.tsx`
-- `src/components/AppSidebar.tsx`
-- `src/components/TopBar.tsx`
-- `src/lib/pm/teams.ts` / `useTeamFilter.ts` (derive peers from roles)
-- Any remaining `role ===` gates for snippets/dev/design surfaces
+## Style
+- Arial, US Letter, 1" margins, clean headings, bullet-heavy for scanability
+- HireClix-neutral (no color branding assumed) — dark headings, light body
+- Under ~5 pages so it stays readable
