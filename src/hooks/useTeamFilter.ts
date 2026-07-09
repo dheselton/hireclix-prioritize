@@ -12,12 +12,19 @@ const key = (scope: string, userId: string | null | undefined) =>
  * - User without a mapped team falls back to showAll.
  */
 export function useTeamFilter(scope: string) {
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const role = user?.role ?? null;
   const meId = user?.id ?? null;
   const myTeam: Team | null = role ? ROLE_TO_TEAM[role] : null;
   const override = meId ? USER_TEAM_OVERRIDES[meId] : undefined;
-  const bypass = !override && (role === "pm" || role === "submitter" || !myTeam);
+  // Multi-role users: peer set = union of teams from every role they hold.
+  const multiRolePeers: Team[] | null = (() => {
+    if (!roles || roles.length <= 1) return null;
+    const teams = roles.map(r => ROLE_TO_TEAM[r]).filter((t): t is Team => !!t);
+    const uniq = Array.from(new Set(teams));
+    return uniq.length > 1 ? uniq : null;
+  })();
+  const bypass = !override && !multiRolePeers && (role === "pm" || role === "submitter" || !myTeam);
 
   const read = useCallback((): boolean => {
     if (bypass) return true;
