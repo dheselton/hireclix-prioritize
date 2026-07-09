@@ -408,6 +408,7 @@ export type Database = {
           id: string
           name: string
           role: string
+          roles: string[]
           secondary_role: string | null
         }
         Insert: {
@@ -419,6 +420,7 @@ export type Database = {
           id?: string
           name: string
           role: string
+          roles?: string[]
           secondary_role?: string | null
         }
         Update: {
@@ -430,6 +432,7 @@ export type Database = {
           id?: string
           name?: string
           role?: string
+          roles?: string[]
           secondary_role?: string | null
         }
         Relationships: []

@@ -12,12 +12,19 @@ const key = (scope: string, userId: string | null | undefined) =>
  * - User without a mapped team falls back to showAll.
  */
 export function useTeamFilter(scope: string) {
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const role = user?.role ?? null;
   const meId = user?.id ?? null;
   const myTeam: Team | null = role ? ROLE_TO_TEAM[role] : null;
   const override = meId ? USER_TEAM_OVERRIDES[meId] : undefined;
-  const bypass = !override && (role === "pm" || role === "submitter" || !myTeam);
+  // Multi-role users: peer set = union of teams from every role they hold.
+  const multiRolePeers: Team[] | null = (() => {
+    if (!roles || roles.length <= 1) return null;
+    const teams = roles.map(r => ROLE_TO_TEAM[r]).filter((t): t is Team => !!t);
+    const uniq = Array.from(new Set(teams));
+    return uniq.length > 1 ? uniq : null;
+  })();
+  const bypass = !override && !multiRolePeers && (role === "pm" || role === "submitter" || !myTeam);
 
   const read = useCallback((): boolean => {
     if (bypass) return true;
@@ -39,19 +46,20 @@ export function useTeamFilter(scope: string) {
     if (meId && t.assignee_id === meId) return true;
     const teams = teamsFromTask(t);
     if (!teams.length) return true; // untagged tasks visible to all (avoids stranding)
-    const peers = override?.peers ?? (myTeam ? (TEAM_PEERS[myTeam] ?? [myTeam]) : null);
+    const peers = override?.peers ?? multiRolePeers ?? (myTeam ? (TEAM_PEERS[myTeam] ?? [myTeam]) : null);
     if (!peers) return true;
     return teams.some((tm) => peers.includes(tm));
-  }, [showAll, bypass, meId, myTeam, override]);
+  }, [showAll, bypass, meId, myTeam, override, multiRolePeers]);
 
   const label = useMemo(() => {
     if (bypass) return "All tasks";
     if (showAll) return "All tasks";
     if (override) return override.label;
+    if (multiRolePeers) return `My team (${multiRolePeers.map(t => TEAM_LABEL[t]).join(" + ")})`;
     if (!myTeam) return "All tasks";
     const peerLabel = TEAM_PEER_LABEL[myTeam];
     return `My team (${peerLabel ?? TEAM_LABEL[myTeam]})`;
-  }, [bypass, showAll, myTeam, override]);
+  }, [bypass, showAll, myTeam, override, multiRolePeers]);
 
   return { showAll, setShowAll, filterTask, myTeam, bypass, label };
 }

@@ -9,11 +9,11 @@ import { blockedRoutePrefixes, fallbackPath } from "@/lib/pm/permissions";
  * now come from `src/lib/pm/permissions.ts`.
  */
 export function RoleRouteGuard({ children }: { children: React.ReactNode }) {
-  const { role } = useCurrentUser();
+  const { roles } = useCurrentUser();
   const { pathname } = useLocation();
-  const blocked = blockedRoutePrefixes(role);
+  const blocked = blockedRoutePrefixes(roles);
   if (blocked.some(p => pathname.startsWith(p))) {
-    return <Navigate to={fallbackPath(role)} replace />;
+    return <Navigate to={fallbackPath(roles)} replace />;
   }
   return <>{children}</>;
 }

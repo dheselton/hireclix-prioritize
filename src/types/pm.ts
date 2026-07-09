@@ -12,6 +12,7 @@ export interface MockUser {
   name: string;
   role: PmRole;
   secondary_role?: PmRole | null;
+  roles?: PmRole[] | null;
   email: string | null;
   avatar_url: string | null;
   avatar_color?: string | null;

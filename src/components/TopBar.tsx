@@ -57,15 +57,22 @@ export function TopBar() {
         </div>
       )}
 
-      {!isMobile && user?.role && (
-        <span
-          className={`inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-semibold ${ROLE_BADGE_STYLE[user.role] ?? ""}`}
-          aria-label={`Your role: ${ROLE_BADGE_LABEL[user.role]}`}
-          title={`Your role: ${ROLE_BADGE_LABEL[user.role]}`}
-        >
-          {ROLE_BADGE_LABEL[user.role]}
-        </span>
-      )}
+      {!isMobile && user?.role && (() => {
+        const extraRoles = (user.roles ?? []).filter(r => r !== user.role);
+        const allLabels = [user.role, ...extraRoles].map(r => ROLE_BADGE_LABEL[r] ?? r).join(" · ");
+        return (
+          <span
+            className={`inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-semibold ${ROLE_BADGE_STYLE[user.role] ?? ""}`}
+            aria-label={`Your roles: ${allLabels}`}
+            title={`Your roles: ${allLabels}`}
+          >
+            {ROLE_BADGE_LABEL[user.role]}
+            {extraRoles.length > 0 && (
+              <span className="ml-1.5 opacity-80">+{extraRoles.length}</span>
+            )}
+          </span>
+        );
+      })()}
       {!isMobile && !isAuthEnabled() && (
         <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
       )}
@@ -97,7 +104,10 @@ export function TopBar() {
                             >
                               {u.name.split(" ").map(n => n[0]).join("").slice(0,2)}
                             </span>
-                            {u.name}{u.secondary_role ? ` · +${ROLE_LABEL[u.secondary_role]}` : ""}
+                            {u.name}{(() => {
+                              const extras = (u.roles ?? [u.secondary_role].filter(Boolean) as any[]).filter((x: string) => x && x !== u.role);
+                              return extras.length ? ` · +${extras.map((x: string) => ROLE_LABEL[x] ?? x).join(" +")}` : "";
+                            })()}
                           </span>
                         </SelectItem>
                       ))}

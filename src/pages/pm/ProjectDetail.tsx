@@ -93,7 +93,7 @@ export default function ProjectDetail() {
   const isPM = user?.role === "pm";
   const inSupport = !!(project.custom_fields as any)?.support_mode_at;
 
-  const canSeeSnippets = user?.role === "developer" || user?.role === "designer";
+  const canSeeSnippets = !!user?.roles?.some(r => r === "developer" || r === "designer") || user?.role === "developer" || user?.role === "designer";
 
   const hasTemplate = !!project.template_id;
   const tabs: { id: ProjectTabId; label: string }[] = [
