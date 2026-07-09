@@ -46,19 +46,20 @@ export function useTeamFilter(scope: string) {
     if (meId && t.assignee_id === meId) return true;
     const teams = teamsFromTask(t);
     if (!teams.length) return true; // untagged tasks visible to all (avoids stranding)
-    const peers = override?.peers ?? (myTeam ? (TEAM_PEERS[myTeam] ?? [myTeam]) : null);
+    const peers = override?.peers ?? multiRolePeers ?? (myTeam ? (TEAM_PEERS[myTeam] ?? [myTeam]) : null);
     if (!peers) return true;
     return teams.some((tm) => peers.includes(tm));
-  }, [showAll, bypass, meId, myTeam, override]);
+  }, [showAll, bypass, meId, myTeam, override, multiRolePeers]);
 
   const label = useMemo(() => {
     if (bypass) return "All tasks";
     if (showAll) return "All tasks";
     if (override) return override.label;
+    if (multiRolePeers) return `My team (${multiRolePeers.map(t => TEAM_LABEL[t]).join(" + ")})`;
     if (!myTeam) return "All tasks";
     const peerLabel = TEAM_PEER_LABEL[myTeam];
     return `My team (${peerLabel ?? TEAM_LABEL[myTeam]})`;
-  }, [bypass, showAll, myTeam, override]);
+  }, [bypass, showAll, myTeam, override, multiRolePeers]);
 
   return { showAll, setShowAll, filterTask, myTeam, bypass, label };
 }
