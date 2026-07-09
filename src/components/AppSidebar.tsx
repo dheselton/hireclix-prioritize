@@ -164,7 +164,7 @@ function SectionLabel({ children, featured }: { children: React.ReactNode; featu
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
-  const { role } = useCurrentUser();
+  const { roles } = useCurrentUser();
   const { myQuickTasks, myProjectsWithCounts } = useMyWork();
   const internalIds = useInternalProjectIds();
   const careerSiteIds = useCareerSiteProjects();
@@ -172,11 +172,11 @@ export function AppSidebar() {
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllQuick, setShowAllQuick] = useState(false);
 
-  const visiblePrimary = primaryNav.filter(i => canSee(role, i.key));
-  const visibleConfigure = configureNav.filter(i => canSee(role, i.key));
-  const canSeeSnippets = canSee(role, "snippets");
-  const canSeeHelp = canSee(role, helpItem.key);
-  const canSeeMyWork = canSee(role, "work");
+  const visiblePrimary = primaryNav.filter(i => canSee(roles, i.key));
+  const visibleConfigure = configureNav.filter(i => canSee(roles, i.key));
+  const canSeeSnippets = canSee(roles, "snippets");
+  const canSeeHelp = canSee(roles, helpItem.key);
+  const canSeeMyWork = canSee(roles, "work");
 
   const PROJ_LIMIT = 6;
   const QUICK_LIMIT = 5;
