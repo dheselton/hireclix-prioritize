@@ -23,7 +23,7 @@ export const TYPE_LABEL: Record<TaskType, string> = {
 
 const ALL_TYPES: TaskType[] = ["design", "content", "dev", "qa", "review", "approval", "strategy", "research", "analytics", "reporting"];
 
-export function defaultTypesForRole(role: PmRole | null | undefined): Set<TaskType> {
+function defaultsForSingleRole(role: PmRole | null | undefined): Set<TaskType> {
   if (role === "designer") return new Set<TaskType>(["design", "content"]);
   if (role === "developer") return new Set<TaskType>(["dev", "qa"]);
   if (role === "strategist") return new Set<TaskType>(["strategy", "research"]);
@@ -31,17 +31,29 @@ export function defaultTypesForRole(role: PmRole | null | undefined): Set<TaskTy
   if (role === "qa") return new Set<TaskType>(["qa", "review"]);
   if (role === "csm") return new Set<TaskType>(["approval", "review"]);
   if (role === "support") return new Set<TaskType>(["dev", "qa"]);
-  // pm + submitter see all by default
-  return new Set<TaskType>();
+  return new Set<TaskType>(); // pm + submitter = all
+}
+
+export function defaultTypesForRole(role: PmRole | null | undefined): Set<TaskType> {
+  return defaultsForSingleRole(role);
+}
+
+export function defaultTypesForRoles(roles: PmRole[] | null | undefined): Set<TaskType> {
+  if (!roles || !roles.length) return new Set<TaskType>();
+  // PM in the set = show all (empty set means "all").
+  if (roles.includes("pm") || roles.includes("submitter")) return new Set<TaskType>();
+  const out = new Set<TaskType>();
+  for (const r of roles) for (const t of defaultsForSingleRole(r)) out.add(t);
+  return out;
 }
 
 const keyFor = (page: string, role: PmRole | null | undefined) =>
   `pm.typeFilter.${page}.${role ?? "anon"}`;
 
 export function useTypeFilter(page: string) {
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const role = user?.role ?? null;
-  const defaultSet = useMemo(() => defaultTypesForRole(role), [role]);
+  const defaultSet = useMemo(() => defaultTypesForRoles(roles), [roles]);
 
   const read = useCallback((): Set<TaskType> => {
     if (typeof window === "undefined") return new Set(defaultSet);
