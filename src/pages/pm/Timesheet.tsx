@@ -135,13 +135,15 @@ export default function Timesheet() {
       <ActivitiesStrip onLogged={reload} />
 
       {/* Summary tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <SummaryTile label="Total" value={fmtDur(totalMins)} />
-        <SummaryTile label="Billable" value={fmtDur(billableMins)} accent />
-        <SummaryTile label="Non-billable" value={fmtDur(totalMins - billableMins)} muted />
-        <SummaryTile label="Overhead" value={fmtDur(entries.filter(e => e.is_activity).reduce((s, e) => s + e.minutes, 0))} muted />
-        <SummaryTile label="Avg / day" value={fmtDur(Math.round(totalMins / 7))} />
-      </div>
+      <TooltipProvider>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <SummaryTile label="Total" value={fmtDur(totalMins)} warn={totalWarn} />
+          <SummaryTile label="Billable" value={fmtDur(billableMins)} accent warn={billableWarn} />
+          <SummaryTile label="Non-billable" value={fmtDur(totalMins - billableMins)} muted warn={nonBillableWarn} />
+          <SummaryTile label="Overhead" value={fmtDur(overheadMins)} muted />
+          <SummaryTile label="Avg / day" value={fmtDur(avgDayMins)} warn={avgWarn} />
+        </div>
+      </TooltipProvider>
 
       {/* By client */}
       {byClient.length > 0 && (
@@ -181,14 +183,26 @@ export default function Timesheet() {
   );
 }
 
-function SummaryTile({ label, value, accent, muted }: { label: string; value: string; accent?: boolean; muted?: boolean }) {
+function SummaryTile({ label, value, accent, muted, warn }: { label: string; value: string; accent?: boolean; muted?: boolean; warn?: boolean }) {
+  const valueClass = warn
+    ? "text-amber-600 dark:text-amber-400"
+    : accent ? "text-primary"
+    : muted ? "text-muted-foreground"
+    : "";
   return (
     <Card className="p-3">
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={
-        "text-xl font-bold mt-0.5 " +
-        (accent ? "text-primary" : muted ? "text-muted-foreground" : "")
-      }>{value}</div>
+      <div className={"text-xl font-bold mt-0.5 inline-flex items-center gap-1.5 " + valueClass}>
+        {value}
+        {warn && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex"><AlertTriangle className="h-4 w-4" /></span>
+            </TooltipTrigger>
+            <TooltipContent>This total seems high — check for a running timer or duplicate entries</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
     </Card>
   );
 }
