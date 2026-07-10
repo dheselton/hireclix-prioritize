@@ -63,6 +63,7 @@ export default function Workload() {
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
   return (
+    <TooltipProvider>
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       <CollectionToolbar
         title="Team Workload"
@@ -79,7 +80,7 @@ export default function Workload() {
           const activeRaw = trackedTasks.filter(t => (t.assignee_id === u.id || myCoIds?.has(t.id)) && t.status !== "complete" && t.status !== "approved");
           const active = applyTaskChips(activeRaw, chips.active, me?.id, undefined, taskIdsByUser.get(me?.id ?? ""));
           const thisWeek = active.filter(t => t.due_date && new Date(t.due_date) <= weekEnd);
-          const cap = u.capacity_hours_per_week / 8;
+          const cap = Math.round(u.capacity_hours_per_week / 8);
           const ratio = thisWeek.length / Math.max(1, cap);
           const tone = ratio < 0.7 ? "bg-emerald-500" : ratio < 1.05 ? "bg-amber-500" : "bg-red-500";
           return (
@@ -93,11 +94,21 @@ export default function Workload() {
                   <UserAvatar userId={u.id} size="md" />
                   <div>
                     <div className="font-semibold">{u.name}{isMyRow && <span className="ml-1.5 text-[10px] uppercase text-primary">you</span>}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{u.role}</div>
+                    <div className="text-xs text-muted-foreground">{formatRoleLabel(u.role)}</div>
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs mb-1"><span>This week</span><span>{thisWeek.length} / {Math.round(cap)}</span></div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>This week</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help underline decoration-dotted decoration-muted-foreground/40">
+                          {thisWeek.length} / {cap} tasks this week
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Current active tasks vs. recommended weekly capacity</TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div className={cn("h-full", tone)} style={{ width: `${Math.min(100, ratio*100)}%` }} />
                   </div>
