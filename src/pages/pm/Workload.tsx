@@ -7,6 +7,7 @@ import type { PmTask, PmProject } from "@/types/pm";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { fmtDate } from "@/lib/pm/format";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,14 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+
+function formatRoleLabel(role: string) {
+  if (!role) return "";
+  if (role.toLowerCase() === "csm") return "CSM";
+  if (role.toLowerCase() === "qa") return "QA";
+  if (role.toLowerCase() === "pm") return "PM";
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
