@@ -1,0 +1,1 @@
+ALTER TABLE public.pm_forms ADD COLUMN IF NOT EXISTS description text;
