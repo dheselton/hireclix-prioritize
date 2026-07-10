@@ -961,6 +961,7 @@ export type Database = {
           auth_token: string | null
           client_id: string | null
           created_at: string
+          description: string | null
           id: string
           kind: string
           name: string
@@ -974,6 +975,7 @@ export type Database = {
           auth_token?: string | null
           client_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           kind?: string
           name: string
@@ -987,6 +989,7 @@ export type Database = {
           auth_token?: string | null
           client_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           kind?: string
           name?: string

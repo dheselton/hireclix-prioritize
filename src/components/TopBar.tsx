@@ -6,7 +6,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCurrentUser, isAuthEnabled } from "@/lib/pm/mockUser";
 import { MeModeToggle } from "@/components/pm/MeModeToggle";
@@ -73,9 +73,6 @@ export function TopBar() {
           </span>
         );
       })()}
-      {!isMobile && !isAuthEnabled() && (
-        <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
-      )}
 
       {!isMobile && (
         <>

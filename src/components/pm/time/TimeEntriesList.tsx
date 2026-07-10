@@ -6,6 +6,10 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { fmtDate } from "@/lib/pm/format";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { deleteTimeEntry, fmtDur, type EnrichedEntry } from "@/lib/pm/time";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[]; onChange?: () => void }) {
   const users = useMockUsers();
@@ -104,10 +108,26 @@ export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[
                   <td className="px-3 py-2 text-xs text-muted-foreground max-w-[260px] truncate">{e.note}</td>
                   <td className="px-2 py-2">
                     {canDelete && (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
-                        onClick={async () => { await deleteTimeEntry(e.id); onChange?.(); }}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this time entry?</AlertDialogTitle>
+                            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={async () => { await deleteTimeEntry(e.id); onChange?.(); }}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </td>
                 </tr>

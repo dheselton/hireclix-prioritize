@@ -20,7 +20,9 @@ export default function Templates() {
 
   const reload = async () => {
     const { data } = await supabase.from("pm_project_templates").select("*").order("created_at", { ascending: false });
-    setItems(data || []);
+    // Hide prototype/archived templates flagged with "(don't use)" in the name.
+    const visible = (data || []).filter((t: any) => !/\(don'?t use\)/i.test(t?.name ?? ""));
+    setItems(visible);
   };
   useEffect(() => { reload(); }, []);
 

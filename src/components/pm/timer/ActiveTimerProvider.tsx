@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { emitTimeChanged } from "@/lib/pm/time";
 import { toast } from "sonner";
+import { StaleTimerModal } from "./StaleTimerModal";
+
+// ---- Tunable thresholds ----
+export const TIMER_SOFT_WARN_MS = 8 * 60 * 60 * 1000;     // 8 hours
+export const TIMER_REWARN_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+export const TIMER_STALE_MS = 16 * 60 * 60 * 1000;        // 16 hours
 
 interface ActiveTimer {
   taskId: string | null;
@@ -17,6 +23,10 @@ interface Ctx {
   start: (taskId: string, taskTitle: string) => Promise<void>;
   startActivity: (activityId: string, activityName: string) => Promise<void>;
   stop: (note?: string) => Promise<number | null>;
+  /** Stop the current timer and log exactly `minutes` (used by Adjust Time and Stale modal). */
+  stopWithMinutes: (minutes: number, note?: string) => Promise<number | null>;
+  /** Discard the active timer without inserting a time entry. */
+  discardActive: () => Promise<void>;
   isRunning: (taskId?: string) => boolean;
   isRunningActivity: (activityId?: string) => boolean;
 }
@@ -31,10 +41,17 @@ function saveLS(t: ActiveTimer | null) {
   try { t ? localStorage.setItem(LS_KEY, JSON.stringify(t)) : localStorage.removeItem(LS_KEY); } catch {}
 }
 
+function startOfTodayMs(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   const { user } = useCurrentUser();
   const [current, setCurrent] = useState<ActiveTimer | null>(loadLS());
   const [now, setNow] = useState(Date.now());
+  const [stale, setStale] = useState<ActiveTimer | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -53,6 +70,20 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
           startedAt: new Date(data.started_at).getTime(),
         };
         setCurrent(t); saveLS(t);
+        // Stale check: started before today's midnight OR longer than TIMER_STALE_MS.
+        const elapsed = Date.now() - t.startedAt;
+        if (t.startedAt < startOfTodayMs() || elapsed > TIMER_STALE_MS) {
+          setStale(t);
+        }
+      } else {
+        // No DB timer — also check the localStorage-only one
+        const ls = loadLS();
+        if (ls) {
+          const elapsed = Date.now() - ls.startedAt;
+          if (ls.startedAt < startOfTodayMs() || elapsed > TIMER_STALE_MS) {
+            setStale(ls);
+          }
+        }
       }
     })();
   }, [user?.id]);
@@ -63,8 +94,8 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, [!!current]);
 
-  async function stopInternal(userId: string, t: ActiveTimer, note?: string): Promise<number> {
-    const minutes = Math.max(1, Math.round((Date.now() - t.startedAt) / 60000));
+  async function stopInternal(userId: string, t: ActiveTimer, note?: string, minutesOverride?: number): Promise<number> {
+    const minutes = minutesOverride ?? Math.max(1, Math.round((Date.now() - t.startedAt) / 60000));
     await supabase.from("pm_time_entries").insert({
       task_id: t.taskId,
       activity_id: t.activityId,
@@ -106,6 +137,21 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
     return mins;
   }, [user?.id, current]);
 
+  const stopWithMinutes = useCallback(async (minutes: number, note?: string) => {
+    if (!user || !current) return null;
+    const mins = await stopInternal(user.id, current, note, Math.max(1, Math.round(minutes)));
+    setCurrent(null); saveLS(null);
+    toast.success(`Logged ${mins}m to ${current.taskTitle}`);
+    return mins;
+  }, [user?.id, current]);
+
+  const discardActive = useCallback(async () => {
+    if (!user) { saveLS(null); setCurrent(null); return; }
+    await supabase.from("pm_active_timers").delete().eq("user_id", user.id);
+    saveLS(null); setCurrent(null);
+    toast.success("Timer discarded — no time logged");
+  }, [user?.id]);
+
   const isRunning = useCallback((taskId?: string) => {
     if (!current || !current.taskId) return false;
     return taskId ? current.taskId === taskId : true;
@@ -119,8 +165,14 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
   const elapsedMs = current ? now - current.startedAt : 0;
 
   return (
-    <TimerCtx.Provider value={{ current, elapsedMs, start, startActivity, stop, isRunning, isRunningActivity }}>
+    <TimerCtx.Provider value={{ current, elapsedMs, start, startActivity, stop, stopWithMinutes, discardActive, isRunning, isRunningActivity }}>
       {children}
+      {stale && (
+        <StaleTimerModal
+          timer={stale}
+          onClose={() => setStale(null)}
+        />
+      )}
     </TimerCtx.Provider>
   );
 }
@@ -138,4 +190,13 @@ export function formatHMS(ms: number) {
   const sec = s % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+}
+
+export function formatHM(ms: number) {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
 }

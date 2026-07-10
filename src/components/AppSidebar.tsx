@@ -23,7 +23,7 @@ import type { PmTask, PmProject } from "@/types/pm";
 type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
 
 const primaryNav: NavItem[] = [
-  { title: "Work Queue", url: "/pm", icon: Inbox, end: true, key: "queue" },
+  { title: "Daily Briefing", url: "/pm", icon: Inbox, end: true, key: "queue" },
   { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" },
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" },
@@ -198,7 +198,8 @@ export function AppSidebar() {
             <nav className="space-y-0.5 px-2">
               {visiblePrimary.map(item => {
                 const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
-                const showBadge = item.key === "queue" && unclaimed > 0;
+                const isSubmitterOnly = roles.length === 1 && roles[0] === "submitter";
+                const showBadge = item.key === "queue" && unclaimed > 0 && !isSubmitterOnly;
                 return (
                   <NavRow
                     key={item.title}

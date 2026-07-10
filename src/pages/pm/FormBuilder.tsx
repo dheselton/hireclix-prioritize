@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -67,6 +68,16 @@ export default function FormBuilder() {
           <div>
             <Label>Form name</Label>
             <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} onBlur={e => saveForm({ name: e.target.value })} />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea
+              value={form.description ?? ""}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              onBlur={e => saveForm({ description: e.target.value })}
+              placeholder="Short subtitle explaining when this form should be used"
+              rows={2}
+            />
           </div>
           <div className="border-t border-border pt-3 space-y-2">
             <div className="text-xs uppercase text-muted-foreground">Fields</div>

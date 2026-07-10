@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock } from "lucide-react";
+import { Clock, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { addDays, fmtDur, localDateISO, startOfWeek, useEnrichedEntries, weekDays } from "@/lib/pm/time";
 import { WeekPaginator } from "@/components/pm/time/WeekPaginator";
@@ -12,6 +13,9 @@ import { TimesheetGrid } from "@/components/pm/time/TimesheetGrid";
 import { TimeEntriesList } from "@/components/pm/time/TimeEntriesList";
 import { ActivitiesStrip } from "@/components/pm/time/ActivitiesStrip";
 import { PinnedTasksStrip } from "@/components/pm/time/PinnedTasksStrip";
+
+const DAY_WARN_MIN = 24 * 60;
+const WEEK_WARN_MIN = 80 * 60;
 
 const ALL_USERS = "__all__";
 
@@ -62,6 +66,25 @@ export default function Timesheet() {
 
   const totalMins = entries.reduce((s, e) => s + e.minutes, 0);
   const billableMins = entries.filter(e => e.billable).reduce((s, e) => s + e.minutes, 0);
+  const overheadMins = entries.filter(e => e.is_activity).reduce((s, e) => s + e.minutes, 0);
+  const avgDayMins = Math.round(totalMins / 7);
+
+  // Per-day totals to detect >24h in a day
+  const perDayMins = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of entries) {
+      const day = e.logged_at.slice(0, 10);
+      m.set(day, (m.get(day) ?? 0) + e.minutes);
+    }
+    return m;
+  }, [entries]);
+  const maxDayMins = Math.max(0, ...Array.from(perDayMins.values()));
+  const anyDayHigh = maxDayMins > DAY_WARN_MIN;
+  const weekHigh = totalMins > WEEK_WARN_MIN;
+  const totalWarn = anyDayHigh || weekHigh;
+  const billableWarn = billableMins > WEEK_WARN_MIN;
+  const nonBillableWarn = (totalMins - billableMins) > WEEK_WARN_MIN;
+  const avgWarn = avgDayMins > DAY_WARN_MIN;
 
   return (
     <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
@@ -112,13 +135,15 @@ export default function Timesheet() {
       <ActivitiesStrip onLogged={reload} />
 
       {/* Summary tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <SummaryTile label="Total" value={fmtDur(totalMins)} />
-        <SummaryTile label="Billable" value={fmtDur(billableMins)} accent />
-        <SummaryTile label="Non-billable" value={fmtDur(totalMins - billableMins)} muted />
-        <SummaryTile label="Overhead" value={fmtDur(entries.filter(e => e.is_activity).reduce((s, e) => s + e.minutes, 0))} muted />
-        <SummaryTile label="Avg / day" value={fmtDur(Math.round(totalMins / 7))} />
-      </div>
+      <TooltipProvider>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <SummaryTile label="Total" value={fmtDur(totalMins)} warn={totalWarn} />
+          <SummaryTile label="Billable" value={fmtDur(billableMins)} accent warn={billableWarn} />
+          <SummaryTile label="Non-billable" value={fmtDur(totalMins - billableMins)} muted warn={nonBillableWarn} />
+          <SummaryTile label="Overhead" value={fmtDur(overheadMins)} muted />
+          <SummaryTile label="Avg / day" value={fmtDur(avgDayMins)} warn={avgWarn} />
+        </div>
+      </TooltipProvider>
 
       {/* By client */}
       {byClient.length > 0 && (
@@ -158,14 +183,26 @@ export default function Timesheet() {
   );
 }
 
-function SummaryTile({ label, value, accent, muted }: { label: string; value: string; accent?: boolean; muted?: boolean }) {
+function SummaryTile({ label, value, accent, muted, warn }: { label: string; value: string; accent?: boolean; muted?: boolean; warn?: boolean }) {
+  const valueClass = warn
+    ? "text-amber-600 dark:text-amber-400"
+    : accent ? "text-primary"
+    : muted ? "text-muted-foreground"
+    : "";
   return (
     <Card className="p-3">
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={
-        "text-xl font-bold mt-0.5 " +
-        (accent ? "text-primary" : muted ? "text-muted-foreground" : "")
-      }>{value}</div>
+      <div className={"text-xl font-bold mt-0.5 inline-flex items-center gap-1.5 " + valueClass}>
+        {value}
+        {warn && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex"><AlertTriangle className="h-4 w-4" /></span>
+            </TooltipTrigger>
+            <TooltipContent>This total seems high — check for a running timer or duplicate entries</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
     </Card>
   );
 }

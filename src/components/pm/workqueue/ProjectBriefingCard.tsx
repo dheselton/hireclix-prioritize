@@ -78,10 +78,10 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
             {statusLabel}
           </span>
           <Link
-            to={`/pm/projects/${project.id}`}
+            to={`/pm/projects/${project.id}?tab=tasks`}
             className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5 shrink-0"
           >
-            Open <ArrowRight className="h-3 w-3" />
+            View tasks <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
         <div className="flex items-center gap-3">
