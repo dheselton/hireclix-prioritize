@@ -8,6 +8,10 @@ import { fmtDate } from "@/lib/pm/format";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { addTimeEntry, deleteTimeEntry, updateTimeEntry, fmtDur, type EnrichedEntry } from "@/lib/pm/time";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   /** Provide one of taskId OR activityId. */
@@ -131,7 +135,21 @@ function EntryRow({ entry, canEdit, onChange }: { entry: EnrichedEntry; canEdit:
       {canEdit && (
         <div className="flex gap-0.5">
           <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditing(true)}><Pencil className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={remove}><Trash2 className="h-3 w-3" /></Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this time entry?</AlertDialogTitle>
+                <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={remove}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
     </div>
