@@ -45,6 +45,14 @@ export default function Forms() {
     toast.success("Link copied");
   }
 
+  function fallbackDescription(name: string): string | null {
+    const n = (name ?? "").toLowerCase();
+    if (n.includes("web / email") || n.includes("web/email")) return "Use for web page builds, email campaigns, and landing pages";
+    if (n.includes("general")) return "Use for print, social, brand, and all other creative requests";
+    if (n === "creative request") return "General intake for all creative work requests";
+    return null;
+  }
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       <CollectionToolbar
@@ -58,24 +66,28 @@ export default function Forms() {
 
       {!!forms.length && mode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {forms.map(f => (
-            <Card key={f.id}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold">{f.name}</div>
-                  <Badge variant="outline">{(f.submit_action?.creates) || "task"}</Badge>
-                </div>
-                <div className="text-xs text-muted-foreground break-all">/f/{f.shareable_slug}</div>
-                <div className="flex gap-2">
-                  {!isSubmitter && <Button asChild size="sm" variant="outline"><Link to={`/pm/forms/${f.id}/edit`}>Edit</Link></Button>}
-                  <Button size="sm" variant="ghost" onClick={() => copyLink(f.shareable_slug)}>
-                    <Copy className="h-3 w-3 mr-1" /> Copy link
-                  </Button>
-                  <Button asChild size="sm" variant="ghost"><a href={`/f/${f.shareable_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /></a></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {forms.map(f => {
+            const desc = f.description || fallbackDescription(f.name);
+            return (
+              <Card key={f.id}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold">{f.name}</div>
+                    <Badge variant="outline">{(f.submit_action?.creates) || "task"}</Badge>
+                  </div>
+                  {desc && <div className="text-xs text-muted-foreground leading-snug">{desc}</div>}
+                  <div className="text-xs text-muted-foreground break-all">/f/{f.shareable_slug}</div>
+                  <div className="flex gap-2">
+                    {!isSubmitter && <Button asChild size="sm" variant="outline"><Link to={`/pm/forms/${f.id}/edit`}>Edit</Link></Button>}
+                    <Button size="sm" variant="ghost" onClick={() => copyLink(f.shareable_slug)}>
+                      <Copy className="h-3 w-3 mr-1" /> Copy link
+                    </Button>
+                    <Button asChild size="sm" variant="ghost"><a href={`/f/${f.shareable_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-3 w-3" /></a></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
