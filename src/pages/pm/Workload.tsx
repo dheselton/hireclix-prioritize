@@ -154,5 +154,6 @@ export default function Workload() {
       </div>
       <TaskDrawer />
     </div>
+    </TooltipProvider>
   );
 }
