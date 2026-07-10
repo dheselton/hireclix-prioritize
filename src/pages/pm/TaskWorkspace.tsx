@@ -243,6 +243,25 @@ export default function TaskWorkspace() {
         </div>
       </div>
       <TaskDrawer />
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently delete this task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All data, files, and comments will be lost. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={performDelete}
+            >
+              Delete task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -307,13 +326,13 @@ function WatchProjectButton({ projectId, userId }: { projectId: string | null; u
 }
 
 function MobileActionsMenu({
-  taskId, projectId, userId, onQuickEdit, onDeleted,
+  taskId, projectId, userId, onQuickEdit, onRequestDelete,
 }: {
   taskId: string;
   projectId: string | null;
   userId: string | null;
   onQuickEdit: () => void;
-  onDeleted: () => void;
+  onRequestDelete: () => void;
 }) {
   const { pinned, setPinned } = useIsTaskPinned(userId, taskId);
   const { watching, setWatching } = useIsWatchingProject(userId, projectId);
@@ -353,17 +372,7 @@ function MobileActionsMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onSelect={async () => {
-            if (!confirm("Delete this task? This cannot be undone.")) return;
-            try {
-              await deleteTask(taskId);
-              emitTasksChanged();
-              toast.success("Task deleted");
-              onDeleted();
-            } catch (err: any) {
-              toast.error(`Delete failed: ${err?.message ?? "unknown error"}`);
-            }
-          }}
+          onSelect={onRequestDelete}
         >
           <Trash2 className="h-4 w-4 mr-2" /> Delete task
         </DropdownMenuItem>
@@ -371,4 +380,5 @@ function MobileActionsMenu({
     </DropdownMenu>
   );
 }
+
 
