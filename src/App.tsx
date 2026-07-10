@@ -2,7 +2,8 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -37,17 +38,6 @@ const RoadmapDashboard = lazy(() => import("./pages/RoadmapDashboard"));
 import { ActiveTimerProvider } from "@/components/pm/timer/ActiveTimerProvider";
 import { FloatingTimerTray } from "@/components/pm/timer/FloatingTimerTray";
 import { PreviewProvider } from "@/components/pm/attachments/PreviewProvider";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      gcTime: 5 * 60_000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 import { RoleRouteGuard } from "@/components/pm/SubmitterRouteGuard";
 

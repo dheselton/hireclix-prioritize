@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient } from '@/lib/queryClient';
 import type { MockUser, PmRole } from '@/types/pm';
 
 const STORAGE_KEY = 'pm.currentUserId';
@@ -36,12 +37,20 @@ let currentId: string | null =
 const currentSubscribers = new Set<() => void>();
 
 function writeCurrentId(id: string | null) {
+  const changed = currentId !== id;
   currentId = id;
   try {
     if (id) localStorage.setItem(STORAGE_KEY, id);
     else localStorage.removeItem(STORAGE_KEY);
   } catch {}
   currentSubscribers.forEach(fn => fn());
+  // Invalidate user-scoped caches so briefing/queue/workload/timesheet
+  // repopulate immediately when switching roles in dev mode.
+  if (changed) {
+    try {
+      queryClient.invalidateQueries();
+    } catch {}
+  }
 }
 
 export function useCurrentUser() {
