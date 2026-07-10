@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock } from "lucide-react";
+import { Clock, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { addDays, fmtDur, localDateISO, startOfWeek, useEnrichedEntries, weekDays } from "@/lib/pm/time";
 import { WeekPaginator } from "@/components/pm/time/WeekPaginator";
@@ -12,6 +13,9 @@ import { TimesheetGrid } from "@/components/pm/time/TimesheetGrid";
 import { TimeEntriesList } from "@/components/pm/time/TimeEntriesList";
 import { ActivitiesStrip } from "@/components/pm/time/ActivitiesStrip";
 import { PinnedTasksStrip } from "@/components/pm/time/PinnedTasksStrip";
+
+const DAY_WARN_MIN = 24 * 60;
+const WEEK_WARN_MIN = 80 * 60;
 
 const ALL_USERS = "__all__";
 
@@ -62,6 +66,25 @@ export default function Timesheet() {
 
   const totalMins = entries.reduce((s, e) => s + e.minutes, 0);
   const billableMins = entries.filter(e => e.billable).reduce((s, e) => s + e.minutes, 0);
+  const overheadMins = entries.filter(e => e.is_activity).reduce((s, e) => s + e.minutes, 0);
+  const avgDayMins = Math.round(totalMins / 7);
+
+  // Per-day totals to detect >24h in a day
+  const perDayMins = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of entries) {
+      const day = e.logged_at.slice(0, 10);
+      m.set(day, (m.get(day) ?? 0) + e.minutes);
+    }
+    return m;
+  }, [entries]);
+  const maxDayMins = Math.max(0, ...Array.from(perDayMins.values()));
+  const anyDayHigh = maxDayMins > DAY_WARN_MIN;
+  const weekHigh = totalMins > WEEK_WARN_MIN;
+  const totalWarn = anyDayHigh || weekHigh;
+  const billableWarn = billableMins > WEEK_WARN_MIN;
+  const nonBillableWarn = (totalMins - billableMins) > WEEK_WARN_MIN;
+  const avgWarn = avgDayMins > DAY_WARN_MIN;
 
   return (
     <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
