@@ -46,7 +46,6 @@ export default function Integrations() {
         <TabsList>
           <TabsTrigger value="outbound">Outbound Webhooks</TabsTrigger>
           <TabsTrigger value="deliveries">Delivery Log</TabsTrigger>
-          <TabsTrigger value="envs">Client Environments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="outbound" className="space-y-4">
@@ -95,13 +94,6 @@ export default function Integrations() {
                 {!deliveries.length && <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">No deliveries yet.</td></tr>}
               </tbody>
             </table>
-          </CardContent></Card>
-        </TabsContent>
-
-        <TabsContent value="envs">
-          <Card><CardContent className="p-4 text-sm text-muted-foreground">
-            Per-client environment tracker. ({envs.length} entries across {clients.length} clients.)
-            <p className="mt-2">Full CRUD is wired in the database; the inline editor for endpoints, contacts and integration notes is a placeholder for v1 polish.</p>
           </CardContent></Card>
         </TabsContent>
       </Tabs>

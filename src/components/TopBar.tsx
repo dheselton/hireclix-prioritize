@@ -73,9 +73,6 @@ export function TopBar() {
           </span>
         );
       })()}
-      {!isMobile && !isAuthEnabled() && (
-        <Badge variant="outline" className="hidden lg:inline-flex">Auth disabled · dev mode</Badge>
-      )}
 
       {!isMobile && (
         <>
