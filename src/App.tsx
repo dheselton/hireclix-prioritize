@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +10,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 import { RouteFallback } from "@/components/RouteFallback";
+import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 
 // Eager: default landing + auth entry (small, always needed early)
 import WorkQueue from "./pages/pm/WorkQueue";
