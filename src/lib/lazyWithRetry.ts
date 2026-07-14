@@ -2,30 +2,46 @@ import { lazy, type ComponentType } from "react";
 
 /**
  * lazy() wrapper that handles stale chunk errors after a redeploy.
- * If a dynamic import fails (old hash no longer exists), reload the page once.
+ * Strategy:
+ *  1. First failure → retry the import once after a short delay (handles transient network blips).
+ *  2. Still failing → force a full page reload (once per session) so the browser fetches the fresh index.html
+ *     with the new chunk hashes.
  */
 export function lazyWithRetry<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>
 ) {
   return lazy(async () => {
     const KEY = "lovable:chunk-reloaded";
+    const isChunkError = (err: unknown) => {
+      const msg = String((err as any)?.message ?? err);
+      return /Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed|error loading dynamically imported module/i.test(
+        msg
+      );
+    };
+
     try {
       return await factory();
     } catch (err) {
-      const alreadyReloaded = sessionStorage.getItem(KEY);
-      const msg = String((err as any)?.message ?? err);
-      const isChunkError =
-        /Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed/i.test(msg);
-      if (isChunkError && !alreadyReloaded) {
-        sessionStorage.setItem(KEY, "1");
-        window.location.reload();
-        // Return a never-resolving promise so React doesn't render an error before reload.
-        return new Promise<never>(() => {});
+      if (!isChunkError(err)) throw err;
+
+      // Retry once — sometimes a transient network hiccup.
+      try {
+        await new Promise((r) => setTimeout(r, 300));
+        return await factory();
+      } catch (err2) {
+        if (!isChunkError(err2)) throw err2;
+
+        const alreadyReloaded = sessionStorage.getItem(KEY);
+        if (!alreadyReloaded) {
+          sessionStorage.setItem(KEY, "1");
+          // Force reload from server to pick up the new index.html + fresh chunk hashes.
+          window.location.reload();
+          return new Promise<never>(() => {});
+        }
+        // Already reloaded once — clear so a future deploy can retry, then surface the error.
+        sessionStorage.removeItem(KEY);
+        throw err2;
       }
-      throw err;
-    } finally {
-      // Clear the flag on a successful load so future stale-chunks can still trigger one reload.
-      setTimeout(() => sessionStorage.removeItem(KEY), 10_000);
     }
   });
 }
