@@ -228,6 +228,10 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
       const allTags = Array.from(new Set([...tags, ...extraTypeTags, ...supportFlag]));
       const dur = Math.max(1, parseInt(duration, 10) || 1);
 
+      const estNum = parseFloat(estimateHours);
+      const custom: Record<string, any> = {};
+      if (Number.isFinite(estNum) && estNum > 0) custom.estimated_hours = estNum;
+
       const created = await createTask({
         project_id: project.id,
         phase_id: phaseId,
@@ -244,11 +248,58 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
         tags: allTags,
         dev_environment: types.includes("dev") ? (devEnv.trim() || null) : null,
         sort_order: 9999,
+        ...(Object.keys(custom).length ? { custom_fields: custom } : {}),
       });
 
-      // Persist co-assignees
+      // Co-assignees
       for (const uid of assigneeIds.slice(1)) {
         await addAssignee(created.id, uid);
+      }
+
+      // Attachments + links (files → task-attachments bucket, links → pm_task_links)
+      if (files.length || links.length) {
+        try {
+          await persistIntakeAttachments({
+            projectId: project.id,
+            taskId: created.id,
+            files,
+            links,
+            userId: user?.id ?? null,
+          });
+        } catch (err) { console.error("attachments failed", err); }
+      }
+
+      // Checklist
+      if (checklist.length) {
+        try {
+          await supabase.from("pm_checklist_items").insert(
+            checklist.map((label, i) => ({
+              task_id: created.id, label, sort_order: i, checked: false,
+            })) as any
+          );
+        } catch (err) { console.error("checklist failed", err); }
+      }
+
+      // Dependencies (this task is blocked by picked tasks)
+      if (deps.length) {
+        try {
+          await supabase.from("pm_task_dependencies").insert(
+            deps.map(d => ({
+              task_id: created.id,
+              depends_on_task_id: d.id,
+              type: "finish_start",
+              lag_days: 0,
+              reveal_mode: revealMode,
+            })) as any
+          );
+        } catch (err) { console.error("deps failed", err); }
+      }
+
+      // Watchers
+      if (watcherIds.length) {
+        for (const uid of watcherIds) {
+          try { await watchTask(uid, created.id); } catch (err) { console.error(err); }
+        }
       }
 
       toast.success("Task created");
