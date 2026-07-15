@@ -564,7 +564,191 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               />
             </div>
           )}
+
+          {/* More options */}
+          <div className="border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={() => setMoreOpen(o => !o)}
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              {moreOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              More options
+              {!moreOpen && (files.length + links.length + checklist.length + deps.length + watcherIds.length > 0 || estimateHours) ? (
+                <Badge variant="secondary" className="ml-1 h-5 text-[10px]">
+                  {files.length + links.length} att · {checklist.length} chk · {deps.length} dep · {watcherIds.length} w
+                </Badge>
+              ) : null}
+            </button>
+
+            {moreOpen && (
+              <div className="mt-3 space-y-4">
+                {/* Attachments + links */}
+                <IntakeAttachmentsField
+                  files={files}
+                  onFilesChange={setFiles}
+                  links={links}
+                  onLinksChange={setLinks}
+                  label="Attachments & links (Figma, GDoc, Sheets, files…)"
+                />
+
+                {/* Checklist */}
+                <div className="space-y-1.5">
+                  <Label>Checklist</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={checklistDraft}
+                      onChange={e => setChecklistDraft(e.target.value)}
+                      placeholder="Add a subtask / acceptance criterion"
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const v = checklistDraft.trim();
+                          if (v) { setChecklist([...checklist, v]); setChecklistDraft(""); }
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const v = checklistDraft.trim();
+                        if (v) { setChecklist([...checklist, v]); setChecklistDraft(""); }
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {checklist.length > 0 && (
+                    <ul className="space-y-1 mt-1">
+                      {checklist.map((c, i) => (
+                        <li key={i} className="flex items-center gap-2 px-2 py-1 rounded bg-muted/40 text-sm">
+                          <span className="flex-1 truncate">{c}</span>
+                          <Button
+                            type="button" size="icon" variant="ghost" className="h-6 w-6"
+                            onClick={() => setChecklist(checklist.filter((_, idx) => idx !== i))}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Blocked by */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label>Blocked by</Label>
+                    <div className="flex items-center gap-2">
+                      {deps.length > 0 && (
+                        <Select value={revealMode} onValueChange={(v) => setRevealMode(v as RevealMode)}>
+                          <SelectTrigger className="h-7 w-[130px] text-[11px]"><SelectValue /></SelectTrigger>
+                          <SelectContent className="z-50 bg-popover">
+                            {(["on_complete","on_start","always"] as RevealMode[]).map(m => (
+                              <SelectItem key={m} value={m} className="text-xs">{REVEAL_MODE_SHORT[m]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button type="button" size="sm" variant="outline" onClick={() => setDepPickerOpen(true)}>
+                        <Plus className="h-3 w-3 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </div>
+                  {deps.length > 0 ? (
+                    <ul className="space-y-1">
+                      {deps.map(d => (
+                        <li key={d.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate">{d.title}</div>
+                            {d.project_title && <div className="text-[11px] text-muted-foreground truncate">{d.project_title}</div>}
+                          </div>
+                          <Badge className={(STATUS_COLORS as any)[d.status] ?? ""}>{d.status.replace("_", " ")}</Badge>
+                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive"
+                            onClick={() => setDeps(deps.filter(x => x.id !== d.id))}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground italic">None — this task can start immediately.</p>
+                  )}
+                </div>
+
+                {/* Watchers */}
+                <div className="space-y-1.5">
+                  <Label>Watchers <span className="text-xs text-muted-foreground font-normal">(notified but not responsible)</span></Label>
+                  <div className="flex flex-wrap items-center gap-1.5 min-h-9 rounded-md border border-input bg-background px-2 py-1.5">
+                    {watcherIds.length === 0 && <span className="text-xs italic text-muted-foreground">No watchers</span>}
+                    {watcherIds.map(uid => {
+                      const u = users.find(x => x.id === uid);
+                      if (!u) return null;
+                      return (
+                        <span key={uid} className="inline-flex items-center gap-1 pl-1 pr-1 py-0.5 rounded-full border border-border bg-muted/40 text-xs">
+                          <UserAvatar userId={uid} size="xs" />
+                          <span className="font-medium max-w-[100px] truncate">{u.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setWatcherIds(watcherIds.filter(x => x !== uid))}
+                            aria-label={`Remove ${u.name}`}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    <AssigneePopover
+                      controlled
+                      assigneeId={null}
+                      onPick={(id) => { if (id && !watcherIds.includes(id)) setWatcherIds([...watcherIds, id]); }}
+                      trigger={
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Estimated hours */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-task-est">Estimated hours</Label>
+                  <Input
+                    id="new-task-est"
+                    type="number"
+                    min={0}
+                    step={0.25}
+                    value={estimateHours}
+                    onChange={e => setEstimateHours(e.target.value)}
+                    placeholder="e.g. 2.5"
+                    className="max-w-[160px]"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Used for workload capacity planning.</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        <TaskPicker
+          open={depPickerOpen}
+          onClose={() => setDepPickerOpen(false)}
+          excludeIds={deps.map(d => d.id)}
+          onPick={async (id) => {
+            // Hydrate title/status/project for chip display
+            const { data: t } = await supabase.from("pm_tasks").select("id,title,status,project_id").eq("id", id).maybeSingle();
+            if (!t) return;
+            const { data: p } = await supabase.from("pm_projects").select("title").eq("id", (t as any).project_id).maybeSingle();
+            setDeps(prev => [...prev, {
+              id: (t as any).id, title: (t as any).title, status: (t as any).status,
+              project_title: (p as any)?.title,
+            }]);
+          }}
+        />
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
