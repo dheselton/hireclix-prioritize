@@ -30,6 +30,7 @@ import {
   type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority, type RevealMode,
 } from "@/types/pm";
 import { TYPE_COLORS, STATUS_COLORS } from "@/types/pm";
+import { KIND_META, TASK_KINDS, type TaskKind } from "@/lib/pm/taskKind";
 
 const MORE_OPEN_KEY = "pm:newTaskDialog:moreOpen";
 interface DepPick { id: string; title: string; status: string; project_title?: string }
@@ -113,6 +114,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [revealMode, setRevealMode] = useState<RevealMode>("on_complete");
   const [watcherIds, setWatcherIds] = useState<string[]>([]);
   const [estimateHours, setEstimateHours] = useState<string>("");
+  const [kind, setKind] = useState<TaskKind>("task");
 
   // Reset on open
   useEffect(() => {
@@ -140,6 +142,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setRevealMode("on_complete");
     setWatcherIds([]);
     setEstimateHours("");
+    setKind("task");
   }, [open, defaultType, meId, initialSupport]);
 
   // Auto-sync status with assignees unless user touched it
@@ -233,6 +236,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
       const estNum = parseFloat(estimateHours);
       const custom: Record<string, any> = {};
       if (Number.isFinite(estNum) && estNum > 0) custom.estimated_hours = estNum;
+      if (kind !== "task") custom.kind = kind;
 
       const created = await createTask({
         project_id: project.id,
