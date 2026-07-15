@@ -30,7 +30,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
   useEffect(() => { load(); }, [projectId]);
 
   const isPM = user?.role === "pm";
-  const pmCount = rows.filter(r => r.role === "PM").length;
+  const pmCount = rows.filter(r => PM_LIKE_ROLES.has(r.role)).length;
 
   async function add() {
     if (!pickUser) return;
