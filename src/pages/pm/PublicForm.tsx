@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
+import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
+import { slugifyLabel } from "@/components/pm/forms/useInternalRequestForm";
+
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
