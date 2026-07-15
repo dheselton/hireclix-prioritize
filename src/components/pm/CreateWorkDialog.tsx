@@ -14,8 +14,9 @@ import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
-import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
+import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
 import { useInternalRequestForm, slugifyLabel, type RequestType } from "@/components/pm/forms/useInternalRequestForm";
+
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
@@ -430,14 +431,21 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {REQUEST_TYPE_LABELS[requestType]} details
                 </div>
-                {internalFields.map((f) => (
-                  <FormFieldRenderer
-                    key={f.id}
-                    field={f}
-                    value={reqFieldValues[f.id]}
-                    onChange={(v) => setReqFieldValues({ ...reqFieldValues, [f.id]: v })}
-                  />
-                ))}
+                {(() => {
+                  const bySlug: Record<string, any> = {};
+                  for (const f of internalFields as FormFieldRow[]) bySlug[slugifyLabel(f.label)] = reqFieldValues[f.id];
+                  return (internalFields as FormFieldRow[])
+                    .filter((f) => isFieldVisible(f, bySlug))
+                    .map((f) => (
+                      <FormFieldRenderer
+                        key={f.id}
+                        field={f}
+                        value={reqFieldValues[f.id]}
+                        onChange={(v) => setReqFieldValues({ ...reqFieldValues, [f.id]: v })}
+                      />
+                    ));
+                })()}
+
               </div>
             )}
 

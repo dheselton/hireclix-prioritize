@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
+import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
+import { slugifyLabel } from "@/components/pm/forms/useInternalRequestForm";
+
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
@@ -157,14 +159,21 @@ export default function PublicForm() {
               helpText="Pick the person who should track this request internally."
             />
           )}
-          {fields.map(f => (
-            <FormFieldRenderer
-              key={f.id}
-              field={f}
-              value={values[f.id]}
-              onChange={(v) => setValues({ ...values, [f.id]: v })}
-            />
-          ))}
+          {(() => {
+            const bySlug: Record<string, any> = {};
+            for (const f of fields as FormFieldRow[]) bySlug[slugifyLabel(f.label)] = values[f.id];
+            return (fields as FormFieldRow[])
+              .filter((f) => isFieldVisible(f, bySlug))
+              .map((f) => (
+                <FormFieldRenderer
+                  key={f.id}
+                  field={f}
+                  value={values[f.id]}
+                  onChange={(v) => setValues({ ...values, [f.id]: v })}
+                />
+              ));
+          })()}
+
           <IntakeAttachmentsField
             files={files} onFilesChange={setFiles}
             links={links} onLinksChange={setLinks}
