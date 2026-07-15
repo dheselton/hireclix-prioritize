@@ -18,6 +18,8 @@ import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmProject, PmTask } from "@/types/pm";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TagPillList } from "@/components/pm/tags/TagPill";
+import { KindBadge } from "@/components/pm/tasks/KindBadge";
+import { getTaskKind } from "@/lib/pm/taskKind";
 
 interface Props {
   task: PmTask;
@@ -91,6 +93,7 @@ export function ProjectTaskCard({
           <PriorityFlag priority={task.priority} size="xs" />
           {overdue && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
           <span className="text-sm font-medium flex-1 truncate hover:underline">{task.title}</span>
+          <KindBadge kind={getTaskKind(task)} />
           <StatusPill status={task.status} />
         </button>
         {teams.length > 0 && (
