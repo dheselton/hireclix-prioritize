@@ -26,7 +26,8 @@ import { AddPageDialog } from "./AddPageDialog";
 import { removePageFromProject } from "@/lib/pm/pageGroups";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useTeamFilter } from "@/hooks/useTeamFilter";
-import { Users } from "lucide-react";
+import { useWatchedTaskIds } from "@/lib/pm/watchers";
+import { Users, Eye } from "lucide-react";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
@@ -59,7 +60,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     try { return (localStorage.getItem(`pm.tasks.sort.${projectId}`) as "newest" | "oldest") || "newest"; } catch { return "newest"; }
   });
   const [pill, setPill] = useState<TypePill>("all");
+  const [watchingOnly, setWatchingOnly] = useState(false);
   const { isMe, setMode: setMeMode } = useMeMode();
+  const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
@@ -119,9 +122,10 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     if (!effectiveShowUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
+    if (watchingOnly) out = out.filter(t => watchedTaskIds.has(t.id));
     out = out.filter(t => team.filterTask(t));
     return out;
-  }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team]);
+  }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds]);
 
   const sortedFiltered = useMemo(() => {
     const sorted = [...filtered];
@@ -354,6 +358,20 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             </button>
           );
         })}
+        {meId && (
+          <button
+            type="button"
+            className={chipCls(watchingOnly)}
+            onClick={() => setWatchingOnly(v => !v)}
+            title="Show only tasks you're watching"
+          >
+            <Eye className="h-3 w-3" />
+            Watching
+            {watchedTaskIds.size > 0 && (
+              <span className="ml-1 text-[10px] opacity-70">{watchedTaskIds.size}</span>
+            )}
+          </button>
+        )}
         {onAddTask && (
           <Button size="sm" onClick={onAddTask} className="h-7">
             <Plus className="h-3 w-3 mr-1" /> New task

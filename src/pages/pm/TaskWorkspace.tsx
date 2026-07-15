@@ -37,7 +37,7 @@ import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection"
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
 import { TaskDrawer } from "@/components/pm/TaskDrawer";
 import { pinTask, unpinTask, useIsTaskPinned } from "@/lib/pm/pinnedTasks";
-import { useIsWatchingProject, watchProject, unwatchProject } from "@/lib/pm/watchers";
+import { useIsWatchingProject, watchProject, unwatchProject, useIsWatchingTask, watchTask, unwatchTask } from "@/lib/pm/watchers";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
@@ -160,7 +160,7 @@ export default function TaskWorkspace() {
               <TimerPill taskId={task.id} taskTitle={task.title} />
               <div className="hidden md:flex items-center gap-2">
                 <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
-                <WatchProjectButton projectId={task.project_id} userId={user?.id ?? null} />
+                <WatchTaskButton taskId={task.id} userId={user?.id ?? null} />
                 <Button variant="outline" size="sm" onClick={openQuickEdit}>
                   <Pencil className="h-3 w-3 mr-1" /> Quick edit
                 </Button>
@@ -298,26 +298,29 @@ function PinTaskButton({ taskId, userId }: { taskId: string; userId: string | nu
   );
 }
 
-function WatchProjectButton({ projectId, userId }: { projectId: string | null; userId: string | null }) {
-  const { watching, setWatching } = useIsWatchingProject(userId, projectId);
-  if (!userId || !projectId) return null;
+function WatchTaskButton({ taskId, userId }: { taskId: string; userId: string | null }) {
+  const { watching, setWatching, reload } = useIsWatchingTask(userId, taskId);
+  if (!userId) return null;
   async function toggle() {
     if (watching) {
-      await unwatchProject(userId!, projectId!);
+      const res = await unwatchTask(userId!, taskId);
+      if (!res.ok) { toast.error("Couldn't stop watching"); return; }
       setWatching(false);
-      toast.success("Stopped watching this project");
+      toast.success("Stopped watching this task");
     } else {
-      await watchProject(userId!, projectId!);
+      const res = await watchTask(userId!, taskId);
+      if (!res.ok) { toast.error("Couldn't add you as a watcher"); return; }
       setWatching(true);
-      toast.success("Watching this project — it'll show under the Watching filter");
+      toast.success("Watching this task — it'll appear in your Watching filter");
     }
+    reload();
   }
   return (
     <Button
       variant="outline"
       size="sm"
       onClick={toggle}
-      title={watching ? "Stop watching this project" : "Watch this project (adds tasks to your Watching filter)"}
+      title={watching ? "Stop watching this task" : "Watch this task (adds it to your Watching filter)"}
     >
       {watching ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
       {watching ? "Watching" : "Watch"}
@@ -335,16 +338,36 @@ function MobileActionsMenu({
   onRequestDelete: () => void;
 }) {
   const { pinned, setPinned } = useIsTaskPinned(userId, taskId);
-  const { watching, setWatching } = useIsWatchingProject(userId, projectId);
+  const { watching: watchingTask, setWatching: setWatchingTask } = useIsWatchingTask(userId, taskId);
+  const { watching: watchingProject, setWatching: setWatchingProject } = useIsWatchingProject(userId, projectId);
   async function togglePin() {
     if (!userId) return;
     if (pinned) { await unpinTask(userId, taskId); setPinned(false); toast.success("Unpinned"); }
     else { await pinTask(userId, taskId); setPinned(true); toast.success("Pinned"); }
   }
-  async function toggleWatch() {
+  async function toggleWatchTask() {
+    if (!userId) return;
+    if (watchingTask) {
+      const r = await unwatchTask(userId, taskId);
+      if (!r.ok) { toast.error("Couldn't stop watching"); return; }
+      setWatchingTask(false); toast.success("Stopped watching task");
+    } else {
+      const r = await watchTask(userId, taskId);
+      if (!r.ok) { toast.error("Couldn't add watcher"); return; }
+      setWatchingTask(true); toast.success("Watching task");
+    }
+  }
+  async function toggleWatchProject() {
     if (!userId || !projectId) return;
-    if (watching) { await unwatchProject(userId, projectId); setWatching(false); toast.success("Stopped watching"); }
-    else { await watchProject(userId, projectId); setWatching(true); toast.success("Watching project"); }
+    if (watchingProject) {
+      const r = await unwatchProject(userId, projectId);
+      if (!r.ok) { toast.error("Couldn't stop watching"); return; }
+      setWatchingProject(false); toast.success("Stopped watching project");
+    } else {
+      const r = await watchProject(userId, projectId);
+      if (!r.ok) { toast.error("Couldn't watch project"); return; }
+      setWatchingProject(true); toast.success(r.existed ? "You're already on this project" : "Watching project");
+    }
   }
   return (
     <DropdownMenu>
@@ -363,10 +386,16 @@ function MobileActionsMenu({
             {pinned ? "Unpin from timesheet" : "Pin to timesheet"}
           </DropdownMenuItem>
         )}
+        {userId && (
+          <DropdownMenuItem onSelect={toggleWatchTask}>
+            {watchingTask ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {watchingTask ? "Unwatch this task" : "Watch this task"}
+          </DropdownMenuItem>
+        )}
         {userId && projectId && (
-          <DropdownMenuItem onSelect={toggleWatch}>
-            {watching ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-            {watching ? "Unwatch project" : "Watch project"}
+          <DropdownMenuItem onSelect={toggleWatchProject}>
+            {watchingProject ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {watchingProject ? "Unwatch project" : "Watch entire project"}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
