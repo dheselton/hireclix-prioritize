@@ -340,6 +340,39 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
             />
           </div>
 
+          {/* Kind: Task / Decision / Issue-Risk (RAID log) */}
+          <div className="space-y-1.5">
+            <Label>Log as</Label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {TASK_KINDS.map(k => {
+                const meta = KIND_META[k];
+                const Icon = meta.icon;
+                const active = kind === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setKind(k)}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-medium transition",
+                      active
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted",
+                    )}
+                    title={meta.description}
+                  >
+                    <Icon className="h-3.5 w-3.5" style={{ color: meta.dotHsl }} />
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {KIND_META[kind].description}
+            </p>
+          </div>
+
+
           {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="new-task-desc">Description</Label>
