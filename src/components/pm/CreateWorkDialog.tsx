@@ -14,8 +14,9 @@ import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
-import { FormFieldRenderer } from "@/components/pm/forms/FormFieldRenderer";
+import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
 import { useInternalRequestForm, slugifyLabel, type RequestType } from "@/components/pm/forms/useInternalRequestForm";
+
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
