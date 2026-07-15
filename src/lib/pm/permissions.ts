@@ -113,7 +113,7 @@ export function canSeeProject(
   memberIds: Set<string> | string[],
 ): boolean {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return true;
+  if (roles.some(r => r === "pm" || r === "ba")) return true;
   if (roles.every(r => r === "submitter")) return false;
   if (!userId) return false;
   const set = memberIds instanceof Set ? memberIds : new Set(memberIds);
