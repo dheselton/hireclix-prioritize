@@ -17,10 +17,12 @@ import { toast } from "sonner";
 
 const ROLE_LABEL: Record<string, string> = {
   pm: "PM", designer: "Designer", developer: "Developer", submitter: "Submitter",
+  ba: "BA", tech_lead: "Tech Lead",
 };
 
 const ROLE_BADGE_LABEL: Record<string, string> = {
   pm: "Project Manager", designer: "Designer", developer: "Developer", submitter: "Submitter",
+  ba: "Business Analyst", tech_lead: "Technical Resource",
 };
 
 const ROLE_BADGE_STYLE: Record<string, string> = {
@@ -28,6 +30,8 @@ const ROLE_BADGE_STYLE: Record<string, string> = {
   designer: "bg-[hsl(var(--role-designer))] text-[hsl(var(--role-designer-foreground))]",
   developer: "bg-[hsl(var(--role-developer))] text-[hsl(var(--role-developer-foreground))]",
   submitter: "bg-[hsl(var(--role-submitter))] text-[hsl(var(--role-submitter-foreground))]",
+  ba: "bg-[hsl(var(--role-pm))] text-[hsl(var(--role-pm-foreground))]",
+  tech_lead: "bg-[hsl(var(--role-developer))] text-[hsl(var(--role-developer-foreground))]",
 };
 
 export function TopBar() {
