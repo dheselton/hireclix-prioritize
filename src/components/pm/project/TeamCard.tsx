@@ -85,7 +85,8 @@ export function TeamCard({ projectId }: { projectId: string }) {
       <ul className="space-y-1">
         {rows.map(m => {
           const u = users.find(x => x.id === m.user_id);
-          const canRemove = isPM && !(m.role === "PM" && pmCount <= 1) && !(m.user_id === user?.id && m.role === "PM" && pmCount <= 1);
+          const isPmLike = PM_LIKE_ROLES.has(m.role);
+          const canRemove = isPM && !(isPmLike && pmCount <= 1);
           return (
             <li key={m.id} className="flex items-center gap-2 text-sm">
               <UserAvatar userId={m.user_id} size="sm" />
