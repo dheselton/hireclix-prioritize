@@ -431,14 +431,21 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   {REQUEST_TYPE_LABELS[requestType]} details
                 </div>
-                {internalFields.map((f) => (
-                  <FormFieldRenderer
-                    key={f.id}
-                    field={f}
-                    value={reqFieldValues[f.id]}
-                    onChange={(v) => setReqFieldValues({ ...reqFieldValues, [f.id]: v })}
-                  />
-                ))}
+                {(() => {
+                  const bySlug: Record<string, any> = {};
+                  for (const f of internalFields as FormFieldRow[]) bySlug[slugifyLabel(f.label)] = reqFieldValues[f.id];
+                  return (internalFields as FormFieldRow[])
+                    .filter((f) => isFieldVisible(f, bySlug))
+                    .map((f) => (
+                      <FormFieldRenderer
+                        key={f.id}
+                        field={f}
+                        value={reqFieldValues[f.id]}
+                        onChange={(v) => setReqFieldValues({ ...reqFieldValues, [f.id]: v })}
+                      />
+                    ));
+                })()}
+
               </div>
             )}
 
