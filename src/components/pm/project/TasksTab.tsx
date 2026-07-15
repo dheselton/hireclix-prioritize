@@ -524,7 +524,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             setActiveId(null);
           }}
         >
-          <div className="flex md:grid md:grid-cols-4 gap-3 touch-scroll-x no-scrollbar snap-x snap-mandatory md:snap-none -mx-3 px-3 md:mx-0 md:px-0 [&>*]:w-[85vw] [&>*]:flex-shrink-0 [&>*]:snap-center md:[&>*]:w-auto">
+          <div className="flex md:grid md:grid-cols-4 gap-3 touch-scroll-x md:!overflow-visible no-scrollbar snap-x snap-mandatory md:snap-none -mx-3 px-3 md:mx-0 md:px-0 [&>*]:w-[85vw] [&>*]:flex-shrink-0 [&>*]:snap-center md:[&>*]:w-auto">
             {PROJECT_GROUPS.map(g => (
               <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
                 {boardByGroup[g.id].map(t => (
