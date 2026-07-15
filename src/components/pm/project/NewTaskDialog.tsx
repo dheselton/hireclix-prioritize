@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, addBusinessDays, subBusinessDays, differenceInBusinessDays } from "date-fns";
-import { CalendarIcon, Plus, Star, X } from "lucide-react";
+import { CalendarIcon, Plus, Star, X, ChevronDown, ChevronRight, Trash2, Link as LinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,21 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
 import { UserAvatar } from "@/components/pm/UserAvatar";
-import { useMockUsers } from "@/lib/pm/mockUser";
-import { createTask } from "@/lib/pm/api";
+import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
+import { createTask, persistIntakeAttachments } from "@/lib/pm/api";
 import { addAssignee } from "@/lib/pm/assignees";
+import { watchTask } from "@/lib/pm/watchers";
 import { DEFAULT_TEAMS_FOR_TYPE, type Team } from "@/lib/pm/teams";
+import { REVEAL_MODE_SHORT } from "@/lib/pm/reveal";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { TagPicker } from "@/components/pm/tags/TagPicker";
+import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
+import { TaskPicker } from "@/components/pm/drawer/TaskPicker";
 import {
   TASK_TYPES, TASK_STATUSES, PRIORITIES,
-  type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority,
+  type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority, type RevealMode,
 } from "@/types/pm";
-import { TYPE_COLORS } from "@/types/pm";
+import { TYPE_COLORS, STATUS_COLORS } from "@/types/pm";
+
+const MORE_OPEN_KEY = "pm:newTaskDialog:moreOpen";
+interface DepPick { id: string; title: string; status: string; project_title?: string }
 
 const ROLE_DEFAULT_TYPE: Record<PmRole, TaskType> = {
   pm: "review",
