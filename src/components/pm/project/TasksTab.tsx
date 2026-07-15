@@ -358,6 +358,20 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             </button>
           );
         })}
+        {meId && (
+          <button
+            type="button"
+            className={chipCls(watchingOnly)}
+            onClick={() => setWatchingOnly(v => !v)}
+            title="Show only tasks you're watching"
+          >
+            <Eye className="h-3 w-3" />
+            Watching
+            {watchedTaskIds.size > 0 && (
+              <span className="ml-1 text-[10px] opacity-70">{watchedTaskIds.size}</span>
+            )}
+          </button>
+        )}
         {onAddTask && (
           <Button size="sm" onClick={onAddTask} className="h-7">
             <Plus className="h-3 w-3 mr-1" /> New task
