@@ -37,7 +37,19 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   if (r === "submitter") {
     return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
-  if (r === "pm") return true;
+  // BA gets the same surface access as PM.
+  if (r === "pm" || r === "ba") return true;
+  // Tech Lead = union of dev + PM-ish (sees everything except integrations/form builder/templates authoring surfaces treated below).
+  if (r === "tech_lead") {
+    switch (surface) {
+      case "templates":
+      case "formBuilder":
+      case "integrations":
+        return false;
+      default:
+        return true;
+    }
+  }
   switch (surface) {
     case "templates":
     case "formBuilder":
