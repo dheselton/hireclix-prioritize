@@ -28,6 +28,7 @@ import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { Users, Eye } from "lucide-react";
+import { KIND_META, TASK_KINDS, getTaskKind, type TaskKind } from "@/lib/pm/taskKind";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
@@ -60,6 +61,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     try { return (localStorage.getItem(`pm.tasks.sort.${projectId}`) as "newest" | "oldest") || "newest"; } catch { return "newest"; }
   });
   const [pill, setPill] = useState<TypePill>("all");
+  const [kindFilter, setKindFilter] = useState<TaskKind | "all">("all");
   const [watchingOnly, setWatchingOnly] = useState(false);
   const { isMe, setMode: setMeMode } = useMeMode();
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
@@ -121,11 +123,12 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     let out = activeSource;
     if (!effectiveShowUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
+    if (kindFilter !== "all") out = out.filter(t => getTaskKind(t) === kindFilter);
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     if (watchingOnly) out = out.filter(t => watchedTaskIds.has(t.id));
     out = out.filter(t => team.filterTask(t));
     return out;
-  }, [activeSource, pill, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds]);
+  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds]);
 
   const sortedFiltered = useMemo(() => {
     const sorted = [...filtered];
@@ -372,6 +375,30 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             )}
           </button>
         )}
+        {/* Kind filter (RAID log): Task / Decision / Issue-Risk */}
+        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-1 py-0.5">
+          {(["all", ...TASK_KINDS] as const).map(k => {
+            const active = kindFilter === k;
+            const label = k === "all" ? "All kinds" : KIND_META[k].short;
+            const Icon = k === "all" ? null : KIND_META[k].icon;
+            const color = k === "all" ? undefined : KIND_META[k].dotHsl;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKindFilter(k)}
+                className={`h-6 px-2 rounded-full text-[11px] font-medium inline-flex items-center gap-1 transition ${
+                  active ? "bg-info/10 text-info" : "text-muted-foreground hover:bg-muted"
+                }`}
+                title={k === "all" ? "Show tasks, decisions and issues" : KIND_META[k as TaskKind].description}
+              >
+                {Icon && <Icon className="h-3 w-3" style={{ color }} />}
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         {onAddTask && (
           <Button size="sm" onClick={onAddTask} className="h-7">
             <Plus className="h-3 w-3 mr-1" /> New task

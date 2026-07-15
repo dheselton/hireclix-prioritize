@@ -20,6 +20,8 @@ import { InlineDatePopover } from "./InlineDatePopover";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 import { cn } from "@/lib/utils";
 import { TagPillList } from "@/components/pm/tags/TagPill";
+import { KindBadge } from "@/components/pm/tasks/KindBadge";
+import { getTaskKind } from "@/lib/pm/taskKind";
 
 
 function stripHtml(html?: string | null): string {
@@ -112,6 +114,7 @@ export function BoardTaskCard({
               <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={mutedNoOwner || vis.waiting} />
             </span>
           </div>
+          <KindBadge kind={getTaskKind(task)} />
           {preview && (
             <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
           )}
