@@ -72,6 +72,7 @@ function teamsForTypes(types: TaskType[]): Team[] {
 
 export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport }: Props) {
   const users = useMockUsers();
+  const { user } = useCurrentUser();
   const defaultType: TaskType = meRole ? ROLE_DEFAULT_TYPE[meRole] : "design";
 
   const [title, setTitle] = useState("");
@@ -91,6 +92,26 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [devEnv, setDevEnv] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // "More options" state
+  const [moreOpen, setMoreOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = localStorage.getItem(MORE_OPEN_KEY);
+    return v === null ? true : v === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(MORE_OPEN_KEY, moreOpen ? "1" : "0");
+  }, [moreOpen]);
+
+  const [files, setFiles] = useState<File[]>([]);
+  const [links, setLinks] = useState<StagedLink[]>([]);
+  const [checklist, setChecklist] = useState<string[]>([]);
+  const [checklistDraft, setChecklistDraft] = useState("");
+  const [deps, setDeps] = useState<DepPick[]>([]);
+  const [depPickerOpen, setDepPickerOpen] = useState(false);
+  const [revealMode, setRevealMode] = useState<RevealMode>("on_complete");
+  const [watcherIds, setWatcherIds] = useState<string[]>([]);
+  const [estimateHours, setEstimateHours] = useState<string>("");
+
   // Reset on open
   useEffect(() => {
     if (!open) return;
@@ -109,6 +130,14 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setTeamsDirty(false);
     setTags([]);
     setDevEnv("");
+    setFiles([]);
+    setLinks([]);
+    setChecklist([]);
+    setChecklistDraft("");
+    setDeps([]);
+    setRevealMode("on_complete");
+    setWatcherIds([]);
+    setEstimateHours("");
   }, [open, defaultType, meId, initialSupport]);
 
   // Auto-sync status with assignees unless user touched it
