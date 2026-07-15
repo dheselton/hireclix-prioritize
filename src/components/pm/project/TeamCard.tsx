@@ -40,7 +40,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
     await load();
   }
   async function remove(m: Member) {
-    if (m.role === "PM" && pmCount <= 1) { toast.error("Cannot remove the only PM"); return; }
+    if (PM_LIKE_ROLES.has(m.role) && pmCount <= 1) { toast.error("Cannot remove the only PM/BA on this project"); return; }
     await supabase.from("pm_project_members").delete().eq("id", m.id);
     await load();
   }
