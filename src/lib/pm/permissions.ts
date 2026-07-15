@@ -92,7 +92,7 @@ export function fallbackPath(role: RoleOrRoles): string {
 export type BriefingScope = "team" | "personal" | "submitter";
 export function briefingScope(role: RoleOrRoles): BriefingScope {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return "team";
+  if (roles.some(r => r === "pm" || r === "ba")) return "team";
   if (roles.every(r => r === "submitter")) return "submitter";
   return "personal";
 }
