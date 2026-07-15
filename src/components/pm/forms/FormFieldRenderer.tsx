@@ -11,7 +11,30 @@ export interface FormFieldRow {
   required?: boolean;
   placeholder?: string | null;
   options?: any;
+  conditionals?: any;
 }
+
+/**
+ * Rule shape: `{ field: "<slug>", in: ["Value A", "Value B"] }`
+ * `field` is the slug of another field's label (see slugifyLabel).
+ * Multiple rules = AND. Empty/missing = always visible.
+ * For checkbox_group values (arrays), a match = any array element in `in`.
+ */
+export function isFieldVisible(
+  field: FormFieldRow,
+  valuesBySlug: Record<string, any>,
+): boolean {
+  const rules = Array.isArray(field.conditionals) ? field.conditionals : [];
+  if (rules.length === 0) return true;
+  for (const rule of rules) {
+    if (!rule || !rule.field || !Array.isArray(rule.in)) continue;
+    const v = valuesBySlug[rule.field];
+    const arr = Array.isArray(v) ? v : v == null ? [] : [v];
+    if (!arr.some((x) => rule.in.includes(x))) return false;
+  }
+  return true;
+}
+
 
 interface Props {
   field: FormFieldRow;
