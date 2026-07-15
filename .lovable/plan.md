@@ -1,112 +1,71 @@
 
-## What search does today
+## Goal
 
-`src/components/GlobalSearch.tsx` runs three parallel `ilike` queries on:
-- `pm_projects.name`
-- `pm_tasks.title`
-- `clients.name`
+Turn the "General" request form (currently just a Notes field) into a proper creative intake driven by a **Creative Type** dropdown. Selecting a type reveals a focused set of fields tailored to that deliverable. Types come from last year's request mix (screenshot provided).
 
-Then flat-lists them. Typing "resideo" surfaces only the client row because there's no project literally named "Resideo" — the search never traverses **client → projects → tasks**, never looks at descriptions/tags/pages/snippets/forms, and has no fuzzy matching, recents, or scoping.
+## How it will feel
 
-## Goals
+1. Submitter picks Creative Type.
+2. The form instantly swaps in only the fields relevant to that type (plus a small always-visible common section).
+3. No wall of irrelevant questions — thorough per type but nothing extra.
 
-1. Type a client name and immediately see that client's projects and open tasks.
-2. Cover every navigable entity users think about.
-3. Rank intelligently, group by type, and make keyboard flow effortless.
-4. Stay fast (<150ms perceived) with cheap Postgres queries — no new infra.
+## Creative Types (dropdown)
 
-## New search surface (UX)
+Career Site · General Web/Email design · Display ad · Creative for social · Video/Animation · Flyer · Marketing Campaign · Business card/post card · Offline advertising for event · Offline advertising for facility
 
-Replace the current dropdown with a **command-palette style panel** opened from the header input or `⌘K`:
+## Always-visible common fields
 
-```text
-┌───────────────────────────────────────────────────────────┐
-│  🔍  resideo                                    esc  ⏎    │
-├───────────────────────────────────────────────────────────┤
-│  RECENT                                                   │
-│    • Resideo — Careers Refresh          project           │
-│    • Update job feed mapping            task              │
-├───────────────────────────────────────────────────────────┤
-│  CLIENTS (1)                                              │
-│    🏢 Resideo                          3 projects · 12 open│
-├───────────────────────────────────────────────────────────┤
-│  PROJECTS (3)   ← auto-expanded when a client matches     │
-│    📁 Resideo — Careers Refresh        Active · 08/12     │
-│    📁 Resideo — Job Feed Rebuild       Support mode       │
-│    📁 Resideo — Q3 Content             Planning           │
-├───────────────────────────────────────────────────────────┤
-│  TASKS (8 shown · 24 total →)                             │
-│    ✅ Update job feed mapping          Resideo · Dev      │
-│    ✅ QA new careers hero              Resideo · Design   │
-│    …                                                      │
-├───────────────────────────────────────────────────────────┤
-│  PAGES · SNIPPETS · FORMS · PEOPLE  (collapsed if empty)  │
-├───────────────────────────────────────────────────────────┤
-│  Tip: type  p:  t:  c:  @  #  to scope                    │
-└───────────────────────────────────────────────────────────┘
+- Deadline (date, required)
+- Purpose / goal (textarea, required)
+- Target audience (text)
+- Reference links or examples (text)
+- Brand guidelines / assets link (text)
+- Additional notes (textarea)
+
+## Per-type field packs (concise but complete)
+
+- **Display ad** — Ad sizes (multi: 300×250, 728×90, 160×600, 300×600, 320×50, 970×250, other), Static/Animated, Platform (Google Ads, LinkedIn, Programmatic, Other), Headline copy, CTA text, Landing page URL
+- **General Web/Email design** — Sub-type (Web page / HTML email / Landing page); if email: Subject line, Preheader, From name, CTA text + URL, List / segment, Send date; if web: Page URL, Section
+- **Career Site** — Site URL, Page / section, Change type (Bug / Content / New page / Other), Detailed description
+- **Creative for social** — Platforms (multi: IG, FB, LinkedIn, TikTok, X, YouTube), Format (Feed, Story, Reel, Carousel), Post copy, Hashtags
+- **Video/Animation** — Target length, Aspect ratio (16:9, 9:16, 1:1), Voiceover needed (Y/N), Script / storyboard link, Source footage link, Music preference
+- **Flyer** — Size (Letter, A4, Half-page, Custom), Sided (Single / Double), Print or Digital, Quantity (if print), Copy, Imagery direction
+- **Marketing Campaign** — Campaign name, Channels (multi: Email, Social, Ads, Print, Web), Start date, End date, KPI / goal, Deliverables list
+- **Business card / post card** — Quantity, Size, Sided (Single / Double), Names / titles / contact info to include
+- **Offline advertising for event** — Event name, Event date, Venue, Deliverable types (multi: Banner, Signage, Handouts, Backdrop), Size(s), Quantity
+- **Offline advertising for facility** — Facility name, Install location, Size / dimensions, Material preference, Install date
+
+## Technical
+
+`pm_form_fields.conditionals` (jsonb) already exists — repurpose it to hold visibility rules of the shape:
+
+```json
+[{ "field": "creative_type", "in": ["display_ad", "email"] }]
 ```
 
-Key UX behaviors:
-- **Grouped sections** with counts; each group has a "See all N →" that deep-links to `/pm/work?q=…` or `/pm/projects?client=…`.
-- **Client → cascade**: when a client matches, its projects and open tasks are auto-fetched and shown even if they don't textually match the query. This is the fix for the reported "only shows the client" issue.
-- **Scoping prefixes** in the input:
-  - `c:acme` clients only
-  - `p:careers` projects only
-  - `t:qa` tasks only
-  - `#tag` tag filter
-  - `@user` assignee filter
-  - `in:resideo qa hero` = tasks in projects matching "resideo" that also contain "qa hero"
-- **Recents** (localStorage, last 8) shown when input is empty on focus.
-- **Keyboard**: ↑/↓ traverses across groups, `⏎` opens, `⌘⏎` opens in new tab, `Tab` cycles group focus, `esc` closes. Selected row shows subtle right-side hint text.
-- **Empty state**: "No matches — try `c:`, `p:`, `t:`, `#tag`, `@user`" plus quick chips to broaden the search.
-- **Loading**: shimmer rows per group instead of a single spinner so layout doesn't jump.
-- **Highlight** matched substring in bold within each row.
+Empty/missing = always visible. Multiple rules = AND.
 
-## Data sources (all existing tables)
+1. **Extend `FormFieldRow`** (`src/components/pm/forms/FormFieldRenderer.tsx`) with `conditionals?: any` and export a helper `isFieldVisible(field, values, fieldsBySlug)` that resolves rules against current form values (matched by `slugifyLabel(label)`).
+2. **Filter in both consumers**:
+   - `src/components/pm/CreateWorkDialog.tsx` around line 434 — wrap the `fields.map` in a `useMemo` that filters by `isFieldVisible`.
+   - `src/pages/pm/PublicForm.tsx` line 160 — same filter.
+3. **Migration** — one seed migration that:
+   - Wipes existing fields for the General form.
+   - Inserts the Creative Type dropdown first (label "Creative Type", type `dropdown`, required, options = the 10 types with slug values).
+   - Inserts common fields (no conditionals).
+   - Inserts per-type field packs, each row's `conditionals` gating on `creative_type`.
+   - Uses spaced `sort_order` values so common fields render before conditional ones inside the natural flow.
+4. **FormBuilder UI** — leave as-is for this task (rules edited by migration). No new builder UI right now; call out as a follow-up.
 
-| Group | Source | Fields matched |
-|---|---|---|
-| Clients | `clients` | name |
-| Projects | `pm_projects` | name, description, tags |
-| Tasks | `pm_tasks` | title, description, tags, REQ-ref (last6 of id) |
-| Pages | `pm_project_pages` | page_label |
-| Snippets | `pm_snippets` | title, description, tags |
-| Forms | `pm_forms` | name |
-| People | `mock_users` | name, email |
+## Out of scope
 
-Cascade rule: if a client matches, also pull `pm_projects` where `client_id in (matchedClientIds)` and top open `pm_tasks` where `project_id in (thoseProjects)`.
+- No changes to `FormBuilder.tsx` conditional editor.
+- No changes to task auto-creation logic; submitted values continue to flow into `pm_form_submissions.values` and get mirrored onto the task description as they do today.
+- No visual redesign of the form beyond the dynamic reveal.
 
-## Ranking
+## Files touched
 
-Simple client-side score per row:
-- +100 exact match on primary field
-- +60 starts-with
-- +30 contains (word boundary)
-- +15 contains (substring)
-- +20 if entity is active/open (project active, task not done)
-- +10 if user is assignee/member
-- +5 if updated in last 7d
-- −20 if archived/done
-Break ties by `updated_at desc`.
-
-## Technical plan
-
-New files:
-- `src/components/search/GlobalSearchPanel.tsx` — the palette UI (replaces the dropdown in `GlobalSearch.tsx`; `GlobalSearch.tsx` becomes a thin trigger wrapper).
-- `src/components/search/SearchGroup.tsx`, `SearchRow.tsx`, `SearchHighlight.tsx`, `SearchEmpty.tsx`.
-- `src/lib/search/index.ts` — `runGlobalSearch(query, { scope, meId })` orchestrates parallel Supabase queries + cascade + scoring. Debounced 180ms, aborts in-flight on new keystroke.
-- `src/lib/search/parseQuery.ts` — parses `c:` `p:` `t:` `#` `@` prefixes.
-- `src/lib/search/recents.ts` — localStorage recents (`lovable:pm:search:recents`).
-- `src/lib/search/score.ts` — ranking helpers.
-
-Edited:
-- `src/components/GlobalSearch.tsx` — keep the input; mount `<GlobalSearchPanel />` in a portal on focus/⌘K; remove inline three-query logic.
-- `src/components/TopBar.tsx` — no visual change; just still renders `<GlobalSearch />`.
-
-Not changed: backend schema, RLS, routes. All new queries are read-only against existing tables and use existing indices (`ilike` on the same short-text columns already queried today, plus one additional `in()` cascade per matched client).
-
-## Out of scope (call out for follow-up)
-
-- Server-side full-text (`tsvector`) — worth adding once dataset grows; not needed for v1.
-- Fuzzy typo tolerance (trigram) — can layer `pg_trgm` later without UI changes.
-- Search analytics / "no result" logging.
+- `supabase/migrations/<new>.sql` (seed)
+- `src/components/pm/forms/FormFieldRenderer.tsx` (add `conditionals` to type + export `isFieldVisible`)
+- `src/components/pm/CreateWorkDialog.tsx` (filter render loop)
+- `src/pages/pm/PublicForm.tsx` (filter render loop)
