@@ -11,7 +11,8 @@ import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Member { id: string; project_id: string; user_id: string; role: string }
-const PROJECT_ROLES = ["PM", "Designer", "Developer", "Reviewer"];
+const PROJECT_ROLES = ["PM", "Alt PM", "BA", "Tech Lead", "Designer", "Developer", "Reviewer"];
+const PM_LIKE_ROLES = new Set(["PM", "Alt PM", "BA"]);
 
 export function TeamCard({ projectId }: { projectId: string }) {
   const [rows, setRows] = useState<Member[]>([]);
@@ -29,7 +30,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
   useEffect(() => { load(); }, [projectId]);
 
   const isPM = user?.role === "pm";
-  const pmCount = rows.filter(r => r.role === "PM").length;
+  const pmCount = rows.filter(r => PM_LIKE_ROLES.has(r.role)).length;
 
   async function add() {
     if (!pickUser) return;
@@ -39,7 +40,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
     await load();
   }
   async function remove(m: Member) {
-    if (m.role === "PM" && pmCount <= 1) { toast.error("Cannot remove the only PM"); return; }
+    if (PM_LIKE_ROLES.has(m.role) && pmCount <= 1) { toast.error("Cannot remove the only PM/BA on this project"); return; }
     await supabase.from("pm_project_members").delete().eq("id", m.id);
     await load();
   }
@@ -84,7 +85,8 @@ export function TeamCard({ projectId }: { projectId: string }) {
       <ul className="space-y-1">
         {rows.map(m => {
           const u = users.find(x => x.id === m.user_id);
-          const canRemove = isPM && !(m.role === "PM" && pmCount <= 1) && !(m.user_id === user?.id && m.role === "PM" && pmCount <= 1);
+          const isPmLike = PM_LIKE_ROLES.has(m.role);
+          const canRemove = isPM && !(isPmLike && pmCount <= 1);
           return (
             <li key={m.id} className="flex items-center gap-2 text-sm">
               <UserAvatar userId={m.user_id} size="sm" />

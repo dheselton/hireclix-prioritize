@@ -44,6 +44,8 @@ const ROLE_DEFAULT_TYPE: Record<PmRole, TaskType> = {
   csm: "review",
   support: "review",
   submitter: "review",
+  ba: "review",
+  tech_lead: "dev",
 };
 
 const TYPE_LABEL: Record<TaskType, string> = {

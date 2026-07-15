@@ -37,7 +37,19 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   if (r === "submitter") {
     return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
-  if (r === "pm") return true;
+  // BA gets the same surface access as PM.
+  if (r === "pm" || r === "ba") return true;
+  // Tech Lead = union of dev + PM-ish (sees everything except integrations/form builder/templates authoring surfaces treated below).
+  if (r === "tech_lead") {
+    switch (surface) {
+      case "templates":
+      case "formBuilder":
+      case "integrations":
+        return false;
+      default:
+        return true;
+    }
+  }
   switch (surface) {
     case "templates":
     case "formBuilder":
@@ -80,7 +92,7 @@ export function fallbackPath(role: RoleOrRoles): string {
 export type BriefingScope = "team" | "personal" | "submitter";
 export function briefingScope(role: RoleOrRoles): BriefingScope {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return "team";
+  if (roles.some(r => r === "pm" || r === "ba")) return "team";
   if (roles.every(r => r === "submitter")) return "submitter";
   return "personal";
 }
@@ -89,7 +101,7 @@ export function briefingScope(role: RoleOrRoles): BriefingScope {
 export type TimesheetScope = "team-toggle" | "self" | "hidden";
 export function timesheetScope(role: RoleOrRoles): TimesheetScope {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return "team-toggle";
+  if (roles.some(r => r === "pm" || r === "ba")) return "team-toggle";
   if (roles.every(r => r === "submitter")) return "hidden";
   return "self";
 }
@@ -101,7 +113,7 @@ export function canSeeProject(
   memberIds: Set<string> | string[],
 ): boolean {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return true;
+  if (roles.some(r => r === "pm" || r === "ba")) return true;
   if (roles.every(r => r === "submitter")) return false;
   if (!userId) return false;
   const set = memberIds instanceof Set ? memberIds : new Set(memberIds);
@@ -117,7 +129,7 @@ export function canSeeTask(
   coAssigneeIds: Set<string> | string[] = [],
 ): boolean {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return true;
+  if (roles.some(r => r === "pm" || r === "ba")) return true;
   if (!userId) return false;
   if (task.assignee_id === userId) return true;
   if (task.created_by === userId) return true;
