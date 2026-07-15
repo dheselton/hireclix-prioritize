@@ -101,7 +101,7 @@ export function briefingScope(role: RoleOrRoles): BriefingScope {
 export type TimesheetScope = "team-toggle" | "self" | "hidden";
 export function timesheetScope(role: RoleOrRoles): TimesheetScope {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return "team-toggle";
+  if (roles.some(r => r === "pm" || r === "ba")) return "team-toggle";
   if (roles.every(r => r === "submitter")) return "hidden";
   return "self";
 }
