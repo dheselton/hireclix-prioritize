@@ -159,14 +159,21 @@ export default function PublicForm() {
               helpText="Pick the person who should track this request internally."
             />
           )}
-          {fields.map(f => (
-            <FormFieldRenderer
-              key={f.id}
-              field={f}
-              value={values[f.id]}
-              onChange={(v) => setValues({ ...values, [f.id]: v })}
-            />
-          ))}
+          {(() => {
+            const bySlug: Record<string, any> = {};
+            for (const f of fields as FormFieldRow[]) bySlug[slugifyLabel(f.label)] = values[f.id];
+            return (fields as FormFieldRow[])
+              .filter((f) => isFieldVisible(f, bySlug))
+              .map((f) => (
+                <FormFieldRenderer
+                  key={f.id}
+                  field={f}
+                  value={values[f.id]}
+                  onChange={(v) => setValues({ ...values, [f.id]: v })}
+                />
+              ));
+          })()}
+
           <IntakeAttachmentsField
             files={files} onFilesChange={setFiles}
             links={links} onLinksChange={setLinks}
