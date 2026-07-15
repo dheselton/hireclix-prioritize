@@ -11,7 +11,8 @@ import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Member { id: string; project_id: string; user_id: string; role: string }
-const PROJECT_ROLES = ["PM", "Designer", "Developer", "Reviewer"];
+const PROJECT_ROLES = ["PM", "Alt PM", "BA", "Tech Lead", "Designer", "Developer", "Reviewer"];
+const PM_LIKE_ROLES = new Set(["PM", "Alt PM", "BA"]);
 
 export function TeamCard({ projectId }: { projectId: string }) {
   const [rows, setRows] = useState<Member[]>([]);
