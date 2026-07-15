@@ -1,71 +1,54 @@
 
 ## Goal
 
-Turn the "General" request form (currently just a Notes field) into a proper creative intake driven by a **Creative Type** dropdown. Selecting a type reveals a focused set of fields tailored to that deliverable. Types come from last year's request mix (screenshot provided).
+Rebuild the intake forms so the flagship one mirrors the internal **Quick Request** dialog exactly (grouped request-type dropdown → dynamic per-type fields), while keeping the full ability to create/edit additional custom forms in the Form Builder.
 
-## How it will feel
+## Wipe scope (revised)
 
-1. Submitter picks Creative Type.
-2. The form instantly swaps in only the fields relevant to that type (plus a small always-visible common section).
-3. No wall of irrelevant questions — thorough per type but nothing extra.
+- Wipe existing `pm_form_submissions`, `pm_form_fields`, and `pm_forms` rows.
+- Seed **one** canonical form ("Quick Request") after the wipe.
+- Form Builder + `/pm/forms` list remain fully functional — PMs can create new forms afterward exactly as they do today (same "New form" flow, same field editor, same shareable slug + embed).
 
-## Creative Types (dropdown)
+## The canonical "Quick Request" form
 
-Career Site · General Web/Email design · Display ad · Creative for social · Video/Animation · Flyer · Marketing Campaign · Business card/post card · Offline advertising for event · Offline advertising for facility
+Public URL: `/f/quick-request`. Embed: `<div data-pmform="quick-request"></div>` + existing `/embed/pm-form.js`.
 
-## Always-visible common fields
+Fields, top to bottom:
 
-- Deadline (date, required)
-- Purpose / goal (textarea, required)
-- Target audience (text)
-- Reference links or examples (text)
-- Brand guidelines / assets link (text)
-- Additional notes (textarea)
+1. **Client** — searchable combobox (typeahead over `clients`) with inline "New client" (`NewClientPopover`). If URL has `?client=<id-or-name-slug>`, pre-select + collapse to a locked chip with a "Change" link. Falls back to picker when the param doesn't match.
+2. **Requester** — same `RequesterPicker` + name/email pair used today on `PublicForm`.
+3. **Request type** — grouped dropdown identical to `CreateWorkDialog` (`REQUEST_TYPE_GROUPS`: Career Site Support, Web, Ads & Campaigns, Content, Print & Collateral, Media, Brand, Other — 24 slugs).
+4. **Dynamic per-type fields** — reveal via the existing `isFieldVisible()` engine, gated on `conditionals = [{ field: "request_type", in: [...] }]`. Packs cover: Display ad, Email, Landing page, Web edit, Career-site (bug/content/jobfeed/new page/SOW/support), Social, Video, Photo retouch, Presentation, Copywriting, Job description, Infographic, Recruiter/Event/Print collateral, Swag, Brand assets. Concise but thorough — mirrors what we already seeded for the General form, retargeted per request type.
+5. **Ship-by date** + **Description** — always visible.
+6. **Attachments + links** — `IntakeAttachmentsField` (unchanged).
+7. **Submit** → same pipeline as `CreateWorkDialog`: create project (with `client_id`), create one `unclaimed` task, mirror description onto task, `persistIntakeAttachments({ taskId: null })`, `applyClientWatchers(projectId, clientId, requestType)`, show `SubmissionSuccess` with `aliasFor(requestType)`.
 
-## Per-type field packs (concise but complete)
+## Custom forms stay first-class
 
-- **Display ad** — Ad sizes (multi: 300×250, 728×90, 160×600, 300×600, 320×50, 970×250, other), Static/Animated, Platform (Google Ads, LinkedIn, Programmatic, Other), Headline copy, CTA text, Landing page URL
-- **General Web/Email design** — Sub-type (Web page / HTML email / Landing page); if email: Subject line, Preheader, From name, CTA text + URL, List / segment, Send date; if web: Page URL, Section
-- **Career Site** — Site URL, Page / section, Change type (Bug / Content / New page / Other), Detailed description
-- **Creative for social** — Platforms (multi: IG, FB, LinkedIn, TikTok, X, YouTube), Format (Feed, Story, Reel, Carousel), Post copy, Hashtags
-- **Video/Animation** — Target length, Aspect ratio (16:9, 9:16, 1:1), Voiceover needed (Y/N), Script / storyboard link, Source footage link, Music preference
-- **Flyer** — Size (Letter, A4, Half-page, Custom), Sided (Single / Double), Print or Digital, Quantity (if print), Copy, Imagery direction
-- **Marketing Campaign** — Campaign name, Channels (multi: Email, Social, Ads, Print, Web), Start date, End date, KPI / goal, Deliverables list
-- **Business card / post card** — Quantity, Size, Sided (Single / Double), Names / titles / contact info to include
-- **Offline advertising for event** — Event name, Event date, Venue, Deliverable types (multi: Banner, Signage, Handouts, Backdrop), Size(s), Quantity
-- **Offline advertising for facility** — Facility name, Install location, Size / dimensions, Material preference, Install date
+- `/pm/forms` list, "New form" button, per-form share/embed, and `FormBuilder` editing all remain.
+- The Quick Request form is treated as a normal `pm_forms` row — editable in `FormBuilder` — with two small guards:
+  - Its `Request type` field is undeletable (lock badge) so the dynamic reveal keeps working.
+  - `FormBuilder` gains a minimal **"Show only when"** editor for each field's `conditionals` (field slug + comma-separated values) so PMs can add gated fields to any form, not just this one.
+- Newly created forms behave exactly as today (no forced Request-type field, no forced grouping).
 
-## Technical
+## Client via UTM
 
-`pm_form_fields.conditionals` (jsonb) already exists — repurpose it to hold visibility rules of the shape:
+`PublicForm` reads `useSearchParams()` for `client`. Match order: exact `clients.id` → case-insensitive `slugifyLabel(name)`. On match, the client field renders as a locked chip with a "Change" affordance.
 
-```json
-[{ "field": "creative_type", "in": ["display_ad", "email"] }]
-```
+## Technical section
 
-Empty/missing = always visible. Multiple rules = AND.
+Files touched:
 
-1. **Extend `FormFieldRow`** (`src/components/pm/forms/FormFieldRenderer.tsx`) with `conditionals?: any` and export a helper `isFieldVisible(field, values, fieldsBySlug)` that resolves rules against current form values (matched by `slugifyLabel(label)`).
-2. **Filter in both consumers**:
-   - `src/components/pm/CreateWorkDialog.tsx` around line 434 — wrap the `fields.map` in a `useMemo` that filters by `isFieldVisible`.
-   - `src/pages/pm/PublicForm.tsx` line 160 — same filter.
-3. **Migration** — one seed migration that:
-   - Wipes existing fields for the General form.
-   - Inserts the Creative Type dropdown first (label "Creative Type", type `dropdown`, required, options = the 10 types with slug values).
-   - Inserts common fields (no conditionals).
-   - Inserts per-type field packs, each row's `conditionals` gating on `creative_type`.
-   - Uses spaced `sort_order` values so common fields render before conditional ones inside the natural flow.
-4. **FormBuilder UI** — leave as-is for this task (rules edited by migration). No new builder UI right now; call out as a follow-up.
+- **New migration** `supabase/migrations/<ts>_reset_forms.sql` — DELETE from `pm_form_submissions`, `pm_form_fields`, `pm_forms`; INSERT the Quick Request form row (`kind='internal_request'`, `shareable_slug='quick-request'`, `submit_action={creates:'task'}`); INSERT its field rows including per-type `conditionals`.
+- **New** `src/components/pm/intake/ClientSearchCombobox.tsx` — shadcn Command + Popover over `clients`, reuses `NewClientPopover` and `useInternalClientIds()` accent.
+- **New** `src/components/pm/intake/GroupedRequestTypeSelect.tsx` — extracts the grouped dropdown from `CreateWorkDialog` so both surfaces share one source of truth.
+- **Edit** `src/pages/pm/PublicForm.tsx` — UTM `client` param, `ClientSearchCombobox`/locked chip, `GroupedRequestTypeSelect` when a `request_type` field exists, feed `request_type` into the `valuesBySlug` map for `isFieldVisible()`, submit through the Quick-Request pipeline described above.
+- **Edit** `src/pages/pm/FormBuilder.tsx` — lock the Request-type field on the canonical form; add minimal `conditionals` editor row.
+- **Edit** `src/components/pm/CreateWorkDialog.tsx` — swap inline grouped dropdown for the new `GroupedRequestTypeSelect` (no behavior change).
+- **No changes** to `/pm/forms` list, "New form" flow, or `public/embed/pm-form.js`.
 
 ## Out of scope
 
-- No changes to `FormBuilder.tsx` conditional editor.
-- No changes to task auto-creation logic; submitted values continue to flow into `pm_form_submissions.values` and get mirrored onto the task description as they do today.
-- No visual redesign of the form beyond the dynamic reveal.
-
-## Files touched
-
-- `supabase/migrations/<new>.sql` (seed)
-- `src/components/pm/forms/FormFieldRenderer.tsx` (add `conditionals` to type + export `isFieldVisible`)
-- `src/components/pm/CreateWorkDialog.tsx` (filter render loop)
-- `src/pages/pm/PublicForm.tsx` (filter render loop)
+- No changes to task auto-creation beyond what `PublicForm` already does.
+- No visual redesign of intake.
+- No wiring of `aliasFor()` into `send-transactional-email` yet (still display-only).

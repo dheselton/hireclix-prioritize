@@ -12,7 +12,11 @@ import { Plus, Trash2, ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const FIELD_TYPES = ["text","textarea","date","dropdown","multi_select","file","email","phone","number"];
+const FIELD_TYPES = ["text","textarea","date","dropdown","checkbox_group","multi_select","file","email","phone","number"];
+
+function slugifyLabel(s: string) {
+  return (s ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
 
 export default function FormBuilder() {
   const { id } = useParams<{ id: string }>();
@@ -81,26 +85,72 @@ export default function FormBuilder() {
           </div>
           <div className="border-t border-border pt-3 space-y-2">
             <div className="text-xs uppercase text-muted-foreground">Fields</div>
-            {fields.map(f => (
-              <div key={f.id} className="border border-border rounded p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">{f.type}</Badge>
-                  <Input value={f.label} onChange={e => setFields(fields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
-                    onBlur={e => patchField(f.id, { label: e.target.value })} className="flex-1" />
-                  <div className="flex items-center gap-1">
-                    <Switch checked={f.required} onCheckedChange={v => patchField(f.id, { required: v })} />
-                    <span className="text-xs">required</span>
+            {fields.map(f => {
+              const isRequestType = slugifyLabel(f.label) === "request_type";
+              const isLocked = isRequestType && form.shareable_slug === "quick-request";
+              const rules: Array<{ field: string; in: string[] }> = Array.isArray(f.conditionals) ? f.conditionals : [];
+              const firstRule = rules[0];
+              return (
+                <div key={f.id} className="border border-border rounded p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">{f.type}</Badge>
+                    <Input value={f.label} onChange={e => setFields(fields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                      onBlur={e => patchField(f.id, { label: e.target.value })} className="flex-1" disabled={isLocked} />
+                    <div className="flex items-center gap-1">
+                      <Switch checked={f.required} onCheckedChange={v => patchField(f.id, { required: v })} disabled={isLocked} />
+                      <span className="text-xs">required</span>
+                    </div>
+                    {isLocked ? (
+                      <Badge variant="secondary" className="text-[10px]">Locked</Badge>
+                    ) : (
+                      <Button size="icon" variant="ghost" onClick={() => delField(f.id)}><Trash2 className="h-3 w-3" /></Button>
+                    )}
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => delField(f.id)}><Trash2 className="h-3 w-3" /></Button>
+                  {(f.type === "dropdown" || f.type === "multi_select" || f.type === "checkbox_group") && (
+                    <Input placeholder="Comma-separated options"
+                      value={(f.options || []).join(",")}
+                      onChange={e => setFields(fields.map(x => x.id === f.id ? { ...x, options: e.target.value.split(",").map((s: string) => s.trim()) } : x))}
+                      onBlur={e => patchField(f.id, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                      disabled={isLocked} />
+                  )}
+                  {!isLocked && (
+                    <div className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center text-xs">
+                      <span className="text-muted-foreground">Show only when</span>
+                      <Input
+                        placeholder="field slug (e.g. request_type)"
+                        value={firstRule?.field ?? ""}
+                        onChange={e => {
+                          const nextRule = { field: e.target.value, in: firstRule?.in ?? [] };
+                          setFields(fields.map(x => x.id === f.id ? { ...x, conditionals: e.target.value ? [nextRule] : [] } : x));
+                        }}
+                        onBlur={e => {
+                          const val = e.target.value.trim();
+                          const next = val ? [{ field: val, in: firstRule?.in ?? [] }] : [];
+                          patchField(f.id, { conditionals: next });
+                        }}
+                        className="h-8"
+                      />
+                      <Input
+                        placeholder="matches values (comma-separated)"
+                        value={(firstRule?.in ?? []).join(",")}
+                        onChange={e => {
+                          const nextIn = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                          const nextRule = { field: firstRule?.field ?? "", in: nextIn };
+                          setFields(fields.map(x => x.id === f.id ? { ...x, conditionals: nextRule.field ? [nextRule] : [] } : x));
+                        }}
+                        onBlur={e => {
+                          const nextIn = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                          const rule = { field: firstRule?.field ?? "", in: nextIn };
+                          patchField(f.id, { conditionals: rule.field && nextIn.length ? [rule] : [] });
+                        }}
+                        className="h-8"
+                        disabled={!firstRule?.field}
+                      />
+                    </div>
+                  )}
                 </div>
-                {(f.type === "dropdown" || f.type === "multi_select") && (
-                  <Input placeholder="Comma-separated options"
-                    value={(f.options || []).join(",")}
-                    onChange={e => setFields(fields.map(x => x.id === f.id ? { ...x, options: e.target.value.split(",").map((s: string) => s.trim()) } : x))}
-                    onBlur={e => patchField(f.id, { options: e.target.value.split(",").map((s) => s.trim()) })} />
-                )}
-              </div>
-            ))}
+              );
+            })}
             {!fields.length && <div className="text-sm text-muted-foreground italic">No fields yet — add one from the palette.</div>}
           </div>
         </CardContent></Card>

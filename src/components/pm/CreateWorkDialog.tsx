@@ -15,7 +15,9 @@ import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
 import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
-import { useInternalRequestForm, slugifyLabel, type RequestType } from "@/components/pm/forms/useInternalRequestForm";
+import { useInternalRequestForm, slugifyLabel } from "@/components/pm/forms/useInternalRequestForm";
+import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
+import { REQUEST_TYPE_LABELS, type RequestType } from "@/lib/pm/requestTypes";
 
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
@@ -35,44 +37,6 @@ interface Props {
 }
 
 type Step = "select" | "request" | "project-entry" | "project-blank";
-
-const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
-  web_edit: "Web edit",
-  landing_page: "New landing page",
-  careersite_update: "Career site update",
-  careersite_bug: "Career site · Bug fix",
-  careersite_content: "Career site · Content change",
-  careersite_jobfeed: "Career site · API / Job feed",
-  careersite_new_page: "Career site · New page",
-  careersite_sow: "Career site · SOW project",
-  careersite_support: "Career site · General support",
-  banner_ads: "Banner ads",
-  social: "Social post",
-  email: "Email",
-  copywriting: "Copywriting",
-  job_description: "Job description",
-  infographic: "Infographic",
-  recruiter_collateral: "Recruiter collateral",
-  event_collateral: "Event collateral",
-  print_collateral: "Print collateral",
-  swag_apparel: "Swag / apparel",
-  video_edit: "Video edit",
-  photo_retouch: "Photo retouch",
-  presentation: "Presentation",
-  brand_assets: "Brand assets",
-  general: "General",
-};
-
-const REQUEST_TYPE_GROUPS: { label: string; types: RequestType[] }[] = [
-  { label: "Career Site Support", types: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support"] },
-  { label: "Web",                types: ["web_edit", "landing_page", "careersite_update"] },
-  { label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
-  { label: "Content",            types: ["copywriting", "job_description", "infographic"] },
-  { label: "Print & Collateral", types: ["recruiter_collateral", "event_collateral", "print_collateral", "swag_apparel"] },
-  { label: "Media",              types: ["video_edit", "photo_retouch", "presentation"] },
-  { label: "Brand",              types: ["brand_assets"] },
-  { label: "Other",              types: ["general"] },
-];
 
 export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
   const { user } = useCurrentUser();
@@ -390,19 +354,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             )}
             <div>
               <Label>Request type *</Label>
-              <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover max-h-[60vh]">
-                  {REQUEST_TYPE_GROUPS.map(g => (
-                    <SelectGroup key={g.label}>
-                      <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{g.label}</SelectLabel>
-                      {g.types.map(t => (
-                        <SelectItem key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
+              <GroupedRequestTypeSelect value={requestType} onChange={setRequestType} />
               <p className="text-xs text-muted-foreground mt-1">Fields below change based on the request type.</p>
             </div>
             <div>
