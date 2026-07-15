@@ -49,7 +49,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
-          <main className="flex-1 overflow-auto overscroll-contain">
+          <main className="flex-1 min-w-0">
             <RoleRouteGuard>
               <Suspense fallback={<RouteFallback />}>{children}</Suspense>
             </RoleRouteGuard>
