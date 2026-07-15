@@ -129,7 +129,7 @@ export function canSeeTask(
   coAssigneeIds: Set<string> | string[] = [],
 ): boolean {
   const roles = toRoles(role);
-  if (roles.includes("pm")) return true;
+  if (roles.some(r => r === "pm" || r === "ba")) return true;
   if (!userId) return false;
   if (task.assignee_id === userId) return true;
   if (task.created_by === userId) return true;
