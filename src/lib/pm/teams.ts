@@ -47,6 +47,8 @@ export const ROLE_TO_TEAM: Record<PmRole, Team | null> = {
   csm: "csm",
   support: "support",
   submitter: null,
+  ba: "pm",
+  tech_lead: "dev",
 };
 
 /**
