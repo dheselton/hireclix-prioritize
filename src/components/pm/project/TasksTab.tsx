@@ -28,7 +28,8 @@ import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { Users, Eye } from "lucide-react";
-import { KIND_META, TASK_KINDS, getTaskKind, type TaskKind } from "@/lib/pm/taskKind";
+import { KIND_META, TASK_KINDS, getTaskKind, isRaidOpen, type TaskKind } from "@/lib/pm/taskKind";
+import { RaidStrip } from "./RaidStrip";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
@@ -50,9 +51,10 @@ function isSupportTask(t: PmTask): boolean {
   return !!(cf && cf.is_support);
 }
 
-export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask, supportMode }: {
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask, onAddRaid, supportMode }: {
   tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
   onAddTask?: () => void;
+  onAddRaid?: (kind: Extract<TaskKind, "decision" | "issue">) => void;
   supportMode?: boolean;
 }) {
   const navigate = useNavigate();
@@ -123,7 +125,11 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     let out = activeSource;
     if (!effectiveShowUpcoming) out = out.filter(t => !hiddenIds.has(t.id));
     if (pill !== "all") out = out.filter(t => TYPE_FILTER[pill].includes(t.type));
-    if (kindFilter !== "all") out = out.filter(t => getTaskKind(t) === kindFilter);
+    // RAID visibility rules:
+    //  - kindFilter="all" → hide decisions/risks from board (they live in RaidStrip)
+    //  - kindFilter="task" | "decision" | "issue" → strict filter, no auto-hide
+    if (kindFilter === "all") out = out.filter(t => getTaskKind(t) === "task");
+    else out = out.filter(t => getTaskKind(t) === kindFilter);
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     if (watchingOnly) out = out.filter(t => watchedTaskIds.has(t.id));
     out = out.filter(t => team.filterTask(t));
