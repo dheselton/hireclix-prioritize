@@ -212,13 +212,14 @@ export default function ProjectDetail() {
       <TaskDrawer />
       <NewTaskDialog
         open={newTaskOpen}
-        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) setNewTaskSupport(false); }}
+        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) { setNewTaskSupport(false); setNewTaskKind("task"); } }}
         project={project}
         phases={phases}
         meId={user?.id ?? null}
         meRole={user?.role ?? null}
         onCreated={reload}
         initialSupport={newTaskSupport}
+        initialKind={newTaskKind}
       />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}
