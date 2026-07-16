@@ -94,7 +94,7 @@ export function ProjectTaskCard({
           {overdue && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
           <span className="text-sm font-medium flex-1 truncate hover:underline">{task.title}</span>
           <KindBadge kind={getTaskKind(task)} />
-          <StatusPill status={task.status} />
+          <StatusPill status={task.status} kind={getTaskKind(task)} />
         </button>
         {teams.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">
