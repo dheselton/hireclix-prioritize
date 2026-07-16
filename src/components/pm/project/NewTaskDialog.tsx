@@ -65,6 +65,8 @@ interface Props {
   /** When true, prefills tags + custom_fields so this task is treated as a
    *  Support request (lives in the support board, not the build archive). */
   initialSupport?: boolean;
+  /** Pre-select the kind (Decision / Risk) so the dialog opens in RAID mode. */
+  initialKind?: TaskKind;
 }
 
 function teamsForTypes(types: TaskType[]): Team[] {
@@ -73,7 +75,7 @@ function teamsForTypes(types: TaskType[]): Team[] {
   return Array.from(set);
 }
 
-export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport }: Props) {
+export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport, initialKind }: Props) {
   const users = useMockUsers();
   const { user } = useCurrentUser();
   const defaultType: TaskType = meRole ? ROLE_DEFAULT_TYPE[meRole] : "design";
@@ -114,7 +116,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [revealMode, setRevealMode] = useState<RevealMode>("on_complete");
   const [watcherIds, setWatcherIds] = useState<string[]>([]);
   const [estimateHours, setEstimateHours] = useState<string>("");
-  const [kind, setKind] = useState<TaskKind>("task");
+  const [kind, setKind] = useState<TaskKind>(initialKind ?? "task");
 
   // Reset on open
   useEffect(() => {
@@ -142,8 +144,8 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setRevealMode("on_complete");
     setWatcherIds([]);
     setEstimateHours("");
-    setKind("task");
-  }, [open, defaultType, meId, initialSupport]);
+    setKind(initialKind ?? "task");
+  }, [open, defaultType, meId, initialSupport, initialKind]);
 
   // Auto-sync status with assignees unless user touched it
   useEffect(() => {
