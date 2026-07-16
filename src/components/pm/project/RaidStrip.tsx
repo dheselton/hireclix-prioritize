@@ -33,7 +33,7 @@ export function RaidStrip({ tasks, onLog }: Props) {
   const risks = openItems.filter(t => getTaskKind(t) === "issue");
 
   return (
-    <Card className="border-dashed border-primary/30 bg-primary/[0.02]">
+    <Card id="raid-log" className="border-dashed border-primary/30 bg-primary/[0.02] scroll-mt-20">
       <CardContent className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-wrap">
