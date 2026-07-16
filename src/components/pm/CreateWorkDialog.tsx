@@ -104,24 +104,36 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   // Reset answers when request type changes
   useEffect(() => { setReqFieldValues({}); }, [requestType]);
 
+  const valuesBySlug = useMemo(() => {
+    const out: Record<string, any> = {};
+    for (const f of internalFields as FormFieldRow[]) out[slugifyLabel(f.label)] = reqFieldValues[f.id];
+    return out;
+  }, [internalFields, reqFieldValues]);
+
+  const visibleInternalFields = useMemo(
+    () => (internalFields as FormFieldRow[]).filter((f) => isFieldVisible(f, valuesBySlug)),
+    [internalFields, valuesBySlug],
+  );
+
   const requestCustomFields = useMemo(() => {
     const out: Record<string, any> = {};
-    internalFields.forEach((f) => {
+    visibleInternalFields.forEach((f) => {
       const v = reqFieldValues[f.id];
       if (v === undefined || v === null || v === "") return;
       if (Array.isArray(v) && v.length === 0) return;
       out[slugifyLabel(f.label)] = { label: f.label, type: f.type, value: v };
     });
     return out;
-  }, [internalFields, reqFieldValues]);
+  }, [visibleInternalFields, reqFieldValues]);
 
   async function submitRequest() {
     if (!reqForm.title.trim() || !reqForm.client_id) {
       toast.error("Title and client are required");
       return;
     }
-    // Required field validation
-    const missing = internalFields.filter((f) => {
+    // Required field validation — only enforce fields that are currently visible
+    // (conditional fields hidden by other answers must not block submit).
+    const missing = visibleInternalFields.filter((f) => {
       if (!f.required) return false;
       const v = reqFieldValues[f.id];
       if (Array.isArray(v)) return v.length === 0;
@@ -131,6 +143,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       toast.error(`Missing required: ${missing.map(m => m.label).join(", ")}`);
       return;
     }
+
     setBusy(true);
     try {
       const proj = await createProject({
