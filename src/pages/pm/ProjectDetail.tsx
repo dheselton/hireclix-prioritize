@@ -114,8 +114,8 @@ export default function ProjectDetail() {
 
       <ProjectHeader
         project={project}
-        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskOpen(true); }}
-        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskOpen(true); }}
+        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
       />
       <KpiStrip project={project} tasks={tasks} />
 
@@ -175,7 +175,8 @@ export default function ProjectDetail() {
             projectId={project.id}
             meId={user?.id ?? null}
             templateId={project.template_id}
-            onAddTask={() => { setNewTaskSupport(false); setNewTaskOpen(true); }}
+            onAddTask={() => { setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+            onAddRaid={(k) => { setNewTaskSupport(false); setNewTaskKind(k); setNewTaskOpen(true); }}
             supportMode={inSupport}
           />
         </div>
