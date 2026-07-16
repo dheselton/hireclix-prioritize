@@ -325,24 +325,17 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialSupport ? "New support request" : "New task"}</DialogTitle>
+          <DialogTitle>
+            {initialSupport
+              ? "New support request"
+              : kind === "decision" ? "Log a decision"
+              : kind === "issue" ? "Log a risk / issue"
+              : "New task"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="new-task-title">Title</Label>
-            <Input
-              id="new-task-title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="What needs to get done?"
-              autoFocus
-              onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave(); }}
-            />
-          </div>
-
-          {/* Kind: Task / Decision / Issue-Risk (RAID log) */}
+          {/* Kind selector — drives what this row represents */}
           <div className="space-y-1.5">
             <Label>Log as</Label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -373,6 +366,28 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               {KIND_META[kind].description}
             </p>
           </div>
+
+          {/* Title */}
+          <div className="space-y-1.5">
+            <Label htmlFor="new-task-title">
+              {kind === "decision" ? "Decision to make" : kind === "issue" ? "Risk summary" : "Title"}
+            </Label>
+            <Input
+              id="new-task-title"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={
+                kind === "decision" ? "e.g. Use www or apex for the CNAME"
+                : kind === "issue" ? "e.g. Client mentioned a possible rebrand"
+                : "What needs to get done?"
+              }
+              autoFocus
+              onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave(); }}
+            />
+          </div>
+
+
+
 
 
           {/* Description */}
