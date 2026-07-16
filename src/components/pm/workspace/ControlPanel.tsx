@@ -16,6 +16,7 @@ import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssi
 import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
 import { teamsFromTask, type Team } from "@/lib/pm/teams";
 import { TagPicker } from "@/components/pm/tags/TagPicker";
+import { getKindStatusLabel, getTaskKind } from "@/lib/pm/taskKind";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
@@ -71,7 +72,11 @@ export function ControlPanel({
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-50 bg-popover">
-            {TASK_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
+            {TASK_STATUSES.map(s => {
+              const kind = getTaskKind(task);
+              const label = kind !== "task" ? getKindStatusLabel(s, kind) : s.replace(/_/g, " ");
+              return <SelectItem key={s} value={s}>{label}</SelectItem>;
+            })}
           </SelectContent>
         </Select>
       </Row>

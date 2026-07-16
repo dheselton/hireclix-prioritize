@@ -65,6 +65,8 @@ interface Props {
   /** When true, prefills tags + custom_fields so this task is treated as a
    *  Support request (lives in the support board, not the build archive). */
   initialSupport?: boolean;
+  /** Pre-select the kind (Decision / Risk) so the dialog opens in RAID mode. */
+  initialKind?: TaskKind;
 }
 
 function teamsForTypes(types: TaskType[]): Team[] {
@@ -73,7 +75,7 @@ function teamsForTypes(types: TaskType[]): Team[] {
   return Array.from(set);
 }
 
-export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport }: Props) {
+export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport, initialKind }: Props) {
   const users = useMockUsers();
   const { user } = useCurrentUser();
   const defaultType: TaskType = meRole ? ROLE_DEFAULT_TYPE[meRole] : "design";
@@ -114,7 +116,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [revealMode, setRevealMode] = useState<RevealMode>("on_complete");
   const [watcherIds, setWatcherIds] = useState<string[]>([]);
   const [estimateHours, setEstimateHours] = useState<string>("");
-  const [kind, setKind] = useState<TaskKind>("task");
+  const [kind, setKind] = useState<TaskKind>(initialKind ?? "task");
 
   // Reset on open
   useEffect(() => {
@@ -142,8 +144,8 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setRevealMode("on_complete");
     setWatcherIds([]);
     setEstimateHours("");
-    setKind("task");
-  }, [open, defaultType, meId, initialSupport]);
+    setKind(initialKind ?? "task");
+  }, [open, defaultType, meId, initialSupport, initialKind]);
 
   // Auto-sync status with assignees unless user touched it
   useEffect(() => {
@@ -323,24 +325,17 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialSupport ? "New support request" : "New task"}</DialogTitle>
+          <DialogTitle>
+            {initialSupport
+              ? "New support request"
+              : kind === "decision" ? "Log a decision"
+              : kind === "issue" ? "Log a risk / issue"
+              : "New task"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="new-task-title">Title</Label>
-            <Input
-              id="new-task-title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="What needs to get done?"
-              autoFocus
-              onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave(); }}
-            />
-          </div>
-
-          {/* Kind: Task / Decision / Issue-Risk (RAID log) */}
+          {/* Kind selector — drives what this row represents */}
           <div className="space-y-1.5">
             <Label>Log as</Label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -371,6 +366,28 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               {KIND_META[kind].description}
             </p>
           </div>
+
+          {/* Title */}
+          <div className="space-y-1.5">
+            <Label htmlFor="new-task-title">
+              {kind === "decision" ? "Decision to make" : kind === "issue" ? "Risk summary" : "Title"}
+            </Label>
+            <Input
+              id="new-task-title"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={
+                kind === "decision" ? "e.g. Use www or apex for the CNAME"
+                : kind === "issue" ? "e.g. Client mentioned a possible rebrand"
+                : "What needs to get done?"
+              }
+              autoFocus
+              onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave(); }}
+            />
+          </div>
+
+
+
 
 
           {/* Description */}

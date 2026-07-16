@@ -21,7 +21,7 @@ import type { StatusGroupId } from "@/lib/pm/statusGroups";
 import { cn } from "@/lib/utils";
 import { TagPillList } from "@/components/pm/tags/TagPill";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
-import { getTaskKind } from "@/lib/pm/taskKind";
+import { getTaskKind, getKindGroupLabel } from "@/lib/pm/taskKind";
 
 
 function stripHtml(html?: string | null): string {
@@ -114,43 +114,51 @@ export function BoardTaskCard({
               <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={mutedNoOwner || vis.waiting} />
             </span>
           </div>
-          <KindBadge kind={getTaskKind(task)} />
-          {preview && (
-            <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
-          )}
-          {vis.waiting && (
-            <div className="text-[10px] text-muted-foreground italic truncate">{vis.waitingReason}</div>
-          )}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {vis.waiting ? (
-              <WaitingChip reason={vis.waitingReason} />
-            ) : isProject ? (
-              <span className={cn("text-[10px] py-0 px-1.5 rounded-full font-medium", group.text, "bg-muted")}>
-                {group.label}
-              </span>
-            ) : (
-              <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
-            )}
-            {vis.teams.map(t => <TeamPill key={t} team={t} />)}
-            <span className="text-[10px] text-muted-foreground lowercase">· {task.type}</span>
-            {isInternal && <span className="internal-pill shrink-0">Internal</span>}
-            {isCareerSite && (
-              <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>
-            )}
-            {count && count.total > 0 && (
-              <span className="text-[11px] text-muted-foreground">{count.done}/{count.total} subtasks</span>
-            )}
-          </div>
-          <TagPillList tags={task.tags ?? []} max={3} />
-          <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
-            <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} hideClaimed={isProject} />
-            <div className="flex items-center gap-2">
-              <InlineDatePopover value={task.due_date} onChange={onDateChange} />
-              {team.length > 1 && (
-                <AvatarStack userIds={team} max={3} size="xs" muted={mutedNoOwner || vis.waiting} />
-              )}
-            </div>
-          </div>
+          {(() => {
+            const kind = getTaskKind(task);
+            const groupLabel = getKindGroupLabel(group.id, kind) ?? group.label;
+            return (
+              <>
+                <KindBadge kind={kind} />
+                {preview && (
+                  <p className="text-[11px] text-muted-foreground line-clamp-2">{preview}</p>
+                )}
+                {vis.waiting && (
+                  <div className="text-[10px] text-muted-foreground italic truncate">{vis.waitingReason}</div>
+                )}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {vis.waiting ? (
+                    <WaitingChip reason={vis.waitingReason} />
+                  ) : isProject ? (
+                    <span className={cn("text-[10px] py-0 px-1.5 rounded-full font-medium", group.text, "bg-muted")}>
+                      {groupLabel}
+                    </span>
+                  ) : (
+                    <StatusPill status={task.status} kind={kind} className="text-[10px] py-0 px-1.5" />
+                  )}
+                  {vis.teams.map(t => <TeamPill key={t} team={t} />)}
+                  <span className="text-[10px] text-muted-foreground lowercase">· {task.type}</span>
+                  {isInternal && <span className="internal-pill shrink-0">Internal</span>}
+                  {isCareerSite && (
+                    <span className="careersite-pill shrink-0">CS{csLabel ? ` · ${csLabel}` : ""}</span>
+                  )}
+                  {count && count.total > 0 && (
+                    <span className="text-[11px] text-muted-foreground">{count.done}/{count.total} subtasks</span>
+                  )}
+                </div>
+                <TagPillList tags={task.tags ?? []} max={3} />
+                <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
+                  <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} hideClaimed={isProject} kind={kind} />
+                  <div className="flex items-center gap-2">
+                    <InlineDatePopover value={task.due_date} onChange={onDateChange} />
+                    {team.length > 1 && (
+                      <AvatarStack userIds={team} max={3} size="xs" muted={mutedNoOwner || vis.waiting} />
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>

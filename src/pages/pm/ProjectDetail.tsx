@@ -45,6 +45,7 @@ export default function ProjectDetail() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskSupport, setNewTaskSupport] = useState(false);
+  const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue">("task");
 
   const reload = async () => {
     if (!id) return;
@@ -113,8 +114,8 @@ export default function ProjectDetail() {
 
       <ProjectHeader
         project={project}
-        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskOpen(true); }}
-        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskOpen(true); }}
+        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
       />
       <KpiStrip project={project} tasks={tasks} />
 
@@ -174,7 +175,8 @@ export default function ProjectDetail() {
             projectId={project.id}
             meId={user?.id ?? null}
             templateId={project.template_id}
-            onAddTask={() => { setNewTaskSupport(false); setNewTaskOpen(true); }}
+            onAddTask={() => { setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+            onAddRaid={(k) => { setNewTaskSupport(false); setNewTaskKind(k); setNewTaskOpen(true); }}
             supportMode={inSupport}
           />
         </div>
@@ -210,13 +212,14 @@ export default function ProjectDetail() {
       <TaskDrawer />
       <NewTaskDialog
         open={newTaskOpen}
-        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) setNewTaskSupport(false); }}
+        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) { setNewTaskSupport(false); setNewTaskKind("task"); } }}
         project={project}
         phases={phases}
         meId={user?.id ?? null}
         meRole={user?.role ?? null}
         onCreated={reload}
         initialSupport={newTaskSupport}
+        initialKind={newTaskKind}
       />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}

@@ -4,6 +4,8 @@
 // no schema change is required. Renders alongside normal tasks so the
 // whole team can see RAID items on the same board.
 import { CheckSquare, GitBranch, AlertTriangle, type LucideIcon } from "lucide-react";
+import type { PmTask, TaskStatus } from "@/types/pm";
+import type { StatusGroupId } from "@/lib/pm/statusGroups";
 
 export type TaskKind = "task" | "decision" | "issue";
 
@@ -58,3 +60,112 @@ export function getTaskKind(task: unknown): TaskKind {
   const raw = cf?.kind;
   return raw === "decision" || raw === "issue" ? raw : "task";
 }
+
+// ---- Kind-aware status vocabulary ---------------------------------------
+// The underlying pm_tasks.status enum is unchanged — scheduler, filters,
+// and existing status groups keep working. These maps only relabel how a
+// row is spoken about in the UI when its kind is Decision or Risk.
+
+const DECISION_STATUS_LABEL: Record<TaskStatus, string> = {
+  unclaimed: "Pending",
+  claimed: "Pending",
+  in_progress: "Being decided",
+  blocked: "Blocked",
+  in_review: "Under review",
+  complete: "Decided",
+  approved: "Decided",
+};
+
+const RISK_STATUS_LABEL: Record<TaskStatus, string> = {
+  unclaimed: "Open",
+  claimed: "Owned",
+  in_progress: "Monitoring",
+  blocked: "Blocked",
+  in_review: "Reviewing",
+  complete: "Mitigated",
+  approved: "Closed",
+};
+
+const DECISION_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
+  ready: "Pending",
+  claimed: "Pending",
+  in_progress: "Deciding",
+  in_review: "Review",
+  complete: "Decided",
+};
+
+const RISK_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
+  ready: "Open",
+  claimed: "Owned",
+  in_progress: "Monitoring",
+  in_review: "Reviewing",
+  complete: "Mitigated",
+};
+
+export function getKindStatusLabel(status: TaskStatus, kind: TaskKind): string {
+  if (kind === "decision") return DECISION_STATUS_LABEL[status];
+  if (kind === "issue") return RISK_STATUS_LABEL[status];
+  return "";
+}
+
+export function getKindGroupLabel(gid: StatusGroupId, kind: TaskKind): string | null {
+  if (kind === "decision") return DECISION_GROUP_LABEL[gid] ?? null;
+  if (kind === "issue") return RISK_GROUP_LABEL[gid] ?? null;
+  return null;
+}
+
+// A RAID item is "open" (needs attention) when it isn't Decided / Mitigated / Closed.
+export function isRaidOpen(t: PmTask): boolean {
+  return t.status !== "complete" && t.status !== "approved";
+}
+
+/** Days since a task was created (used to flag stale decisions). */
+export function daysSince(iso: string | null | undefined): number {
+  if (!iso) return 0;
+  const then = new Date(iso).getTime();
+  return Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24));
+}
+
+// ---- Risk-specific metadata (stored on custom_fields.raid) --------------
+
+export type RiskSeverity = "low" | "medium" | "high" | "critical";
+export type Likelihood = "low" | "medium" | "high";
+
+export const RISK_SEVERITIES: RiskSeverity[] = ["low", "medium", "high", "critical"];
+export const LIKELIHOODS: Likelihood[] = ["low", "medium", "high"];
+
+export interface RaidDetails {
+  severity?: RiskSeverity;
+  likelihood?: Likelihood;
+  mitigation?: string;
+  impact?: string;
+  decision_needed_by?: string | null;
+  options?: string[];
+  decision_made?: string;
+}
+
+export function getRaidDetails(task: unknown): RaidDetails {
+  const cf = (task as any)?.custom_fields;
+  const raid = cf?.raid;
+  return (raid && typeof raid === "object" ? raid : {}) as RaidDetails;
+}
+
+export function isHighSeverityRisk(task: PmTask): boolean {
+  if (getTaskKind(task) !== "issue") return false;
+  if (!isRaidOpen(task)) return false;
+  const sev = getRaidDetails(task).severity;
+  return sev === "high" || sev === "critical";
+}
+
+export function isStaleDecision(task: PmTask, staleDays = 3): boolean {
+  if (getTaskKind(task) !== "decision") return false;
+  if (!isRaidOpen(task)) return false;
+  return daysSince(task.created_at as any) >= staleDays;
+}
+
+export const SEVERITY_STYLE: Record<RiskSeverity, string> = {
+  low: "bg-muted text-muted-foreground border-border",
+  medium: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+  high: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  critical: "bg-destructive/15 text-destructive border-destructive/30",
+};

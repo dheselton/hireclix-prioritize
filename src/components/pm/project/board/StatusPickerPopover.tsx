@@ -1,20 +1,24 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { STATUS_GROUPS, type StatusGroupId } from "@/lib/pm/statusGroups";
 import { STATUS_PILL_CLASS, STATUS_DOT_CLASS } from "./boardStyles";
+import { getKindGroupLabel, type TaskKind } from "@/lib/pm/taskKind";
 import { useState } from "react";
 
 export function StatusPickerPopover({
   currentGroup,
   onPick,
   hideClaimed = false,
+  kind = "task",
 }: {
   currentGroup: StatusGroupId;
   onPick: (g: StatusGroupId) => void;
   hideClaimed?: boolean;
+  kind?: TaskKind;
 }) {
   const [open, setOpen] = useState(false);
   const groups = hideClaimed ? STATUS_GROUPS.filter(g => g.id !== "claimed") : STATUS_GROUPS;
   const current = groups.find(g => g.id === currentGroup) ?? STATUS_GROUPS.find(g => g.id === currentGroup)!;
+  const labelFor = (gid: StatusGroupId, base: string) => getKindGroupLabel(gid, kind) ?? base;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -24,7 +28,7 @@ export function StatusPickerPopover({
           onClick={e => e.stopPropagation()}
           className={`text-[10px] uppercase font-medium px-2 py-0.5 rounded-full ${STATUS_PILL_CLASS[currentGroup]} hover:opacity-80 transition`}
         >
-          {current.label}
+          {labelFor(current.id, current.label)}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -46,7 +50,7 @@ export function StatusPickerPopover({
             }`}
           >
             <span className={`h-2 w-2 rounded-full ${STATUS_DOT_CLASS[g.id]}`} />
-            <span>{g.label}</span>
+            <span>{labelFor(g.id, g.label)}</span>
           </button>
         ))}
       </PopoverContent>
