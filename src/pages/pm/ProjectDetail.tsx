@@ -45,6 +45,7 @@ export default function ProjectDetail() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskSupport, setNewTaskSupport] = useState(false);
+  const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue">("task");
 
   const reload = async () => {
     if (!id) return;
