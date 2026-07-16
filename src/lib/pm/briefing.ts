@@ -246,16 +246,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
     }
 
     // 7. RAID needing attention — stale decisions + high-severity risks across projects I can see
-    const raidPool = [
-      ...activeProjectList.flatMap(p => (byProjOverride.get(p.id) ?? [])),
-    ];
     let raidAttention = 0;
-    // Fallback: scan all tasks in active projects for open decisions/risks
-    const allProjectTasksById = new Map<string, PmTask[]>();
-    for (const p of activeProjectList) {
-      allProjectTasksById.set(p.id, []);
-    }
-    // Reuse allTasks fetched above if available
     try {
       const ids = activeProjectList.map((p) => p.id);
       if (ids.length) {

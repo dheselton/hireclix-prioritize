@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Zap, FolderOpen, AlertTriangle, Ban } from "lucide-react";
+import { Zap, FolderOpen, AlertTriangle, Ban, GitBranch } from "lucide-react";
 import { format } from "date-fns";
 import { buildQueueLink } from "@/lib/pm/links";
 import type { BriefingCounts } from "@/lib/pm/briefing";
@@ -62,6 +62,14 @@ export function DailyBriefingHero({ firstName, counts }: Props) {
             to={buildQueueLink({ chips: ["assigned_to_me", "blocked"] })}
             icon={<Ban className="h-3.5 w-3.5" />}
             label={`${counts.blocked} Blocked`}
+            tone="warning"
+          />
+        )}
+        {counts.raidAttention > 0 && (
+          <Chip
+            to="/pm/work"
+            icon={<GitBranch className="h-3.5 w-3.5" />}
+            label={`${counts.raidAttention} RAID needs attention`}
             tone="warning"
           />
         )}
