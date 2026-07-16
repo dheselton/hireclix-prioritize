@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTasksChanged, emitTasksChanged } from "./refresh";
+import { getTaskKind, isHighSeverityRisk, isStaleDecision } from "./taskKind";
 import type { PmTask, PmProject } from "@/types/pm";
 
 const TERMINAL = new Set(["complete", "approved"]);
@@ -15,6 +16,7 @@ export interface BriefingCounts {
   quickTasks: number;
   activeProjects: number;
   blocked: number;
+  raidAttention: number;
 }
 
 export type EnrichedQuickTask = PmTask & {
@@ -40,7 +42,7 @@ interface BriefingData {
 
 export function useBriefingData(userId: string | null | undefined): BriefingData & { reload: () => void } {
   const [state, setState] = useState<BriefingData>({
-    counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0 },
+    counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0 },
     quickTasks: [],
     unclaimedQuickTasks: [],
     projects: [],
@@ -50,7 +52,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
   const reload = useCallback(async () => {
     if (!userId) {
       setState({
-        counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0 },
+        counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0 },
         quickTasks: [],
         unclaimedQuickTasks: [],
         projects: [],
@@ -243,12 +245,37 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       projectsOut = projectsOut.slice(0, 5);
     }
 
+    // 7. RAID needing attention — stale decisions + high-severity risks across projects I can see
+    const raidPool = [
+      ...activeProjectList.flatMap(p => (byProjOverride.get(p.id) ?? [])),
+    ];
+    let raidAttention = 0;
+    // Fallback: scan all tasks in active projects for open decisions/risks
+    const allProjectTasksById = new Map<string, PmTask[]>();
+    for (const p of activeProjectList) {
+      allProjectTasksById.set(p.id, []);
+    }
+    // Reuse allTasks fetched above if available
+    try {
+      const ids = activeProjectList.map((p) => p.id);
+      if (ids.length) {
+        const { data: raidRaw } = await supabase
+          .from("pm_tasks")
+          .select("*")
+          .in("project_id", ids);
+        for (const t of (raidRaw ?? []) as PmTask[]) {
+          if (isStaleDecision(t) || isHighSeverityRisk(t)) raidAttention++;
+        }
+      }
+    } catch {}
+
     setState({
       counts: {
         overdue: overdueTasks.length,
         quickTasks: quickPool.length,
         activeProjects: activeProjectList.length,
         blocked: blocked.length,
+        raidAttention,
       },
       quickTasks: quickTop,
       unclaimedQuickTasks: unclaimedQuick,
