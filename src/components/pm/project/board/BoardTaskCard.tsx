@@ -91,7 +91,7 @@ export function BoardTaskCard({
       style={style}
       {...(overlay ? {} : attributes)}
       {...(overlay ? {} : listeners)}
-      className={isDragging && !overlay ? "opacity-40" : ""}
+      className={cn(isDragging && !overlay ? "opacity-40" : "", "group/card")}
     >
       <Card
         onClick={onClick}
@@ -102,9 +102,28 @@ export function BoardTaskCard({
           !isCareerSite && isInternal && "internal-border-l",
           vis.waiting && "task-waiting",
           needsAssignee && !vis.waiting && "task-needs-assignee",
+          selected && "ring-2 ring-info ring-offset-1",
         )}
       >
         {showTeamBar && <TeamColorBar background={vis.teamBarBackground} dim={vis.waiting} />}
+        {onToggleSelect && !overlay && (
+          <span
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+            className={cn(
+              "absolute top-1.5 right-1.5 z-10 rounded bg-background/80 backdrop-blur p-0.5 transition-opacity",
+              selected ? "opacity-100" : "opacity-0 group-hover/card:opacity-100",
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={!!selected}
+              onChange={() => onToggleSelect()}
+              aria-label="Select task"
+              className="h-3.5 w-3.5 cursor-pointer accent-info"
+            />
+          </span>
+        )}
         <CardContent className={cn("p-3 space-y-2 flex flex-col", showTeamBar && "pl-4")}>
           <div className="flex items-start gap-2">
             <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
