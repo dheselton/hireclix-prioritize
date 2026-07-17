@@ -712,7 +712,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                         task={t}
                         groupColorBg={g.bg}
                         count={counts.get(t.id)}
-                        onClick={() => openTask(t.id)}
+                        onOpen={openTask}
                       />
                     );
                   })}
