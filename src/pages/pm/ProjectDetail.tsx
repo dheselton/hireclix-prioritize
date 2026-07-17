@@ -118,6 +118,7 @@ export default function ProjectDetail() {
         onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
         onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
       />
+      <SupportReadyBanner project={project} />
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (
