@@ -1,4 +1,6 @@
+import { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
@@ -29,10 +31,25 @@ function stripHtml(html?: string | null): string {
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function BoardTaskCard({
+export type BoardTaskCardProps = {
+  task: PmTask;
+  count?: SubtaskCount;
+  onOpen: (id: string) => void;
+  onStatusChange: (id: string, g: StatusGroupId) => void;
+  onDateChange: (id: string, iso: string | null) => void;
+  overlay?: boolean;
+  allTasks?: PmTask[];
+  deps?: PmDependency[];
+  isProject?: boolean;
+  selected?: boolean;
+  groupKey?: string;
+  onToggleSelect?: (id: string, e?: React.MouseEvent, groupKey?: string) => void;
+};
+
+function BoardTaskCardInner({
   task,
   count,
-  onClick,
+  onOpen,
   onStatusChange,
   onDateChange,
   overlay,
@@ -40,20 +57,9 @@ export function BoardTaskCard({
   deps,
   isProject = false,
   selected,
+  groupKey,
   onToggleSelect,
-}: {
-  task: PmTask;
-  count?: SubtaskCount;
-  onClick: () => void;
-  onStatusChange: (g: StatusGroupId) => void;
-  onDateChange: (iso: string | null) => void;
-  overlay?: boolean;
-  allTasks?: PmTask[];
-  deps?: PmDependency[];
-  isProject?: boolean;
-  selected?: boolean;
-  onToggleSelect?: () => void;
-}) {
+}: BoardTaskCardProps) {
   const sortable = useSortable({ id: task.id, disabled: overlay });
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
   const style = overlay
@@ -72,8 +78,6 @@ export function BoardTaskCard({
   const { user } = useCurrentUser();
   const isPM = user?.role === "pm";
   const isDone = task.status === "complete" || task.status === "approved";
-  // On project boards we hide the "claimed/unclaimed" concept and instead glow
-  // unassigned cards. On request boards we keep the muted "unclaimed" treatment.
   const needsAssignee = isProject && !task.assignee_id && !isDone;
   const mutedNoOwner = !isProject && unclaimed;
 
@@ -81,8 +85,6 @@ export function BoardTaskCard({
     meId: user?.id ?? null,
     bypassWaiting: isPM,
   });
-  // Project-level borders (careersite > internal) hide the team bar to avoid double accent.
-  // Otherwise the team color bar always wins — including for unclaimed tasks (the Unclaimed pill still signals status).
   const showTeamBar = !isCareerSite && !isInternal && !!vis.teamBarBackground;
 
   return (
@@ -94,7 +96,7 @@ export function BoardTaskCard({
       className={cn(isDragging && !overlay ? "opacity-40" : "", "group/card")}
     >
       <Card
-        onClick={onClick}
+        onClick={() => onOpen(task.id)}
         className={cn(
           "relative overflow-hidden card-lift cursor-pointer border border-border",
           overlay && "opacity-80 shadow-lg",
@@ -110,19 +112,13 @@ export function BoardTaskCard({
           <span
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id, e, groupKey); }}
             className={cn(
-              "absolute top-1.5 right-1.5 z-10 rounded bg-background/90 backdrop-blur p-0.5 border border-border transition-opacity",
-              selected ? "opacity-100" : "opacity-0 group-hover/card:opacity-100",
+              "absolute top-1.5 right-1.5 z-10 rounded bg-background/90 backdrop-blur p-1 border border-border transition-opacity",
+              selected ? "opacity-100" : "opacity-0 group-hover/card:opacity-100 focus-within:opacity-100",
             )}
           >
-            <input
-              type="checkbox"
-              checked={!!selected}
-              onChange={() => onToggleSelect()}
-              aria-label="Select task"
-              className="h-4 w-4 cursor-pointer accent-info block"
-            />
+            <Checkbox checked={!!selected} aria-label="Select task" tabIndex={-1} className="pointer-events-none" />
           </span>
         )}
         <CardContent className={cn("p-3 space-y-2 flex flex-col", showTeamBar && "pl-4")}>
@@ -172,9 +168,14 @@ export function BoardTaskCard({
                 </div>
                 <TagPillList tags={task.tags ?? []} max={3} />
                 <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
-                  <StatusPickerPopover currentGroup={group.id} onPick={onStatusChange} hideClaimed={isProject} kind={kind} />
+                  <StatusPickerPopover
+                    currentGroup={group.id}
+                    onPick={(g) => onStatusChange(task.id, g)}
+                    hideClaimed={isProject}
+                    kind={kind}
+                  />
                   <div className="flex items-center gap-2">
-                    <InlineDatePopover value={task.due_date} onChange={onDateChange} />
+                    <InlineDatePopover value={task.due_date} onChange={(iso) => onDateChange(task.id, iso)} />
                     {team.length > 1 && (
                       <AvatarStack userIds={team} max={3} size="xs" muted={mutedNoOwner || vis.waiting} />
                     )}
@@ -188,3 +189,5 @@ export function BoardTaskCard({
     </div>
   );
 }
+
+export const BoardTaskCard = memo(BoardTaskCardInner);

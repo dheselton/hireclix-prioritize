@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,17 +72,44 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [addPageOpen, setAddPageOpen] = useState(false);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const toggleSelect = (id: string) => setSelected(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-  const toggleSelectMany = (ids: string[], on: boolean) => setSelected(prev => {
-    const next = new Set(prev);
-    for (const id of ids) { if (on) next.add(id); else next.delete(id); }
-    return next;
-  });
-  const clearSelection = () => setSelected(new Set());
+  const lastClickedRef = useRef<Map<string, string>>(new Map()); // groupKey -> taskId
+  const toggleSelect = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+  const selectRange = useCallback((groupKey: string, orderedIds: string[], id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      const anchor = lastClickedRef.current.get(groupKey);
+      const i = orderedIds.indexOf(id);
+      const a = anchor ? orderedIds.indexOf(anchor) : -1;
+      if (i === -1 || a === -1) { if (next.has(id)) next.delete(id); else next.add(id); }
+      else {
+        const [lo, hi] = a < i ? [a, i] : [i, a];
+        for (let k = lo; k <= hi; k++) next.add(orderedIds[k]);
+      }
+      return next;
+    });
+    lastClickedRef.current.set(groupKey, id);
+  }, []);
+  const setGroupSelected = useCallback((ids: string[], on: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      for (const id of ids) { if (on) next.add(id); else next.delete(id); }
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSelected(s => (s.size ? new Set() : s));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
@@ -321,30 +348,38 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     }
   }
 
-  async function changeStatus(taskId: string, gid: StatusGroupId) {
-    const task = boardTasks.find(t => t.id === taskId);
-    if (!task) return;
-    const targetGroup = STATUS_GROUPS.find(g => g.id === gid)!;
-    if (targetGroup.statuses.includes(task.status)) return;
-    const newStatus = GROUP_PRIMARY_STATUS[gid];
-    const prev = boardTasks;
-    setBoardTasks(boardTasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+  const changeStatus = useCallback(async (taskId: string, gid: StatusGroupId) => {
+    let prev: PmTask[] | null = null;
+    let newStatus: TaskStatus | null = null;
+    setBoardTasks(current => {
+      prev = current;
+      const task = current.find(t => t.id === taskId);
+      if (!task) return current;
+      const targetGroup = STATUS_GROUPS.find(g => g.id === gid)!;
+      if (targetGroup.statuses.includes(task.status)) return current;
+      newStatus = GROUP_PRIMARY_STATUS[gid];
+      return current.map(t => t.id === taskId ? { ...t, status: newStatus! } : t);
+    });
+    if (!newStatus) return;
     const { error } = await supabase.from("pm_tasks").update({ status: newStatus }).eq("id", taskId);
     if (error) {
-      setBoardTasks(prev);
+      if (prev) setBoardTasks(prev);
       toast.error("Couldn't update status");
     }
-  }
+  }, []);
 
-  async function changeDate(taskId: string, iso: string | null) {
-    const prev = boardTasks;
-    setBoardTasks(boardTasks.map(t => t.id === taskId ? { ...t, due_date: iso } : t));
+  const changeDate = useCallback(async (taskId: string, iso: string | null) => {
+    let prev: PmTask[] | null = null;
+    setBoardTasks(current => {
+      prev = current;
+      return current.map(t => t.id === taskId ? { ...t, due_date: iso } : t);
+    });
     const { error } = await supabase.from("pm_tasks").update({ due_date: iso }).eq("id", taskId);
     if (error) {
-      setBoardTasks(prev);
+      if (prev) setBoardTasks(prev);
       toast.error("Couldn't update date");
     }
-  }
+  }, []);
 
   const pills: { id: TypePill | "me"; label: string; teamColor?: string }[] = [
     { id: "all", label: "All" },
@@ -360,7 +395,16 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     }`;
   }
 
-  const openTask = (id: string) => navigate(`/pm/tasks/${id}`);
+  const openTask = useCallback((id: string) => navigate(`/pm/tasks/${id}`), [navigate]);
+  const orderedByGroupRef = useRef<Map<string, string[]>>(new Map());
+  const handleRowToggle = useCallback((id: string, e?: React.MouseEvent, groupKey?: string) => {
+    if (e?.shiftKey && groupKey) {
+      const ids = orderedByGroupRef.current.get(groupKey) ?? [];
+      selectRange(groupKey, ids, id);
+    } else {
+      toggleSelect(id);
+    }
+  }, [toggleSelect, selectRange]);
 
   return (
     <div className="space-y-3">
@@ -521,7 +565,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                       <div className="px-2 pb-2 space-y-1">
                         {pageTasks.map(t => {
                           const g = groupForStatus(t.status);
-                          return <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />;
+                          const groupKey = `page:${key}`;
+                          return <TaskRow key={t.id} task={t} groupKey={groupKey} groupColorBg={g.bg} count={counts.get(t.id)} onOpen={openTask} selected={selected.has(t.id)} onToggleSelect={handleRowToggle} />;
                         })}
                       </div>
                     )}
@@ -539,23 +584,40 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
           {PROJECT_GROUPS.map(g => {
             const list = byGroup[g.id];
             const isCollapsed = collapsed[g.id];
+            const groupKey = `list:${g.id}`;
+            const ids = list.map(t => t.id);
+            orderedByGroupRef.current.set(groupKey, ids);
+            const selectedCount = ids.reduce((n, id) => n + (selected.has(id) ? 1 : 0), 0);
+            const allSelected = ids.length > 0 && selectedCount === ids.length;
+            const someSelected = selectedCount > 0 && !allSelected;
             return (
               <Card key={g.id}>
                 <CardContent className="p-2">
-                  <button type="button"
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40"
-                    onClick={() => setCollapsed(c => ({ ...c, [g.id]: !c[g.id] }))}>
-                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
-                    <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
-                    <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{list.length}</span>
-                  </button>
+                  <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40">
+                    {ids.length > 0 && (
+                      <span onClick={(e) => e.stopPropagation()} className={selectedCount > 0 ? "" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}>
+                        <Checkbox
+                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                          onCheckedChange={(v) => setGroupSelected(ids, !!v)}
+                          aria-label={`Select all ${g.label}`}
+                        />
+                      </span>
+                    )}
+                    <button type="button"
+                      className="flex-1 flex items-center gap-2"
+                      onClick={() => setCollapsed(c => ({ ...c, [g.id]: !c[g.id] }))}>
+                      <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
+                      <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
+                      <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{list.length}</span>
+                    </button>
+                  </div>
                   {!isCollapsed && (
                     <div className="space-y-1 mt-1">
                       {list.length === 0 && (
                         <div className="px-3 py-2 text-xs text-muted-foreground italic">No tasks</div>
                       )}
                       {list.map(t => (
-                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />
+                        <TaskRow key={t.id} task={t} groupKey={groupKey} groupColorBg={g.bg} count={counts.get(t.id)} onOpen={openTask} selected={selected.has(t.id)} onToggleSelect={handleRowToggle} />
                       ))}
                     </div>
                   )}
@@ -583,21 +645,27 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
           <div className="flex md:grid md:grid-cols-4 gap-3 touch-scroll-x md:!overflow-visible no-scrollbar snap-x snap-mandatory md:snap-none -mx-3 px-3 md:mx-0 md:px-0 [&>*]:w-[85vw] [&>*]:flex-shrink-0 [&>*]:snap-center md:[&>*]:w-auto">
             {PROJECT_GROUPS.map(g => (
               <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
-                {boardByGroup[g.id].map(t => (
-                  <BoardTaskCard
-                    key={t.id}
-                    task={t}
-                    count={counts.get(t.id)}
-                    onClick={() => openTask(t.id)}
-                    onStatusChange={(gid) => changeStatus(t.id, gid)}
-                    onDateChange={(iso) => changeDate(t.id, iso)}
-                    allTasks={boardTasks}
-                    deps={deps}
-                    isProject
-                    selected={selected.has(t.id)}
-                    onToggleSelect={() => toggleSelect(t.id)}
-                  />
-                ))}
+                {(() => {
+                  const gk = `board:${g.id}`;
+                  const ids = boardByGroup[g.id].map(t => t.id);
+                  orderedByGroupRef.current.set(gk, ids);
+                  return boardByGroup[g.id].map(t => (
+                    <BoardTaskCard
+                      key={t.id}
+                      task={t}
+                      groupKey={gk}
+                      count={counts.get(t.id)}
+                      onOpen={openTask}
+                      onStatusChange={changeStatus}
+                      onDateChange={changeDate}
+                      allTasks={boardTasks}
+                      deps={deps}
+                      isProject
+                      selected={selected.has(t.id)}
+                      onToggleSelect={handleRowToggle}
+                    />
+                  ));
+                })()}
               </BoardColumn>
             ))}
           </div>
@@ -606,7 +674,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
               <BoardTaskCard
                 task={activeTask}
                 count={counts.get(activeTask.id)}
-                onClick={() => {}}
+                onOpen={() => {}}
                 onStatusChange={() => {}}
                 onDateChange={() => {}}
                 allTasks={boardTasks}
@@ -658,7 +726,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                         task={t}
                         groupColorBg={g.bg}
                         count={counts.get(t.id)}
-                        onClick={() => openTask(t.id)}
+                        onOpen={openTask}
                       />
                     );
                   })}
@@ -675,23 +743,25 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   );
 }
 
-function TaskRow({ task, groupColorBg, count, onClick, selected, onToggleSelect }: {
-  task: PmTask; groupColorBg: string; count?: SubtaskCount; onClick: () => void;
-  selected?: boolean; onToggleSelect?: () => void;
+const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onOpen, selected, onToggleSelect }: {
+  task: PmTask; groupKey?: string; groupColorBg: string; count?: SubtaskCount;
+  onOpen: (id: string) => void;
+  selected?: boolean;
+  onToggleSelect?: (id: string, e?: React.MouseEvent, groupKey?: string) => void;
 }) {
   const preview = stripHtml(task.description);
   const teams = (Array.isArray((task as any).teams) ? (task as any).teams : []) as string[];
   return (
     <div
-      onClick={onClick}
+      onClick={() => onOpen(task.id)}
       className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info group"
     >
       {onToggleSelect && (
         <span
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id, e, groupKey); }}
           className={`pl-2 ${selected ? "" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
         >
-          <Checkbox checked={!!selected} onCheckedChange={() => onToggleSelect()} aria-label="Select task" />
+          <Checkbox checked={!!selected} aria-label="Select task" tabIndex={-1} />
         </span>
       )}
       <div className={`w-[3px] self-stretch rounded-full ${groupColorBg}`} />
@@ -721,7 +791,7 @@ function TaskRow({ task, groupColorBg, count, onClick, selected, onToggleSelect 
       <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} title={task.priority} />
     </div>
   );
-}
+});
 
 function TeamPillInline({ team }: { team: string }) {
   // Inline (untyped) renderer to avoid extra imports — color map is small.
