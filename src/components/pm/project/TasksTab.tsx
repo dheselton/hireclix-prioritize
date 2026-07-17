@@ -688,7 +688,7 @@ function TaskRow({ task, groupColorBg, count, onClick, selected, onToggleSelect 
     >
       {onToggleSelect && (
         <span
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          onClick={(e) => e.stopPropagation()}
           className={`pl-2 ${selected ? "" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
         >
           <Checkbox checked={!!selected} onCheckedChange={() => onToggleSelect()} aria-label="Select task" />

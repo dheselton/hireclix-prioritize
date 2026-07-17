@@ -109,9 +109,10 @@ export function BoardTaskCard({
         {onToggleSelect && !overlay && (
           <span
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             className={cn(
-              "absolute top-1.5 right-1.5 z-10 rounded bg-background/80 backdrop-blur p-0.5 transition-opacity",
+              "absolute top-1.5 right-1.5 z-10 rounded bg-background/90 backdrop-blur p-0.5 border border-border transition-opacity",
               selected ? "opacity-100" : "opacity-0 group-hover/card:opacity-100",
             )}
           >
@@ -120,7 +121,7 @@ export function BoardTaskCard({
               checked={!!selected}
               onChange={() => onToggleSelect()}
               aria-label="Select task"
-              className="h-3.5 w-3.5 cursor-pointer accent-info"
+              className="h-4 w-4 cursor-pointer accent-info block"
             />
           </span>
         )}
