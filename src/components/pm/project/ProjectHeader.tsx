@@ -10,6 +10,7 @@ import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { useInternalClientIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { deleteProject } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
+import { useEnterSupportMode } from "@/lib/pm/supportMode";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
