@@ -478,6 +478,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         </div>
       </div>
 
+      <BulkTaskActions selected={selected} onClear={clearSelection} onChanged={emitTasksChanged} />
+
       {/* Pages (grouped) */}
       {view === "list" && (() => {
         const pageMap = new Map<string, { label: string; tasks: PmTask[] }>();
