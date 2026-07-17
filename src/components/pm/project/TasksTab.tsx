@@ -729,23 +729,25 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   );
 }
 
-function TaskRow({ task, groupColorBg, count, onClick, selected, onToggleSelect }: {
-  task: PmTask; groupColorBg: string; count?: SubtaskCount; onClick: () => void;
-  selected?: boolean; onToggleSelect?: () => void;
+const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onOpen, selected, onToggleSelect }: {
+  task: PmTask; groupKey?: string; groupColorBg: string; count?: SubtaskCount;
+  onOpen: (id: string) => void;
+  selected?: boolean;
+  onToggleSelect?: (id: string, e?: React.MouseEvent, groupKey?: string) => void;
 }) {
   const preview = stripHtml(task.description);
   const teams = (Array.isArray((task as any).teams) ? (task as any).teams : []) as string[];
   return (
     <div
-      onClick={onClick}
+      onClick={() => onOpen(task.id)}
       className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info group"
     >
       {onToggleSelect && (
         <span
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id, e, groupKey); }}
           className={`pl-2 ${selected ? "" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
         >
-          <Checkbox checked={!!selected} onCheckedChange={() => onToggleSelect()} aria-label="Select task" />
+          <Checkbox checked={!!selected} aria-label="Select task" tabIndex={-1} />
         </span>
       )}
       <div className={`w-[3px] self-stretch rounded-full ${groupColorBg}`} />
