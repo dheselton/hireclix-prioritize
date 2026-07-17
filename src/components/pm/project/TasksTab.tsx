@@ -555,7 +555,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                         <div className="px-3 py-2 text-xs text-muted-foreground italic">No tasks</div>
                       )}
                       {list.map(t => (
-                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} />
+                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />
                       ))}
                     </div>
                   )}
