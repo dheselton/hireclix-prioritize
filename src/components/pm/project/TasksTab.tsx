@@ -30,6 +30,8 @@ import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { Users, Eye } from "lucide-react";
 import { KIND_META, TASK_KINDS, getTaskKind, isRaidOpen, type TaskKind } from "@/lib/pm/taskKind";
 import { RaidStrip } from "./RaidStrip";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkTaskActions } from "@/components/pm/collections/BulkTaskActions";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
