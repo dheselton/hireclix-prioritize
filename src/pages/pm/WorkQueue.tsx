@@ -18,6 +18,7 @@ import { DailyBriefingHero } from "@/components/pm/workqueue/DailyBriefingHero";
 import { QuickTasksColumn } from "@/components/pm/workqueue/QuickTasksColumn";
 import { ProjectWorkColumn } from "@/components/pm/workqueue/ProjectWorkColumn";
 import { NotesSection } from "@/components/pm/workqueue/NotesSection";
+import { SupportHandoffCallout } from "@/components/pm/workqueue/SupportHandoffCallout";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
