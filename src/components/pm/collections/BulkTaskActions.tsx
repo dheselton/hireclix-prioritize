@@ -3,7 +3,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, type TaskStatus } from "@/types/pm";
 import { updateTask } from "@/lib/pm/api";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 interface Props {
   selected: Set<string>;
@@ -27,9 +29,19 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
     onClear();
     onChanged?.();
   }
+  async function bulkDelete() {
+    const n = selected.size;
+    if (!confirm(`Delete ${n} task${n === 1 ? "" : "s"}? This cannot be undone.`)) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("pm_tasks").delete().in("id", ids);
+    if (error) { toast.error("Couldn't delete tasks"); return; }
+    toast.success(`Deleted ${n} task${n === 1 ? "" : "s"}`);
+    onClear();
+    onChanged?.();
+  }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/40 text-sm flex-wrap">
+    <div className="sticky top-2 z-20 flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-background/95 backdrop-blur shadow-sm text-sm flex-wrap">
       <span className="font-medium">{selected.size} selected</span>
       <Select onValueChange={(v) => bulkStatus(v as TaskStatus)}>
         <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Change status" /></SelectTrigger>
@@ -44,6 +56,9 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
           {users.filter(u => u.role !== "submitter").map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
         </SelectContent>
       </Select>
+      <Button variant="destructive" size="sm" onClick={bulkDelete} className="h-8">
+        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+      </Button>
       <Button variant="ghost" size="sm" onClick={onClear}>Clear</Button>
     </div>
   );
