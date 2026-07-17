@@ -138,23 +138,8 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
                 </DropdownMenuItem>
                 {isCareerSite && !inSupport && (
                   <DropdownMenuItem
-                    disabled={supportBusy}
-                    onSelect={async (e) => {
-                      e.preventDefault();
-                      setSupportBusy(true);
-                      try {
-                        const next = { ...(project.custom_fields ?? {}), support_mode_at: new Date().toISOString() };
-                        const { error } = await supabase.from("pm_projects")
-                          .update({ custom_fields: next }).eq("id", project.id);
-                        if (error) throw error;
-                        toast.success("Project is now in Support mode");
-                        emitTasksChanged();
-                      } catch (err: any) {
-                        toast.error(err?.message ?? "Could not enter Support mode");
-                      } finally {
-                        setSupportBusy(false);
-                      }
-                    }}
+                    disabled={enteringSupport}
+                    onSelect={(e) => { e.preventDefault(); enterSupport(); }}
                   >
                     <Headphones className="h-4 w-4 mr-2" /> Enter Support mode
                   </DropdownMenuItem>
