@@ -129,6 +129,8 @@ export default function WorkQueue() {
         </Button>
       </div>
 
+      <SupportHandoffCallout />
+
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4 mb-4">
         <QuickTasksColumn tasks={quickTasks} totalCount={counts.quickTasks} unclaimed={unclaimedQuickTasks} />
         <ProjectWorkColumn projects={projects} />
