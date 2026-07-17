@@ -49,6 +49,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
   const { user } = useCurrentUser();
   const isPM = user?.role === "pm";
   const navigate = useNavigate();
+  const { enter: enterSupport, busy: enteringSupport } = useEnterSupportMode(project);
 
   useEffect(() => {
     (async () => {
