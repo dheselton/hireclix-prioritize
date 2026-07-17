@@ -557,7 +557,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                       <div className="px-2 pb-2 space-y-1">
                         {pageTasks.map(t => {
                           const g = groupForStatus(t.status);
-                          return <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />;
+                          const groupKey = `page:${key}`;
+                          return <TaskRow key={t.id} task={t} groupKey={groupKey} groupColorBg={g.bg} count={counts.get(t.id)} onOpen={openTask} selected={selected.has(t.id)} onToggleSelect={handleRowToggle} />;
                         })}
                       </div>
                     )}
