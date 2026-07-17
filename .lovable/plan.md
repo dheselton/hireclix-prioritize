@@ -1,47 +1,41 @@
-## Goal
+## Why it feels buggy
 
-When a career-site project reaches its `go_live_date` (and hasn't already been flipped), prompt the PM to transition it into Support mode with one click — instead of relying on them to remember the manual "⋯ → Enter Support mode" action.
+- **Every keystroke re-renders every row.** `TaskRow` and `BoardTaskCard` receive a fresh `onToggleSelect={() => toggleSelect(t.id)}` closure on every parent render, and neither component is memoized. Selecting one card re-mounts Radix popovers inside every other card — that's also the source of the "Maximum update depth" warning coming from `AssigneePopover` in the console.
+- **Bulk actions fan out N round-trips.** `BulkTaskActions` maps every selected id to its own `updateTask` / `updateTask` call. Selecting 20 tasks and changing status = 20 sequential API updates before the toast fires.
+- **UX rough edges.** Native `window.confirm` for delete, no "select all", no shift-click range, no Esc-to-clear, selection lost when switching list ↔ board (parent state is fine but bar rerenders visibly), sticky-top bar overlaps the toolbar, and raw `<input type=checkbox>` on board vs shadcn `Checkbox` on list looks inconsistent.
 
-## Scope
+## What I'll change
 
-Only career-site projects (those in `useCareerSiteProjects()`), only PM-equivalent roles (PM / Alt PM / BA / Tech Lead), only when `custom_fields.support_mode_at` is not already set.
+### 1. Kill the re-render storm (biggest perf win)
+- Wrap `TaskRow` and `BoardTaskCard` in `React.memo`.
+- Change the row API from `onToggleSelect: () => void` to `onToggleSelect: (id, e?) => void` and pass one stable callback from the parent (via `useCallback` with empty deps, using a functional `setSelected`). Same for `selected` — pass the boolean, but the parent's `toggleSelect` reference is stable so memo works.
+- Result: toggling one checkbox only re-renders that row.
 
-## Trigger conditions
+### 2. Batch bulk mutations
+- Replace per-id loops in `BulkTaskActions` with single Supabase calls:
+  - Status: `supabase.from("pm_tasks").update({ status }).in("id", ids)`
+  - Assignee: same pattern with `assignee_id`
+  - Delete: already batched
+- Optimistic UX: clear the selection + close the bar immediately, fire `emitTasksChanged()`, toast on success, restore on error.
 
-A project qualifies for the prompt when ALL are true:
-- Client/project is on the career-site request-type list
-- `go_live_date` is set AND `go_live_date <= today`
-- `custom_fields.support_mode_at` is null/undefined
-- Current user has PM-equivalent permissions on the project
-- User hasn't dismissed the prompt for this project (session-scoped)
+### 3. Selection UX upgrades
+- Replace `window.confirm` in delete with the shadcn `AlertDialog` already used elsewhere.
+- **Select all**: add a checkbox in each group header (list view) and column header (board view) that toggles every task in that group.
+- **Shift-click range select** within a group (track last-clicked index per group in a ref).
+- **Esc clears selection.**
+- Standardize on shadcn `Checkbox` in both list and board (drop the raw `<input>` on board cards).
+- Move the bulk bar from sticky-top to a **floating pill fixed at the bottom-center** (Linear/Asana pattern) — no more overlap with the toolbar, always visible while scrolling, easier to dismiss.
 
-## UX surfaces
-
-**1. ProjectHeader banner (primary)**
-A dismissible amber/teal banner directly under the header on `/pm/projects/:id`:
-> "This project went live on 08/01/2026. Ready to transition to Support mode?"
-> [Enter Support mode] [Not yet]
-
-Uses the same handler already wired in `ProjectHeader.tsx` (writes `support_mode_at`), extracted into a small `useEnterSupportMode(project)` hook so both the banner and existing dropdown share one code path.
-
-**2. Daily Briefing callout (secondary)**
-On `/pm` (Briefing hero row), add a "Ready for Support handoff" tile when the current PM owns 1+ qualifying projects. Clicking deep-links via `buildQueueLink({ base: "/pm/projects/:id" })` to the first project, matching the app-wide "every stat is clickable" rule.
-
-**3. Dismissal**
-"Not yet" stores `{projectId, dismissedUntil}` in `localStorage` for 7 days so we don't nag daily. Entering Support mode clears the entry.
+### 4. Quiet the console warning
+Once rows are memoized, `AssigneePopover` stops receiving new prop identities every render, which resolves the "Maximum update depth exceeded" loop observed in the console.
 
 ## Files to touch
 
-- `src/lib/pm/supportMode.ts` (new) — `useEnterSupportMode`, `isReadyForSupport(project, isCareerSite)`, `useProjectsReadyForSupport()`, dismissal helpers
-- `src/components/pm/project/ProjectHeader.tsx` — refactor handler to use the hook; unchanged UI
-- `src/components/pm/project/SupportReadyBanner.tsx` (new) — banner component
-- `src/pages/pm/ProjectDetail.tsx` — render `<SupportReadyBanner />` above tabs when qualifying
-- `src/pages/pm/WorkQueue.tsx` (Briefing) — add "Ready for Support handoff" tile in hero
-- `src/lib/pm/briefing.ts` — export `useProjectsReadyForSupport` or wire helper for the tile count
+- `src/components/pm/collections/BulkTaskActions.tsx` — batched SQL, AlertDialog, floating layout, count-aware labels.
+- `src/components/pm/project/TasksTab.tsx` — stable `toggleSelect(id)` + `selectRange(id, groupIds)` callbacks, group-header select-all, Esc handler, memoized rows, last-index ref per group.
+- `src/components/pm/project/board/BoardTaskCard.tsx` — memoize, swap raw checkbox for shadcn `Checkbox`, accept `(id) => void` toggle signature.
+- `src/components/pm/project/board/BoardColumn.tsx` — optional select-all-in-column checkbox in the column header (only when a `getColumnTaskIds`/`onSelectAll` prop is passed, so other consumers are untouched).
 
-## Explicitly out of scope
+## Out of scope (per instructions)
 
-- No auto-flip (user chose "auto-prompt", not "auto-flip")
-- No changes to the exit-Support-mode flow
-- No changes to which projects qualify as career-site (still uses existing `useCareerSiteProjects`)
-- No schema changes — `support_mode_at` already lives in `custom_fields`
+No changes to auth, role/user switcher, or DB seeding. No schema changes.
