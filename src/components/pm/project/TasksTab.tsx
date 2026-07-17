@@ -387,7 +387,16 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     }`;
   }
 
-  const openTask = (id: string) => navigate(`/pm/tasks/${id}`);
+  const openTask = useCallback((id: string) => navigate(`/pm/tasks/${id}`), [navigate]);
+  const handleRowToggle = useCallback((id: string, e?: React.MouseEvent, groupKey?: string) => {
+    if (e?.shiftKey && groupKey) {
+      const ids = orderedByGroupRef.current.get(groupKey) ?? [];
+      selectRange(groupKey, ids, id);
+    } else {
+      toggleSelect(id);
+    }
+  }, [toggleSelect, selectRange]);
+  const orderedByGroupRef = useRef<Map<string, string[]>>(new Map());
 
   return (
     <div className="space-y-3">
