@@ -645,21 +645,27 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
           <div className="flex md:grid md:grid-cols-4 gap-3 touch-scroll-x md:!overflow-visible no-scrollbar snap-x snap-mandatory md:snap-none -mx-3 px-3 md:mx-0 md:px-0 [&>*]:w-[85vw] [&>*]:flex-shrink-0 [&>*]:snap-center md:[&>*]:w-auto">
             {PROJECT_GROUPS.map(g => (
               <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
-                {boardByGroup[g.id].map(t => (
-                  <BoardTaskCard
-                    key={t.id}
-                    task={t}
-                    count={counts.get(t.id)}
-                    onClick={() => openTask(t.id)}
-                    onStatusChange={(gid) => changeStatus(t.id, gid)}
-                    onDateChange={(iso) => changeDate(t.id, iso)}
-                    allTasks={boardTasks}
-                    deps={deps}
-                    isProject
-                    selected={selected.has(t.id)}
-                    onToggleSelect={() => toggleSelect(t.id)}
-                  />
-                ))}
+                {(() => {
+                  const gk = `board:${g.id}`;
+                  const ids = boardByGroup[g.id].map(t => t.id);
+                  orderedByGroupRef.current.set(gk, ids);
+                  return boardByGroup[g.id].map(t => (
+                    <BoardTaskCard
+                      key={t.id}
+                      task={t}
+                      groupKey={gk}
+                      count={counts.get(t.id)}
+                      onOpen={openTask}
+                      onStatusChange={changeStatus}
+                      onDateChange={changeDate}
+                      allTasks={boardTasks}
+                      deps={deps}
+                      isProject
+                      selected={selected.has(t.id)}
+                      onToggleSelect={handleRowToggle}
+                    />
+                  ));
+                })()}
               </BoardColumn>
             ))}
           </div>
@@ -668,7 +674,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
               <BoardTaskCard
                 task={activeTask}
                 count={counts.get(activeTask.id)}
-                onClick={() => {}}
+                onOpen={() => {}}
                 onStatusChange={() => {}}
                 onDateChange={() => {}}
                 allTasks={boardTasks}
