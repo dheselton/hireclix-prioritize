@@ -30,6 +30,8 @@ import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { Users, Eye } from "lucide-react";
 import { KIND_META, TASK_KINDS, getTaskKind, isRaidOpen, type TaskKind } from "@/lib/pm/taskKind";
 import { RaidStrip } from "./RaidStrip";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkTaskActions } from "@/components/pm/collections/BulkTaskActions";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
@@ -69,6 +71,18 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSelect = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const toggleSelectMany = (ids: string[], on: boolean) => setSelected(prev => {
+    const next = new Set(prev);
+    for (const id of ids) { if (on) next.add(id); else next.delete(id); }
+    return next;
+  });
+  const clearSelection = () => setSelected(new Set());
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
@@ -464,6 +478,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         </div>
       </div>
 
+      <BulkTaskActions selected={selected} onClear={clearSelection} onChanged={emitTasksChanged} />
+
       {/* Pages (grouped) */}
       {view === "list" && (() => {
         const pageMap = new Map<string, { label: string; tasks: PmTask[] }>();
@@ -505,7 +521,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                       <div className="px-2 pb-2 space-y-1">
                         {pageTasks.map(t => {
                           const g = groupForStatus(t.status);
-                          return <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} />;
+                          return <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />;
                         })}
                       </div>
                     )}
@@ -539,7 +555,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                         <div className="px-3 py-2 text-xs text-muted-foreground italic">No tasks</div>
                       )}
                       {list.map(t => (
-                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} />
+                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />
                       ))}
                     </div>
                   )}
@@ -657,16 +673,25 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   );
 }
 
-function TaskRow({ task, groupColorBg, count, onClick }: {
+function TaskRow({ task, groupColorBg, count, onClick, selected, onToggleSelect }: {
   task: PmTask; groupColorBg: string; count?: SubtaskCount; onClick: () => void;
+  selected?: boolean; onToggleSelect?: () => void;
 }) {
   const preview = stripHtml(task.description);
   const teams = (Array.isArray((task as any).teams) ? (task as any).teams : []) as string[];
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info"
+      className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info group"
     >
+      {onToggleSelect && (
+        <span
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          className={`pl-2 ${selected ? "" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
+        >
+          <Checkbox checked={!!selected} onCheckedChange={() => onToggleSelect()} aria-label="Select task" />
+        </span>
+      )}
       <div className={`w-[3px] self-stretch rounded-full ${groupColorBg}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
