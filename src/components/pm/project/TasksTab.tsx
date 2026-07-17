@@ -72,17 +72,44 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [addPageOpen, setAddPageOpen] = useState(false);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const toggleSelect = (id: string) => setSelected(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-  const toggleSelectMany = (ids: string[], on: boolean) => setSelected(prev => {
-    const next = new Set(prev);
-    for (const id of ids) { if (on) next.add(id); else next.delete(id); }
-    return next;
-  });
-  const clearSelection = () => setSelected(new Set());
+  const lastClickedRef = useRef<Map<string, string>>(new Map()); // groupKey -> taskId
+  const toggleSelect = useCallback((id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+  const selectRange = useCallback((groupKey: string, orderedIds: string[], id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      const anchor = lastClickedRef.current.get(groupKey);
+      const i = orderedIds.indexOf(id);
+      const a = anchor ? orderedIds.indexOf(anchor) : -1;
+      if (i === -1 || a === -1) { if (next.has(id)) next.delete(id); else next.add(id); }
+      else {
+        const [lo, hi] = a < i ? [a, i] : [i, a];
+        for (let k = lo; k <= hi; k++) next.add(orderedIds[k]);
+      }
+      return next;
+    });
+    lastClickedRef.current.set(groupKey, id);
+  }, []);
+  const setGroupSelected = useCallback((ids: string[], on: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      for (const id of ids) { if (on) next.add(id); else next.delete(id); }
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSelected(s => (s.size ? new Set() : s));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [collapsed, setCollapsed] = useState<Record<StatusGroupId, boolean>>({
     ready: false, claimed: false, in_progress: false, in_review: false, complete: true,
   });
