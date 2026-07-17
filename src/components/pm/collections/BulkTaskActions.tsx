@@ -40,13 +40,13 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
   }
 
   const bulkStatus = (status: TaskStatus) =>
-    run("Updated", () => supabase.from("pm_tasks").update({ status }).in("id", ids));
+    run("Updated", async () => await supabase.from("pm_tasks").update({ status }).in("id", ids));
 
   const bulkAssign = (userId: string | null) =>
-    run("Reassigned", () => supabase.from("pm_tasks").update({ assignee_id: userId }).in("id", ids));
+    run("Reassigned", async () => await supabase.from("pm_tasks").update({ assignee_id: userId }).in("id", ids));
 
   const bulkDelete = () =>
-    run("Deleted", () => supabase.from("pm_tasks").delete().in("id", ids));
+    run("Deleted", async () => await supabase.from("pm_tasks").delete().in("id", ids));
 
   const bar = (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-in fade-in slide-in-from-bottom-2">
