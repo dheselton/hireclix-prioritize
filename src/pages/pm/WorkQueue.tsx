@@ -18,6 +18,7 @@ import { DailyBriefingHero } from "@/components/pm/workqueue/DailyBriefingHero";
 import { QuickTasksColumn } from "@/components/pm/workqueue/QuickTasksColumn";
 import { ProjectWorkColumn } from "@/components/pm/workqueue/ProjectWorkColumn";
 import { NotesSection } from "@/components/pm/workqueue/NotesSection";
+import { SupportHandoffCallout } from "@/components/pm/workqueue/SupportHandoffCallout";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
@@ -127,6 +128,8 @@ export default function WorkQueue() {
           <FolderKanban className="h-4 w-4 mr-1" /> Project
         </Button>
       </div>
+
+      <SupportHandoffCallout />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4 mb-4">
         <QuickTasksColumn tasks={quickTasks} totalCount={counts.quickTasks} unclaimed={unclaimedQuickTasks} />

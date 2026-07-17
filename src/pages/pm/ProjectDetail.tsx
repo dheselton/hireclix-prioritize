@@ -28,6 +28,7 @@ import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
+import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -117,6 +118,7 @@ export default function ProjectDetail() {
         onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
         onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
       />
+      <SupportReadyBanner project={project} />
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (
