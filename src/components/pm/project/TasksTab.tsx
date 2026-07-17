@@ -348,30 +348,38 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     }
   }
 
-  async function changeStatus(taskId: string, gid: StatusGroupId) {
-    const task = boardTasks.find(t => t.id === taskId);
-    if (!task) return;
-    const targetGroup = STATUS_GROUPS.find(g => g.id === gid)!;
-    if (targetGroup.statuses.includes(task.status)) return;
-    const newStatus = GROUP_PRIMARY_STATUS[gid];
-    const prev = boardTasks;
-    setBoardTasks(boardTasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+  const changeStatus = useCallback(async (taskId: string, gid: StatusGroupId) => {
+    let prev: PmTask[] | null = null;
+    let newStatus: TaskStatus | null = null;
+    setBoardTasks(current => {
+      prev = current;
+      const task = current.find(t => t.id === taskId);
+      if (!task) return current;
+      const targetGroup = STATUS_GROUPS.find(g => g.id === gid)!;
+      if (targetGroup.statuses.includes(task.status)) return current;
+      newStatus = GROUP_PRIMARY_STATUS[gid];
+      return current.map(t => t.id === taskId ? { ...t, status: newStatus! } : t);
+    });
+    if (!newStatus) return;
     const { error } = await supabase.from("pm_tasks").update({ status: newStatus }).eq("id", taskId);
     if (error) {
-      setBoardTasks(prev);
+      if (prev) setBoardTasks(prev);
       toast.error("Couldn't update status");
     }
-  }
+  }, []);
 
-  async function changeDate(taskId: string, iso: string | null) {
-    const prev = boardTasks;
-    setBoardTasks(boardTasks.map(t => t.id === taskId ? { ...t, due_date: iso } : t));
+  const changeDate = useCallback(async (taskId: string, iso: string | null) => {
+    let prev: PmTask[] | null = null;
+    setBoardTasks(current => {
+      prev = current;
+      return current.map(t => t.id === taskId ? { ...t, due_date: iso } : t);
+    });
     const { error } = await supabase.from("pm_tasks").update({ due_date: iso }).eq("id", taskId);
     if (error) {
-      setBoardTasks(prev);
+      if (prev) setBoardTasks(prev);
       toast.error("Couldn't update date");
     }
-  }
+  }, []);
 
   const pills: { id: TypePill | "me"; label: string; teamColor?: string }[] = [
     { id: "all", label: "All" },
