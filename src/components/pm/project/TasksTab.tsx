@@ -777,7 +777,7 @@ const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onO
       <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} title={task.priority} />
     </div>
   );
-}
+});
 
 function TeamPillInline({ team }: { team: string }) {
   // Inline (untyped) renderer to avoid extra imports — color map is small.
