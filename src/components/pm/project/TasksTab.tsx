@@ -594,6 +594,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                     allTasks={boardTasks}
                     deps={deps}
                     isProject
+                    selected={selected.has(t.id)}
+                    onToggleSelect={() => toggleSelect(t.id)}
                   />
                 ))}
               </BoardColumn>
