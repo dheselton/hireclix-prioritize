@@ -576,23 +576,40 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
           {PROJECT_GROUPS.map(g => {
             const list = byGroup[g.id];
             const isCollapsed = collapsed[g.id];
+            const groupKey = `list:${g.id}`;
+            const ids = list.map(t => t.id);
+            orderedByGroupRef.current.set(groupKey, ids);
+            const selectedCount = ids.reduce((n, id) => n + (selected.has(id) ? 1 : 0), 0);
+            const allSelected = ids.length > 0 && selectedCount === ids.length;
+            const someSelected = selectedCount > 0 && !allSelected;
             return (
               <Card key={g.id}>
                 <CardContent className="p-2">
-                  <button type="button"
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40"
-                    onClick={() => setCollapsed(c => ({ ...c, [g.id]: !c[g.id] }))}>
-                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
-                    <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
-                    <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{list.length}</span>
-                  </button>
+                  <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40">
+                    {ids.length > 0 && (
+                      <span onClick={(e) => e.stopPropagation()} className={selectedCount > 0 ? "" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}>
+                        <Checkbox
+                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                          onCheckedChange={(v) => setGroupSelected(ids, !!v)}
+                          aria-label={`Select all ${g.label}`}
+                        />
+                      </span>
+                    )}
+                    <button type="button"
+                      className="flex-1 flex items-center gap-2"
+                      onClick={() => setCollapsed(c => ({ ...c, [g.id]: !c[g.id] }))}>
+                      <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
+                      <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
+                      <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{list.length}</span>
+                    </button>
+                  </div>
                   {!isCollapsed && (
                     <div className="space-y-1 mt-1">
                       {list.length === 0 && (
                         <div className="px-3 py-2 text-xs text-muted-foreground italic">No tasks</div>
                       )}
                       {list.map(t => (
-                        <TaskRow key={t.id} task={t} groupColorBg={g.bg} count={counts.get(t.id)} onClick={() => openTask(t.id)} selected={selected.has(t.id)} onToggleSelect={() => toggleSelect(t.id)} />
+                        <TaskRow key={t.id} task={t} groupKey={groupKey} groupColorBg={g.bg} count={counts.get(t.id)} onOpen={openTask} selected={selected.has(t.id)} onToggleSelect={handleRowToggle} />
                       ))}
                     </div>
                   )}
