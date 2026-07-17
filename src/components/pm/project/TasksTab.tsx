@@ -673,16 +673,25 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   );
 }
 
-function TaskRow({ task, groupColorBg, count, onClick }: {
+function TaskRow({ task, groupColorBg, count, onClick, selected, onToggleSelect }: {
   task: PmTask; groupColorBg: string; count?: SubtaskCount; onClick: () => void;
+  selected?: boolean; onToggleSelect?: () => void;
 }) {
   const preview = stripHtml(task.description);
   const teams = (Array.isArray((task as any).teams) ? (task as any).teams : []) as string[];
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info"
+      className="flex items-center gap-3 pl-0 pr-3 py-1.5 rounded border border-transparent cursor-pointer transition hover:border-info group"
     >
+      {onToggleSelect && (
+        <span
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          className={`pl-2 ${selected ? "" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
+        >
+          <Checkbox checked={!!selected} onCheckedChange={() => onToggleSelect()} aria-label="Select task" />
+        </span>
+      )}
       <div className={`w-[3px] self-stretch rounded-full ${groupColorBg}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
