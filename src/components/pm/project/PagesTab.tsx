@@ -101,10 +101,33 @@ export function PagesTab({
           <Layers className="h-4 w-4 text-muted-foreground" />
           <div className="text-sm font-semibold">Pages</div>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        <Button size="sm" onClick={() => openAddFor(null)}>
           <Plus className="h-3 w-3 mr-1" /> Add pages
         </Button>
       </div>
+
+      {awaiting.length > 0 && (
+        <div className="rounded-md border border-amber-500/60 bg-amber-500/5 p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <div className="font-semibold">Discovery complete — time to define pages</div>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                {awaiting.length === 1
+                  ? `The discovery task for "${awaiting[0].group.name}" is done. Define the pages so the reserved time turns into real work.`
+                  : `${awaiting.length} page groups are ready to be defined now that discovery is complete.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pl-6">
+            {awaiting.map(a => (
+              <Button key={a.group.id} size="sm" variant="outline" onClick={() => openAddFor(a.group.id)}>
+                Define {a.group.name} pages
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {groupSummaries.map(({ g, groupResTasks, reservedByPhase }) => {
