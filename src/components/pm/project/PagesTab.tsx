@@ -137,11 +137,18 @@ export function PagesTab({
           const definedForGroup = definedPages.filter(p => p.key.startsWith(g.id.slice(0, 6))).length;
           const pct = Math.min(100, Math.round((definedForGroup / Math.max(1, expected)) * 100));
           return (
-            <Card key={g.id}>
+            <Card key={g.id} className={awaitingIds.has(g.id) ? "border-amber-500/60" : ""}>
               <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{g.name}</div>
-                  <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="font-medium truncate">{g.name}</div>
+                    {awaitingIds.has(g.id) && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 shrink-0">
+                        Ready to define
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
                     {definedForGroup} / {expected} pages
                   </span>
                 </div>
@@ -156,6 +163,11 @@ export function PagesTab({
                     <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                     Reservation exhausted. Adding more pages will push the schedule.
                   </div>
+                )}
+                {awaitingIds.has(g.id) && (
+                  <Button size="sm" variant="outline" className="w-full" onClick={() => openAddFor(g.id)}>
+                    <Plus className="h-3 w-3 mr-1" /> Define pages
+                  </Button>
                 )}
               </CardContent>
             </Card>
