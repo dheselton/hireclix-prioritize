@@ -299,3 +299,75 @@ export const fetchProjectReservations = async (projectId: string) => {
     .like('page_group_key', `${RESERVED_PREFIX}%`);
   return (data || []) as any[];
 };
+
+/**
+ * Returns page groups awaiting page definition — where the group's discovery task
+ * has been completed but no real pages have been stamped yet.
+ * Includes a fallback for legacy projects where the discovery link wasn't stamped:
+ * matches by template_task.temp_id → title → live task.
+ */
+export interface AwaitingGroup {
+  group: PageGroup;
+  discoveryTaskId: string | null;
+  hasReservations: boolean;
+  definedCount: number;
+}
+
+const DONE_STATUSES = new Set(['complete', 'completed', 'done', 'approved']);
+
+export const getGroupsAwaitingPages = async (
+  projectId: string,
+  templateId: string | null,
+  tasks: { id: string; status?: string | null; title?: string; page_group_key?: string | null; custom_fields?: any }[],
+): Promise<AwaitingGroup[]> => {
+  if (!templateId) return [];
+  const groups = await fetchPageGroups(templateId);
+  const eligible = groups.filter(g => !!g.discovery_task_temp_id);
+  if (!eligible.length) return [];
+
+  // Fallback map: temp_id -> title (for legacy projects without stamped link)
+  const tempIds = eligible.map(g => g.discovery_task_temp_id!).filter(Boolean);
+  const { data: tmplTasks } = await supabase
+    .from('pm_template_tasks')
+    .select('temp_id, title')
+    .eq('template_id', templateId)
+    .in('temp_id', tempIds as string[]);
+  const titleByTempId = new Map<string, string>();
+  for (const r of (tmplTasks || []) as any[]) titleByTempId.set(r.temp_id, r.title);
+
+  const out: AwaitingGroup[] = [];
+  for (const g of eligible) {
+    const tempId = g.discovery_task_temp_id!;
+    // Prefer stamped custom_fields link
+    let discoveryTask = tasks.find(t => {
+      const ids = (t as any).custom_fields?.discovery_for_group_ids;
+      return Array.isArray(ids) && ids.includes(g.id);
+    });
+    if (!discoveryTask) {
+      const title = titleByTempId.get(tempId);
+      if (title) discoveryTask = tasks.find(t => t.title === title);
+    }
+    if (!discoveryTask) continue;
+    if (!DONE_STATUSES.has(String(discoveryTask.status || '').toLowerCase())) continue;
+
+    // Real pages stamped for this group? Best-effort key prefix match (see PagesTab logic).
+    const groupPrefix = g.id.slice(0, 6);
+    const definedCount = new Set(
+      tasks
+        .filter(t => {
+          const k = (t as any).page_group_key as string | null | undefined;
+          return k && !k.startsWith(RESERVED_PREFIX) && k.startsWith(groupPrefix);
+        })
+        .map(t => (t as any).page_group_key as string),
+    ).size;
+    if (definedCount > 0) continue;
+
+    // Only surface if there are still reservations OR no pages at all
+    const hasReservations = tasks.some(
+      t => (t as any).page_group_key === `${RESERVED_PREFIX}${g.id}`,
+    );
+
+    out.push({ group: g, discoveryTaskId: discoveryTask.id, hasReservations, definedCount });
+  }
+  return out;
+};
