@@ -198,7 +198,13 @@ export function PagesTab({
         </CardContent>
       </Card>
 
-      <AddPageDialog projectId={projectId} templateId={templateId} open={addOpen} onOpenChange={setAddOpen} />
+      <AddPageDialog
+        projectId={projectId}
+        templateId={templateId}
+        open={addOpen}
+        onOpenChange={(v) => { setAddOpen(v); if (!v) setAddInitialGroupId(null); }}
+        initialGroupId={addInitialGroupId}
+      />
     </div>
   );
 }
