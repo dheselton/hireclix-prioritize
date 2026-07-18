@@ -411,6 +411,8 @@ const instantiateTemplateIntoProject = async (params: {
       await supabase.from('pm_task_snippets').insert(snippetRows as any);
     }
   }
+
+  return { idByTemp };
 };
 
 /** Create a project from template + scheduled placement (already computed). */
