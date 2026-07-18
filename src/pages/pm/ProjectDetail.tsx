@@ -120,6 +120,14 @@ export default function ProjectDetail() {
         onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
       />
       <SupportReadyBanner project={project} />
+      {!isRequest && hasTemplate && (
+        <DiscoveryReadyBanner
+          projectId={project.id}
+          templateId={project.template_id}
+          tasks={tasks}
+          onDefinePages={() => setTab("pages")}
+        />
+      )}
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (
