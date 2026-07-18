@@ -522,10 +522,11 @@ export const convertRequestToProject = async (params: {
     go_live_date: goLive,
   } as any).eq('id', projectId);
 
-  await instantiateTemplateIntoProject({
+  const { idByTemp } = await instantiateTemplateIntoProject({
     projectId, previewTasks, previewDeps, placement,
     sortOffset: 1000, // existing request tasks keep their sort order at top
   });
+  await stampDiscoveryLinks({ templateId: template.id, idByTemp });
 
   emitTasksChanged();
 };
