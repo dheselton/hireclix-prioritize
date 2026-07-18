@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Layers, AlertTriangle } from "lucide-react";
+import { Plus, Layers, AlertTriangle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchPageGroups, fetchProjectReservations,
-  removePageFromProject, RESERVED_PREFIX, type PageGroup,
+  removePageFromProject, RESERVED_PREFIX, getGroupsAwaitingPages,
+  type PageGroup, type AwaitingGroup,
 } from "@/lib/pm/pageGroups";
 import type { PmTask } from "@/types/pm";
 import { AddPageDialog } from "./AddPageDialog";
@@ -18,15 +19,26 @@ export function PagesTab({
 }: { projectId: string; templateId: string | null; tasks: PmTask[] }) {
   const [groups, setGroups] = useState<PageGroup[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [awaiting, setAwaiting] = useState<AwaitingGroup[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [addInitialGroupId, setAddInitialGroupId] = useState<string | null>(null);
 
   const reload = async () => {
-    if (!templateId) { setGroups([]); setReservations([]); return; }
-    const [g, r] = await Promise.all([fetchPageGroups(templateId), fetchProjectReservations(projectId)]);
-    setGroups(g); setReservations(r);
+    if (!templateId) { setGroups([]); setReservations([]); setAwaiting([]); return; }
+    const [g, r, a] = await Promise.all([
+      fetchPageGroups(templateId),
+      fetchProjectReservations(projectId),
+      getGroupsAwaitingPages(projectId, templateId, tasks as any),
+    ]);
+    setGroups(g); setReservations(r); setAwaiting(a);
   };
-  useEffect(() => { reload(); }, [templateId, projectId]);
+  useEffect(() => { reload(); }, [templateId, projectId, tasks]);
   useTasksChanged(reload);
+
+  const openAddFor = (groupId: string | null) => {
+    setAddInitialGroupId(groupId);
+    setAddOpen(true);
+  };
 
   if (!templateId) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">This project wasn't created from a template, so page groups aren't available.</CardContent></Card>;
@@ -34,6 +46,8 @@ export function PagesTab({
   if (!groups.length) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">No page groups defined in this template. Add one in the template editor.</CardContent></Card>;
   }
+
+  const awaitingIds = new Set(awaiting.map(a => a.group.id));
 
   // For each group: count actual pages (distinct page_group_key not starting with reserved:)
   const groupSummaries = groups.map(g => {
@@ -87,10 +101,33 @@ export function PagesTab({
           <Layers className="h-4 w-4 text-muted-foreground" />
           <div className="text-sm font-semibold">Pages</div>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        <Button size="sm" onClick={() => openAddFor(null)}>
           <Plus className="h-3 w-3 mr-1" /> Add pages
         </Button>
       </div>
+
+      {awaiting.length > 0 && (
+        <div className="rounded-md border border-amber-500/60 bg-amber-500/5 p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <div className="font-semibold">Discovery complete — time to define pages</div>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                {awaiting.length === 1
+                  ? `The discovery task for "${awaiting[0].group.name}" is done. Define the pages so the reserved time turns into real work.`
+                  : `${awaiting.length} page groups are ready to be defined now that discovery is complete.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pl-6">
+            {awaiting.map(a => (
+              <Button key={a.group.id} size="sm" variant="outline" onClick={() => openAddFor(a.group.id)}>
+                Define {a.group.name} pages
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {groupSummaries.map(({ g, groupResTasks, reservedByPhase }) => {
@@ -100,11 +137,18 @@ export function PagesTab({
           const definedForGroup = definedPages.filter(p => p.key.startsWith(g.id.slice(0, 6))).length;
           const pct = Math.min(100, Math.round((definedForGroup / Math.max(1, expected)) * 100));
           return (
-            <Card key={g.id}>
+            <Card key={g.id} className={awaitingIds.has(g.id) ? "border-amber-500/60" : ""}>
               <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{g.name}</div>
-                  <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="font-medium truncate">{g.name}</div>
+                    {awaitingIds.has(g.id) && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 shrink-0">
+                        Ready to define
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
                     {definedForGroup} / {expected} pages
                   </span>
                 </div>
@@ -119,6 +163,11 @@ export function PagesTab({
                     <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                     Reservation exhausted. Adding more pages will push the schedule.
                   </div>
+                )}
+                {awaitingIds.has(g.id) && (
+                  <Button size="sm" variant="outline" className="w-full" onClick={() => openAddFor(g.id)}>
+                    <Plus className="h-3 w-3 mr-1" /> Define pages
+                  </Button>
                 )}
               </CardContent>
             </Card>
@@ -149,7 +198,13 @@ export function PagesTab({
         </CardContent>
       </Card>
 
-      <AddPageDialog projectId={projectId} templateId={templateId} open={addOpen} onOpenChange={setAddOpen} />
+      <AddPageDialog
+        projectId={projectId}
+        templateId={templateId}
+        open={addOpen}
+        onOpenChange={(v) => { setAddOpen(v); if (!v) setAddInitialGroupId(null); }}
+        initialGroupId={addInitialGroupId}
+      />
     </div>
   );
 }

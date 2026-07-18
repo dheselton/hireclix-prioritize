@@ -29,6 +29,7 @@ import { PagesTab } from "@/components/pm/project/PagesTab";
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
+import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBanner";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -119,6 +120,14 @@ export default function ProjectDetail() {
         onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
       />
       <SupportReadyBanner project={project} />
+      {!isRequest && hasTemplate && (
+        <DiscoveryReadyBanner
+          projectId={project.id}
+          templateId={project.template_id}
+          tasks={tasks}
+          onDefinePages={() => setTab("pages")}
+        />
+      )}
       <KpiStrip project={project} tasks={tasks} />
 
       {isRequest && (

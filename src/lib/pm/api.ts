@@ -411,6 +411,8 @@ const instantiateTemplateIntoProject = async (params: {
       await supabase.from('pm_task_snippets').insert(snippetRows as any);
     }
   }
+
+  return { idByTemp };
 };
 
 /** Create a project from template + scheduled placement (already computed). */
@@ -447,14 +449,57 @@ export const createProjectFromTemplate = async (params: {
     } as any);
   }
 
-  await instantiateTemplateIntoProject({
+  const { idByTemp } = await instantiateTemplateIntoProject({
     projectId: (proj as any).id,
     previewTasks, previewDeps, placement,
   });
 
+  await stampDiscoveryLinks({ templateId: template.id, idByTemp });
+
   emitTasksChanged();
   return proj as unknown as PmProject;
 };
+
+/**
+ * For each page group with a `discovery_task_temp_id`, tag the live task's
+ * custom_fields.discovery_for_group_ids so we can detect completion later.
+ */
+async function stampDiscoveryLinks(params: {
+  templateId: string;
+  idByTemp: Map<string, string>;
+}) {
+  const { templateId, idByTemp } = params;
+  const { data: groups } = await supabase
+    .from('pm_template_page_groups')
+    .select('id, discovery_task_temp_id')
+    .eq('template_id', templateId);
+  if (!groups?.length) return;
+
+  // taskId → groupIds[]
+  const byTaskId = new Map<string, string[]>();
+  for (const g of groups as any[]) {
+    if (!g.discovery_task_temp_id) continue;
+    const taskId = idByTemp.get(g.discovery_task_temp_id);
+    if (!taskId) continue;
+    if (!byTaskId.has(taskId)) byTaskId.set(taskId, []);
+    byTaskId.get(taskId)!.push(g.id);
+  }
+  if (!byTaskId.size) return;
+
+  // fetch current custom_fields to merge
+  const { data: rows } = await supabase
+    .from('pm_tasks')
+    .select('id, custom_fields')
+    .in('id', Array.from(byTaskId.keys()));
+  for (const r of (rows || []) as any[]) {
+    const cf = r.custom_fields || {};
+    const existing: string[] = Array.isArray(cf.discovery_for_group_ids) ? cf.discovery_for_group_ids : [];
+    const merged = Array.from(new Set([...existing, ...(byTaskId.get(r.id) || [])]));
+    await supabase.from('pm_tasks').update({
+      custom_fields: { ...cf, discovery_for_group_ids: merged },
+    } as any).eq('id', r.id);
+  }
+}
 
 /** Convert a request project into a full project by applying a template. */
 export const convertRequestToProject = async (params: {
@@ -477,10 +522,11 @@ export const convertRequestToProject = async (params: {
     go_live_date: goLive,
   } as any).eq('id', projectId);
 
-  await instantiateTemplateIntoProject({
+  const { idByTemp } = await instantiateTemplateIntoProject({
     projectId, previewTasks, previewDeps, placement,
     sortOffset: 1000, // existing request tasks keep their sort order at top
   });
+  await stampDiscoveryLinks({ templateId: template.id, idByTemp });
 
   emitTasksChanged();
 };

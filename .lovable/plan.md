@@ -1,41 +1,45 @@
-## Why it feels buggy
+## Why nothing happened
 
-- **Every keystroke re-renders every row.** `TaskRow` and `BoardTaskCard` receive a fresh `onToggleSelect={() => toggleSelect(t.id)}` closure on every parent render, and neither component is memoized. Selecting one card re-mounts Radix popovers inside every other card — that's also the source of the "Maximum update depth" warning coming from `AssigneePopover` in the console.
-- **Bulk actions fan out N round-trips.** `BulkTaskActions` maps every selected id to its own `updateTask` / `updateTask` call. Selecting 20 tasks and changing status = 20 sequential API updates before the toast fires.
-- **UX rough edges.** Native `window.confirm` for delete, no "select all", no shift-click range, no Esc-to-clear, selection lost when switching list ↔ board (parent state is fine but bar rerenders visibly), sticky-top bar overlaps the toolbar, and raw `<input type=checkbox>` on board vs shadcn `Checkbox` on list looks inconsistent.
+Today the workflow only has two moments where pages get stamped:
 
-## What I'll change
+1. **Project creation wizard** — you tick "I already know the pages" and pick them, OR the system stamps reservation placeholders (one per phase per group).
+2. **Manual** — you open the project's **Pages** tab and click **Add pages**.
 
-### 1. Kill the re-render storm (biggest perf win)
-- Wrap `TaskRow` and `BoardTaskCard` in `React.memo`.
-- Change the row API from `onToggleSelect: () => void` to `onToggleSelect: (id, e?) => void` and pass one stable callback from the parent (via `useCallback` with empty deps, using a functional `setSelected`). Same for `selected` — pass the boolean, but the parent's `toggleSelect` reference is stable so memo works.
-- Result: toggling one checkbox only re-renders that row.
+Templates already have a `discovery_task_temp_id` field on each page group (visible in Template Builder), but **nothing at runtime watches for that task to complete**. So moving discovery tasks to Complete does nothing — the reservations just sit there until someone opens the Pages tab.
 
-### 2. Batch bulk mutations
-- Replace per-id loops in `BulkTaskActions` with single Supabase calls:
-  - Status: `supabase.from("pm_tasks").update({ status }).in("id", ids)`
-  - Assignee: same pattern with `assignee_id`
-  - Delete: already batched
-- Optimistic UX: clear the selection + close the bar immediately, fire `emitTasksChanged()`, toast on success, restore on error.
+That's the gap.
 
-### 3. Selection UX upgrades
-- Replace `window.confirm` in delete with the shadcn `AlertDialog` already used elsewhere.
-- **Select all**: add a checkbox in each group header (list view) and column header (board view) that toggles every task in that group.
-- **Shift-click range select** within a group (track last-clicked index per group in a ref).
-- **Esc clears selection.**
-- Standardize on shadcn `Checkbox` in both list and board (drop the raw `<input>` on board cards).
-- Move the bulk bar from sticky-top to a **floating pill fixed at the bottom-center** (Linear/Asana pattern) — no more overlap with the toolbar, always visible while scrolling, easier to dismiss.
+## Plan: wire discovery completion to a "Define pages now" prompt
 
-### 4. Quiet the console warning
-Once rows are memoized, `AssigneePopover` stops receiving new prop identities every render, which resolves the "Maximum update depth exceeded" loop observed in the console.
+### 1. Persist the discovery link onto live tasks
+When `instantiateTemplateIntoProject` runs, if a template task's `temp_id` matches any group's `discovery_task_temp_id`, stamp the resulting live task's `custom_fields.discovery_for_group_ids: string[]` so we can find it later without re-reading the template.
 
-## Files to touch
+### 2. Detect completion
+Add a hook `useDiscoveryCompletion(projectId)` that:
+- Loads project tasks + template page groups.
+- For each group with a linked discovery task: checks if that live task's status is `complete`/`approved` AND the group still has reservation placeholders (from `fetchProjectReservations`) AND no real pages defined yet for that group.
+- Returns the list of groups awaiting page definition.
 
-- `src/components/pm/collections/BulkTaskActions.tsx` — batched SQL, AlertDialog, floating layout, count-aware labels.
-- `src/components/pm/project/TasksTab.tsx` — stable `toggleSelect(id)` + `selectRange(id, groupIds)` callbacks, group-header select-all, Esc handler, memoized rows, last-index ref per group.
-- `src/components/pm/project/board/BoardTaskCard.tsx` — memoize, swap raw checkbox for shadcn `Checkbox`, accept `(id) => void` toggle signature.
-- `src/components/pm/project/board/BoardColumn.tsx` — optional select-all-in-column checkbox in the column header (only when a `getColumnTaskIds`/`onSelectAll` prop is passed, so other consumers are untouched).
+### 3. Surface the prompt in three places
+- **ProjectDetail header banner** (dismissible per session): "Discovery complete for {group name} — define pages now" → opens `AddPageDialog` pre-filtered to that group.
+- **PagesTab**: highlight the group card with an amber "Ready to define" badge + inline **Define pages** button that opens AddPageDialog scoped to that group.
+- **Daily Briefing** (`/pm`): add a "Pages awaiting definition" callout in the Project Work column, deep-linking to `/pm/projects/:id?tab=pages`.
 
-## Out of scope (per instructions)
+### 4. AddPageDialog: accept an initial group
+Add optional `initialGroupId` prop so clicks from the banner/briefing land on the right group with the picker pre-selected.
 
-No changes to auth, role/user switcher, or DB seeding. No schema changes.
+### 5. Manual fallback for older projects
+For projects where the discovery link wasn't stamped (created before this change), also treat "all tasks in the group's Discovery phase are complete" as the trigger — best-effort, but keeps existing in-flight projects working.
+
+### Out of scope
+- No auto-stamping pages from discovery output — user still types/pastes the page list. Auto-generation would need a source of truth we don't have yet.
+- No changes to the reservation math or cascade rules.
+- No template builder changes beyond what's already there (`discovery_task_temp_id` field already exists).
+
+### Files touched
+- `src/lib/pm/api.ts` — stamp `discovery_for_group_ids` during template instantiation
+- `src/lib/pm/pageGroups.ts` — new `getGroupsAwaitingPages(projectId, templateId, tasks)` helper
+- `src/components/pm/project/AddPageDialog.tsx` — accept `initialGroupId`
+- `src/components/pm/project/PagesTab.tsx` — "Ready to define" badge + scoped Define button
+- `src/pages/pm/ProjectDetail.tsx` — dismissible banner when any group is awaiting
+- `src/lib/pm/briefing.ts` + `src/pages/pm/Briefing.tsx` (or the Project Work column) — awaiting-pages callout
