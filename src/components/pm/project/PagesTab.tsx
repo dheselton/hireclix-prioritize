@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Layers, AlertTriangle } from "lucide-react";
+import { Plus, Layers, AlertTriangle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   fetchPageGroups, fetchProjectReservations,
-  removePageFromProject, RESERVED_PREFIX, type PageGroup,
+  removePageFromProject, RESERVED_PREFIX, getGroupsAwaitingPages,
+  type PageGroup, type AwaitingGroup,
 } from "@/lib/pm/pageGroups";
 import type { PmTask } from "@/types/pm";
 import { AddPageDialog } from "./AddPageDialog";
@@ -18,15 +19,26 @@ export function PagesTab({
 }: { projectId: string; templateId: string | null; tasks: PmTask[] }) {
   const [groups, setGroups] = useState<PageGroup[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [awaiting, setAwaiting] = useState<AwaitingGroup[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [addInitialGroupId, setAddInitialGroupId] = useState<string | null>(null);
 
   const reload = async () => {
-    if (!templateId) { setGroups([]); setReservations([]); return; }
-    const [g, r] = await Promise.all([fetchPageGroups(templateId), fetchProjectReservations(projectId)]);
-    setGroups(g); setReservations(r);
+    if (!templateId) { setGroups([]); setReservations([]); setAwaiting([]); return; }
+    const [g, r, a] = await Promise.all([
+      fetchPageGroups(templateId),
+      fetchProjectReservations(projectId),
+      getGroupsAwaitingPages(projectId, templateId, tasks as any),
+    ]);
+    setGroups(g); setReservations(r); setAwaiting(a);
   };
-  useEffect(() => { reload(); }, [templateId, projectId]);
+  useEffect(() => { reload(); }, [templateId, projectId, tasks]);
   useTasksChanged(reload);
+
+  const openAddFor = (groupId: string | null) => {
+    setAddInitialGroupId(groupId);
+    setAddOpen(true);
+  };
 
   if (!templateId) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">This project wasn't created from a template, so page groups aren't available.</CardContent></Card>;
@@ -34,6 +46,8 @@ export function PagesTab({
   if (!groups.length) {
     return <Card><CardContent className="p-6 text-sm text-muted-foreground">No page groups defined in this template. Add one in the template editor.</CardContent></Card>;
   }
+
+  const awaitingIds = new Set(awaiting.map(a => a.group.id));
 
   // For each group: count actual pages (distinct page_group_key not starting with reserved:)
   const groupSummaries = groups.map(g => {
