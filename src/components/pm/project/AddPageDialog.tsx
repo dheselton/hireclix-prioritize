@@ -10,8 +10,8 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
 export function AddPageDialog({
-  projectId, templateId, open, onOpenChange,
-}: { projectId: string; templateId: string | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+  projectId, templateId, open, onOpenChange, initialGroupId,
+}: { projectId: string; templateId: string | null; open: boolean; onOpenChange: (v: boolean) => void; initialGroupId?: string | null }) {
   const [groups, setGroups] = useState<PageGroup[]>([]);
   const [presets, setPresets] = useState<PagePreset[]>([]);
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
@@ -32,9 +32,11 @@ export function AddPageDialog({
         if (row.page_group_id) counts[row.page_group_id] = (counts[row.page_group_id] || 0) + 1;
       }
       setGroups(g); setPresets(p); setSlotCounts(counts);
-      if (g.length && !groupId) setGroupId(g[0].id);
+      const preferred = initialGroupId && g.find(x => x.id === initialGroupId) ? initialGroupId : null;
+      if (preferred) setGroupId(preferred);
+      else if (g.length && !groupId) setGroupId(g[0].id);
     })();
-  }, [open, templateId]);
+  }, [open, templateId, initialGroupId]);
 
   async function submitMany(labels: string[]) {
     if (!templateId || !groupId) return;
