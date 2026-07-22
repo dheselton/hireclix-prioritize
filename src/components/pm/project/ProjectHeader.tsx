@@ -128,6 +128,11 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
               <LifeBuoy className="h-4 w-4 mr-1" /> Log support request
             </Button>
           )}
+          {inQa && onLogQaBatch && (
+            <Button size="sm" onClick={onLogQaBatch}>
+              <ListPlus className="h-4 w-4 mr-1" /> Log QA batch
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onAddTask}>
             <Plus className="h-4 w-4 mr-1" /> Add Task
           </Button>
