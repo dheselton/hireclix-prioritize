@@ -30,6 +30,9 @@ import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
 import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBanner";
+import { QaTab } from "@/components/pm/project/QaTab";
+import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
+import { isInQaMode } from "@/lib/pm/qaMode";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
