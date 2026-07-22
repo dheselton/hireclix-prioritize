@@ -3,13 +3,13 @@
 // mentioned possible rebrand"). Stored on pm_tasks.custom_fields.kind so
 // no schema change is required. Renders alongside normal tasks so the
 // whole team can see RAID items on the same board.
-import { CheckSquare, GitBranch, AlertTriangle, type LucideIcon } from "lucide-react";
+import { CheckSquare, GitBranch, AlertTriangle, Bug, type LucideIcon } from "lucide-react";
 import type { PmTask, TaskStatus } from "@/types/pm";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 
-export type TaskKind = "task" | "decision" | "issue";
+export type TaskKind = "task" | "decision" | "issue" | "qa";
 
-export const TASK_KINDS: TaskKind[] = ["task", "decision", "issue"];
+export const TASK_KINDS: TaskKind[] = ["task", "decision", "issue", "qa"];
 
 export interface KindMeta {
   id: TaskKind;
@@ -53,12 +53,23 @@ export const KIND_META: Record<TaskKind, KindMeta> = {
     dotHsl: "hsl(28 90% 55%)",
     description: "A risk or blocker to log and watch (e.g. possible rebrand).",
   },
+  qa: {
+    id: "qa",
+    label: "QA Ticket",
+    short: "QA",
+    icon: Bug,
+    badgeClass:
+      "bg-[hsl(345_80%_55%/0.12)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)]",
+    dotHsl: "hsl(345 80% 55%)",
+    description: "A bug or issue reported during QA / go-live testing.",
+  },
 };
 
 export function getTaskKind(task: unknown): TaskKind {
   const cf = (task as any)?.custom_fields;
   const raw = cf?.kind;
-  return raw === "decision" || raw === "issue" ? raw : "task";
+  if (raw === "decision" || raw === "issue" || raw === "qa") return raw;
+  return "task";
 }
 
 // ---- Kind-aware status vocabulary ---------------------------------------
