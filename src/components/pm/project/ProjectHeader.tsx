@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy, RotateCcw, Headphones } from "lucide-react";
+import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy, RotateCcw, Headphones, Bug, ListPlus } from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
@@ -11,6 +11,7 @@ import { useInternalClientIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { deleteProject } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useEnterSupportMode } from "@/lib/pm/supportMode";
+import { isInQaMode, useEnterQaMode, useExitQaMode } from "@/lib/pm/qaMode";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -30,9 +31,10 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
+export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQaBatch }: {
   project: PmProject; onAddTask: () => void;
   onLogSupportRequest?: () => void;
+  onLogQaBatch?: () => void;
 }) {
   const [clientName, setClientName] = useState<string>("");
   const [memberIds, setMemberIds] = useState<string[]>([]);
@@ -46,10 +48,13 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
   const isCareerSite = careerSiteMap.has(project.id);
   const supportModeAt = (project.custom_fields as any)?.support_mode_at as string | undefined;
   const inSupport = !!supportModeAt;
+  const inQa = isInQaMode(project);
   const { user } = useCurrentUser();
   const isPM = user?.role === "pm";
   const navigate = useNavigate();
   const { enter: enterSupport, busy: enteringSupport } = useEnterSupportMode(project);
+  const { enter: enterQa, busy: enteringQa } = useEnterQaMode(project);
+  const { exit: exitQa, busy: exitingQa } = useExitQaMode(project);
 
   useEffect(() => {
     (async () => {
@@ -90,7 +95,11 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
             <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
           )}
           {isInternal && <span className="internal-pill">Internal · HireClix</span>}
-          {inSupport ? (
+          {inQa ? (
+            <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
+              <Bug className="h-3 w-3" /> QA / Go-live testing
+            </Badge>
+          ) : inSupport ? (
             <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
               <Headphones className="h-3 w-3" /> Support mode
             </Badge>
@@ -117,6 +126,11 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
           {inSupport && onLogSupportRequest && (
             <Button size="sm" onClick={onLogSupportRequest}>
               <LifeBuoy className="h-4 w-4 mr-1" /> Log support request
+            </Button>
+          )}
+          {inQa && onLogQaBatch && (
+            <Button size="sm" onClick={onLogQaBatch}>
+              <ListPlus className="h-4 w-4 mr-1" /> Log QA batch
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onAddTask}>
@@ -167,6 +181,25 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest }: {
                     }}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" /> Exit Support mode
+                  </DropdownMenuItem>
+                )}
+                {!inQa ? (
+                  <DropdownMenuItem
+                    disabled={enteringQa}
+                    onSelect={(e) => { e.preventDefault(); enterQa(); }}
+                  >
+                    <Bug className="h-4 w-4 mr-2" /> Enter QA / Go-live mode
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    disabled={exitingQa}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (!confirm("Exit QA mode? QA tickets stay but the QA tab is hidden.")) return;
+                      exitQa();
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" /> Exit QA mode
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem

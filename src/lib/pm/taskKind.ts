@@ -3,13 +3,13 @@
 // mentioned possible rebrand"). Stored on pm_tasks.custom_fields.kind so
 // no schema change is required. Renders alongside normal tasks so the
 // whole team can see RAID items on the same board.
-import { CheckSquare, GitBranch, AlertTriangle, type LucideIcon } from "lucide-react";
+import { CheckSquare, GitBranch, AlertTriangle, Bug, type LucideIcon } from "lucide-react";
 import type { PmTask, TaskStatus } from "@/types/pm";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 
-export type TaskKind = "task" | "decision" | "issue";
+export type TaskKind = "task" | "decision" | "issue" | "qa";
 
-export const TASK_KINDS: TaskKind[] = ["task", "decision", "issue"];
+export const TASK_KINDS: TaskKind[] = ["task", "decision", "issue", "qa"];
 
 export interface KindMeta {
   id: TaskKind;
@@ -53,12 +53,23 @@ export const KIND_META: Record<TaskKind, KindMeta> = {
     dotHsl: "hsl(28 90% 55%)",
     description: "A risk or blocker to log and watch (e.g. possible rebrand).",
   },
+  qa: {
+    id: "qa",
+    label: "QA Ticket",
+    short: "QA",
+    icon: Bug,
+    badgeClass:
+      "bg-[hsl(345_80%_55%/0.12)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)]",
+    dotHsl: "hsl(345 80% 55%)",
+    description: "A bug or issue reported during QA / go-live testing.",
+  },
 };
 
 export function getTaskKind(task: unknown): TaskKind {
   const cf = (task as any)?.custom_fields;
   const raw = cf?.kind;
-  return raw === "decision" || raw === "issue" ? raw : "task";
+  if (raw === "decision" || raw === "issue" || raw === "qa") return raw;
+  return "task";
 }
 
 // ---- Kind-aware status vocabulary ---------------------------------------
@@ -86,6 +97,16 @@ const RISK_STATUS_LABEL: Record<TaskStatus, string> = {
   approved: "Closed",
 };
 
+const QA_STATUS_LABEL: Record<TaskStatus, string> = {
+  unclaimed: "New",
+  claimed: "Triaging",
+  in_progress: "In Fix",
+  blocked: "Blocked",
+  in_review: "Ready to Verify",
+  complete: "Verified",
+  approved: "Closed",
+};
+
 const DECISION_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
   ready: "Pending",
   claimed: "Pending",
@@ -102,15 +123,25 @@ const RISK_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
   complete: "Mitigated",
 };
 
+const QA_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
+  ready: "New",
+  claimed: "Triaging",
+  in_progress: "In Fix",
+  in_review: "Ready to Verify",
+  complete: "Verified",
+};
+
 export function getKindStatusLabel(status: TaskStatus, kind: TaskKind): string {
   if (kind === "decision") return DECISION_STATUS_LABEL[status];
   if (kind === "issue") return RISK_STATUS_LABEL[status];
+  if (kind === "qa") return QA_STATUS_LABEL[status];
   return "";
 }
 
 export function getKindGroupLabel(gid: StatusGroupId, kind: TaskKind): string | null {
   if (kind === "decision") return DECISION_GROUP_LABEL[gid] ?? null;
   if (kind === "issue") return RISK_GROUP_LABEL[gid] ?? null;
+  if (kind === "qa") return QA_GROUP_LABEL[gid] ?? null;
   return null;
 }
 
@@ -169,3 +200,47 @@ export const SEVERITY_STYLE: Record<RiskSeverity, string> = {
   high: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
   critical: "bg-destructive/15 text-destructive border-destructive/30",
 };
+
+// ---- QA-specific metadata (stored on custom_fields.qa) ------------------
+
+export type QaSeverity = "blocker" | "major" | "minor" | "cosmetic";
+export type QaReproducibility = "always" | "sometimes" | "once" | "unknown";
+export type QaResolution = "fixed" | "wont_fix" | "duplicate" | "cannot_reproduce";
+
+export const QA_SEVERITIES: QaSeverity[] = ["blocker", "major", "minor", "cosmetic"];
+
+export const QA_SEVERITY_STYLE: Record<QaSeverity, string> = {
+  blocker: "bg-destructive/15 text-destructive border-destructive/30",
+  major: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  minor: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+  cosmetic: "bg-muted text-muted-foreground border-border",
+};
+
+export interface QaDetails {
+  severity?: QaSeverity;
+  reproducibility?: QaReproducibility;
+  environment?: string;      // URL / browser / device
+  reported_by_name?: string; // external tester name
+  steps?: string;
+  expected?: string;
+  actual?: string;
+  resolution?: QaResolution;
+  duplicate_of?: string;     // task id
+}
+
+export function getQaDetails(task: unknown): QaDetails {
+  const cf = (task as any)?.custom_fields;
+  const qa = cf?.qa;
+  return (qa && typeof qa === "object" ? qa : {}) as QaDetails;
+}
+
+export function isQaOpen(t: PmTask): boolean {
+  return t.status !== "complete" && t.status !== "approved";
+}
+
+export function isBlockerQa(task: PmTask): boolean {
+  if (getTaskKind(task) !== "qa") return false;
+  if (!isQaOpen(task)) return false;
+  return getQaDetails(task).severity === "blocker";
+}
+

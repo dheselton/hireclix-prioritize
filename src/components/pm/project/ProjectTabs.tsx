@@ -1,4 +1,4 @@
-export type ProjectTabId = "overview" | "tasks" | "timeline" | "pages" | "files" | "snippets" | "documentation";
+export type ProjectTabId = "overview" | "tasks" | "qa" | "timeline" | "pages" | "files" | "snippets" | "documentation";
 
 export function ProjectTabs({ value, onChange, tabs }: {
   value: ProjectTabId;
