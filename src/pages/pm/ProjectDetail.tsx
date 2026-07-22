@@ -255,6 +255,7 @@ export default function ProjectDetail() {
         onConfirm={applyCascade}
       />
       <ConvertToProjectModal open={convertOpen} onOpenChange={setConvertOpen} projectId={project.id} userId={user?.id ?? null} onConverted={reload} />
+      <QaBatchPasteDialog open={qaBatchOpen} onOpenChange={setQaBatchOpen} project={project} onCreated={reload} />
     </div>
   );
 }
