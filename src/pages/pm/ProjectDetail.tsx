@@ -50,7 +50,8 @@ export default function ProjectDetail() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskSupport, setNewTaskSupport] = useState(false);
-  const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue">("task");
+  const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue" | "qa">("task");
+  const [qaBatchOpen, setQaBatchOpen] = useState(false);
 
   const reload = async () => {
     if (!id) return;
@@ -98,6 +99,7 @@ export default function ProjectDetail() {
   const isRequest = (p.work_type ?? "project") === "request";
   const isPM = user?.role === "pm";
   const inSupport = !!(project.custom_fields as any)?.support_mode_at;
+  const inQa = isInQaMode(project);
 
   const canSeeSnippets = !!user?.roles?.some(r => r === "developer" || r === "designer") || user?.role === "developer" || user?.role === "designer";
 
@@ -105,6 +107,7 @@ export default function ProjectDetail() {
   const tabs: { id: ProjectTabId; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
+    ...(inQa ? [{ id: "qa" as const, label: "QA" }] : []),
     ...(!isRequest ? [{ id: "timeline" as const, label: "Timeline" }] : []),
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
@@ -121,6 +124,7 @@ export default function ProjectDetail() {
         project={project}
         onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
         onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogQaBatch={() => { setTab("qa"); setQaBatchOpen(true); }}
       />
       <SupportReadyBanner project={project} />
       {!isRequest && hasTemplate && (
@@ -194,6 +198,14 @@ export default function ProjectDetail() {
             supportMode={inSupport}
           />
         </div>
+      )}
+
+      {tab === "qa" && inQa && (
+        <QaTab
+          tasks={tasks}
+          onNewTicket={() => { setNewTaskSupport(false); setNewTaskKind("qa"); setNewTaskOpen(true); }}
+          onBatchPaste={() => setQaBatchOpen(true)}
+        />
       )}
 
       {tab === "documentation" && inSupport && (
