@@ -95,7 +95,11 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
             <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
           )}
           {isInternal && <span className="internal-pill">Internal · HireClix</span>}
-          {inSupport ? (
+          {inQa ? (
+            <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
+              <Bug className="h-3 w-3" /> QA / Go-live testing
+            </Badge>
+          ) : inSupport ? (
             <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
               <Headphones className="h-3 w-3" /> Support mode
             </Badge>
