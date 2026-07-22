@@ -200,3 +200,47 @@ export const SEVERITY_STYLE: Record<RiskSeverity, string> = {
   high: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
   critical: "bg-destructive/15 text-destructive border-destructive/30",
 };
+
+// ---- QA-specific metadata (stored on custom_fields.qa) ------------------
+
+export type QaSeverity = "blocker" | "major" | "minor" | "cosmetic";
+export type QaReproducibility = "always" | "sometimes" | "once" | "unknown";
+export type QaResolution = "fixed" | "wont_fix" | "duplicate" | "cannot_reproduce";
+
+export const QA_SEVERITIES: QaSeverity[] = ["blocker", "major", "minor", "cosmetic"];
+
+export const QA_SEVERITY_STYLE: Record<QaSeverity, string> = {
+  blocker: "bg-destructive/15 text-destructive border-destructive/30",
+  major: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  minor: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+  cosmetic: "bg-muted text-muted-foreground border-border",
+};
+
+export interface QaDetails {
+  severity?: QaSeverity;
+  reproducibility?: QaReproducibility;
+  environment?: string;      // URL / browser / device
+  reported_by_name?: string; // external tester name
+  steps?: string;
+  expected?: string;
+  actual?: string;
+  resolution?: QaResolution;
+  duplicate_of?: string;     // task id
+}
+
+export function getQaDetails(task: unknown): QaDetails {
+  const cf = (task as any)?.custom_fields;
+  const qa = cf?.qa;
+  return (qa && typeof qa === "object" ? qa : {}) as QaDetails;
+}
+
+export function isQaOpen(t: PmTask): boolean {
+  return t.status !== "complete" && t.status !== "approved";
+}
+
+export function isBlockerQa(task: PmTask): boolean {
+  if (getTaskKind(task) !== "qa") return false;
+  if (!isQaOpen(task)) return false;
+  return getQaDetails(task).severity === "blocker";
+}
+
