@@ -97,6 +97,16 @@ const RISK_STATUS_LABEL: Record<TaskStatus, string> = {
   approved: "Closed",
 };
 
+const QA_STATUS_LABEL: Record<TaskStatus, string> = {
+  unclaimed: "New",
+  claimed: "Triaging",
+  in_progress: "In Fix",
+  blocked: "Blocked",
+  in_review: "Ready to Verify",
+  complete: "Verified",
+  approved: "Closed",
+};
+
 const DECISION_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
   ready: "Pending",
   claimed: "Pending",
@@ -113,15 +123,25 @@ const RISK_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
   complete: "Mitigated",
 };
 
+const QA_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
+  ready: "New",
+  claimed: "Triaging",
+  in_progress: "In Fix",
+  in_review: "Ready to Verify",
+  complete: "Verified",
+};
+
 export function getKindStatusLabel(status: TaskStatus, kind: TaskKind): string {
   if (kind === "decision") return DECISION_STATUS_LABEL[status];
   if (kind === "issue") return RISK_STATUS_LABEL[status];
+  if (kind === "qa") return QA_STATUS_LABEL[status];
   return "";
 }
 
 export function getKindGroupLabel(gid: StatusGroupId, kind: TaskKind): string | null {
   if (kind === "decision") return DECISION_GROUP_LABEL[gid] ?? null;
   if (kind === "issue") return RISK_GROUP_LABEL[gid] ?? null;
+  if (kind === "qa") return QA_GROUP_LABEL[gid] ?? null;
   return null;
 }
 
