@@ -183,6 +183,25 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
                     <RotateCcw className="h-4 w-4 mr-2" /> Exit Support mode
                   </DropdownMenuItem>
                 )}
+                {!inQa ? (
+                  <DropdownMenuItem
+                    disabled={enteringQa}
+                    onSelect={(e) => { e.preventDefault(); enterQa(); }}
+                  >
+                    <Bug className="h-4 w-4 mr-2" /> Enter QA / Go-live mode
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    disabled={exitingQa}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (!confirm("Exit QA mode? QA tickets stay but the QA tab is hidden.")) return;
+                      exitQa();
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" /> Exit QA mode
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onSelect={(e) => { e.preventDefault(); setConfirmDelete(true); }}
