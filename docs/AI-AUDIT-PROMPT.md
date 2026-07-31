@@ -1,13 +1,10 @@
+# HireClix Prioritize — AI Audit Prompt
 
-## What this is
-
-A copy-paste prompt for an AI agent with terminal + repo access to audit HireClix Prioritize end-to-end, plus the scoping rules that keep it from "helpfully" recommending we tear down things we built deliberately.
-
-Nothing in the app changes from this plan. The deliverable is the prompt below (and, if you want, I can also drop it into the repo as `docs/AI-AUDIT-PROMPT.md` so it stays versioned).
+Hand the block below to an AI agent that has terminal + read-only repo access.
+It audits the whole product from a UX and workflow perspective while respecting
+the decisions we made deliberately.
 
 ---
-
-## The prompt
 
 ```text
 ROLE
@@ -143,9 +140,15 @@ RULES
 
 ---
 
-## Technical notes
+## Notes for whoever runs this
 
-- The prompt assumes the agent has read-only repo + shell access and `rg`. It explicitly forbids builds, installs, and migrations so it can't disturb the working tree.
-- The "what is intentional" block is drawn from the project's standing constraints (dev-mode auth + role switcher, multi-role union access, seeded data, the `/pm/work` consolidation, the workspace-vs-drawer split) so the agent spends its budget on real friction rather than re-litigating settled decisions.
-- Phase 2 lens #2 is wired to the `buildQueueLink()` contract in `src/lib/pm/links.ts`, so dead-end findings come back in a directly actionable form.
-- Optional follow-up: save the prompt as `docs/AI-AUDIT-PROMPT.md` and, once the audit report comes back, I can triage it into a prioritized implementation plan.
+- Give the agent read-only repo + shell access with `rg` available. The prompt
+  forbids builds, installs, migrations, and writes so it can't disturb the tree.
+- The "what is intentional" block exists so the agent spends its budget on real
+  friction instead of re-litigating settled decisions (dev-mode auth, the role
+  switcher, multi-role union access, seeded data, the `/pm/work` consolidation,
+  the workspace-vs-drawer split).
+- Lens #2 is wired to the `buildQueueLink()` contract in `src/lib/pm/links.ts`,
+  so dead-end findings come back directly actionable.
+- When the report comes back, paste it here and it can be triaged into a
+  prioritized implementation plan.
