@@ -314,7 +314,7 @@ export interface AwaitingGroup {
   definedCount: number;
 }
 
-const DONE_STATUSES = new Set(['complete', 'completed', 'done', 'approved']);
+const isDiscoveryDone = (status?: string | null) => isDone(status as TaskStatus);
 
 export const getGroupsAwaitingPages = async (
   projectId: string,
