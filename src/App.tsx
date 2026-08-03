@@ -73,8 +73,11 @@ function App() {
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/f/:slug" element={<Suspense fallback={<RouteFallback />}><PublicForm /></Suspense>} />
+                <Route path="/request" element={<Navigate to="/f/quick-request" replace />} />
+                <Route path="/pm/request" element={<Navigate to="/f/quick-request" replace />} />
 
                 <Route path="/" element={<Navigate to="/pm" replace />} />
+
 
                 <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
                 <Route path="/pm/work" element={<AppLayout><Work /></AppLayout>} />
