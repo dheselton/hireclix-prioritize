@@ -288,6 +288,8 @@ export async function persistIntakeAttachments(opts: {
       );
     }
   }
+
+  return uploadResult;
 }
 
 export const logActivity = async (params: { project_id?: string; task_id?: string; user_id?: string | null; action: string; payload?: any }) => {
