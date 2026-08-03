@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
+import { uploadAttachments, reportUploadResult } from "@/lib/pm/uploads";
 
 interface Att {
   id: string;
