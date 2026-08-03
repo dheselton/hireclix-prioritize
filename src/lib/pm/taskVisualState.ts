@@ -51,9 +51,9 @@ export function computeTaskVisualState(
   const bar = teamBarBackground(teams);
 
   const isMine = !!opts.meId && task.assignee_id === opts.meId;
-  const isDone = DONE_STATES.has(task.status);
+  const done = isDone(task.status);
 
-  if (opts.bypassWaiting || isMine || isDone) {
+  if (opts.bypassWaiting || isMine || done) {
     return { teams, teamBarBackground: bar, waiting: false, waitingReason: null };
   }
 
