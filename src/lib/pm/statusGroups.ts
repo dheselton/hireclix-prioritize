@@ -19,7 +19,7 @@ export const STATUS_GROUPS: StatusGroupDef[] = [
   { id: "claimed", label: "Claimed", text: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500", border: "border-sky-500", statuses: ["claimed"] },
   { id: "in_progress", label: "In Progress", text: "text-info", bg: "bg-info", border: "border-info", statuses: ["in_progress", "blocked"] },
   { id: "in_review", label: "In Review", text: "text-warning", bg: "bg-warning", border: "border-warning", statuses: ["in_review"] },
-  { id: "complete", label: "Complete", text: "text-success", bg: "bg-success", border: "border-success", statuses: ["complete", "approved"] },
+  { id: "complete", label: "Complete", text: "text-success", bg: "bg-success", border: "border-success", statuses: TERMINAL_STATUSES },
 ];
 
 export function groupForStatus(s: TaskStatus): StatusGroupDef {
