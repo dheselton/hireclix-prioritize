@@ -130,6 +130,7 @@ export default function Work() {
     } catch {}
   }, []);
 
+  const allUsers = useMockUsers();
   const personName = useMemo(
     () => (personId ? allUsers.find(u => u.id === personId)?.name ?? "this person" : null),
     [personId, allUsers],
