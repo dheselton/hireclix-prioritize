@@ -101,7 +101,7 @@ export default function ProjectDetail() {
   const isPM = myRoles.includes("pm");
   // Prefer a "doer" role for the New Task default type; PM is the fallback.
   const defaultTaskRole =
-    (["developer", "designer", "strategist", "analyst"].find(r => myRoles.includes(r)) as any) ??
+    ((["developer", "designer", "strategist", "analyst"] as any[]).find(r => (myRoles as any[]).includes(r))) ??
     myRoles[0] ?? user?.role ?? null;
   const inSupport = !!(project.custom_fields as any)?.support_mode_at;
   const inQa = isInQaMode(project);
