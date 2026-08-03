@@ -3,7 +3,7 @@ import type { TaskStatus } from "@/types/pm";
 
 export const STATUS_PILL_CLASS: Record<StatusGroupId, string> = {
   ready: "bg-muted text-muted-foreground",
-  claimed: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+  claimed: "bg-info/15 text-info",
   in_progress: "bg-info/15 text-info",
   in_review: "bg-warning/15 text-warning",
   complete: "bg-success/15 text-success",
@@ -11,7 +11,7 @@ export const STATUS_PILL_CLASS: Record<StatusGroupId, string> = {
 
 export const STATUS_DOT_CLASS: Record<StatusGroupId, string> = {
   ready: "bg-muted-foreground",
-  claimed: "bg-sky-500",
+  claimed: "bg-info",
   in_progress: "bg-info",
   in_review: "bg-warning",
   complete: "bg-success",
