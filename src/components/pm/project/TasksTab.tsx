@@ -224,9 +224,10 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     else out = out.filter(t => getTaskKind(t) === kindFilter);
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     if (watchingOnly) out = out.filter(t => watchedTaskIds.has(t.id));
+    if (taskFilter) out = out.filter(t => matchesTaskFilter(t, taskFilter));
     out = out.filter(t => team.filterTask(t));
     return out;
-  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds]);
+  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds, taskFilter]);
 
   const sortedFiltered = useMemo(() => {
     const sorted = [...filtered];
