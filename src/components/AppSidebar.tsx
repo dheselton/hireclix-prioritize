@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Inbox, LayoutGrid, Users, Calendar, FileText,
+  Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock,
   Zap, Folder, ChevronRight,
 } from "lucide-react";
@@ -24,6 +24,7 @@ type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surf
 
 const primaryNav: NavItem[] = [
   { title: "Daily Briefing", url: "/pm", icon: Inbox, end: true, key: "queue" },
+  { title: "Triage Inbox", url: "/pm/inbox", icon: InboxIcon, key: "inbox" },
   { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" },
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" },
@@ -200,7 +201,7 @@ export function AppSidebar() {
               {visiblePrimary.map(item => {
                 const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
                 const isSubmitterOnly = roles.length === 1 && roles[0] === "submitter";
-                const showBadge = item.key === "queue" && unclaimed > 0 && !isSubmitterOnly;
+                const showBadge = (item.key === "queue" || item.key === "inbox") && unclaimed > 0 && !isSubmitterOnly;
                 return (
                   <NavRow
                     key={item.title}
