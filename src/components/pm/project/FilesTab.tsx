@@ -16,6 +16,7 @@ import type { PmTask } from "@/types/pm";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { uploadAttachments, reportUploadResult } from "@/lib/pm/uploads";
 
 const BUCKET = "task-attachments";
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
