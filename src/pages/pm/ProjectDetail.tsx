@@ -35,8 +35,40 @@ import { QaTab } from "@/components/pm/project/QaTab";
 import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
 import { isInQaMode } from "@/lib/pm/qaMode";
 
+/** Why a mode-gated tab isn't reachable on a given project. */
+const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
+  qa: "QA mode is not active on this project — showing Tasks instead.",
+  pages: "This project doesn't have a Pages tab — showing Tasks instead.",
+  documentation: "This project isn't in Support mode — showing Tasks instead.",
+  snippets: "Snippets are only available to design and dev roles — showing Tasks instead.",
+  timeline: "Requests don't have a Project Timeline — showing Tasks instead.",
+};
+
+/** The tabs a given project + viewer can actually render. Mirrors the tab strip. */
+function computeAvailableTabs(project: PmProject, user: any): ProjectTabId[] {
+  const isRequest = ((project as any).work_type ?? "project") === "request";
+  const inSupport = !!(project.custom_fields as any)?.support_mode_at;
+  const inQa = isInQaMode(project);
+  const hasTemplate = !!project.template_id;
+  const canSeeSnippets =
+    !!user?.roles?.some((r: string) => r === "developer" || r === "designer") ||
+    user?.role === "developer" || user?.role === "designer";
+
+  return [
+    "overview",
+    "tasks",
+    ...(inQa ? (["qa"] as const) : []),
+    ...(!isRequest ? (["timeline"] as const) : []),
+    ...(!isRequest && hasTemplate ? (["pages"] as const) : []),
+    "files",
+    ...(canSeeSnippets ? (["snippets"] as const) : []),
+    ...(inSupport ? (["documentation"] as const) : []),
+  ] as ProjectTabId[];
+}
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+
   const { user } = useCurrentUser();
   const [project, setProject] = useState<PmProject | null>(null);
   const [tasks, setTasks] = useState<PmTask[]>([]);
