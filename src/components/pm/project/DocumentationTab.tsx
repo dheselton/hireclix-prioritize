@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { useMockUsers } from "@/lib/pm/mockUser";
+import { sanitizeHtml } from "@/lib/pm/sanitizeHtml";
 import { supabase } from "@/integrations/supabase/client";
 import type { PmProject } from "@/types/pm";
 import { toast } from "sonner";
@@ -85,7 +86,7 @@ export function DocumentationTab({ project, canEdit, onProjectChange }: Props) {
         ) : html ? (
           <div
             className="prose prose-sm max-w-none text-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary [&_a]:underline"
-            dangerouslySetInnerHTML={{ __html: html }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
           />
         ) : (
           <div className="text-sm text-muted-foreground italic">No documentation yet.</div>

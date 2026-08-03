@@ -123,7 +123,14 @@ export const createTask = async (task: Partial<PmTask>) => {
     }
     // Notify PM/CSM on new unclaimed request-type tasks
     if ((data as any).status === 'unclaimed') {
-      const { data: pms } = await supabase.from('mock_users').select('id, role').in('role', ['pm', 'csm']);
+      // Multi-role aware: notify anyone holding pm/csm in any of their roles.
+      const { data: allUsers } = await supabase.from('mock_users').select('id, role, secondary_role, roles');
+      const pms = ((allUsers ?? []) as any[]).filter(u => {
+        const r: string[] = Array.isArray(u.roles) && u.roles.length
+          ? u.roles
+          : [u.role, u.secondary_role].filter(Boolean);
+        return r.includes('pm') || r.includes('csm');
+      });
       for (const u of (pms ?? []) as any[]) {
         if (u.id === uid) continue;
         await createNotification({

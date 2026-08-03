@@ -28,7 +28,7 @@ export function TimeLogDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { user, role } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const users = useMockUsers();
   const today = localDateISO(new Date());
   const { entries, reload } = useEnrichedEntries({ taskId }, [taskId, open]);
@@ -115,7 +115,7 @@ export function TimeLogDialog({
                 key={e.id}
                 entry={e}
                 userName={users.find(u => u.id === e.user_id)?.name}
-                canEdit={role === "pm" || e.user_id === user?.id}
+                canEdit={roles.includes("pm") || e.user_id === user?.id}
                 onChanged={reload}
               />
             ))}

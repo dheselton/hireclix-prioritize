@@ -75,8 +75,8 @@ function BoardTaskCardInner({
   const isCareerSite = !!csRequestType;
   const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
-  const { user } = useCurrentUser();
-  const isPM = user?.role === "pm";
+  const { user, roles } = useCurrentUser();
+  const isPM = roles.includes("pm");
   const isDone = task.status === "complete" || task.status === "approved";
   const needsAssignee = isProject && !task.assignee_id && !isDone;
   const mutedNoOwner = !isProject && unclaimed;

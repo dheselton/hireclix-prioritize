@@ -97,7 +97,7 @@ export default function ProjectDetail() {
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
   const isRequest = (p.work_type ?? "project") === "request";
-  const isPM = user?.role === "pm";
+  const isPM = (user?.roles ?? (user?.role ? [user.role] : [])).includes("pm");
   const inSupport = !!(project.custom_fields as any)?.support_mode_at;
   const inQa = isInQaMode(project);
 

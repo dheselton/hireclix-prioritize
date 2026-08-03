@@ -23,7 +23,7 @@ interface Props {
  * Dismiss is per-session and resets when the count grows.
  */
 export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
-  const { user, role } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
@@ -40,7 +40,9 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   useEffect(() => { reload(); }, [projectId]);
   useTasksChanged(reload);
 
-  const myTeam = useMemo(() => teamForRole(role), [role]);
+  const isPM = roles.includes("pm");
+  const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);
+  const myTeam = useMemo(() => teamForRole(roles[0]), [roles]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
@@ -54,14 +56,14 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
         if ((p as any)?.work_type !== "request") return false;
       }
       // In "All" mode everyone sees every team's unclaimed work.
-      if (!isMe || role === "pm") return true;
-      return teamForTask(t) === myTeam;
+      if (!isMe || isPM) return true;
+      return myTeams.has(teamForTask(t));
     });
-  }, [tasks, role, myTeam, isMe, projectId, projById]);
+  }, [tasks, isPM, myTeams, isMe, projectId, projById]);
 
   if (!unclaimed.length || unclaimed.length <= dismissedAt) return null;
 
-  const teamLabel = (!isMe || role === "pm") ? "team" : TEAM_LABEL[myTeam].toLowerCase();
+  const teamLabel = (!isMe || isPM || myTeams.size > 1) ? "team" : TEAM_LABEL[myTeam].toLowerCase();
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
     ? `/pm/projects/${projectId}`

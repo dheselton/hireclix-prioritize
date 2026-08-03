@@ -48,9 +48,9 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const users = useMockUsers();
-  const isPM = user?.role === "pm";
+  const isPM = roles.includes("pm");
   const { openPreview } = usePreview();
 
   const [type, setType] = useState<FilterType>("all");
