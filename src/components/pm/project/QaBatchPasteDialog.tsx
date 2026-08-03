@@ -104,7 +104,7 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
         created_by: uid ?? null,
         tags: ["qa"],
         custom_fields: {
-          kind: "qa",
+          kind: QA_KIND,
           qa: {
             severity: r.severity,
             environment: r.environment || null,

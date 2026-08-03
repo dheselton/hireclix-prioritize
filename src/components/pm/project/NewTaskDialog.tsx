@@ -238,7 +238,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
       const estNum = parseFloat(estimateHours);
       const custom: Record<string, any> = {};
       if (Number.isFinite(estNum) && estNum > 0) custom.estimated_hours = estNum;
-      if (kind !== "task") custom.kind = kind;
+      if (kind !== "task") custom.kind = assertTaskKind(kind);
 
       const created = await createTask({
         project_id: project.id,
