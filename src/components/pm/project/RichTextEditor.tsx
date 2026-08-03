@@ -17,17 +17,23 @@ export function RichTextEditor({ value, onChange, onBlur, placeholder, users }: 
   const ref = useRef<HTMLDivElement>(null);
   const [mention, setMention] = useState<{ filter: string; top: number; left: number } | null>(null);
 
+  /** Emit sanitized HTML upward so nothing unsafe is ever persisted. */
+  function emit() {
+    onChange(sanitizeHtml(ref.current?.innerHTML || ""));
+  }
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (document.activeElement === el) return;
-    if (el.innerHTML !== (value || "")) el.innerHTML = value || "";
+    const clean = sanitizeHtml(value);
+    if (el.innerHTML !== clean) el.innerHTML = clean;
   }, [value]);
 
   function cmd(c: string, arg?: string) {
     document.execCommand(c, false, arg);
     ref.current?.focus();
-    onChange(ref.current?.innerHTML || "");
+    emit();
   }
 
   function addLink() {
