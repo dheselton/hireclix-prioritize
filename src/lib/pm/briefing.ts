@@ -221,10 +221,10 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
 
       projectsOut = activeProjectList.map((p) => {
         const tasks = byProj.get(p.id) ?? [];
-        const completed = tasks.filter((t) => TERMINAL.has(t.status)).length;
-        const overdue = tasks.filter((t) => t.due_date && t.due_date < today && !TERMINAL.has(t.status)).length;
+        const completed = tasks.filter((t) => isDone(t.status)).length;
+        const overdue = tasks.filter((t) => t.due_date && t.due_date < today && !isDone(t.status)).length;
         const mine = tasks
-          .filter((t) => (t.assignee_id === userId || coTaskIds.includes(t.id)) && !TERMINAL.has(t.status))
+          .filter((t) => (t.assignee_id === userId || coTaskIds.includes(t.id)) && !isDone(t.status))
           .sort(sortByUrgency);
         return {
           ...p,
