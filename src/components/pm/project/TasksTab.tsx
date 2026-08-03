@@ -8,6 +8,7 @@ import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadg
 import { fmtDate } from "@/lib/pm/format";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { STATUS_GROUPS, groupForStatus, typeBadgeClass, priorityDotClass, type StatusGroupId } from "@/lib/pm/statusGroups";
 import type { PmTask, PmDependency, TaskStatus } from "@/types/pm";
 import { computeHiddenTaskIds } from "@/lib/pm/reveal";
