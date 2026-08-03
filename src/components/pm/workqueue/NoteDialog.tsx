@@ -64,6 +64,7 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
