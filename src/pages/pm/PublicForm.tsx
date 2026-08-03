@@ -17,6 +17,7 @@ import { ClientSearchCombobox, type ClientOption } from "@/components/pm/intake/
 import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { aliasFor } from "@/lib/pm/requestAliases";
+import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
 import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { REQUEST_TYPE_LABELS, requestTypeLabel, type RequestType } from "@/lib/pm/requestTypes";
 import { refreshCareerSiteProjects, useInternalClientIds } from "@/lib/pm/clients";
@@ -242,6 +243,14 @@ export default function PublicForm() {
         created_project_id: createdProjectId,
         created_task_id: createdTaskId,
       } as any);
+
+      // Submit confirmation to the requester (never blocks submission).
+      void sendRequestReceivedEmail({
+        to: email,
+        title: titleValue || form.name,
+        requestTypeLabel: requestTypeLabel(requestType ?? null),
+        projectId: createdProjectId,
+      });
 
       const watcherIds = createdProjectId
         ? await applyClientWatchers(createdProjectId, clientId || null, requestType ?? null).catch(() => [])

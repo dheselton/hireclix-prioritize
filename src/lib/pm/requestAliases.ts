@@ -1,9 +1,10 @@
 import type { RequestType } from "@/components/pm/forms/useInternalRequestForm";
 
 /**
- * Per-request-type sender alias. Used today only for display on the submission
- * confirmation screen — wired into `send-transactional-email` in a follow-up
- * so submitters know which inbox the eventual confirmation will come from.
+ * Per-request-type sender alias, shown on the submission confirmation screen so
+ * submitters know which inbox handles their request. Automated confirmation and
+ * completion emails are sent by the `send-request-email` edge function from
+ * prioritize@hireclix.com.
  */
 export const REQUEST_TYPE_ALIASES: Record<RequestType, string> = {
   careersite_bug:      "careersite@hireclix.com",

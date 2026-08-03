@@ -900,6 +900,7 @@ export type Database = {
       }
       pm_form_submissions: {
         Row: {
+          completion_emailed_at: string | null
           created_at: string
           created_project_id: string | null
           created_task_id: string | null
@@ -911,6 +912,7 @@ export type Database = {
           submitter_name: string | null
         }
         Insert: {
+          completion_emailed_at?: string | null
           created_at?: string
           created_project_id?: string | null
           created_task_id?: string | null
@@ -922,6 +924,7 @@ export type Database = {
           submitter_name?: string | null
         }
         Update: {
+          completion_emailed_at?: string | null
           created_at?: string
           created_project_id?: string | null
           created_task_id?: string | null
