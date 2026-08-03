@@ -78,7 +78,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
     ]);
     const byId = new Map<string, PmTask>();
     for (const t of ([...(primaryRaw ?? []), ...(coTasksRaw ?? [])] as PmTask[])) byId.set(t.id, t);
-    const myTasks = Array.from(byId.values()).filter((t) => !TERMINAL.has(t.status));
+    const myTasks = Array.from(byId.values()).filter((t) => !isDone(t.status));
 
     // 2. Projects map (for work_type lookup + titles)
     const projectIds = Array.from(new Set(myTasks.map((t) => t.project_id)));
