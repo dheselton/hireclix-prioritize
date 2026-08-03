@@ -16,6 +16,7 @@ import type { PmTask } from "@/types/pm";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { uploadAttachments, reportUploadResult } from "@/lib/pm/uploads";
 
 const BUCKET = "task-attachments";
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
@@ -100,17 +101,14 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
   }, [filteredTask]);
 
   async function uploadFiles(files: FileList | File[]) {
-    const arr = Array.from(files);
-    for (const f of arr) {
-      const path = `project/${projectId}/${crypto.randomUUID()}-${f.name}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, f);
-      if (error) { toast.error(error.message); continue; }
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      await supabase.from("pm_project_attachments").insert({
-        project_id: projectId, type: "file", name: f.name, url: pub.publicUrl,
-        file_size: f.size, uploaded_by: user?.id ?? null,
-      } as any);
-    }
+    const res = await uploadAttachments({
+      files,
+      pathPrefix: `project/${projectId}`,
+      table: "pm_project_attachments",
+      row: { project_id: projectId, uploaded_by: user?.id ?? null },
+      bucket: BUCKET,
+    });
+    reportUploadResult(res);
     await load();
   }
 

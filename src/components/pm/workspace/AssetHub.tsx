@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { uploadAttachments, reportUploadResult } from "@/lib/pm/uploads";
 
 interface Att {
   id: string; task_id: string; type: string; name: string; url: string;
@@ -36,17 +37,14 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
   useEffect(() => { load(); }, [taskId]);
 
   async function uploadFiles(files: FileList | File[]) {
-    const arr = Array.from(files);
-    for (const f of arr) {
-      const path = `${taskId}/${crypto.randomUUID()}-${f.name}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(path, f);
-      if (error) { toast.error(error.message); continue; }
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      await supabase.from("pm_attachments").insert({
-        task_id: taskId, project_id: projectId, type: "file", name: f.name,
-        url: pub.publicUrl, file_size: f.size, uploaded_by: user?.id ?? null,
-      } as any);
-    }
+    const res = await uploadAttachments({
+      files,
+      pathPrefix: taskId,
+      table: "pm_attachments",
+      row: { task_id: taskId, project_id: projectId, uploaded_by: user?.id ?? null },
+      bucket: BUCKET,
+    });
+    reportUploadResult(res);
     await load();
   }
 

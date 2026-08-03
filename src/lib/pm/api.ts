@@ -3,6 +3,7 @@ import { emitTasksChanged } from '@/lib/pm/refresh';
 import { getCurrentUserId } from '@/lib/pm/mockUser';
 import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
 import { localDateISO } from '@/lib/pm/format';
+import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
 
 export const fetchProjects = async () => {
   const { data, error } = await supabase.from('pm_projects').select('*').order('updated_at', { ascending: false });
@@ -255,26 +256,18 @@ export async function persistIntakeAttachments(opts: {
   const { projectId, taskId, files, links, userId } = opts;
 
   // Files: prefer task-scoped attachment row when a task exists, otherwise project-level.
-  for (const f of files) {
-    const folder = taskId ? `task/${taskId}` : `project/${projectId}`;
-    const path = `${folder}/${crypto.randomUUID()}-${f.name}`;
-    const { error: upErr } = await supabase.storage.from(ATT_BUCKET).upload(path, f);
-    if (upErr) { console.error('upload failed', upErr); continue; }
-    const { data: pub } = supabase.storage.from(ATT_BUCKET).getPublicUrl(path);
-
-    if (taskId) {
-      await supabase.from('pm_attachments').insert({
-        task_id: taskId, project_id: projectId, type: 'file',
-        name: f.name, url: pub.publicUrl, file_size: f.size,
-        uploaded_by: userId ?? null,
-      } as any);
-    } else {
-      await supabase.from('pm_project_attachments').insert({
-        project_id: projectId, type: 'file',
-        name: f.name, url: pub.publicUrl, file_size: f.size,
-        uploaded_by: userId ?? null,
-      } as any);
-    }
+  let uploadResult: UploadResult = { succeeded: [], failed: [] };
+  if (files.length) {
+    uploadResult = await uploadAttachments({
+      files,
+      pathPrefix: taskId ? `task/${taskId}` : `project/${projectId}`,
+      table: taskId ? 'pm_attachments' : 'pm_project_attachments',
+      row: taskId
+        ? { task_id: taskId, project_id: projectId, uploaded_by: userId ?? null }
+        : { project_id: projectId, uploaded_by: userId ?? null },
+      bucket: ATT_BUCKET,
+    });
+    reportUploadResult(uploadResult, { silentOnSuccess: true });
   }
 
   // Links: task-scoped if task exists, else project-level.
@@ -295,6 +288,8 @@ export async function persistIntakeAttachments(opts: {
       );
     }
   }
+
+  return uploadResult;
 }
 
 export const logActivity = async (params: { project_id?: string; task_id?: string; user_id?: string | null; action: string; payload?: any }) => {
