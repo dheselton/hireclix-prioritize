@@ -23,6 +23,7 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -105,6 +106,7 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
           </div>
         </DialogFooter>
       </DialogContent>
+      </Dialog>
       <ConfirmDialog
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
@@ -113,6 +115,6 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
         confirmLabel="Delete note"
         onConfirm={handleDelete}
       />
-    </Dialog>
+    </>
   );
 }
