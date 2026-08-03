@@ -1,5 +1,5 @@
 import type { MockUser, PmTask, Track, Team, TaskType, PmRole } from "@/types/pm";
-import { ROLE_TO_TEAM, TEAM_COLOR } from "@/lib/pm/teams";
+import { ROLE_TO_TEAM, TEAM_COLORS } from "@/lib/pm/teams";
 
 /** Canonical labels live in lib/pm/teams.ts — re-exported for existing imports. */
 export { TEAM_LABEL } from "@/lib/pm/teams";
@@ -65,8 +65,8 @@ export const TEAM_ACCENT: Record<Team, string> = {
   pm: "hsl(200 80% 50%)",
   strategy: "hsl(260 70% 60%)",
   analytics: "hsl(190 70% 45%)",
-  qa: TEAM_COLOR.qa,
-  csm: TEAM_COLOR.csm,
-  support: TEAM_COLOR.support,
+  qa: TEAM_COLORS.qa,
+  csm: TEAM_COLORS.csm,
+  support: TEAM_COLORS.support,
 };
 

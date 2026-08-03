@@ -2,7 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Check, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ALL_TEAMS, TEAM_LABEL, TEAM_COLOR, type Team } from "@/lib/pm/teams";
+import { ALL_TEAMS, TEAM_LABEL, TEAM_COLORS, type Team } from "@/lib/pm/teams";
 
 interface Props {
   value: Team[];
@@ -57,7 +57,7 @@ export function TeamsMultiSelect({ value, onChange, size = "sm", align = "end", 
                 )}
               >
                 <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full" style={{ background: TEAM_COLOR[t] }} />
+                  <span className="h-2 w-2 rounded-full" style={{ background: TEAM_COLORS[t] }} />
                   {TEAM_LABEL[t]}
                 </span>
                 {on && <Check className="h-3.5 w-3.5 text-primary" />}
@@ -74,10 +74,10 @@ export function TeamPill({ team }: { team: Team }) {
   return (
     <span
       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-medium bg-muted/40"
-      style={{ borderColor: TEAM_COLOR[team] }}
+      style={{ borderColor: TEAM_COLORS[team] }}
       title={TEAM_LABEL[team]}
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: TEAM_COLOR[team] }} />
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: TEAM_COLORS[team] }} />
       {TEAM_LABEL[team]}
     </span>
   );
