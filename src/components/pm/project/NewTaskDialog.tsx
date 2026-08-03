@@ -259,9 +259,18 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
         ...(Object.keys(custom).length ? { custom_fields: custom } : {}),
       });
 
+      // The task itself exists from here on. Sub-steps below are best-effort:
+      // collect what failed so the toast tells the truth instead of claiming
+      // a clean save (or worse, claiming the task failed).
+      const subFailures: string[] = [];
+
       // Co-assignees
-      for (const uid of assigneeIds.slice(1)) {
-        await addAssignee(created.id, uid);
+      if (assigneeIds.length > 1) {
+        try {
+          for (const uid of assigneeIds.slice(1)) {
+            await addAssignee(created.id, uid);
+          }
+        } catch (err) { console.error("co-assignees failed", err); subFailures.push("co-assignees"); }
       }
 
       // Attachments + links (files → task-attachments bucket, links → pm_task_links)
@@ -274,24 +283,28 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
             links,
             userId: user?.id ?? null,
           });
-        } catch (err) { console.error("attachments failed", err); }
+        } catch (err) {
+          console.error("attachments failed", err);
+          subFailures.push(files.length && links.length ? "attachments and links" : files.length ? "attachments" : "links");
+        }
       }
 
       // Checklist
       if (checklist.length) {
         try {
-          await supabase.from("pm_checklist_items").insert(
+          const { error } = await supabase.from("pm_checklist_items").insert(
             checklist.map((label, i) => ({
               task_id: created.id, label, sort_order: i, checked: false,
             })) as any
           );
-        } catch (err) { console.error("checklist failed", err); }
+          if (error) throw error;
+        } catch (err) { console.error("checklist failed", err); subFailures.push("checklist"); }
       }
 
       // Dependencies (this task is blocked by picked tasks)
       if (deps.length) {
         try {
-          await supabase.from("pm_task_dependencies").insert(
+          const { error } = await supabase.from("pm_task_dependencies").insert(
             deps.map(d => ({
               task_id: created.id,
               depends_on_task_id: d.id,
@@ -300,17 +313,24 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
               reveal_mode: revealMode,
             })) as any
           );
-        } catch (err) { console.error("deps failed", err); }
+          if (error) throw error;
+        } catch (err) { console.error("deps failed", err); subFailures.push("dependencies"); }
       }
 
-      // Watchers
+      // Watchers — one entry in the failure list even if several calls fail.
       if (watcherIds.length) {
+        let watcherFailed = false;
         for (const uid of watcherIds) {
-          try { await watchTask(uid, created.id); } catch (err) { console.error(err); }
+          try { await watchTask(uid, created.id); } catch (err) { console.error(err); watcherFailed = true; }
         }
+        if (watcherFailed) subFailures.push("watchers");
       }
 
-      toast.success("Task created");
+      if (subFailures.length) {
+        toast.warning(`Task created, but some details didn't save: ${subFailures.join(", ")}`);
+      } else {
+        toast.success("Task created");
+      }
       onOpenChange(false);
       onCreated?.();
     } catch (e) {
