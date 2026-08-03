@@ -20,14 +20,16 @@ export function isProductionUser(user: Pick<MockUser, "role" | "secondary_role">
   return roles.some(r => r === "designer" || r === "developer");
 }
 
-/** Map a task type to its team. */
+/** Map a task type to its team (mirrors DEFAULT_TEAMS_FOR_TYPE in teams.ts). */
 export function teamForType(type: TaskType): Team {
   switch (type) {
     case "design":
     case "content":
+      return "design";
     case "dev":
+      return "dev";
     case "qa":
-      return "creative";
+      return "qa";
     case "strategy":
     case "research":
       return "strategy";
@@ -46,29 +48,25 @@ export function teamForTask(t: Pick<PmTask, "track" | "type">): Team {
   if (t.track === "strategy") return "strategy";
   if (t.track === "analytics") return "analytics";
   if (t.track === "pm") return "pm";
-  if (t.track === "production") return "creative";
+  // "production" spans design + dev — resolve by task type.
   return teamForType(t.type);
 }
 
-/** Default team a role belongs to. PMs see everything via PM team. */
+/** Default team a role belongs to. Roles without a team fall back to PM. */
 export function teamForRole(role: PmRole | null | undefined): Team {
-  if (role === "designer" || role === "developer") return "creative";
-  if (role === "strategist") return "strategy";
-  if (role === "analyst") return "analytics";
-  return "pm";
+  if (!role) return "pm";
+  return ROLE_TO_TEAM[role] ?? "pm";
 }
-
-export const TEAM_LABEL: Record<Team, string> = {
-  creative: "Creative",
-  pm: "PM",
-  strategy: "Strategy",
-  analytics: "Analytics",
-};
 
 /** Tints used by the unclaimed banner / sidebar badge to match the team. */
 export const TEAM_ACCENT: Record<Team, string> = {
-  creative: "hsl(var(--primary))",
+  design: "hsl(var(--primary))",
+  dev: "hsl(var(--primary))",
   pm: "hsl(200 80% 50%)",
   strategy: "hsl(260 70% 60%)",
   analytics: "hsl(190 70% 45%)",
+  qa: TEAM_COLOR.qa,
+  csm: TEAM_COLOR.csm,
+  support: TEAM_COLOR.support,
 };
+
