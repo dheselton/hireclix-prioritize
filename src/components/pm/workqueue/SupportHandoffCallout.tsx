@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Headphones, ArrowRight } from "lucide-react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useProjectsReadyForSupport } from "@/lib/pm/supportMode";
+import { fmtDate } from "@/lib/pm/format";
 
 /**
  * Daily Briefing callout: shows career-site projects that have hit their
@@ -38,7 +39,7 @@ export function SupportHandoffCallout() {
             >
               <span className="truncate font-medium">{p.title}</span>
               <span className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 ml-3">
-                {p.go_live_date && <span>Live {formatDate(p.go_live_date)}</span>}
+                {p.go_live_date && <span>Live {fmtDate(p.go_live_date)}</span>}
                 <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </Link>
@@ -54,9 +55,3 @@ export function SupportHandoffCallout() {
   );
 }
 
-function formatDate(iso: string): string {
-  try {
-    const [y, m, d] = iso.split("T")[0].split("-");
-    return `${m}/${d}/${y}`;
-  } catch { return iso; }
-}

@@ -1,3 +1,4 @@
+import { fmtDate } from "@/lib/pm/format";
 /**
  * Single source of truth for "what does this task card look like right now":
  *  - team colors (with multi-team striped support)
@@ -77,7 +78,7 @@ export function computeTaskVisualState(
         teams,
         teamBarBackground: bar,
         waiting: true,
-        waitingReason: `Starts ${start.toLocaleDateString("en-US")}`,
+        waitingReason: `Starts ${fmtDate(task.start_date)}`,
       };
     }
   }

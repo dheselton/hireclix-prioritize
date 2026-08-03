@@ -1,7 +1,7 @@
 import { Headphones, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { fmtDate } from "@/lib/pm/format";
 import {
   dismissSupportPrompt,
   useEnterSupportMode,
@@ -24,12 +24,7 @@ export function SupportReadyBanner({ project }: { project: PmProject }) {
 
   if (!canFlip || !show || dismissed) return null;
 
-  const wentLive = project.go_live_date
-    ? (() => {
-        try { return format(parseISO(project.go_live_date), "MM/dd/yyyy"); }
-        catch { return project.go_live_date; }
-      })()
-    : null;
+  const wentLive = project.go_live_date ? fmtDate(project.go_live_date) : null;
 
   return (
     <div className="rounded-lg border border-info/40 bg-info/10 px-4 py-3 flex items-start gap-3">
