@@ -14,6 +14,8 @@ import { StatusPill } from "@/components/pm/StatusPill";
 import { fmtDateShort } from "@/lib/pm/format";
 import type { PmTask, PmProject, TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
