@@ -1,0 +1,1 @@
+UPDATE public.pm_tasks SET description = NULL WHERE id = 'ee88c228-896f-4722-805c-e71c58f7941d';
