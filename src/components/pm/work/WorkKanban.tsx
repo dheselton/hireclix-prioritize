@@ -34,6 +34,9 @@ export function WorkKanban({
   const [activeId, setActiveId] = useState<string | null>(null);
   // Optimistic overlay of status per task while persisting.
   const [override, setOverride] = useState<Record<string, TaskStatus>>({});
+  const isMobile = useIsMobile();
+
+
 
   const displayTasks = useMemo(
     () => tasks.map(t => (override[t.id] ? { ...t, status: override[t.id] } : t)),
