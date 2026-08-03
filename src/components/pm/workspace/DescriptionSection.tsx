@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { useMockUsers } from "@/lib/pm/mockUser";
+import { sanitizeHtml } from "@/lib/pm/sanitizeHtml";
 import type { PmTask } from "@/types/pm";
 
 interface Props {
@@ -51,7 +52,7 @@ export function DescriptionSection({ task, patch }: Props) {
           onClick={() => setEditing(true)}
           onKeyDown={e => { if (e.key === "Enter") setEditing(true); }}
           className="min-h-[96px] p-3 text-sm border border-border rounded-md bg-background cursor-text hover:bg-muted/30 transition [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary [&_a]:underline"
-          dangerouslySetInnerHTML={{ __html: value }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }}
         />
       )}
     </section>
