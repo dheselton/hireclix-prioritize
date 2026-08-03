@@ -129,7 +129,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       ? "unclaimed-row"
                       : (t.track === "pm" ? "track-border-pm" : "track-border-production")),
                   )}
-                  style={rowTeamBg ? { boxShadow: `inset 4px 0 0 0 ${rowTeams.length === 1 ? TEAM_COLOR[rowTeams[0]] : "transparent"}`, backgroundImage: rowTeams.length > 1 ? rowTeamBg : undefined, backgroundSize: rowTeams.length > 1 ? "4px 100%" : undefined, backgroundRepeat: rowTeams.length > 1 ? "no-repeat" : undefined, backgroundPosition: rowTeams.length > 1 ? "left center" : undefined, paddingLeft: 4 } : undefined}
+                  style={rowTeamBg ? { boxShadow: `inset 4px 0 0 0 ${rowTeams.length === 1 ? TEAM_COLORS[rowTeams[0]] : "transparent"}`, backgroundImage: rowTeams.length > 1 ? rowTeamBg : undefined, backgroundSize: rowTeams.length > 1 ? "4px 100%" : undefined, backgroundRepeat: rowTeams.length > 1 ? "no-repeat" : undefined, backgroundPosition: rowTeams.length > 1 ? "left center" : undefined, paddingLeft: 4 } : undefined}
                   onClick={() => onOpen(t.id)}
                 >
 

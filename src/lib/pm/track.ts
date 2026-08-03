@@ -65,8 +65,8 @@ export const TEAM_ACCENT: Record<Team, string> = {
   pm: "hsl(200 80% 50%)",
   strategy: "hsl(260 70% 60%)",
   analytics: "hsl(190 70% 45%)",
-  qa: TEAM_COLOR.qa,
-  csm: TEAM_COLOR.csm,
-  support: TEAM_COLOR.support,
+  qa: TEAM_COLORS.qa,
+  csm: TEAM_COLORS.csm,
+  support: TEAM_COLORS.support,
 };
 
