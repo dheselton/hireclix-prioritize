@@ -96,7 +96,8 @@ export function applyProjectChips(
         case "created_by_me":
           if (!meId || p.created_by !== meId) return false; break;
         case "watching":
-          return false;
+          // Members are watching by default; explicit watchers are member rows too.
+          if (!meId || !memberProjectIds?.has(p.id)) return false; break;
         case "overdue":
           if (!p.go_live_date) return false;
           if (new Date(p.go_live_date) >= today) return false;
