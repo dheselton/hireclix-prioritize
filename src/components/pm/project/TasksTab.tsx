@@ -112,6 +112,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 }) {
   const navigate = useNavigate();
   const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
+  const isMobile = useIsMobile();
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">(() => {
     try { return (localStorage.getItem(`pm.tasks.sort.${projectId}`) as "newest" | "oldest") || "newest"; } catch { return "newest"; }
   });
