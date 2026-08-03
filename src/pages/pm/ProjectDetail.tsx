@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,24 +43,19 @@ export default function ProjectDetail() {
   const [deps, setDeps] = useState<PmDependency[]>([]);
   const drawer = useTaskDrawerLink();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<ProjectTabId>(() => {
-    // Deep links (?section=tasks) land directly on the right tab; strip the param
-    // afterwards so a reload doesn't fight manual tab changes.
-    if (typeof window === "undefined") return "tasks";
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const s = params.get("section");
-      const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation"];
-      if (s && (valid as string[]).includes(s)) {
-        params.delete("section");
-        const url = new URL(window.location.href);
-        url.search = params.toString();
-        window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
-        return s as ProjectTabId;
-      }
-    } catch {}
+    const t = searchParams.get("tab");
+    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation"];
+    if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
     return "tasks";
   });
+
+  const handleSetTab = (newTab: ProjectTabId) => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
@@ -144,9 +139,9 @@ export default function ProjectDetail() {
 
       <ProjectHeader
         project={project}
-        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
-        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
-        onLogQaBatch={() => { setTab("qa"); setQaBatchOpen(true); }}
+        onAddTask={() => { handleSetTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { handleSetTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogQaBatch={() => { handleSetTab("qa"); setQaBatchOpen(true); }}
       />
       <SupportReadyBanner project={project} />
       {!isRequest && hasTemplate && (
@@ -154,7 +149,7 @@ export default function ProjectDetail() {
           projectId={project.id}
           templateId={project.template_id}
           tasks={tasks}
-          onDefinePages={() => setTab("pages")}
+          onDefinePages={() => handleSetTab("pages")}
         />
       )}
       <KpiStrip project={project} tasks={tasks} />
@@ -167,7 +162,7 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      <ProjectTabs value={tab} onChange={setTab} tabs={tabs} />
+      <ProjectTabs value={tab} onChange={handleSetTab} tabs={tabs} />
 
       {tab === "overview" && (
         <div className="space-y-4">
