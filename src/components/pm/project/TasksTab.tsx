@@ -31,6 +31,7 @@ import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { Users, Eye } from "lucide-react";
 import { KIND_META, TASK_KINDS, getTaskKind, isRaidOpen, type TaskKind } from "@/lib/pm/taskKind";
+import { TEAM_COLORS } from "@/lib/pm/teams";
 import { RaidStrip } from "./RaidStrip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkTaskActions } from "@/components/pm/collections/BulkTaskActions";
@@ -439,9 +440,9 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 
   const pills: { id: TypePill | "me"; label: string; teamColor?: string }[] = [
     { id: "all", label: "All" },
-    { id: "design", label: "Design", teamColor: "hsl(280 70% 60%)" },
-    { id: "dev", label: "Dev", teamColor: "hsl(150 60% 45%)" },
-    { id: "qa", label: "QA", teamColor: "hsl(50 90% 50%)" },
+    { id: "design", label: "Design", teamColor: TEAM_COLORS.design },
+    { id: "dev", label: "Dev", teamColor: TEAM_COLORS.dev },
+    { id: "qa", label: "QA", teamColor: TEAM_COLORS.qa },
     { id: "me", label: "My Tasks" },
   ];
 
@@ -913,13 +914,7 @@ const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onO
 });
 
 function TeamPillInline({ team }: { team: string }) {
-  // Inline (untyped) renderer to avoid extra imports — color map is small.
-  const colors: Record<string, string> = {
-    design: "hsl(280 70% 60%)", dev: "hsl(150 60% 45%)", pm: "hsl(220 70% 55%)",
-    qa: "hsl(50 90% 50%)", strategy: "hsl(260 70% 60%)", analytics: "hsl(190 70% 45%)",
-    csm: "hsl(330 65% 55%)", support: "hsl(15 80% 55%)",
-  };
-  const c = colors[team] ?? "hsl(var(--muted-foreground))";
+  const c = TEAM_COLORS[team as Team] ?? "hsl(var(--muted-foreground))";
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[10px] font-medium" style={{ borderColor: c }}>
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: c }} />
