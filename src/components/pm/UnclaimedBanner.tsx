@@ -56,14 +56,14 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
         if ((p as any)?.work_type !== "request") return false;
       }
       // In "All" mode everyone sees every team's unclaimed work.
-      if (!isMe || role === "pm") return true;
-      return teamForTask(t) === myTeam;
+      if (!isMe || isPM) return true;
+      return myTeams.has(teamForTask(t));
     });
-  }, [tasks, role, myTeam, isMe, projectId, projById]);
+  }, [tasks, isPM, myTeams, isMe, projectId, projById]);
 
   if (!unclaimed.length || unclaimed.length <= dismissedAt) return null;
 
-  const teamLabel = (!isMe || role === "pm") ? "team" : TEAM_LABEL[myTeam].toLowerCase();
+  const teamLabel = (!isMe || isPM || myTeams.size > 1) ? "team" : TEAM_LABEL[myTeam].toLowerCase();
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
     ? `/pm/projects/${projectId}`
