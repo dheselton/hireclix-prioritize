@@ -247,7 +247,7 @@ export default function ProjectDetail() {
         project={project}
         phases={phases}
         meId={user?.id ?? null}
-        meRole={user?.role ?? null}
+        meRole={defaultTaskRole}
         onCreated={reload}
         initialSupport={newTaskSupport}
         initialKind={newTaskKind}

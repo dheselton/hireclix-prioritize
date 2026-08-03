@@ -167,7 +167,7 @@ export default function Work() {
               onClear={tagFilter.clear}
               extraTags={clientTagsInUse}
             />
-            {user?.role !== "submitter" && (
+            {!(roles.length === 1 && roles[0] === "submitter") && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
                   <Plus className="h-4 w-4 mr-1" /> Quick Request
