@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { isDone } from '@/types/pm';
+import type { TaskStatus } from '@/types/pm';
 
 export interface PageGroup {
   id: string;
