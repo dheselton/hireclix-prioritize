@@ -1,6 +1,8 @@
 export type PmRole = 'pm' | 'designer' | 'developer' | 'submitter' | 'strategist' | 'analyst' | 'qa' | 'csm' | 'support' | 'ba' | 'tech_lead';
 export type TaskType = 'design' | 'dev' | 'review' | 'approval' | 'content' | 'qa' | 'strategy' | 'research' | 'analytics' | 'reporting';
-export type Team = 'creative' | 'pm' | 'strategy' | 'analytics';
+// Canonical team vocabulary lives in src/lib/pm/teams.ts — re-exported here
+// so existing `import type { Team } from "@/types/pm"` call sites keep working.
+export type { Team } from "@/lib/pm/teams";
 export type TaskStatus = 'unclaimed' | 'claimed' | 'in_progress' | 'blocked' | 'in_review' | 'approved' | 'complete';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type ProjectType = 'quick_request' | 'career_site' | 'rfp' | 'evp' | 'dev' | 'candidate_experience';

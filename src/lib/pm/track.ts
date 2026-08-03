@@ -1,4 +1,8 @@
 import type { MockUser, PmTask, Track, Team, TaskType, PmRole } from "@/types/pm";
+import { ROLE_TO_TEAM, TEAM_COLOR } from "@/lib/pm/teams";
+
+/** Canonical labels live in lib/pm/teams.ts — re-exported for existing imports. */
+export { TEAM_LABEL } from "@/lib/pm/teams";
 
 /** A user's primary track. */
 export function userTrack(user: Pick<MockUser, "role"> | null | undefined): Track {
