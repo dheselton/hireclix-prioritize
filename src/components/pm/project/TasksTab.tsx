@@ -798,6 +798,23 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       {templateId && (
         <AddPageDialog projectId={projectId} templateId={templateId} open={addPageOpen} onOpenChange={setAddPageOpen} />
       )}
+
+      <ConfirmDialog
+        open={!!pendingPageRemoval}
+        onOpenChange={(o) => { if (!o) setPendingPageRemoval(null); }}
+        title="Remove this page?"
+        description={pendingPageRemoval
+          ? `"${pendingPageRemoval.label}" and its ${pendingPageRemoval.count} task(s) will be deleted. This cannot be undone.`
+          : undefined}
+        confirmLabel="Remove page"
+        onConfirm={async () => {
+          if (!pendingPageRemoval) return;
+          await removePageFromProject(projectId, pendingPageRemoval.key);
+          emitTasksChanged();
+          toast.success(`Removed ${pendingPageRemoval.label}`);
+          setPendingPageRemoval(null);
+        }}
+      />
     </div>
   );
 }
