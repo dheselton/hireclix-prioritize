@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bold, Italic, List, ListOrdered, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MockUser } from "@/types/pm";
+import { sanitizeHtml } from "@/lib/pm/sanitizeHtml";
 
 interface Props {
   value: string;
