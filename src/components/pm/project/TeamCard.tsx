@@ -20,7 +20,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
   const [pickRole, setPickRole] = useState<string>("Designer");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const users = useMockUsers();
 
   async function load() {
