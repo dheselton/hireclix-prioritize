@@ -688,8 +688,48 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         </div>
       )}
 
-      {/* Board */}
-      {view === "kanban" && (
+      {/* Board — mobile: stacked single-column sections, no drag-and-drop.
+          Status changes happen via the status picker on each card. */}
+      {view === "kanban" && isMobile && (
+        <DndContext>
+          <div className="space-y-4">
+            {PROJECT_GROUPS.map(g => {
+              const list = boardByGroup[g.id];
+              const gk = `board:${g.id}`;
+              orderedByGroupRef.current.set(gk, list.map(t => t.id));
+              return (
+                <div key={g.id} className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <span className={`text-[12px] font-semibold uppercase tracking-wide ${g.text}`}>{g.label}</span>
+                    <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{list.length}</span>
+                  </div>
+                  {list.length === 0 && (
+                    <div className="px-1 text-xs italic text-muted-foreground">No tasks</div>
+                  )}
+                  {list.map(t => (
+                    <BoardTaskCard
+                      key={t.id}
+                      task={t}
+                      groupKey={gk}
+                      count={counts.get(t.id)}
+                      onOpen={openTask}
+                      onStatusChange={changeStatus}
+                      onDateChange={changeDate}
+                      allTasks={boardTasks}
+                      deps={deps}
+                      isProject
+                      selected={selected.has(t.id)}
+                      onToggleSelect={handleRowToggle}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </DndContext>
+      )}
+
+      {view === "kanban" && !isMobile && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
