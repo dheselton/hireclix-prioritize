@@ -49,8 +49,8 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   const supportModeAt = (project.custom_fields as any)?.support_mode_at as string | undefined;
   const inSupport = !!supportModeAt;
   const inQa = isInQaMode(project);
-  const { user } = useCurrentUser();
-  const isPM = user?.role === "pm";
+  const { user, roles } = useCurrentUser();
+  const isPM = roles.includes("pm");
   const navigate = useNavigate();
   const { enter: enterSupport, busy: enteringSupport } = useEnterSupportMode(project);
   const { enter: enterQa, busy: enteringQa } = useEnterQaMode(project);
