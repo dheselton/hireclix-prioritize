@@ -4,6 +4,7 @@ import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { createTask } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import type { TaskPriority, TaskStatus } from "@/types/pm";
+import { TERMINAL_STATUSES } from "@/types/pm";
 import { isoDateOffset } from "@/lib/pm/format";
 
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
@@ -20,7 +21,7 @@ export type SnippetIncident = {
   updated_at: string;
 };
 
-const DONE_STATUSES: TaskStatus[] = ["approved", "complete"];
+const DONE_STATUSES: TaskStatus[] = TERMINAL_STATUSES;
 
 export const severityToPriority = (s: IncidentSeverity): TaskPriority =>
   s === "critical" ? "urgent" : s === "low" ? "low" : s === "medium" ? "medium" : "high";
