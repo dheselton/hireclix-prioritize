@@ -58,6 +58,22 @@ export default function GlobalTimeline() {
     return v;
   }, [tasks, filter, isMe, user?.id, chips.active, types, workType.value, projById]);
 
+  const isMobile = useIsMobile();
+
+  // Mobile fallback data: projects represented in the visible task set.
+  const taskCountByProject = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of visible) m.set(t.project_id, (m.get(t.project_id) ?? 0) + 1);
+    return m;
+  }, [visible]);
+
+  const timelineProjects = useMemo(() => {
+    const list = projects.filter(p => (filter === "all" ? taskCountByProject.has(p.id) : p.id === filter));
+    return [...list].sort((a, b) => (a.go_live_date ?? "9999").localeCompare(b.go_live_date ?? "9999"));
+  }, [projects, filter, taskCountByProject]);
+
+
+
   return (
     <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
       <CollectionToolbar
