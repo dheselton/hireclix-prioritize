@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTasksChanged, emitTasksChanged } from "./refresh";
 import { getTaskKind, isHighSeverityRisk, isStaleDecision } from "./taskKind";
 import type { PmTask, PmProject } from "@/types/pm";
+import { isDone } from "@/types/pm";
 
-const TERMINAL = new Set(["complete", "approved"]);
+
+
 
 function todayIso(): string {
   const d = new Date();
