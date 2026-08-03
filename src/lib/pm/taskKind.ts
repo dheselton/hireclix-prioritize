@@ -102,9 +102,7 @@ export const KIND_META: Record<TaskKind, KindMeta> = {
 
 export function getTaskKind(task: unknown): TaskKind {
   const cf = (task as any)?.custom_fields;
-  const raw = cf?.kind;
-  if (raw === "decision" || raw === "issue" || raw === "qa") return raw;
-  return "task";
+  return coerceTaskKind(cf?.kind);
 }
 
 // ---- Kind-aware status vocabulary ---------------------------------------
