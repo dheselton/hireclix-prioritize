@@ -113,6 +113,28 @@ export default function ProjectDetail() {
     reload();
   }
 
+  // Which tabs this specific project actually renders (mode/role gated).
+  const availableTabs = useMemo<ProjectTabId[] | null>(
+    () => (project ? computeAvailableTabs(project, user) : null),
+    [project, user],
+  );
+
+  // A ?tab= pointing at a gated tab used to be accepted silently and render
+  // nothing. Fall back to Tasks and say why.
+  useEffect(() => {
+    if (!availableTabs || tabChecked) return;
+    setTabChecked(true);
+    const requested = searchParams.get("tab") as ProjectTabId | null;
+    if (!requested || availableTabs.includes(requested)) return;
+    setTab("tasks");
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", "tasks");
+    setSearchParams(next, { replace: true });
+    toast.info(
+      UNAVAILABLE_TAB_REASON[requested] ??
+        "That tab isn't available on this project — showing Tasks instead.",
+    );
+  }, [availableTabs, tabChecked, searchParams, setSearchParams]);
 
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
@@ -133,11 +155,12 @@ export default function ProjectDetail() {
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(inQa ? [{ id: "qa" as const, label: "QA" }] : []),
-    ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline", badge: <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">Coming soon</Badge> }] : []),
+    ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline" }] : []),
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
     ...(inSupport ? [{ id: "documentation" as const, label: "Documentation" }] : []),
+
   ];
 
 
