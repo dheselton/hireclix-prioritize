@@ -7,11 +7,11 @@
  */
 
 import type { PmTask, PmDependency } from "@/types/pm";
+import { isDone } from "@/types/pm";
 import { teamsFromTask, TEAM_COLOR, type Team } from "@/lib/pm/teams";
 import { firstUnmetPredecessor } from "@/lib/pm/reveal";
 
 const WAITING_START_DAYS = 7;
-const DONE_STATES = new Set(["complete", "approved"]);
 
 export interface TaskVisualState {
   teams: Team[];
