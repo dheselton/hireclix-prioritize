@@ -17,10 +17,12 @@ export function FormSubmissionBlock({ taskId }: { taskId: string }) {
   const [sub, setSub] = useState<Sub | null>(null);
   const [formName, setFormName] = useState<string>("");
   const [fields, setFields] = useState<Field[]>([]);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("pm_form_submissions").select("*").eq("created_task_id", taskId).maybeSingle();
+      const { data, error } = await supabase.from("pm_form_submissions").select("*").eq("created_task_id", taskId).maybeSingle();
+      setFailed(!!error);
       if (!data) { setSub(null); return; }
       setSub(data as Sub);
       const { data: f } = await supabase.from("pm_forms").select("name").eq("id", (data as any).form_id).maybeSingle();
@@ -30,7 +32,15 @@ export function FormSubmissionBlock({ taskId }: { taskId: string }) {
     })();
   }, [taskId]);
 
+  if (failed) {
+    return (
+      <div className="border border-border rounded-lg bg-muted/30 p-4">
+        <p className="text-xs text-muted-foreground">Couldn't load the submitted form — try refreshing.</p>
+      </div>
+    );
+  }
   if (!sub) return null;
+
 
   // Map payload keys to ordered field labels when available, fall back to raw key order
   const ordered = fields.length
