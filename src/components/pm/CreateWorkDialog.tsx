@@ -26,6 +26,7 @@ import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/
 import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { aliasFor } from "@/lib/pm/requestAliases";
+import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
 import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
 import { Sparkle } from "lucide-react";
 
