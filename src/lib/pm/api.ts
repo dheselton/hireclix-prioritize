@@ -3,6 +3,7 @@ import { emitTasksChanged } from '@/lib/pm/refresh';
 import { getCurrentUserId } from '@/lib/pm/mockUser';
 import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
 import { localDateISO } from '@/lib/pm/format';
+import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
 
 export const fetchProjects = async () => {
   const { data, error } = await supabase.from('pm_projects').select('*').order('updated_at', { ascending: false });
