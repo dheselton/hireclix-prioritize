@@ -494,6 +494,17 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             )}
           </button>
         )}
+        {taskFilter && (
+          <button
+            type="button"
+            className={chipCls(true)}
+            onClick={() => setTaskFilter(null)}
+            title="Clear this filter"
+          >
+            {TASK_FILTER_LABEL[taskFilter]} only
+            <X className="h-3 w-3 ml-1" />
+          </button>
+        )}
         {/* Kind filter (RAID log): Tasks only (default) / Decisions / Risks / Everything */}
         <div className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-1 py-0.5">
           {(["all", ...TASK_KINDS] as const).map(k => {
