@@ -38,13 +38,17 @@ export function DescriptionSection({ task, patch }: Props) {
         Description &amp; Notes
       </div>
       {editing || !hasContent ? (
-        <RichTextEditor
-          value={value}
-          onChange={setValue}
-          onBlur={handleBlur}
-          placeholder="Add notes, context, or instructions for this task..."
-          users={users}
-        />
+        // onFocusCapture keeps the editor mounted once the user starts typing —
+        // otherwise the first keystroke flips hasContent and swaps in the read-only view.
+        <div onFocusCapture={() => setEditing(true)}>
+          <RichTextEditor
+            value={value}
+            onChange={setValue}
+            onBlur={handleBlur}
+            placeholder="Add notes, context, or instructions for this task..."
+            users={users}
+          />
+        </div>
       ) : (
         <div
           role="button"
