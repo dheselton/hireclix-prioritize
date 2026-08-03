@@ -364,11 +364,20 @@ function MobileActionsMenu({
     if (watchingProject) {
       const r = await unwatchProject(userId, projectId);
       if (!r.ok) { toast.error("Couldn't stop watching"); return; }
+      if (r.stillMember) {
+        toast.info("You're a member of this project — it stays in your watching view.");
+        return;
+      }
       setWatchingProject(false); toast.success("Stopped watching project");
     } else {
       const r = await watchProject(userId, projectId);
       if (!r.ok) { toast.error("Couldn't watch project"); return; }
-      setWatchingProject(true); toast.success(r.existed ? "You're already on this project" : "Watching project");
+      setWatchingProject(true);
+      toast.success(
+        r.existed
+          ? "You're already a member — you're watching by default."
+          : "Now watching this project"
+      );
     }
   }
   return (
