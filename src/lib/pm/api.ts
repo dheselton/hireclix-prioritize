@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { emitTasksChanged } from '@/lib/pm/refresh';
 import { getCurrentUserId } from '@/lib/pm/mockUser';
 import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
+import { localDateISO } from '@/lib/pm/format';
 
 export const fetchProjects = async () => {
   const { data, error } = await supabase.from('pm_projects').select('*').order('updated_at', { ascending: false });
@@ -334,7 +335,7 @@ const instantiateTemplateIntoProject = async (params: {
   sortOffset?: number;
 }) => {
   const { projectId, previewTasks, previewDeps, placement, sortOffset = 0 } = params;
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => localDateISO(d);
 
   // Phases
   const phaseNames = Array.from(new Set(previewTasks.map(t => t.phase_name).filter(Boolean))) as string[];

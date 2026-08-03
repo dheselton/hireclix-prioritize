@@ -4,6 +4,7 @@ import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { createTask } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import type { TaskPriority, TaskStatus } from "@/types/pm";
+import { isoDateOffset } from "@/lib/pm/format";
 
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
 
@@ -27,11 +28,7 @@ export const severityToPriority = (s: IncidentSeverity): TaskPriority =>
 export const severityDueOffsetDays = (s: IncidentSeverity): number =>
   s === "critical" ? 1 : s === "high" ? 2 : s === "medium" ? 5 : 7;
 
-const isoDateOffset = (days: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-};
+
 
 /** Fetch projects that currently use this snippet, with one open task count per project. */
 export async function fetchSnippetSites(snippetId: string) {

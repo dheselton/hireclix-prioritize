@@ -22,6 +22,7 @@ import { REQUEST_TYPE_LABELS, requestTypeLabel, type RequestType } from "@/lib/p
 import { refreshCareerSiteProjects, useInternalClientIds } from "@/lib/pm/clients";
 import { Sparkle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { todayISO } from "@/lib/pm/format";
 
 const REQUEST_TYPE_SLUG = "request_type";
 const TITLE_SLUG = "title";
@@ -166,7 +167,7 @@ export default function PublicForm() {
           status: "active",
           client_id: clientId,
           description: descriptionValue || null,
-          start_date: new Date().toISOString().slice(0, 10),
+          start_date: todayISO(),
           go_live_date: shipBy || null,
           created_by: requestedBy ?? null,
           requested_by: requestedBy ?? null,
