@@ -199,7 +199,7 @@ export default function Inbox() {
           <AssigneePopover
             controlled
             onPick={(id) => bulkAssign(id)}
-            trigger={<Button size="sm" variant="outline" className="h-8">Assign owner</Button>}
+            trigger={<span className="inline-flex items-center h-8 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent">Assign owner</span>}
           />
           <Select onValueChange={(v) => bulkPriority(v as TaskPriority)}>
             <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Set priority" /></SelectTrigger>
@@ -305,9 +305,9 @@ export default function Inbox() {
                             assigneeId={task.assignee_id}
                             onChanged={reload}
                             trigger={
-                              <Button size="sm" variant="outline" className="h-7 text-xs">
+                              <span className="inline-flex items-center h-7 px-2 rounded-md border border-input bg-background text-xs hover:bg-accent">
                                 {task.assignee_id ? userNames.get(task.assignee_id) ?? "Assigned" : "Assign owner"}
-                              </Button>
+                              </span>
                             }
                           />
                           <Select value={task.priority} onValueChange={(v) => setPriority(task, v as TaskPriority)}>
