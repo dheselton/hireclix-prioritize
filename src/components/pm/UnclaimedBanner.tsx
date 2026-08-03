@@ -63,7 +63,9 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
 
   if (!unclaimed.length || unclaimed.length <= dismissedAt) return null;
 
-  const teamLabel = (!isMe || isPM || myTeams.size > 1) ? "team" : TEAM_LABEL[myTeam].toLowerCase();
+  // design/dev keep the historical "creative" wording in this banner.
+  const myTeamWord = (myTeam === "design" || myTeam === "dev") ? "creative" : TEAM_LABEL[myTeam].toLowerCase();
+  const teamLabel = (!isMe || isPM || myTeams.size > 1) ? "team" : myTeamWord;
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
     ? projectFilterLink(projectId, "open")
