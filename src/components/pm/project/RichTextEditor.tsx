@@ -43,7 +43,7 @@ export function RichTextEditor({ value, onChange, onBlur, placeholder, users }: 
   }
 
   function handleInput() {
-    onChange(ref.current?.innerHTML || "");
+    emit();
     if (!users) return;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || !ref.current) { setMention(null); return; }
@@ -99,7 +99,7 @@ export function RichTextEditor({ value, onChange, onBlur, placeholder, users }: 
     sel.addRange(afterRange);
 
     setMention(null);
-    onChange(ref.current?.innerHTML || "");
+    emit();
     ref.current?.focus();
   }
 
