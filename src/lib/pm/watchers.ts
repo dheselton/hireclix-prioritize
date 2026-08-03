@@ -3,54 +3,63 @@ import { supabase } from "@/integrations/supabase/client";
 
 /* ---------------- Project-level watching ---------------- */
 
-/** All project IDs where userId is a member with role='watcher'. */
+/** All project IDs where userId is on the project (member or explicit watcher). */
 export async function fetchWatchedProjectIds(userId: string): Promise<Set<string>> {
   const { data } = await supabase
     .from("pm_project_members")
     .select("project_id")
-    .eq("user_id", userId)
-    .eq("role", "watcher");
+    .eq("user_id", userId);
   return new Set((data ?? []).map((r: any) => r.project_id));
 }
 
+/** Members are watching by default — any row on the project counts. */
 export async function isWatchingProject(userId: string, projectId: string): Promise<boolean> {
   const { data } = await supabase
     .from("pm_project_members")
     .select("project_id")
     .eq("user_id", userId)
     .eq("project_id", projectId)
-    .eq("role", "watcher")
     .maybeSingle();
   return !!data;
 }
 
 export async function watchProject(userId: string, projectId: string) {
   // The unique constraint on pm_project_members is (project_id, user_id).
-  // If a row already exists for this user/project (any role), we can't insert
-  // another; just no-op — they're already "on" the project in some capacity.
+  // If a row already exists for this user/project (any role), they're already
+  // on the project — report the existing role so callers can explain that.
   const { data: existing } = await supabase
     .from("pm_project_members")
     .select("id,role")
     .eq("user_id", userId)
     .eq("project_id", projectId)
     .maybeSingle();
-  if (existing) return { ok: true as const, existed: true };
+  if (existing) {
+    return {
+      ok: true as const,
+      existed: true,
+      existingRole: (existing as any).role as string | null,
+    };
+  }
 
   const { error } = await supabase
     .from("pm_project_members")
     .insert({ user_id: userId, project_id: projectId, role: "watcher" } as any);
-  if (error) return { ok: false as const, error };
-  return { ok: true as const, existed: false };
+  if (error) return { ok: false as const, error, existed: false, existingRole: null };
+  return { ok: true as const, existed: false, existingRole: null };
 }
 
 export async function unwatchProject(userId: string, projectId: string) {
-  const { error } = await supabase.from("pm_project_members")
+  const { data, error } = await supabase.from("pm_project_members")
     .delete()
     .eq("user_id", userId)
     .eq("project_id", projectId)
-    .eq("role", "watcher");
-  return { ok: !error, error };
+    .eq("role", "watcher")
+    .select("id");
+  // No watcher row removed => they're still on the project as a real member.
+  const stillMember = !error && (data ?? []).length === 0;
+  return { ok: !error, error, stillMember };
 }
+
 
 export function useIsWatchingProject(userId: string | null | undefined, projectId: string | null | undefined) {
   const [watching, setWatching] = useState(false);
