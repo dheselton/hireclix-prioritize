@@ -3,7 +3,7 @@ import { Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
-import { buildQueueLink } from "@/lib/pm/links";
+import { buildQueueLink, projectFilterLink } from "@/lib/pm/links";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask, TEAM_LABEL } from "@/lib/pm/track";
@@ -66,7 +66,7 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const teamLabel = (!isMe || isPM || myTeams.size > 1) ? "team" : TEAM_LABEL[myTeam].toLowerCase();
   const sessKey = `pm.unclaimedBanner.dismissed.${user?.id ?? "anon"}`;
   const queueLink = projectId
-    ? `/pm/projects/${projectId}`
+    ? projectFilterLink(projectId, "open")
     : buildQueueLink({ chips: ["unclaimed"], workType: "request" });
 
   const noun = projectId ? "task" : "quick task";

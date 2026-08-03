@@ -87,7 +87,7 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
           <Row icon={Building2} label="Client">
             <div className="flex items-center gap-1.5 flex-wrap">
               <Link
-                to={`/pm/projects?client=${meta.client_id ?? ""}`}
+                to={`/pm/work?tags=${encodeURIComponent(clientTagFor(meta.client_name) ?? "")}`}
                 className="font-medium hover:underline truncate"
               >
                 {meta.client_name}

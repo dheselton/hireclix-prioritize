@@ -67,7 +67,7 @@ export function DailyBriefingHero({ firstName, counts }: Props) {
         )}
         {counts.raidAttention > 0 && (
           <Chip
-            to="/pm/work"
+            to={buildQueueLink({ section: "raid" })}
             icon={<GitBranch className="h-3.5 w-3.5" />}
             label={`${counts.raidAttention} RAID needs attention`}
             tone="warning"
