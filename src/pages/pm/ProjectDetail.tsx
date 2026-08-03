@@ -51,11 +51,18 @@ export default function ProjectDetail() {
     if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
     return "tasks";
   });
+  // A requested ?tab= is only honored once we know the project — several tabs
+  // are mode-gated (QA mode, support mode, career-site template, role). The
+  // validation effect below runs after load and falls back with an explanation.
+  const [tabChecked, setTabChecked] = useState(false);
 
   const handleSetTab = (newTab: ProjectTabId) => {
     setTab(newTab);
-    setSearchParams({ tab: newTab });
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", newTab);
+    setSearchParams(next, { replace: true });
   };
+
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
