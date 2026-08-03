@@ -12,6 +12,7 @@ import type { PmTask } from "@/types/pm";
 import { AddPageDialog } from "./AddPageDialog";
 import { emitTasksChanged, useTasksChanged } from "@/lib/pm/refresh";
 import { Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 
 export function PagesTab({
@@ -22,6 +23,7 @@ export function PagesTab({
   const [awaiting, setAwaiting] = useState<AwaitingGroup[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [addInitialGroupId, setAddInitialGroupId] = useState<string | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<{ key: string; label: string } | null>(null);
 
   const reload = async () => {
     if (!templateId) { setGroups([]); setReservations([]); setAwaiting([]); return; }
@@ -76,7 +78,6 @@ export function PagesTab({
   });
 
   async function removePage(pageKey: string, label: string) {
-    if (!confirm(`Remove all tasks for "${label}"? This cannot be undone.`)) return;
     await removePageFromProject(projectId, pageKey);
     toast.success(`Removed "${label}"`);
     emitTasksChanged();
@@ -188,7 +189,7 @@ export function PagesTab({
                     <div className="font-medium">{p.label}</div>
                     <div className="text-[11px] text-muted-foreground">{p.count} task(s)</div>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => removePage(p.key, p.label)}>
+                  <Button size="icon" variant="ghost" onClick={() => setPendingRemoval({ key: p.key, label: p.label })}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </li>
@@ -204,6 +205,19 @@ export function PagesTab({
         open={addOpen}
         onOpenChange={(v) => { setAddOpen(v); if (!v) setAddInitialGroupId(null); }}
         initialGroupId={addInitialGroupId}
+      />
+
+      <ConfirmDialog
+        open={!!pendingRemoval}
+        onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
+        title="Remove this page?"
+        description={pendingRemoval ? `All tasks for "${pendingRemoval.label}" will be deleted. This cannot be undone.` : undefined}
+        confirmLabel="Remove page"
+        onConfirm={async () => {
+          if (!pendingRemoval) return;
+          await removePage(pendingRemoval.key, pendingRemoval.label);
+          setPendingRemoval(null);
+        }}
       />
     </div>
   );

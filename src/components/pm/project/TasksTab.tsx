@@ -121,6 +121,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const { isMe, setMode: setMeMode } = useMeMode();
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);
+  const [pendingPageRemoval, setPendingPageRemoval] = useState<{ key: string; label: string; count: number } | null>(null);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const lastClickedRef = useRef<Map<string, string>>(new Map()); // groupKey -> taskId
@@ -615,12 +616,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                         <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{done}/{pageTasks.length}</span>
                       </button>
                       <Button size="icon" variant="ghost" className="h-6 w-6"
-                        onClick={async () => {
-                          if (!confirm(`Remove "${label}" and its ${pageTasks.length} task(s)?`)) return;
-                          await removePageFromProject(projectId, key);
-                          emitTasksChanged();
-                          toast.success(`Removed ${label}`);
-                        }}>
+                        onClick={() => setPendingPageRemoval({ key, label, count: pageTasks.length })}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>

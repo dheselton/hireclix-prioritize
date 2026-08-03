@@ -9,6 +9,7 @@ import { useActivities, createActivity, updateActivity, archiveActivity, unarchi
 import { useActiveTimer, formatHMS } from "@/components/pm/timer/ActiveTimerProvider";
 import { addTimeEntry, fmtDur, localDateISO } from "@/lib/pm/time";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -218,6 +219,8 @@ function ActivityRow({ activity, onChanged }: { activity: PmActivity; onChanged:
   const [name, setName] = useState(activity.name);
   const [color, setColor] = useState(activity.color ?? COLORS[0]);
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   async function save() {
     if (name !== activity.name || color !== activity.color) {
       await updateActivity(activity.id, { name, color });
@@ -253,14 +256,22 @@ function ActivityRow({ activity, onChanged }: { activity: PmActivity; onChanged:
         size="sm"
         variant="ghost"
         className="h-7 text-destructive"
-        onClick={async () => {
-          if (!confirm(`Delete "${activity.name}"? Existing time entries will be detached.`)) return;
-          await deleteActivity(activity.id);
-          onChanged();
-        }}
+        onClick={() => setConfirmDelete(true)}
       >
         <Trash2 className="h-3 w-3" />
       </Button>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this activity?"
+        description={`"${activity.name}" will be removed. Existing time entries will be detached, not deleted.`}
+        confirmLabel="Delete activity"
+        onConfirm={async () => {
+          await deleteActivity(activity.id);
+          onChanged();
+        }}
+      />
     </div>
   );
 }
