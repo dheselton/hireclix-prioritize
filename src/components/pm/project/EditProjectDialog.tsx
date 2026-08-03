@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -162,15 +163,15 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Start date</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <DatePicker value={startDate} onChange={v => setStartDate(v ?? "")} className="w-full" />
             </div>
             <div>
               <Label>Kickoff</Label>
-              <Input type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} />
+              <DatePicker value={kickoff} onChange={v => setKickoff(v ?? "")} className="w-full" />
             </div>
             <div>
               <Label>Go-live</Label>
-              <Input type="date" value={goLive} onChange={e => setGoLive(e.target.value)} />
+              <DatePicker value={goLive} onChange={v => setGoLive(v ?? "")} className="w-full" />
             </div>
           </div>
           {goLiveChanged && (

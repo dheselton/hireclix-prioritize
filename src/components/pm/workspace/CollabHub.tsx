@@ -7,6 +7,7 @@ import { MentionTextarea, MentionText } from "@/components/pm/drawer/MentionText
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { fmtDate } from "@/lib/pm/format";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
@@ -21,7 +22,7 @@ function timeAgo(iso: string) {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 7 * 86400) return `${Math.floor(diff / 86400)}d ago`;
-  return new Date(iso).toLocaleDateString();
+  return fmtDate(iso);
 }
 
 export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; projectId: string; taskTitle: string }) {

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -104,11 +105,11 @@ export function ConvertToProjectModal({ open, onOpenChange, projectId, userId, o
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Kickoff date</Label>
-              <Input type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} />
+              <DatePicker value={kickoff} onChange={v => setKickoff(v ?? "")} className="w-full" />
             </div>
             <div>
               <Label>Go-live date</Label>
-              <Input type="date" value={goLive} onChange={e => { setGoLive(e.target.value); setGoLiveTouched(true); }} />
+              <DatePicker value={goLive} onChange={v => { setGoLive(v ?? ""); setGoLiveTouched(true); }} className="w-full" />
             </div>
           </div>
           <p className="text-xs text-muted-foreground">

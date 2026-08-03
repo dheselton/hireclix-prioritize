@@ -9,6 +9,7 @@ import { ChevronDown, ChevronRight, Upload, Link as LinkIcon, Download, Trash2, 
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { PmTask } from "@/types/pm";
@@ -213,8 +214,8 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
             {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-8 w-36" />
-        <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 w-36" />
+        <DatePicker size="sm" value={dateFrom} onChange={v => setDateFrom(v ?? "")} placeholder="From" className="w-36" />
+        <DatePicker size="sm" value={dateTo} onChange={v => setDateTo(v ?? "")} placeholder="To" className="w-36" />
         {(type !== "all" || uploader !== "all" || dateFrom || dateTo) && (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setType("all"); setUploader("all"); setDateFrom(""); setDateTo(""); }}>
             <X className="h-3 w-3 mr-1" /> Clear
