@@ -108,6 +108,32 @@ export default function Work() {
   const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
   const tagFilter = useTagFilter("board");
 
+  // Deep-link filters: ?user=<id> (from Team Workload) and ?section=raid
+  // (from the Daily Briefing hero). Both are consumed on mount and stripped.
+  const [personId, setPersonId] = useState<string | null>(null);
+  const [raidOnly, setRaidOnly] = useState(false);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const u = params.get("user");
+      const section = params.get("section");
+      if (u) setPersonId(u);
+      if (section === "raid") setRaidOnly(true);
+      if (u || section) {
+        params.delete("user");
+        if (section === "raid") params.delete("section");
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+        window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
+      }
+    } catch {}
+  }, []);
+
+  const personName = useMemo(
+    () => (personId ? allUsers.find(u => u.id === personId)?.name ?? "this person" : null),
+    [personId, allUsers],
+  );
+
   const visibleTasks = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
@@ -118,9 +144,18 @@ export default function Work() {
         return wt === workType.value;
       });
     }
+    if (personId) {
+      v = v.filter(t => t.assignee_id === personId || (coMap.get(t.id) ?? []).includes(personId));
+    }
+    if (raidOnly) {
+      v = v.filter(t => {
+        const k = getTaskKind(t);
+        return (k === "decision" || k === "issue") && isRaidOpen(t);
+      });
+    }
     if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, raidOnly, coMap]);
 
   // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
   const clientTagsInUse = useMemo(() => {
