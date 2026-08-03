@@ -5,6 +5,8 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { MentionTextarea, MentionText } from "@/components/pm/drawer/MentionTextarea";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
@@ -28,6 +30,7 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
   const [mentions, setMentions] = useState<string[]>([]);
   const { user } = useCurrentUser();
   const users = useMockUsers();
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase.from("pm_comments").select("*").eq("task_id", taskId).order("created_at");
@@ -57,8 +60,14 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
   }
 
   async function remove(id: string) {
-    await supabase.from("pm_comments").delete().eq("id", id);
-    await load();
+    try {
+      const { error } = await supabase.from("pm_comments").delete().eq("id", id);
+      if (error) throw error;
+      await load();
+      toast.success("Comment deleted");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not delete comment");
+    }
   }
 
   return (
@@ -81,7 +90,7 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
                   {mine && (
                     <button
                       type="button"
-                      onClick={() => remove(c.id)}
+                      onClick={() => setPendingDelete(c.id)}
                       className="opacity-0 group-hover:opacity-100 text-destructive"
                       aria-label="Delete comment"
                     >
