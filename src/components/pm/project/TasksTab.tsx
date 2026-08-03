@@ -31,7 +31,7 @@ import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { Users, Eye } from "lucide-react";
 import { KIND_META, TASK_KINDS, getTaskKind, isRaidOpen, type TaskKind } from "@/lib/pm/taskKind";
-import { TEAM_COLORS } from "@/lib/pm/teams";
+import { TEAM_COLORS, type Team } from "@/lib/pm/teams";
 import { RaidStrip } from "./RaidStrip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkTaskActions } from "@/components/pm/collections/BulkTaskActions";
