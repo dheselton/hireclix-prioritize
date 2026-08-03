@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { fmtDate } from "@/lib/pm/format";
-import { buildQueueLink } from "@/lib/pm/links";
+import { projectFilterLink } from "@/lib/pm/links";
 import { updateProject } from "@/lib/pm/api";
 import { AlertTriangle, CalendarClock, MessageSquare } from "lucide-react";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -39,34 +39,34 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange, i
     callouts.push({
       tone: "destructive", icon: <AlertTriangle className="h-4 w-4" />,
       msg: <><strong>{overdue}</strong> overdue {overdue === 1 ? "task" : "tasks"}</>,
-      href: `/pm/projects/${project.id}`,
+      href: projectFilterLink(project.id, "overdue"),
     });
   }
   if (goLiveDays !== null && goLiveDays >= 0 && goLiveDays <= 7) {
     callouts.push({
       tone: "warning", icon: <CalendarClock className="h-4 w-4" />,
       msg: <>Go-live in <strong>{goLiveDays}</strong> {goLiveDays === 1 ? "day" : "days"}</>,
-      href: `/pm/projects/${project.id}`,
+      href: projectFilterLink(project.id, "open"),
     });
   } else if (kickoffDays !== null && kickoffDays >= 0 && kickoffDays <= 7) {
     callouts.push({
       tone: "warning", icon: <CalendarClock className="h-4 w-4" />,
       msg: <>Kickoff in <strong>{kickoffDays}</strong> {kickoffDays === 1 ? "day" : "days"}</>,
-      href: `/pm/projects/${project.id}`,
+      href: projectFilterLink(project.id, "open"),
     });
   }
   if (inReview > 0) {
     callouts.push({
       tone: "info", icon: <MessageSquare className="h-4 w-4" />,
       msg: <>Waiting on client review · <strong>{inReview}</strong> {inReview === 1 ? "task" : "tasks"}</>,
-      href: `/pm/projects/${project.id}`,
+      href: projectFilterLink(project.id, "in_review"),
     });
   }
   if (!callouts.length) {
     callouts.push({
       tone: "info", icon: <MessageSquare className="h-4 w-4" />,
       msg: <>All clear — no urgent items.</>,
-      href: `/pm/projects/${project.id}`,
+      href: projectFilterLink(project.id),
     });
   }
 
@@ -109,9 +109,10 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange, i
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
           <MiniMetric label="Progress" value={`${pct}%`} />
-          <MiniMetric label="Open" value={open} />
-          <MiniMetric label="Done" value={done} />
+          <MiniMetric label="Open" value={open} to={projectFilterLink(project.id, "open")} />
+          <MiniMetric label="Done" value={done} to={projectFilterLink(project.id, "done")} />
         </div>
+
 
         <Card className="bg-secondary">
           <CardContent className="p-4 space-y-2">
@@ -130,14 +131,18 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange, i
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: React.ReactNode }) {
+function MiniMetric({ label, value, to }: { label: string; value: React.ReactNode; to?: string }) {
+  const body = (
+    <CardContent className="p-3">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-2xl font-semibold leading-tight mt-0.5">{value}</div>
+    </CardContent>
+  );
+  if (!to) return <Card className="bg-secondary">{body}</Card>;
   return (
-    <Card className="bg-secondary">
-      <CardContent className="p-3">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className="text-2xl font-semibold leading-tight mt-0.5">{value}</div>
-      </CardContent>
-    </Card>
+    <Link to={to} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Card className="bg-secondary hover:bg-secondary/70 transition cursor-pointer">{body}</Card>
+    </Link>
   );
 }
 

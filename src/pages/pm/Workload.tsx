@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { fetchTasks, fetchProjects } from "@/lib/pm/api";
@@ -90,13 +91,17 @@ export default function Workload() {
               dimmed && "opacity-50",
             )}>
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-3">
+                <Link
+                  to={`/pm/work?user=${u.id}`}
+                  className="flex items-center gap-3 rounded-md -m-1 p-1 hover:bg-muted/60 transition"
+                  title={`See all work assigned to ${u.name}`}
+                >
                   <UserAvatar userId={u.id} size="md" />
                   <div>
                     <div className="font-semibold">{u.name}{isMyRow && <span className="ml-1.5 text-[10px] uppercase text-primary">you</span>}</div>
                     <div className="text-xs text-muted-foreground">{formatRoleLabel(u.role)}</div>
                   </div>
-                </div>
+                </Link>
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <span>This week</span>

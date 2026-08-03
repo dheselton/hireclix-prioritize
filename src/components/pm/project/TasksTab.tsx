@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Plus, Trash2, FileText, ArrowUpDown } from "lucide-react";
+import { ChevronRight, Plus, Trash2, FileText, ArrowUpDown, X } from "lucide-react";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
@@ -34,6 +34,56 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BulkTaskActions } from "@/components/pm/collections/BulkTaskActions";
 
 type TypePill = "all" | "design" | "dev" | "qa";
+
+/** Project-scoped status filters, deep-linkable via ?taskFilter= / ?chips=. */
+export type ProjectTaskFilter = "overdue" | "blocked" | "open" | "in_review" | "done";
+
+const TASK_FILTER_LABEL: Record<ProjectTaskFilter, string> = {
+  overdue: "Overdue",
+  blocked: "Blocked",
+  open: "Open",
+  in_review: "In review",
+  done: "Done",
+};
+
+const VALID_TASK_FILTERS = new Set<string>(["overdue", "blocked", "open", "in_review", "done"]);
+
+const isDoneStatus = (s: string) => s === "complete" || s === "approved";
+
+function matchesTaskFilter(t: PmTask, f: ProjectTaskFilter): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  switch (f) {
+    case "overdue": return !!t.due_date && t.due_date < today && !isDoneStatus(t.status);
+    case "blocked": return t.status === "blocked";
+    case "open": return !isDoneStatus(t.status);
+    case "in_review": return t.status === "in_review";
+    case "done": return isDoneStatus(t.status);
+  }
+}
+
+/** Read (and strip) the project-scoped filter deep-link params. */
+function readInitialTaskFilter(): ProjectTaskFilter | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("taskFilter");
+    const chips = params.get("chips");
+    let value: ProjectTaskFilter | null = null;
+    if (raw && VALID_TASK_FILTERS.has(raw)) value = raw as ProjectTaskFilter;
+    else if (chips) {
+      const first = chips.split(",").map(s => s.trim()).find(s => VALID_TASK_FILTERS.has(s));
+      if (first) value = first as ProjectTaskFilter;
+    }
+    if (params.has("taskFilter") || params.has("chips")) {
+      params.delete("taskFilter");
+      params.delete("chips");
+      const url = new URL(window.location.href);
+      url.search = params.toString();
+      window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
+    }
+    return value;
+  } catch { return null; }
+}
 
 const TYPE_FILTER: Record<Exclude<TypePill, "all">, string[]> = {
   design: ["design", "content"],
@@ -67,6 +117,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [pill, setPill] = useState<TypePill>("all");
   const [kindFilter, setKindFilter] = useState<TaskKind | "all">("all");
   const [watchingOnly, setWatchingOnly] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<ProjectTaskFilter | null>(() => readInitialTaskFilter());
   const { isMe, setMode: setMeMode } = useMeMode();
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);
@@ -173,9 +224,10 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     else out = out.filter(t => getTaskKind(t) === kindFilter);
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     if (watchingOnly) out = out.filter(t => watchedTaskIds.has(t.id));
+    if (taskFilter) out = out.filter(t => matchesTaskFilter(t, taskFilter));
     out = out.filter(t => team.filterTask(t));
     return out;
-  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds]);
+  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds, taskFilter]);
 
   const sortedFiltered = useMemo(() => {
     const sorted = [...filtered];
@@ -440,6 +492,17 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             {watchedTaskIds.size > 0 && (
               <span className="ml-1 text-[10px] opacity-70">{watchedTaskIds.size}</span>
             )}
+          </button>
+        )}
+        {taskFilter && (
+          <button
+            type="button"
+            className={chipCls(true)}
+            onClick={() => setTaskFilter(null)}
+            title="Clear this filter"
+          >
+            {TASK_FILTER_LABEL[taskFilter]} only
+            <X className="h-3 w-3 ml-1" />
           </button>
         )}
         {/* Kind filter (RAID log): Tasks only (default) / Decisions / Risks / Everything */}
