@@ -35,6 +35,56 @@ import { BulkTaskActions } from "@/components/pm/collections/BulkTaskActions";
 
 type TypePill = "all" | "design" | "dev" | "qa";
 
+/** Project-scoped status filters, deep-linkable via ?taskFilter= / ?chips=. */
+export type ProjectTaskFilter = "overdue" | "blocked" | "open" | "in_review" | "done";
+
+const TASK_FILTER_LABEL: Record<ProjectTaskFilter, string> = {
+  overdue: "Overdue",
+  blocked: "Blocked",
+  open: "Open",
+  in_review: "In review",
+  done: "Done",
+};
+
+const VALID_TASK_FILTERS = new Set<string>(["overdue", "blocked", "open", "in_review", "done"]);
+
+const isDoneStatus = (s: string) => s === "complete" || s === "approved";
+
+function matchesTaskFilter(t: PmTask, f: ProjectTaskFilter): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  switch (f) {
+    case "overdue": return !!t.due_date && t.due_date < today && !isDoneStatus(t.status);
+    case "blocked": return t.status === "blocked";
+    case "open": return !isDoneStatus(t.status);
+    case "in_review": return t.status === "in_review";
+    case "done": return isDoneStatus(t.status);
+  }
+}
+
+/** Read (and strip) the project-scoped filter deep-link params. */
+function readInitialTaskFilter(): ProjectTaskFilter | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("taskFilter");
+    const chips = params.get("chips");
+    let value: ProjectTaskFilter | null = null;
+    if (raw && VALID_TASK_FILTERS.has(raw)) value = raw as ProjectTaskFilter;
+    else if (chips) {
+      const first = chips.split(",").map(s => s.trim()).find(s => VALID_TASK_FILTERS.has(s));
+      if (first) value = first as ProjectTaskFilter;
+    }
+    if (params.has("taskFilter") || params.has("chips")) {
+      params.delete("taskFilter");
+      params.delete("chips");
+      const url = new URL(window.location.href);
+      url.search = params.toString();
+      window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
+    }
+    return value;
+  } catch { return null; }
+}
+
 const TYPE_FILTER: Record<Exclude<TypePill, "all">, string[]> = {
   design: ["design", "content"],
   dev: ["dev"],
