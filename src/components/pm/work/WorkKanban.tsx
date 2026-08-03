@@ -70,6 +70,16 @@ export function WorkKanban({
     }
   }
 
+  async function moveTask(id: string, to: TaskStatus) {
+    setOverride(o => ({ ...o, [id]: to }));
+    try { await onMove(id, to); }
+    finally {
+      setTimeout(() => setOverride(o => { const n = { ...o }; delete n[id]; return n; }), 500);
+    }
+  }
+
+
+
   // Mobile: no drag-and-drop — stacked sections with a per-card status select.
   if (isMobile) {
     return (
