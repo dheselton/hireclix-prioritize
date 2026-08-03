@@ -350,7 +350,7 @@ export const getGroupsAwaitingPages = async (
       if (title) discoveryTask = tasks.find(t => t.title === title);
     }
     if (!discoveryTask) continue;
-    if (!DONE_STATUSES.has(String(discoveryTask.status || '').toLowerCase())) continue;
+    if (!isDiscoveryDone(discoveryTask.status)) continue;
 
     // Real pages stamped for this group? Best-effort key prefix match (see PagesTab logic).
     const groupPrefix = g.id.slice(0, 6);
