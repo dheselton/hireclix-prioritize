@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 import { createNote, updateNote, deleteNote, type PmNote } from "@/lib/pm/briefing";
 
@@ -22,6 +23,7 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -53,7 +55,6 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
 
   async function handleDelete() {
     if (!note) return;
-    if (!confirm("Delete this note?")) return;
     try {
       await deleteNote(note.id);
       onClose();
@@ -63,6 +64,7 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -94,7 +96,7 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
         <DialogFooter className="gap-2 sm:gap-2 sm:justify-between">
           <div>
             {isEdit && (
-              <Button variant="ghost" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteOpen(true)} className="text-destructive hover:text-destructive">
                 <Trash2 className="h-4 w-4 mr-1" /> Delete
               </Button>
             )}
@@ -105,6 +107,15 @@ export function NoteDialog({ open, onClose, userId, note }: Props) {
           </div>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete this note?"
+        description="This note will be permanently removed. This cannot be undone."
+        confirmLabel="Delete note"
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

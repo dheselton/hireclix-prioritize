@@ -21,6 +21,7 @@ import { BoardColumn } from "./board/BoardColumn";
 import { BoardTaskCard } from "./board/BoardTaskCard";
 import { GROUP_PRIMARY_STATUS } from "./board/boardStyles";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 import { AddPageDialog } from "./AddPageDialog";
 import { removePageFromProject } from "@/lib/pm/pageGroups";
@@ -121,6 +122,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const { isMe, setMode: setMeMode } = useMeMode();
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);
+  const [pendingPageRemoval, setPendingPageRemoval] = useState<{ key: string; label: string; count: number } | null>(null);
   const [collapsedPages, setCollapsedPages] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const lastClickedRef = useRef<Map<string, string>>(new Map()); // groupKey -> taskId
@@ -615,12 +617,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                         <span className="text-[11px] px-1.5 rounded bg-muted text-muted-foreground">{done}/{pageTasks.length}</span>
                       </button>
                       <Button size="icon" variant="ghost" className="h-6 w-6"
-                        onClick={async () => {
-                          if (!confirm(`Remove "${label}" and its ${pageTasks.length} task(s)?`)) return;
-                          await removePageFromProject(projectId, key);
-                          emitTasksChanged();
-                          toast.success(`Removed ${label}`);
-                        }}>
+                        onClick={() => setPendingPageRemoval({ key, label, count: pageTasks.length })}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -802,6 +799,23 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       {templateId && (
         <AddPageDialog projectId={projectId} templateId={templateId} open={addPageOpen} onOpenChange={setAddPageOpen} />
       )}
+
+      <ConfirmDialog
+        open={!!pendingPageRemoval}
+        onOpenChange={(o) => { if (!o) setPendingPageRemoval(null); }}
+        title="Remove this page?"
+        description={pendingPageRemoval
+          ? `"${pendingPageRemoval.label}" and its ${pendingPageRemoval.count} task(s) will be deleted. This cannot be undone.`
+          : undefined}
+        confirmLabel="Remove page"
+        onConfirm={async () => {
+          if (!pendingPageRemoval) return;
+          await removePageFromProject(projectId, pendingPageRemoval.key);
+          emitTasksChanged();
+          toast.success(`Removed ${pendingPageRemoval.label}`);
+          setPendingPageRemoval(null);
+        }}
+      />
     </div>
   );
 }
