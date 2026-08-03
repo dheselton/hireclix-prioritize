@@ -204,6 +204,26 @@ export default function Work() {
               onClear={tagFilter.clear}
               extraTags={clientTagsInUse}
             />
+            {personId && (
+              <button
+                type="button"
+                onClick={() => setPersonId(null)}
+                className="h-8 px-2.5 rounded-md border border-primary bg-primary/10 text-primary text-xs font-medium"
+                title="Clear person filter"
+              >
+                {personName} ✕
+              </button>
+            )}
+            {raidOnly && (
+              <button
+                type="button"
+                onClick={() => setRaidOnly(false)}
+                className="h-8 px-2.5 rounded-md border border-primary bg-primary/10 text-primary text-xs font-medium"
+                title="Clear RAID filter"
+              >
+                RAID only ✕
+              </button>
+            )}
             {!(roles.length === 1 && roles[0] === "submitter") && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
