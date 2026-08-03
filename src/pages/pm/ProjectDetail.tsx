@@ -27,6 +27,8 @@ import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
+import { ProjectTimelineTab } from "@/components/pm/project/ProjectTimelineTab";
+
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
@@ -293,12 +295,13 @@ export default function ProjectDetail() {
       )}
 
       {tab === "timeline" && !isRequest && (
-        <Card className="bg-secondary">
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Timeline view — tasks plotted against go-live date with locked milestones (Phase 2)
-          </CardContent>
-        </Card>
+        <ProjectTimelineTab
+          project={project}
+          tasks={tasks}
+          onGoToOverview={() => handleSetTab("overview")}
+        />
       )}
+
 
       {tab === "pages" && !isRequest && hasTemplate && (
         <PagesTab projectId={project.id} templateId={project.template_id} tasks={tasks} />
