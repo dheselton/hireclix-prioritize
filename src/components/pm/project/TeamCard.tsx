@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 
 interface Member { id: string; project_id: string; user_id: string; role: string }
 const PROJECT_ROLES = ["PM", "Alt PM", "BA", "Tech Lead", "Designer", "Developer", "Reviewer"];
@@ -22,6 +23,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const { user, roles } = useCurrentUser();
   const users = useMockUsers();
+  const [pendingRemove, setPendingRemove] = useState<Member | null>(null);
 
   async function load() {
     const { data } = await supabase.from("pm_project_members").select("*").eq("project_id", projectId);
@@ -41,8 +43,14 @@ export function TeamCard({ projectId }: { projectId: string }) {
   }
   async function remove(m: Member) {
     if (PM_LIKE_ROLES.has(m.role) && pmCount <= 1) { toast.error("Cannot remove the only PM/BA on this project"); return; }
-    await supabase.from("pm_project_members").delete().eq("id", m.id);
-    await load();
+    try {
+      const { error } = await supabase.from("pm_project_members").delete().eq("id", m.id);
+      if (error) throw error;
+      await load();
+      toast.success("Member removed");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not remove member");
+    }
   }
 
   const available = users.filter(u =>
@@ -93,7 +101,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
               <span className="flex-1 truncate">{u?.name ?? "Unknown"}</span>
               <span className="text-xs text-muted-foreground">{m.role}</span>
               {canRemove && (
-                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => remove(m)}>
+                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => setPendingRemove(m)}>
                   <X className="h-3 w-3" />
                 </Button>
               )}
@@ -101,6 +109,15 @@ export function TeamCard({ projectId }: { projectId: string }) {
           );
         })}
       </ul>
+
+      <ConfirmDialog
+        open={!!pendingRemove}
+        onOpenChange={o => { if (!o) setPendingRemove(null); }}
+        title="Remove member?"
+        description={`Remove ${users.find(u => u.id === pendingRemove?.user_id)?.name ?? "this member"} from this project? This cannot be undone.`}
+        confirmLabel="Remove"
+        onConfirm={async () => { if (pendingRemove) await remove(pendingRemove); setPendingRemove(null); }}
+      />
     </CardContent></Card>
   );
 }

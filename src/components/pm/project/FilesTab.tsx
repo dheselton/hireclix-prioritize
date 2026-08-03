@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import type { PmTask } from "@/types/pm";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 
 const BUCKET = "task-attachments";
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
@@ -123,21 +124,35 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
     await load();
   }
 
+  const [pendingDelete, setPendingDelete] = useState<{ row: FileRow; scope: "project" | "task" } | null>(null);
+
   async function removeProject(f: FileRow) {
+    try {
     if (f.type === "file" && f.url.includes(`/${BUCKET}/`)) {
       const path = f.url.split(`/${BUCKET}/`)[1];
       if (path) await supabase.storage.from(BUCKET).remove([path]);
     }
-    await supabase.from("pm_project_attachments").delete().eq("id", f.id);
+    const { error } = await supabase.from("pm_project_attachments").delete().eq("id", f.id);
+    if (error) throw error;
     await load();
+      toast.success(f.type === "link" ? "Link deleted" : "File deleted");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not delete");
+    }
   }
   async function removeTaskFile(f: FileRow) {
+    try {
     if (f.type === "file" && f.url.includes(`/${BUCKET}/`)) {
       const path = f.url.split(`/${BUCKET}/`)[1];
       if (path) await supabase.storage.from(BUCKET).remove([path]);
     }
-    await supabase.from("pm_attachments").delete().eq("id", f.id);
+    const { error } = await supabase.from("pm_attachments").delete().eq("id", f.id);
+    if (error) throw error;
     await load();
+      toast.success(f.type === "link" ? "Link deleted" : "File deleted");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not delete");
+    }
   }
 
   const allPreviewItems = useMemo(
@@ -241,7 +256,7 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
       <Group title="Project Files" count={filteredProject.length} defaultOpen>
         {filteredProject.length === 0 ? (
           <div className="text-xs text-muted-foreground italic px-2 py-1">No project-level files.</div>
-        ) : filteredProject.map(f => <Row key={f.id} f={f} onRemove={() => removeProject(f)} />)}
+        ) : filteredProject.map(f => <Row key={f.id} f={f} onRemove={() => setPendingDelete({ row: f, scope: "project" })} />)}
       </Group>
 
       {/* Per-task groups */}
@@ -254,7 +269,7 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
             count={items.length}
             onTitleClick={() => onOpenTask(taskId)}
           >
-            {items.map(f => <Row key={f.id} f={f} onRemove={() => removeTaskFile(f)} />)}
+            {items.map(f => <Row key={f.id} f={f} onRemove={() => setPendingDelete({ row: f, scope: "task" })} />)}
           </Group>
         );
       })}
@@ -264,6 +279,21 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
           No files yet — upload project assets or attach files to tasks.
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={o => { if (!o) setPendingDelete(null); }}
+        title={pendingDelete?.row.type === "link" ? "Delete link?" : "Delete file?"}
+        description={`Delete "${pendingDelete?.row.name ?? ""}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (pendingDelete) {
+            if (pendingDelete.scope === "project") await removeProject(pendingDelete.row);
+            else await removeTaskFile(pendingDelete.row);
+          }
+          setPendingDelete(null);
+        }}
+      />
     </CardContent></Card>
   );
 }

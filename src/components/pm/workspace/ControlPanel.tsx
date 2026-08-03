@@ -17,6 +17,8 @@ import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
 import { teamsFromTask, type Team } from "@/lib/pm/teams";
 import { TagPicker } from "@/components/pm/tags/TagPicker";
 import { getKindStatusLabel, getTaskKind } from "@/lib/pm/taskKind";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { toast } from "sonner";
 
 function statusClass(s: TaskStatus) {
   if (s === "blocked") return "bg-destructive/15 text-destructive border-destructive/30";
@@ -148,11 +150,17 @@ function AssigneeChips({ taskId, primaryId, onChanged }: { taskId: string; prima
   const co = useTaskCoAssignees(taskId);
   const all = combineAssignees(primaryId, co);
   const invalidate = useInvalidateAssignees();
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null);
 
   async function remove(uid: string) {
-    await removeAssignee(taskId, uid);
-    invalidate();
-    await onChanged?.();
+    try {
+      await removeAssignee(taskId, uid);
+      invalidate();
+      await onChanged?.();
+      toast.success("Assignee removed");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not remove assignee");
+    }
   }
 
   return (
@@ -178,7 +186,7 @@ function AssigneeChips({ taskId, primaryId, onChanged }: { taskId: string; prima
             {isPrimary && <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />}
             <button
               type="button"
-              onClick={() => remove(uid)}
+              onClick={() => setPendingRemove(uid)}
               aria-label={`Remove ${u.name}`}
               className="text-muted-foreground hover:text-destructive"
             >
@@ -197,6 +205,15 @@ function AssigneeChips({ taskId, primaryId, onChanged }: { taskId: string; prima
             <Plus className="h-3 w-3" />
           </Button>
         }
+      />
+
+      <ConfirmDialog
+        open={!!pendingRemove}
+        onOpenChange={o => { if (!o) setPendingRemove(null); }}
+        title="Remove assignee?"
+        description={`Remove ${users.find(u => u.id === pendingRemove)?.name ?? "this person"} from this task? This cannot be undone.`}
+        confirmLabel="Remove"
+        onConfirm={async () => { if (pendingRemove) await remove(pendingRemove); setPendingRemove(null); }}
       />
     </div>
   );

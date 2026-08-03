@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/lib/pm/mockUser";
 import { toast } from "sonner";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 
 interface Att {
   id: string; task_id: string; type: string; name: string; url: string;
@@ -21,6 +22,7 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
   const { openPreview } = usePreview();
+  const [pendingDelete, setPendingDelete] = useState<Att | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -49,12 +51,18 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
   }
 
   async function remove(a: Att) {
+    try {
     if (a.url.includes(`/${BUCKET}/`)) {
       const path = a.url.split(`/${BUCKET}/`)[1];
       if (path) await supabase.storage.from(BUCKET).remove([path]);
     }
-    await supabase.from("pm_attachments").delete().eq("id", a.id);
+    const { error } = await supabase.from("pm_attachments").delete().eq("id", a.id);
+    if (error) throw error;
     await load();
+      toast.success("File deleted");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not delete file");
+    }
   }
 
   const previewItems = useMemo(
@@ -107,7 +115,7 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
                 {own && (
                   <button
                     type="button"
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); remove(a); }}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); setPendingDelete(a); }}
                     className="bg-background/80 backdrop-blur rounded p-1 text-destructive"
                     title="Delete"
                   >
@@ -133,6 +141,15 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
           <span className="text-[11px]">Drop files</span>
         </button>
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={o => { if (!o) setPendingDelete(null); }}
+        title="Delete file?"
+        description={`Delete "${pendingDelete?.name ?? ""}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={async () => { if (pendingDelete) await remove(pendingDelete); setPendingDelete(null); }}
+      />
     </section>
   );
 }
