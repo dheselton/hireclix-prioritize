@@ -20,6 +20,7 @@ export function toRoles(input: RoleOrRoles): PmRole[] {
 /** Logical surfaces in the app. Used by the sidebar + route guard. */
 export type Surface =
   | "queue"
+  | "inbox"
   | "work"
   | "workload"
   | "timeline"
@@ -42,6 +43,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   // Tech Lead = union of dev + PM-ish (sees everything except integrations/form builder/templates authoring surfaces treated below).
   if (r === "tech_lead") {
     switch (surface) {
+      case "inbox":
       case "templates":
       case "formBuilder":
       case "integrations":
@@ -51,6 +53,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
     }
   }
   switch (surface) {
+    case "inbox":
     case "templates":
     case "formBuilder":
     case "integrations":
@@ -70,6 +73,7 @@ export function canSee(role: RoleOrRoles, surface: Surface): boolean {
 /** Route prefixes blocked for the given role(s). */
 export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
   const out: string[] = [];
+  if (!canSee(role, "inbox")) out.push("/pm/inbox");
   if (!canSee(role, "templates")) out.push("/pm/templates");
   if (!canSee(role, "formBuilder")) out.push("/pm/forms/");
   if (!canSee(role, "integrations")) out.push("/pm/integrations");
