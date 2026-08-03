@@ -139,9 +139,9 @@ export default function ProjectDetail() {
 
       <ProjectHeader
         project={project}
-        onAddTask={() => { setTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
-        onLogSupportRequest={() => { setTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
-        onLogQaBatch={() => { setTab("qa"); setQaBatchOpen(true); }}
+        onAddTask={() => { handleSetTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { handleSetTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogQaBatch={() => { handleSetTab("qa"); setQaBatchOpen(true); }}
       />
       <SupportReadyBanner project={project} />
       {!isRequest && hasTemplate && (
@@ -149,7 +149,7 @@ export default function ProjectDetail() {
           projectId={project.id}
           templateId={project.template_id}
           tasks={tasks}
-          onDefinePages={() => setTab("pages")}
+          onDefinePages={() => handleSetTab("pages")}
         />
       )}
       <KpiStrip project={project} tasks={tasks} />
@@ -162,7 +162,7 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      <ProjectTabs value={tab} onChange={setTab} tabs={tabs} />
+      <ProjectTabs value={tab} onChange={handleSetTab} tabs={tabs} />
 
       {tab === "overview" && (
         <div className="space-y-4">
