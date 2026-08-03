@@ -278,7 +278,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
   function gotoNewTemplate() {
     onOpenChange(false);
-    navigate("/pm/templates?new=1");
+    navigate("/pm/templates?newTemplate=1");
   }
 
   return (

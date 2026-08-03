@@ -26,10 +26,11 @@ export default function Templates() {
   };
   useEffect(() => { reload(); }, []);
 
+  // ?newTemplate=1 auto-opens the "New template" dialog on arrival, then clears itself so a refresh doesn't reopen it.
   useEffect(() => {
-    if (params.get("new") === "1") {
+    if (params.get("newTemplate") === "1") {
       setOpen(true);
-      params.delete("new");
+      params.delete("newTemplate");
       setParams(params, { replace: true });
     }
   }, [params, setParams]);
