@@ -109,9 +109,10 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange, i
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
           <MiniMetric label="Progress" value={`${pct}%`} />
-          <MiniMetric label="Open" value={open} />
-          <MiniMetric label="Done" value={done} />
+          <MiniMetric label="Open" value={open} to={projectFilterLink(project.id, "open")} />
+          <MiniMetric label="Done" value={done} to={projectFilterLink(project.id, "done")} />
         </div>
+
 
         <Card className="bg-secondary">
           <CardContent className="p-4 space-y-2">
