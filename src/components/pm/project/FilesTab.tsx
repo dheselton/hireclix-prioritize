@@ -279,6 +279,21 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
           No files yet — upload project assets or attach files to tasks.
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={o => { if (!o) setPendingDelete(null); }}
+        title={pendingDelete?.row.type === "link" ? "Delete link?" : "Delete file?"}
+        description={`Delete "${pendingDelete?.row.name ?? ""}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (pendingDelete) {
+            if (pendingDelete.scope === "project") await removeProject(pendingDelete.row);
+            else await removeTaskFile(pendingDelete.row);
+          }
+          setPendingDelete(null);
+        }}
+      />
     </CardContent></Card>
   );
 }
