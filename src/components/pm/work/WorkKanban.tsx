@@ -14,6 +14,8 @@ import { StatusPill } from "@/components/pm/StatusPill";
 import { fmtDateShort } from "@/lib/pm/format";
 import type { PmTask, PmProject, TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -32,6 +34,9 @@ export function WorkKanban({
   const [activeId, setActiveId] = useState<string | null>(null);
   // Optimistic overlay of status per task while persisting.
   const [override, setOverride] = useState<Record<string, TaskStatus>>({});
+  const isMobile = useIsMobile();
+
+
 
   const displayTasks = useMemo(
     () => tasks.map(t => (override[t.id] ? { ...t, status: override[t.id] } : t)),
@@ -68,6 +73,48 @@ export function WorkKanban({
       // Drop override after data refreshes (parent reload will re-seed tasks).
       setTimeout(() => setOverride(o => { const n = { ...o }; delete n[id]; return n; }), 500);
     }
+  }
+
+  async function moveTask(id: string, to: TaskStatus) {
+    setOverride(o => ({ ...o, [id]: to }));
+    try { await onMove(id, to); }
+    finally {
+      setTimeout(() => setOverride(o => { const n = { ...o }; delete n[id]; return n; }), 500);
+    }
+  }
+
+
+
+  // Mobile: no drag-and-drop — stacked sections with a per-card status select.
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {columns.map(s => {
+          const items = displayTasks.filter(t => t.status === s);
+          return (
+            <div key={s} className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="text-xs font-semibold uppercase tracking-wide">{COL_LABELS[s]}</div>
+                <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+              </div>
+              {items.length === 0 && (
+                <div className="px-1 text-xs italic text-muted-foreground">No tasks</div>
+              )}
+              {items.map(t => (
+                <MobileCard
+                  key={t.id}
+                  task={t}
+                  project={projects.get(t.project_id)}
+                  columns={columns}
+                  onOpen={onOpen}
+                  onMove={moveTask}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
@@ -141,5 +188,41 @@ function KCard({ task, project, onOpen, overlay }: {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Mobile card: same content as KCard, no drag; status changes via a select. */
+function MobileCard({ task, project, columns, onOpen, onMove }: {
+  task: PmTask;
+  project?: PmProject;
+  columns: TaskStatus[];
+  onOpen: (id: string) => void;
+  onMove: (id: string, status: TaskStatus) => void;
+}) {
+  const blocked = task.status === "blocked";
+  const options = columns.includes(task.status) ? columns : [task.status, ...columns];
+  return (
+    <Card className={cn("w-full", blocked && "border-red-500/60")}>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start gap-2" onClick={() => onOpen(task.id)}>
+          <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
+          <div className="text-sm font-medium leading-tight flex-1">{task.title}</div>
+          <span onClick={(e) => e.stopPropagation()} className="shrink-0">
+            <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={task.status === "unclaimed"} />
+          </span>
+        </div>
+        {project && <div className="text-[11px] text-muted-foreground truncate">{project.title}</div>}
+        {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
+        <div className="flex items-center gap-2">
+          <Select value={task.status} onValueChange={(v) => onMove(task.id, v as TaskStatus)}>
+            <SelectTrigger className="h-8 flex-1 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {options.map(s => <SelectItem key={s} value={s} className="text-xs">{COL_LABELS[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <span className="text-[11px] text-muted-foreground shrink-0">{fmtDateShort(task.due_date)}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
