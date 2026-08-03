@@ -27,6 +27,8 @@ import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
+import { ProjectTimelineTab } from "@/components/pm/project/ProjectTimelineTab";
+
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
@@ -35,8 +37,40 @@ import { QaTab } from "@/components/pm/project/QaTab";
 import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
 import { isInQaMode } from "@/lib/pm/qaMode";
 
+/** Why a mode-gated tab isn't reachable on a given project. */
+const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
+  qa: "QA mode is not active on this project — showing Tasks instead.",
+  pages: "This project doesn't have a Pages tab — showing Tasks instead.",
+  documentation: "This project isn't in Support mode — showing Tasks instead.",
+  snippets: "Snippets are only available to design and dev roles — showing Tasks instead.",
+  timeline: "Requests don't have a Project Timeline — showing Tasks instead.",
+};
+
+/** The tabs a given project + viewer can actually render. Mirrors the tab strip. */
+function computeAvailableTabs(project: PmProject, user: any): ProjectTabId[] {
+  const isRequest = ((project as any).work_type ?? "project") === "request";
+  const inSupport = !!(project.custom_fields as any)?.support_mode_at;
+  const inQa = isInQaMode(project);
+  const hasTemplate = !!project.template_id;
+  const canSeeSnippets =
+    !!user?.roles?.some((r: string) => r === "developer" || r === "designer") ||
+    user?.role === "developer" || user?.role === "designer";
+
+  return [
+    "overview",
+    "tasks",
+    ...(inQa ? (["qa"] as const) : []),
+    ...(!isRequest ? (["timeline"] as const) : []),
+    ...(!isRequest && hasTemplate ? (["pages"] as const) : []),
+    "files",
+    ...(canSeeSnippets ? (["snippets"] as const) : []),
+    ...(inSupport ? (["documentation"] as const) : []),
+  ] as ProjectTabId[];
+}
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+
   const { user } = useCurrentUser();
   const [project, setProject] = useState<PmProject | null>(null);
   const [tasks, setTasks] = useState<PmTask[]>([]);
@@ -51,11 +85,18 @@ export default function ProjectDetail() {
     if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
     return "tasks";
   });
+  // A requested ?tab= is only honored once we know the project — several tabs
+  // are mode-gated (QA mode, support mode, career-site template, role). The
+  // validation effect below runs after load and falls back with an explanation.
+  const [tabChecked, setTabChecked] = useState(false);
 
   const handleSetTab = (newTab: ProjectTabId) => {
     setTab(newTab);
-    setSearchParams({ tab: newTab });
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", newTab);
+    setSearchParams(next, { replace: true });
   };
+
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
@@ -106,6 +147,28 @@ export default function ProjectDetail() {
     reload();
   }
 
+  // Which tabs this specific project actually renders (mode/role gated).
+  const availableTabs = useMemo<ProjectTabId[] | null>(
+    () => (project ? computeAvailableTabs(project, user) : null),
+    [project, user],
+  );
+
+  // A ?tab= pointing at a gated tab used to be accepted silently and render
+  // nothing. Fall back to Tasks and say why.
+  useEffect(() => {
+    if (!availableTabs || tabChecked) return;
+    setTabChecked(true);
+    const requested = searchParams.get("tab") as ProjectTabId | null;
+    if (!requested || availableTabs.includes(requested)) return;
+    setTab("tasks");
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", "tasks");
+    setSearchParams(next, { replace: true });
+    toast.info(
+      UNAVAILABLE_TAB_REASON[requested] ??
+        "That tab isn't available on this project — showing Tasks instead.",
+    );
+  }, [availableTabs, tabChecked, searchParams, setSearchParams]);
 
   if (!project) return <div className="p-6">Loading…</div>;
   const p: any = project;
@@ -126,11 +189,12 @@ export default function ProjectDetail() {
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(inQa ? [{ id: "qa" as const, label: "QA" }] : []),
-    ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline", badge: <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">Coming soon</Badge> }] : []),
+    ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline" }] : []),
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
     ...(inSupport ? [{ id: "documentation" as const, label: "Documentation" }] : []),
+
   ];
 
 
@@ -231,12 +295,13 @@ export default function ProjectDetail() {
       )}
 
       {tab === "timeline" && !isRequest && (
-        <Card className="bg-secondary">
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Timeline view — tasks plotted against go-live date with locked milestones (Phase 2)
-          </CardContent>
-        </Card>
+        <ProjectTimelineTab
+          project={project}
+          tasks={tasks}
+          onGoToOverview={() => handleSetTab("overview")}
+        />
       )}
+
 
       {tab === "pages" && !isRequest && hasTemplate && (
         <PagesTab projectId={project.id} templateId={project.template_id} tasks={tasks} />
