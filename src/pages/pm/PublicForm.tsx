@@ -244,6 +244,14 @@ export default function PublicForm() {
         created_task_id: createdTaskId,
       } as any);
 
+      // Submit confirmation to the requester (never blocks submission).
+      void sendRequestReceivedEmail({
+        to: email,
+        title: titleValue || form.name,
+        requestTypeLabel: requestTypeLabel(requestType ?? null),
+        projectId: createdProjectId,
+      });
+
       const watcherIds = createdProjectId
         ? await applyClientWatchers(createdProjectId, clientId || null, requestType ?? null).catch(() => [])
         : [];
