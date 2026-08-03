@@ -25,7 +25,7 @@ export const TEAM_LABEL: Record<Team, string> = {
   support: "Help / Support",
 };
 
-export const TEAM_COLOR: Record<Team, string> = {
+export const TEAM_COLORS: Record<Team, string> = {
   design: "hsl(280 70% 60%)",
   dev: "hsl(150 60% 45%)",
   pm: "hsl(220 70% 55%)",

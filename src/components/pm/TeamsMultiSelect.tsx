@@ -2,7 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Check, Plus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ALL_TEAMS, TEAM_LABEL, TEAM_COLOR, type Team } from "@/lib/pm/teams";
+import { ALL_TEAMS, TEAM_LABEL, TEAM_COLORS, type Team } from "@/lib/pm/teams";
 
 interface Props {
   value: Team[];
