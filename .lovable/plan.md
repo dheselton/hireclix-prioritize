@@ -1,25 +1,20 @@
-# Sanitize rich-text HTML (stored XSS fix)
+# Finish the multi-role cleanup: two remaining singular role reads
 
-Rich-text content is stored as raw HTML and rendered directly, so a pasted `<script>` or `javascript:` link would run for every future viewer. Add DOMPurify sanitization at both save and render points, with no change to editing behavior or the toolbar.
+All ten locations from the audit already use the `roles[]` union. Two smaller spots still read the primary role only.
 
-## Changes
+## 1. Work page — "Quick Request" / "New Project" buttons
 
-1. **Add dependency** — install `dompurify` (types ship with the package; add `@types/dompurify` only if needed).
+`src/pages/pm/Work.tsx` hides the create buttons when the primary role is `submitter`. A user whose primary role is Submitter but who also holds PM/Designer/Developer loses those buttons.
 
-2. **Shared config** — one small helper (`src/lib/pm/sanitizeHtml.ts`) exporting `sanitizeHtml(html)` using:
-   `DOMPurify.sanitize(html, { FORBID_ATTR: ['onerror','onload'], ALLOWED_URI_REGEXP: /^(?!javascript:)/i })`
-   so every surface uses identical rules.
+Change the check to hide the buttons only when the user is submitter-only (no other roles), matching the pattern already used in the sidebar.
 
-3. **`src/components/pm/workspace/DescriptionSection.tsx`** (line 54) — wrap the `dangerouslySetInnerHTML` value in `sanitizeHtml()`.
+## 2. Project detail — default task type in New Task dialog
 
-4. **`src/components/pm/project/DocumentationTab.tsx`** (line 88) — same wrap on the read-only render.
+`src/pages/pm/ProjectDetail.tsx` passes the primary role to `NewTaskDialog`, which uses it to pick the default task type (design / dev / etc.). For a multi-role user this can default to the wrong discipline.
 
-5. **`src/components/pm/project/RichTextEditor.tsx`** (the actual editor path; there is no `workspace/RichTextEditor.tsx`) —
-   - sanitize the HTML in the `onChange` emit points (`cmd`, `handleInput`, `pickMention`) so what gets stored is already clean;
-   - sanitize the incoming `value` before assigning to `el.innerHTML` in the mount/sync effect.
+Pass a role chosen from the union instead, preferring a "doer" role (developer, designer, strategist, analyst) over PM so the default task type reflects the work the person actually does; fall back to the first role held.
 
-   Sanitizing is applied only to the emitted/loaded value — the toolbar, mention popover, caret handling, and blur logic stay untouched.
+## Technical notes
 
-## Note
-
-`src/components/ui/chart.tsx` also uses `dangerouslySetInnerHTML`, but only for generated CSS from theme config (no user input), so it's out of scope.
+- No changes to the permission model, `useCurrentUser`, or `NewTaskDialog`'s props/signature.
+- Both edits are local: one conditional in `Work.tsx`, one derived value passed as `meRole` in `ProjectDetail.tsx`.
