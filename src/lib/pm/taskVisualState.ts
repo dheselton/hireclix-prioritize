@@ -26,10 +26,10 @@ export interface TaskVisualState {
  * Single team → solid color. Multiple teams → smooth vertical gradient blending each color. */
 export function teamBarBackground(teams: Team[]): string | null {
   if (!teams.length) return null;
-  if (teams.length === 1) return TEAM_COLOR[teams[0]];
+  if (teams.length === 1) return TEAM_COLORS[teams[0]];
   const stops = teams.map((t, i) => {
     const pct = (i / (teams.length - 1)) * 100;
-    return `${TEAM_COLOR[t]} ${pct.toFixed(2)}%`;
+    return `${TEAM_COLORS[t]} ${pct.toFixed(2)}%`;
   });
   return `linear-gradient(180deg, ${stops.join(", ")})`;
 }
