@@ -73,9 +73,36 @@ export default function GlobalTimeline() {
           </Select>
         }
       />
-      <Card><CardContent className="p-0">
-        <GanttChart tasks={visible} deps={[]} onTaskClick={drawer.open} />
-      </CardContent></Card>
+      {/* Gantt is unusable on phones — fall back to a compact project list. */}
+      {isMobile ? (
+        <Card><CardContent className="p-2 space-y-1">
+          <div className="px-1 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Projects</div>
+          {timelineProjects.length === 0 && (
+            <div className="px-2 py-3 text-xs italic text-muted-foreground">No projects</div>
+          )}
+          {timelineProjects.map(p => (
+            <Link
+              key={p.id}
+              to={`/pm/projects/${p.id}`}
+              className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted/60 transition"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{p.title}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Go-live {fmtDate(p.go_live_date)} · {taskCountByProject.get(p.id) ?? 0} tasks
+                </div>
+              </div>
+              <Badge variant="outline" className="text-[10px] shrink-0 capitalize">
+                {String(p.status).replace(/_/g, " ")}
+              </Badge>
+            </Link>
+          ))}
+        </CardContent></Card>
+      ) : (
+        <Card><CardContent className="p-0">
+          <GanttChart tasks={visible} deps={[]} onTaskClick={drawer.open} />
+        </CardContent></Card>
+      )}
 
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
