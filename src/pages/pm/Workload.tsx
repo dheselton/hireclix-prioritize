@@ -19,6 +19,14 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { ChevronDown } from "lucide-react";
+import { ProjectHealthList } from "@/components/pm/workqueue/ProjectHealthList";
+import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
+import type { PmRole } from "@/types/pm";
+
+/** Lead roles that get the project health roll-up on this page. */
+const HEALTH_ROLES: PmRole[] = ["pm", "csm", "ba", "tech_lead"];
+const HEALTH_OPEN_KEY = "pm.workload.health.open";
 
 function formatRoleLabel(role: string) {
   if (!role) return "";
