@@ -38,7 +38,9 @@ function formatRoleLabel(role: string) {
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
-  const { user: me } = useCurrentUser();
+  const { user: me, roles } = useCurrentUser();
+  const [healthOpen, setHealthOpen] = useState<boolean>(() => localStorage.getItem(HEALTH_OPEN_KEY) !== "0");
+  useEffect(() => { localStorage.setItem(HEALTH_OPEN_KEY, healthOpen ? "1" : "0"); }, [healthOpen]);
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
