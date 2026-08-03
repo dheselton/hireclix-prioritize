@@ -70,6 +70,38 @@ export function WorkKanban({
     }
   }
 
+  // Mobile: no drag-and-drop — stacked sections with a per-card status select.
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {columns.map(s => {
+          const items = displayTasks.filter(t => t.status === s);
+          return (
+            <div key={s} className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="text-xs font-semibold uppercase tracking-wide">{COL_LABELS[s]}</div>
+                <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+              </div>
+              {items.length === 0 && (
+                <div className="px-1 text-xs italic text-muted-foreground">No tasks</div>
+              )}
+              {items.map(t => (
+                <MobileCard
+                  key={t.id}
+                  task={t}
+                  project={projects.get(t.project_id)}
+                  columns={columns}
+                  onOpen={onOpen}
+                  onMove={moveTask}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-3 touch-scroll-x no-scrollbar snap-x snap-mandatory md:snap-none pb-3 -mx-3 px-3 md:mx-0 md:px-0">
