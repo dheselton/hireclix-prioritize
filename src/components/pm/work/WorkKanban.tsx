@@ -190,3 +190,39 @@ function KCard({ task, project, onOpen, overlay }: {
     </div>
   );
 }
+
+/** Mobile card: same content as KCard, no drag; status changes via a select. */
+function MobileCard({ task, project, columns, onOpen, onMove }: {
+  task: PmTask;
+  project?: PmProject;
+  columns: TaskStatus[];
+  onOpen: (id: string) => void;
+  onMove: (id: string, status: TaskStatus) => void;
+}) {
+  const blocked = task.status === "blocked";
+  const options = columns.includes(task.status) ? columns : [task.status, ...columns];
+  return (
+    <Card className={cn("w-full", blocked && "border-red-500/60")}>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start gap-2" onClick={() => onOpen(task.id)}>
+          <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
+          <div className="text-sm font-medium leading-tight flex-1">{task.title}</div>
+          <span onClick={(e) => e.stopPropagation()} className="shrink-0">
+            <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={task.status === "unclaimed"} />
+          </span>
+        </div>
+        {project && <div className="text-[11px] text-muted-foreground truncate">{project.title}</div>}
+        {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
+        <div className="flex items-center gap-2">
+          <Select value={task.status} onValueChange={(v) => onMove(task.id, v as TaskStatus)}>
+            <SelectTrigger className="h-8 flex-1 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {options.map(s => <SelectItem key={s} value={s} className="text-xs">{COL_LABELS[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <span className="text-[11px] text-muted-foreground shrink-0">{fmtDateShort(task.due_date)}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
