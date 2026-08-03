@@ -73,7 +73,8 @@ export default function Workload() {
         chipState={chips}
         typeFilterPage="workload"
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Single column on phones/tablets — person cards stay readable. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {users.map(u => {
           const isMyRow = u.id === me?.id;
           const dimmed = isMe && !isMyRow;

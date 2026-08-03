@@ -40,17 +40,17 @@ export function CollectionToolbar({
           {subtitle && <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
         {actions && (
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap md:flex-wrap justify-end touch-scroll-x no-scrollbar md:!overflow-visible">
             {actions}
           </div>
         )}
       </div>
 
-      {/* Row 2: Secondary controls — stacks on mobile, inline on ≥sm */}
+      {/* Row 2: Secondary controls — horizontally scrollable on mobile, wraps on ≥md */}
       {(extraControls || showMeMode || (mode && onModeChange)) && (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-nowrap md:flex-wrap touch-scroll-x no-scrollbar md:!overflow-visible">
           {extraControls}
-          <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <div className="ml-auto flex items-center gap-2 flex-nowrap md:flex-wrap shrink-0">
             {showMeMode && <MeModeToggle />}
             {mode && onModeChange && (
               <ViewToggle value={mode} onChange={onModeChange} modes={modes} />
