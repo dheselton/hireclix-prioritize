@@ -103,6 +103,10 @@ export const PRIORITIES: TaskPriority[] = ['low','medium','high','urgent'];
 export const PROJECT_TYPES: ProjectType[] = ['quick_request','career_site','rfp','evp','dev','candidate_experience'];
 export const PROJECT_STATUSES: ProjectStatus[] = ['draft','active','on_hold','in_review','complete','archived'];
 
+export const TERMINAL_STATUSES: TaskStatus[] = ['complete', 'approved'];
+export const isDone = (status: TaskStatus): boolean => TERMINAL_STATUSES.includes(status);
+
+
 export const TYPE_COLORS: Record<TaskType, string> = {
   design: 'hsl(280 70% 60%)',
   dev: 'hsl(150 60% 45%)',

@@ -15,16 +15,15 @@
  * tasks with no deps are always visible (preserves existing behavior).
  */
 
-import type { PmTask, PmDependency, TaskStatus, RevealMode } from "@/types/pm";
+import { TERMINAL_STATUSES, type PmTask, type PmDependency, type TaskStatus, type RevealMode } from "@/types/pm";
 
-const COMPLETE_STATES: TaskStatus[] = ["approved", "complete"];
 const STARTED_STATES: TaskStatus[] = ["in_progress", "in_review", "approved", "complete"];
 
 function predecessorSatisfies(predStatus: TaskStatus | undefined | null, mode: RevealMode): boolean {
   if (!predStatus) return true;
   if (mode === "always") return true;
   if (mode === "on_start") return STARTED_STATES.includes(predStatus);
-  return COMPLETE_STATES.includes(predStatus); // on_complete
+  return TERMINAL_STATUSES.includes(predStatus); // on_complete
 }
 
 /** Returns the set of task ids that should be hidden by default. */

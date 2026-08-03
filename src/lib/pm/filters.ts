@@ -1,3 +1,4 @@
+import { isDone } from "@/types/pm";
 import type { PmTask, PmProject, TaskType } from "@/types/pm";
 import type { ChipId } from "@/hooks/useChipFilters";
 
@@ -46,7 +47,7 @@ export function applyTaskChips(
         case "overdue":
           if (!t.due_date) return false;
           if (new Date(t.due_date) >= today) return false;
-          if (t.status === "complete" || t.status === "approved") return false;
+          if (isDone(t.status)) return false;
           break;
         case "due_this_week": {
           if (!t.due_date) return false;

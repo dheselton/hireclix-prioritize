@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTasksChanged, emitTasksChanged } from "./refresh";
 import { getTaskKind, isHighSeverityRisk, isStaleDecision } from "./taskKind";
 import type { PmTask, PmProject } from "@/types/pm";
+import { isDone } from "@/types/pm";
 
-const TERMINAL = new Set(["complete", "approved"]);
+
+
 
 function todayIso(): string {
   const d = new Date();
@@ -76,7 +78,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
     ]);
     const byId = new Map<string, PmTask>();
     for (const t of ([...(primaryRaw ?? []), ...(coTasksRaw ?? [])] as PmTask[])) byId.set(t.id, t);
-    const myTasks = Array.from(byId.values()).filter((t) => !TERMINAL.has(t.status));
+    const myTasks = Array.from(byId.values()).filter((t) => !isDone(t.status));
 
     // 2. Projects map (for work_type lookup + titles)
     const projectIds = Array.from(new Set(myTasks.map((t) => t.project_id)));
@@ -219,10 +221,10 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
 
       projectsOut = activeProjectList.map((p) => {
         const tasks = byProj.get(p.id) ?? [];
-        const completed = tasks.filter((t) => TERMINAL.has(t.status)).length;
-        const overdue = tasks.filter((t) => t.due_date && t.due_date < today && !TERMINAL.has(t.status)).length;
+        const completed = tasks.filter((t) => isDone(t.status)).length;
+        const overdue = tasks.filter((t) => t.due_date && t.due_date < today && !isDone(t.status)).length;
         const mine = tasks
-          .filter((t) => (t.assignee_id === userId || coTaskIds.includes(t.id)) && !TERMINAL.has(t.status))
+          .filter((t) => (t.assignee_id === userId || coTaskIds.includes(t.id)) && !isDone(t.status))
           .sort(sortByUrgency);
         return {
           ...p,

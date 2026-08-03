@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { localDateISO } from "@/lib/pm/format";
+import { isDone, type TaskStatus } from "@/types/pm";
 
 export type NotifEventType =
   | "assigned"
@@ -176,7 +177,7 @@ export async function scanDueDateNotifications() {
   const seen = new Set((existing ?? []).map((n: any) => `${n.type}|${n.link}`));
 
   for (const t of tasks as any[]) {
-    if (["complete", "approved"].includes(t.status)) continue;
+    if (isDone(t.status as TaskStatus)) continue;
     const due = new Date(t.due_date);
     const link = `/pm/tasks/${t.id}`;
     if (due < now) {

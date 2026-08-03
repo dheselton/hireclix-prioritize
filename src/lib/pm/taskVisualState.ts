@@ -7,11 +7,11 @@
  */
 
 import type { PmTask, PmDependency } from "@/types/pm";
+import { isDone } from "@/types/pm";
 import { teamsFromTask, TEAM_COLOR, type Team } from "@/lib/pm/teams";
 import { firstUnmetPredecessor } from "@/lib/pm/reveal";
 
 const WAITING_START_DAYS = 7;
-const DONE_STATES = new Set(["complete", "approved"]);
 
 export interface TaskVisualState {
   teams: Team[];
@@ -51,9 +51,9 @@ export function computeTaskVisualState(
   const bar = teamBarBackground(teams);
 
   const isMine = !!opts.meId && task.assignee_id === opts.meId;
-  const isDone = DONE_STATES.has(task.status);
+  const done = isDone(task.status);
 
-  if (opts.bypassWaiting || isMine || isDone) {
+  if (opts.bypassWaiting || isMine || done) {
     return { teams, teamBarBackground: bar, waiting: false, waitingReason: null };
   }
 
