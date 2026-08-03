@@ -30,7 +30,7 @@ import {
   type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority, type RevealMode,
 } from "@/types/pm";
 import { TYPE_COLORS, STATUS_COLORS } from "@/types/pm";
-import { KIND_META, TASK_KINDS, type TaskKind } from "@/lib/pm/taskKind";
+import { KIND_META, TASK_KINDS, assertTaskKind, type TaskKind } from "@/lib/pm/taskKind";
 
 const MORE_OPEN_KEY = "pm:newTaskDialog:moreOpen";
 interface DepPick { id: string; title: string; status: string; project_title?: string }
