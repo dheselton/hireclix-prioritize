@@ -6,6 +6,7 @@ import { ExternalLink, Trash2, Plus } from "lucide-react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { getLinkProvider, hostnameOf } from "@/lib/pm/linkProvider";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 
 interface TaskLink {
   id: string;
@@ -21,7 +22,8 @@ export function LinksSection({ taskId }: { taskId: string }) {
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
+  const [pendingDelete, setPendingDelete] = useState<TaskLink | null>(null);
 
   async function load() {
     const { data } = await supabase.from("pm_task_links").select("*").eq("task_id", taskId).order("created_at");
@@ -42,8 +44,14 @@ export function LinksSection({ taskId }: { taskId: string }) {
   }
 
   async function remove(id: string) {
-    await supabase.from("pm_task_links").delete().eq("id", id);
-    await load();
+    try {
+      const { error } = await supabase.from("pm_task_links").delete().eq("id", id);
+      if (error) throw error;
+      await load();
+      toast.success("Link removed");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not remove link");
+    }
   }
 
   return (
@@ -71,6 +79,7 @@ export function LinksSection({ taskId }: { taskId: string }) {
       <div className="space-y-1.5">
         {items.map(l => {
           const p = getLinkProvider(l.url);
+          const canDelete = roles.includes("pm") || (!!user && l.created_by === user.id);
           return (
             <a
               key={l.id}
@@ -91,14 +100,16 @@ export function LinksSection({ taskId }: { taskId: string }) {
                 <div className="text-[11px] text-muted-foreground truncate">{hostnameOf(l.url)}{l.url.replace(/^https?:\/\/[^/]+/, "")}</div>
               </div>
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <button
-                type="button"
-                className="opacity-0 group-hover:opacity-100 text-destructive shrink-0"
-                onClick={e => { e.preventDefault(); e.stopPropagation(); remove(l.id); }}
-                aria-label="Remove link"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  className="opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setPendingDelete(l); }}
+                  aria-label="Remove link"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </a>
           );
         })}
@@ -106,6 +117,15 @@ export function LinksSection({ taskId }: { taskId: string }) {
           <div className="text-xs text-muted-foreground italic py-2">No links yet. Add Figma files, GitHub PRs, Loom recordings, Docs…</div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={o => { if (!o) setPendingDelete(null); }}
+        title="Delete link?"
+        description="Delete link? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => { if (pendingDelete) await remove(pendingDelete.id); setPendingDelete(null); }}
+      />
     </section>
   );
 }

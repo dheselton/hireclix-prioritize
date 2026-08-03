@@ -126,6 +126,15 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={o => { if (!o) setPendingDelete(null); }}
+        title="Delete comment?"
+        description="Delete comment? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => { if (pendingDelete) await remove(pendingDelete); setPendingDelete(null); }}
+      />
     </section>
   );
 }
