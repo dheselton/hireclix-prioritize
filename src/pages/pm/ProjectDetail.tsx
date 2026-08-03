@@ -43,24 +43,19 @@ export default function ProjectDetail() {
   const [deps, setDeps] = useState<PmDependency[]>([]);
   const drawer = useTaskDrawerLink();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<ProjectTabId>(() => {
-    // Deep links (?section=tasks) land directly on the right tab; strip the param
-    // afterwards so a reload doesn't fight manual tab changes.
-    if (typeof window === "undefined") return "tasks";
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const s = params.get("section");
-      const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation"];
-      if (s && (valid as string[]).includes(s)) {
-        params.delete("section");
-        const url = new URL(window.location.href);
-        url.search = params.toString();
-        window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
-        return s as ProjectTabId;
-      }
-    } catch {}
+    const t = searchParams.get("tab");
+    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation"];
+    if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
     return "tasks";
   });
+
+  const handleSetTab = (newTab: ProjectTabId) => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
   const [pendingGoLive, setPendingGoLive] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
