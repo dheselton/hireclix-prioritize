@@ -7,9 +7,44 @@ import { CheckSquare, GitBranch, AlertTriangle, Bug, type LucideIcon } from "luc
 import type { PmTask, TaskStatus } from "@/types/pm";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 
-export type TaskKind = "task" | "decision" | "issue" | "qa";
+/** Canonical list of accepted values for custom_fields.kind. */
+export const VALID_TASK_KINDS = ["task", "decision", "issue", "qa"] as const;
 
-export const TASK_KINDS: TaskKind[] = ["task", "decision", "issue", "qa"];
+export type TaskKind = (typeof VALID_TASK_KINDS)[number];
+
+/** Back-compat alias — same values, mutable array shape. */
+export const TASK_KINDS: TaskKind[] = [...VALID_TASK_KINDS];
+
+export function isValidTaskKind(v: unknown): v is TaskKind {
+  return typeof v === "string" && (VALID_TASK_KINDS as readonly string[]).includes(v);
+}
+
+/** Throws when the value isn't a known kind — use before persisting. */
+export function assertTaskKind(v: unknown): TaskKind {
+  if (!isValidTaskKind(v)) {
+    throw new Error(
+      `Invalid task kind "${String(v)}". Expected one of: ${VALID_TASK_KINDS.join(", ")}.`,
+    );
+  }
+  return v;
+}
+
+const warnedKinds = new Set<string>();
+
+/** Read path: unknown values fall back to "task" and warn once per value. */
+export function coerceTaskKind(v: unknown): TaskKind {
+  if (v == null || v === "") return "task";
+  if (isValidTaskKind(v)) return v;
+  const key = String(v);
+  if (!warnedKinds.has(key)) {
+    warnedKinds.add(key);
+    console.warn(
+      `[taskKind] Unrecognized custom_fields.kind "${key}" — falling back to "task" labels.`,
+    );
+  }
+  return "task";
+}
+
 
 export interface KindMeta {
   id: TaskKind;
@@ -67,9 +102,7 @@ export const KIND_META: Record<TaskKind, KindMeta> = {
 
 export function getTaskKind(task: unknown): TaskKind {
   const cf = (task as any)?.custom_fields;
-  const raw = cf?.kind;
-  if (raw === "decision" || raw === "issue" || raw === "qa") return raw;
-  return "task";
+  return coerceTaskKind(cf?.kind);
 }
 
 // ---- Kind-aware status vocabulary ---------------------------------------
@@ -131,18 +164,31 @@ const QA_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
   complete: "Verified",
 };
 
+// Lookup tables keyed by kind — anything not present here (including an
+// invalid kind that slipped past validation) falls back to the default
+// status vocabulary instead of silently rendering the wrong words.
+const STATUS_LABEL_BY_KIND: Partial<Record<TaskKind, Record<TaskStatus, string>>> = {
+  decision: DECISION_STATUS_LABEL,
+  issue: RISK_STATUS_LABEL,
+  qa: QA_STATUS_LABEL,
+};
+
+const GROUP_LABEL_BY_KIND: Partial<Record<TaskKind, Partial<Record<StatusGroupId, string>>>> = {
+  decision: DECISION_GROUP_LABEL,
+  issue: RISK_GROUP_LABEL,
+  qa: QA_GROUP_LABEL,
+};
+
+/** Returns "" to mean "use the default status vocabulary". */
 export function getKindStatusLabel(status: TaskStatus, kind: TaskKind): string {
-  if (kind === "decision") return DECISION_STATUS_LABEL[status];
-  if (kind === "issue") return RISK_STATUS_LABEL[status];
-  if (kind === "qa") return QA_STATUS_LABEL[status];
-  return "";
+  const safe = coerceTaskKind(kind);
+  return STATUS_LABEL_BY_KIND[safe]?.[status] ?? "";
 }
 
+/** Returns null to mean "use the default group vocabulary". */
 export function getKindGroupLabel(gid: StatusGroupId, kind: TaskKind): string | null {
-  if (kind === "decision") return DECISION_GROUP_LABEL[gid] ?? null;
-  if (kind === "issue") return RISK_GROUP_LABEL[gid] ?? null;
-  if (kind === "qa") return QA_GROUP_LABEL[gid] ?? null;
-  return null;
+  const safe = coerceTaskKind(kind);
+  return GROUP_LABEL_BY_KIND[safe]?.[gid] ?? null;
 }
 
 // A RAID item is "open" (needs attention) when it isn't Decided / Mitigated / Closed.

@@ -9,7 +9,10 @@ import { Trash2, ListPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { emitTasksChanged } from "@/lib/pm/refresh";
-import { QA_SEVERITIES, type QaSeverity } from "@/lib/pm/taskKind";
+import { QA_SEVERITIES, assertTaskKind, type QaSeverity } from "@/lib/pm/taskKind";
+
+/** Validated at module load so a typo fails loudly, not silently. */
+const QA_KIND = assertTaskKind("qa");
 import { toast } from "sonner";
 import type { PmProject, TaskPriority } from "@/types/pm";
 
@@ -104,7 +107,7 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
         created_by: uid ?? null,
         tags: ["qa"],
         custom_fields: {
-          kind: "qa",
+          kind: QA_KIND,
           qa: {
             severity: r.severity,
             environment: r.environment || null,
