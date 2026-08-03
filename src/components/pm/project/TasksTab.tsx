@@ -21,6 +21,7 @@ import { BoardColumn } from "./board/BoardColumn";
 import { BoardTaskCard } from "./board/BoardTaskCard";
 import { GROUP_PRIMARY_STATUS } from "./board/boardStyles";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 import { AddPageDialog } from "./AddPageDialog";
 import { removePageFromProject } from "@/lib/pm/pageGroups";
