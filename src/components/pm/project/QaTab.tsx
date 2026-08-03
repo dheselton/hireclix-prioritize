@@ -98,10 +98,10 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
           <Bug className="h-4 w-4 text-[hsl(345_80%_55%)]" />
           <span className="font-medium">QA triage</span>
           <span className="text-muted-foreground">·</span>
-          <StatChip label="New" value={newCount} tone="muted" />
-          <StatChip label="In fix" value={inFix} tone="amber" />
-          <StatChip label="Ready to verify" value={readyToVerify} tone="info" />
-          <StatChip label="Blockers" value={blockers} tone={blockers > 0 ? "destructive" : "muted"} />
+          <StatChip label="New" value={newCount} tone="muted" active={statFilter === "new"} onClick={() => setStatFilter(statFilter === "new" ? null : "new")} />
+          <StatChip label="In fix" value={inFix} tone="amber" active={statFilter === "in_fix"} onClick={() => setStatFilter(statFilter === "in_fix" ? null : "in_fix")} />
+          <StatChip label="Ready to verify" value={readyToVerify} tone="info" active={statFilter === "ready"} onClick={() => setStatFilter(statFilter === "ready" ? null : "ready")} />
+          <StatChip label="Blockers" value={blockers} tone={blockers > 0 ? "destructive" : "muted"} active={statFilter === "blockers"} onClick={() => setStatFilter(statFilter === "blockers" ? null : "blockers")} />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onBatchPaste}>
@@ -233,7 +233,7 @@ function QaCard({ task, onOpen }: { task: PmTask; onOpen: () => void }) {
   );
 }
 
-function StatChip({ label, value, tone }: { label: string; value: number; tone: "muted" | "amber" | "info" | "destructive" }) {
+function StatChip({ label, value, tone, active, onClick }: { label: string; value: number; tone: "muted" | "amber" | "info" | "destructive"; active?: boolean; onClick?: () => void }) {
   const cls = {
     muted: "bg-muted text-muted-foreground",
     amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
@@ -241,9 +241,18 @@ function StatChip({ label, value, tone }: { label: string; value: number; tone: 
     destructive: "bg-destructive/15 text-destructive",
   }[tone];
   return (
-    <span className={cn("inline-flex items-center gap-1 px-2 h-6 rounded-full text-[11px] font-medium", cls)}>
+    <button
+      type="button"
+      onClick={onClick}
+      title={active ? `Clear ${label} filter` : `Show only ${label}`}
+      className={cn(
+        "inline-flex items-center gap-1 px-2 h-6 rounded-full text-[11px] font-medium transition hover:opacity-80",
+        cls,
+        active && "ring-2 ring-foreground/50",
+      )}
+    >
       <span className="tabular-nums">{value}</span>
       <span className="opacity-80">{label}</span>
-    </span>
+    </button>
   );
 }
