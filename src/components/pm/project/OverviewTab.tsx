@@ -131,14 +131,18 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange, i
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: React.ReactNode }) {
+function MiniMetric({ label, value, to }: { label: string; value: React.ReactNode; to?: string }) {
+  const body = (
+    <CardContent className="p-3">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-2xl font-semibold leading-tight mt-0.5">{value}</div>
+    </CardContent>
+  );
+  if (!to) return <Card className="bg-secondary">{body}</Card>;
   return (
-    <Card className="bg-secondary">
-      <CardContent className="p-3">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className="text-2xl font-semibold leading-tight mt-0.5">{value}</div>
-      </CardContent>
-    </Card>
+    <Link to={to} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Card className="bg-secondary hover:bg-secondary/70 transition cursor-pointer">{body}</Card>
+    </Link>
   );
 }
 
