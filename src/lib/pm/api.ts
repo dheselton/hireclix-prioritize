@@ -132,14 +132,52 @@ export const createTask = async (task: Partial<PmTask>) => {
           : [u.role, u.secondary_role].filter(Boolean);
         return r.includes('pm') || r.includes('csm');
       });
+      const notified = new Set<string>();
       for (const u of (pms ?? []) as any[]) {
         if (u.id === uid) continue;
+        notified.add(u.id);
         await createNotification({
           user_id: u.id,
           event_type: 'new_request',
           title: `New request: ${(data as any).title}`,
           link,
         });
+      }
+
+      // Notify the task's team(s) that unclaimed work landed in their queue.
+      const {
+        teamsFromTask, DEFAULT_TEAMS_FOR_TYPE, ROLE_TO_TEAM, TEAM_PEERS,
+        USER_TEAM_OVERRIDES, TEAM_LABEL,
+      } = await import('./teams');
+      let taskTeams = teamsFromTask(data as any);
+      if (!taskTeams.length) {
+        taskTeams = DEFAULT_TEAMS_FOR_TYPE[(data as any).type as keyof typeof DEFAULT_TEAMS_FOR_TYPE] ?? [];
+      }
+      if (taskTeams.length) {
+        const wanted = new Set(taskTeams);
+        for (const u of ((allUsers ?? []) as any[])) {
+          if (u.id === uid || u.id === assignee || notified.has(u.id)) continue;
+          const roles: string[] = Array.isArray(u.roles) && u.roles.length
+            ? u.roles
+            : [u.role, u.secondary_role].filter(Boolean);
+          const mine = new Set<string>();
+          for (const r of roles) {
+            const t = ROLE_TO_TEAM[r as keyof typeof ROLE_TO_TEAM];
+            if (!t) continue;
+            mine.add(t);
+            for (const p of TEAM_PEERS[t] ?? []) mine.add(p);
+          }
+          for (const p of USER_TEAM_OVERRIDES[u.id]?.peers ?? []) mine.add(p);
+          const hit = taskTeams.find(t => mine.has(t)) ?? [...mine].find(t => wanted.has(t as any));
+          if (!hit) continue;
+          notified.add(u.id);
+          await createNotification({
+            user_id: u.id,
+            event_type: 'unclaimed_team',
+            title: `Unclaimed ${TEAM_LABEL[hit as keyof typeof TEAM_LABEL]} task: ${(data as any).title}`,
+            link,
+          });
+        }
       }
     }
   } catch {}
