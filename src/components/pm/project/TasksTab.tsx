@@ -117,6 +117,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [pill, setPill] = useState<TypePill>("all");
   const [kindFilter, setKindFilter] = useState<TaskKind | "all">("all");
   const [watchingOnly, setWatchingOnly] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<ProjectTaskFilter | null>(() => readInitialTaskFilter());
   const { isMe, setMode: setMeMode } = useMeMode();
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);
