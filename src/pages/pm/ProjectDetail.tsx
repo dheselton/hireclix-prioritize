@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { Rocket } from "lucide-react";
@@ -121,11 +122,11 @@ export default function ProjectDetail() {
   const canSeeSnippets = !!user?.roles?.some(r => r === "developer" || r === "designer") || user?.role === "developer" || user?.role === "designer";
 
   const hasTemplate = !!project.template_id;
-  const tabs: { id: ProjectTabId; label: string }[] = [
+  const tabs: { id: ProjectTabId; label: string; badge?: React.ReactNode }[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(inQa ? [{ id: "qa" as const, label: "QA" }] : []),
-    ...(!isRequest ? [{ id: "timeline" as const, label: "Timeline" }] : []),
+    ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline", badge: <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">Coming soon</Badge> }] : []),
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
