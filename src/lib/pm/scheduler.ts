@@ -1,4 +1,5 @@
 import type { PmTask, PmDependency, DepType } from '@/types/pm';
+import { localDateISO } from '@/lib/pm/format';
 
 export interface DateDiff {
   taskId: string;
@@ -11,7 +12,7 @@ export interface DateDiff {
 
 const day = 86400000;
 const toDate = (s: string | null | undefined) => (s ? new Date(s + 'T00:00:00') : null);
-const fmt = (d: Date) => d.toISOString().slice(0, 10);
+const fmt = (d: Date) => localDateISO(d);
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * day);
 
 /**

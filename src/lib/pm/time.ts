@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { localDateISO } from "@/lib/pm/format";
+
+export { localDateISO };
 
 export interface TimeEntry {
   id: string;
@@ -44,7 +47,7 @@ export function weekDays(d: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const x = new Date(start);
     x.setDate(start.getDate() + i);
-    return x.toISOString().slice(0, 10);
+    return localDateISO(x);
   });
 }
 
@@ -61,12 +64,7 @@ export function addDays(d: Date, n: number): Date {
   return x;
 }
 
-export function localDateISO(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+
 
 /** Fetch entries with task/project/client + activity joined. */
 export async function fetchEnrichedEntries(opts: {

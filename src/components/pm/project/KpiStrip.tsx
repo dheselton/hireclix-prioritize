@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { GitBranch, AlertTriangle } from "lucide-react";
-import { fmtDate } from "@/lib/pm/format";
+import { fmtDate, todayISO } from "@/lib/pm/format";
 import { projectFilterLink } from "@/lib/pm/links";
 import { getTaskKind, isRaidOpen } from "@/lib/pm/taskKind";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -8,7 +8,7 @@ import type { PmProject, PmTask } from "@/types/pm";
 export function KpiStrip({ project, tasks }: { project: PmProject; tasks: PmTask[] }) {
   const done = tasks.filter(t => t.status === "complete" || t.status === "approved").length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const overdue = tasks.filter(t => t.due_date && t.due_date < today && t.status !== "complete" && t.status !== "approved").length;
   const blocked = tasks.filter(t => t.status === "blocked").length;
   const open = tasks.filter(t => t.status !== "complete" && t.status !== "approved").length;

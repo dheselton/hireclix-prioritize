@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
+import { localDateISO } from "@/lib/pm/format";
 
 export type NotifEventType =
   | "assigned"
@@ -165,7 +166,7 @@ export async function scanDueDateNotifications() {
     .eq("assignee_id", userId)
     .not("due_date", "is", null);
   if (!tasks) return;
-  const today = now.toISOString().slice(0, 10);
+  const today = localDateISO(now);
   // Fetch today's existing notifs to dedup
   const { data: existing } = await supabase
     .from("pm_notifications")
