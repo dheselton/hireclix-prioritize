@@ -19,6 +19,14 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
+import { ChevronDown } from "lucide-react";
+import { ProjectHealthList } from "@/components/pm/workqueue/ProjectHealthList";
+import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
+import type { PmRole } from "@/types/pm";
+
+/** Lead roles that get the project health roll-up on this page. */
+const HEALTH_ROLES: PmRole[] = ["pm", "csm", "ba", "tech_lead"];
+const HEALTH_OPEN_KEY = "pm.workload.health.open";
 
 function formatRoleLabel(role: string) {
   if (!role) return "";
@@ -30,7 +38,9 @@ function formatRoleLabel(role: string) {
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
-  const { user: me } = useCurrentUser();
+  const { user: me, roles } = useCurrentUser();
+  const [healthOpen, setHealthOpen] = useState<boolean>(() => localStorage.getItem(HEALTH_OPEN_KEY) !== "0");
+  useEffect(() => { localStorage.setItem(HEALTH_OPEN_KEY, healthOpen ? "1" : "0"); }, [healthOpen]);
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const drawer = useTaskDrawerLink();
@@ -63,6 +73,27 @@ export default function Workload() {
 
   const today = new Date(); const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
+  // ── Project health roll-up (lead roles only) ──────────────────────────────
+  const teamsMap = useProjectTeamsMap();
+  const canSeeHealth = roles.some(r => HEALTH_ROLES.includes(r));
+  const healthProjectIds = useMemo(() => {
+    // Empty set = all active projects (ProjectHealthList treats it as "no filter").
+    if (!isMe || !me?.id) return new Set<string>();
+    const s = new Set<string>();
+    teamsMap.forEach((members, projectId) => { if (members.includes(me.id)) s.add(projectId); });
+    return s;
+  }, [isMe, me?.id, teamsMap]);
+  const atRiskCount = useMemo(() => {
+    const startOfToday = new Date(new Date().toDateString());
+    const flagged = new Set<string>();
+    for (const t of tasks) {
+      if (t.status === "complete" || t.status === "approved") continue;
+      if (healthProjectIds.size && !healthProjectIds.has(t.project_id)) continue;
+      if (t.status === "blocked" || (t.due_date && new Date(t.due_date) < startOfToday)) flagged.add(t.project_id);
+    }
+    return flagged.size;
+  }, [tasks, healthProjectIds]);
+
   return (
     <TooltipProvider>
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
@@ -73,6 +104,27 @@ export default function Workload() {
         chipState={chips}
         typeFilterPage="workload"
       />
+      {canSeeHealth && (
+        <section className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setHealthOpen(o => !o)}
+            className="flex items-center gap-2 text-sm font-semibold hover:text-foreground/80 transition"
+          >
+            <ChevronDown className={cn("h-4 w-4 transition-transform", !healthOpen && "-rotate-90")} />
+            Project health
+            {atRiskCount > 0 && (
+              <Badge variant="destructive" className="text-[10px]">{atRiskCount} at risk</Badge>
+            )}
+            <span className="text-xs font-normal text-muted-foreground">
+              {isMe ? "My projects" : "All active projects"}
+            </span>
+          </button>
+          {healthOpen && (
+            <ProjectHealthList projects={projects} tasks={tasks} projectIds={healthProjectIds} />
+          )}
+        </section>
+      )}
       {/* Single column on phones/tablets — person cards stay readable. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {users.map(u => {
