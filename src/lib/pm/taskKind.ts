@@ -7,9 +7,44 @@ import { CheckSquare, GitBranch, AlertTriangle, Bug, type LucideIcon } from "luc
 import type { PmTask, TaskStatus } from "@/types/pm";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 
-export type TaskKind = "task" | "decision" | "issue" | "qa";
+/** Canonical list of accepted values for custom_fields.kind. */
+export const VALID_TASK_KINDS = ["task", "decision", "issue", "qa"] as const;
 
-export const TASK_KINDS: TaskKind[] = ["task", "decision", "issue", "qa"];
+export type TaskKind = (typeof VALID_TASK_KINDS)[number];
+
+/** Back-compat alias — same values, mutable array shape. */
+export const TASK_KINDS: TaskKind[] = [...VALID_TASK_KINDS];
+
+export function isValidTaskKind(v: unknown): v is TaskKind {
+  return typeof v === "string" && (VALID_TASK_KINDS as readonly string[]).includes(v);
+}
+
+/** Throws when the value isn't a known kind — use before persisting. */
+export function assertTaskKind(v: unknown): TaskKind {
+  if (!isValidTaskKind(v)) {
+    throw new Error(
+      `Invalid task kind "${String(v)}". Expected one of: ${VALID_TASK_KINDS.join(", ")}.`,
+    );
+  }
+  return v;
+}
+
+const warnedKinds = new Set<string>();
+
+/** Read path: unknown values fall back to "task" and warn once per value. */
+export function coerceTaskKind(v: unknown): TaskKind {
+  if (v == null || v === "") return "task";
+  if (isValidTaskKind(v)) return v;
+  const key = String(v);
+  if (!warnedKinds.has(key)) {
+    warnedKinds.add(key);
+    console.warn(
+      `[taskKind] Unrecognized custom_fields.kind "${key}" — falling back to "task" labels.`,
+    );
+  }
+  return "task";
+}
+
 
 export interface KindMeta {
   id: TaskKind;
