@@ -200,6 +200,13 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           created_project_id: proj.id,
         } as any);
       }
+      // Submit confirmation to the requester (never blocks submission).
+      void sendRequestReceivedEmail({
+        to: user?.email ?? null,
+        title: reqForm.title,
+        requestTypeLabel: REQUEST_TYPE_LABELS[requestType] ?? null,
+        projectId: proj.id,
+      });
       // Refresh the Career Site project cache so the new request gets its teal treatment immediately.
       if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
         refreshCareerSiteProjects().catch(() => {});
