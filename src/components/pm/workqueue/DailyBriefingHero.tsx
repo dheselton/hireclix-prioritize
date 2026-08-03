@@ -45,17 +45,20 @@ export function DailyBriefingHero({ firstName, counts }: Props) {
           to={buildQueueLink({ chips: ["assigned_to_me"], workType: "request", section: "quick-hits" })}
           icon={<Zap className="h-3.5 w-3.5" />}
           label={`${counts.quickTasks} Quick ${counts.quickTasks === 1 ? "Task" : "Tasks"}`}
+          disabled={counts.quickTasks === 0}
         />
         <Chip
           to={buildQueueLink({ chips: ["assigned_to_me"], workType: "project", section: "project-work" })}
           icon={<FolderOpen className="h-3.5 w-3.5" />}
           label={`${counts.activeProjects} Active ${counts.activeProjects === 1 ? "Project" : "Projects"}`}
+          disabled={counts.activeProjects === 0}
         />
         <Chip
           to={buildQueueLink({ chips: ["assigned_to_me", "overdue"] })}
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
           label={`${counts.overdue} Overdue`}
           tone={counts.overdue > 0 ? "danger" : "default"}
+          disabled={counts.overdue === 0}
         />
         {counts.blocked > 0 && (
           <Chip
@@ -83,11 +86,13 @@ function Chip({
   icon,
   label,
   tone = "default",
+  disabled = false,
 }: {
   to: string;
   icon: React.ReactNode;
   label: string;
   tone?: "default" | "danger" | "warning";
+  disabled?: boolean;
 }) {
   const toneClass =
     tone === "danger"
@@ -95,10 +100,19 @@ function Chip({
       : tone === "warning"
       ? "bg-amber-500/25 hover:bg-amber-500/35 ring-1 ring-amber-300/30"
       : "bg-white/10 hover:bg-white/20";
+  const baseClass = "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors";
+  if (disabled) {
+    return (
+      <span className={`${baseClass} bg-white/5 text-white/50 cursor-default`}>
+        {icon}
+        {label}
+      </span>
+    );
+  }
   return (
     <Link
       to={to}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${toneClass}`}
+      className={`${baseClass} ${toneClass}`}
     >
       {icon}
       {label}
