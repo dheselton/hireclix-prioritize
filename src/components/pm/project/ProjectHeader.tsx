@@ -19,6 +19,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus } from "@/types/pm";
 
@@ -42,6 +43,8 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [supportBusy, setSupportBusy] = useState(false);
+  const [confirmExitSupport, setConfirmExitSupport] = useState(false);
+  const [confirmExitQa, setConfirmExitQa] = useState(false);
   const internalIds = useInternalClientIds();
   const careerSiteMap = useCareerSiteProjects();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
@@ -161,24 +164,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
                 {inSupport && (
                   <DropdownMenuItem
                     disabled={supportBusy}
-                    onSelect={async (e) => {
-                      e.preventDefault();
-                      if (!confirm("Exit Support mode? Build tasks will return to the main board.")) return;
-                      setSupportBusy(true);
-                      try {
-                        const next = { ...(project.custom_fields ?? {}) };
-                        delete next.support_mode_at;
-                        const { error } = await supabase.from("pm_projects")
-                          .update({ custom_fields: next }).eq("id", project.id);
-                        if (error) throw error;
-                        toast.success("Exited Support mode");
-                        emitTasksChanged();
-                      } catch (err: any) {
-                        toast.error(err?.message ?? "Could not exit Support mode");
-                      } finally {
-                        setSupportBusy(false);
-                      }
-                    }}
+                    onSelect={(e) => { e.preventDefault(); setConfirmExitSupport(true); }}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" /> Exit Support mode
                   </DropdownMenuItem>
@@ -193,11 +179,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
                 ) : (
                   <DropdownMenuItem
                     disabled={exitingQa}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      if (!confirm("Exit QA mode? QA tickets stay but the QA tab is hidden.")) return;
-                      exitQa();
-                    }}
+                    onSelect={(e) => { e.preventDefault(); setConfirmExitQa(true); }}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" /> Exit QA mode
                   </DropdownMenuItem>
@@ -248,6 +230,41 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConfirmDialog
+        open={confirmExitSupport}
+        onOpenChange={setConfirmExitSupport}
+        title="Exit Support mode?"
+        description="Build tasks will return to the main board. Support tickets are not deleted."
+        confirmLabel="Exit Support mode"
+        destructive={false}
+        onConfirm={async () => {
+          setSupportBusy(true);
+          try {
+            const next = { ...(project.custom_fields ?? {}) };
+            delete next.support_mode_at;
+            const { error } = await supabase.from("pm_projects")
+              .update({ custom_fields: next }).eq("id", project.id);
+            if (error) throw error;
+            toast.success("Exited Support mode");
+            emitTasksChanged();
+          } catch (err: any) {
+            toast.error(err?.message ?? "Could not exit Support mode");
+          } finally {
+            setSupportBusy(false);
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmExitQa}
+        onOpenChange={setConfirmExitQa}
+        title="Exit QA mode?"
+        description="QA tickets stay in the project, but the QA tab will be hidden."
+        confirmLabel="Exit QA mode"
+        destructive={false}
+        onConfirm={async () => { await exitQa(); }}
+      />
 
       {isPM && (
         <EditProjectDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
