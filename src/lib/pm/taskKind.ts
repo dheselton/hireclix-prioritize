@@ -164,18 +164,31 @@ const QA_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
   complete: "Verified",
 };
 
+// Lookup tables keyed by kind — anything not present here (including an
+// invalid kind that slipped past validation) falls back to the default
+// status vocabulary instead of silently rendering the wrong words.
+const STATUS_LABEL_BY_KIND: Partial<Record<TaskKind, Record<TaskStatus, string>>> = {
+  decision: DECISION_STATUS_LABEL,
+  issue: RISK_STATUS_LABEL,
+  qa: QA_STATUS_LABEL,
+};
+
+const GROUP_LABEL_BY_KIND: Partial<Record<TaskKind, Partial<Record<StatusGroupId, string>>>> = {
+  decision: DECISION_GROUP_LABEL,
+  issue: RISK_GROUP_LABEL,
+  qa: QA_GROUP_LABEL,
+};
+
+/** Returns "" to mean "use the default status vocabulary". */
 export function getKindStatusLabel(status: TaskStatus, kind: TaskKind): string {
-  if (kind === "decision") return DECISION_STATUS_LABEL[status];
-  if (kind === "issue") return RISK_STATUS_LABEL[status];
-  if (kind === "qa") return QA_STATUS_LABEL[status];
-  return "";
+  const safe = coerceTaskKind(kind);
+  return STATUS_LABEL_BY_KIND[safe]?.[status] ?? "";
 }
 
+/** Returns null to mean "use the default group vocabulary". */
 export function getKindGroupLabel(gid: StatusGroupId, kind: TaskKind): string | null {
-  if (kind === "decision") return DECISION_GROUP_LABEL[gid] ?? null;
-  if (kind === "issue") return RISK_GROUP_LABEL[gid] ?? null;
-  if (kind === "qa") return QA_GROUP_LABEL[gid] ?? null;
-  return null;
+  const safe = coerceTaskKind(kind);
+  return GROUP_LABEL_BY_KIND[safe]?.[gid] ?? null;
 }
 
 // A RAID item is "open" (needs attention) when it isn't Decided / Mitigated / Closed.
