@@ -22,6 +22,7 @@ export function RequestContextPanel({ projectId }: Props) {
   const [attachments, setAttachments] = useState<ProjAttachment[]>([]);
   const [links, setLinks] = useState<ProjLink[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +33,7 @@ export function RequestContextPanel({ projectId }: Props) {
         supabase.from("pm_project_links" as any).select("id, url, label").eq("project_id", projectId).order("created_at", { ascending: false }),
       ]);
       if (cancelled) return;
+      setFailed(!!(pm.error || at.error || ln.error));
       setMeta((pm.data as any) ?? null);
       setAttachments(((at.data as any[]) ?? []) as ProjAttachment[]);
       setLinks(((ln.data as any[]) ?? []) as ProjLink[]);
@@ -40,9 +42,18 @@ export function RequestContextPanel({ projectId }: Props) {
     return () => { cancelled = true; };
   }, [projectId]);
 
-  if (loading || !meta) return null;
+  if (loading) return null;
+  if (failed) {
+    return (
+      <section className="rounded-lg border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground">Couldn't load request details — try refreshing.</p>
+      </section>
+    );
+  }
+  if (!meta) return null;
   // Only show for requests
   if (meta.work_type !== "request") return null;
+
 
   const cf = (meta.custom_fields ?? {}) as Record<string, any>;
   const requestType: string | undefined = cf.request_type;
