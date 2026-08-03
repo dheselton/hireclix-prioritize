@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { uploadAttachments, reportUploadResult } from "@/lib/pm/uploads";
 
 interface Att {
   id: string; task_id: string; type: string; name: string; url: string;
