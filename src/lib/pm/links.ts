@@ -29,6 +29,18 @@ export function buildQueueLink(opts: QueueLinkOpts = {}): string {
   return qs ? `${base}?${qs}` : base;
 }
 
+/**
+ * Project-scoped stat link: lands on the project's Tasks tab with a status
+ * filter pre-applied. Used by KPI tiles, Overview callouts and mini-metrics so
+ * every number on a project page opens the exact set of tasks it counts.
+ */
+export type ProjectTaskFilterId = "overdue" | "blocked" | "open" | "in_review" | "done";
+
+export function projectFilterLink(projectId: string, filter?: ProjectTaskFilterId): string {
+  const base = buildQueueLink({ base: `/pm/projects/${projectId}`, section: "tasks" });
+  return filter ? `${base}&taskFilter=${filter}` : base;
+}
+
 /** Strip our deep-link params from the URL without triggering navigation. */
 export function consumeQueueLinkParams(keys: string[] = ["chips", "workType", "section", "taskFilter"]) {
   if (typeof window === "undefined") return;
