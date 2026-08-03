@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { localDateISO } from "@/lib/pm/format";
-import { isDone } from "@/types/pm";
+import { isDone, type TaskStatus } from "@/types/pm";
 
 export type NotifEventType =
   | "assigned"
