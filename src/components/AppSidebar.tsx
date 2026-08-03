@@ -85,20 +85,21 @@ function useMyWork() {
 }
 
 function useUnclaimedCount() {
-  const { role } = useCurrentUser();
+  const { role, roles } = useCurrentUser();
   const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const reload = async () => setTasks(await fetchTasks());
   useEffect(() => { reload(); }, []);
   useTasksChanged(reload);
+  const isPM = roles.includes("pm");
+  const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);
   return useMemo(() => {
-    const myTeam = teamForRole(role);
     return tasks.filter(t => {
       if (t.status !== "unclaimed") return false;
-      if (!isMe || role === "pm") return true;
-      return teamForTask(t) === myTeam;
+      if (!isMe || isPM) return true;
+      return myTeams.has(teamForTask(t));
     }).length;
-  }, [tasks, role, isMe]);
+  }, [tasks, myTeams, isPM, isMe]);
 }
 
 /** Small colored dot used to identify a project at a glance. */
