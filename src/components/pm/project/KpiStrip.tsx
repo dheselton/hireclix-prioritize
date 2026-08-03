@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { GitBranch, AlertTriangle } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
-import { buildQueueLink } from "@/lib/pm/links";
+import { projectFilterLink } from "@/lib/pm/links";
 import { getTaskKind, isRaidOpen } from "@/lib/pm/taskKind";
 import type { PmProject, PmTask } from "@/types/pm";
 
