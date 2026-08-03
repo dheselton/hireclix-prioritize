@@ -177,7 +177,7 @@ export async function scanDueDateNotifications() {
   const seen = new Set((existing ?? []).map((n: any) => `${n.type}|${n.link}`));
 
   for (const t of tasks as any[]) {
-    if (["complete", "approved"].includes(t.status)) continue;
+    if (isDone(t.status as TaskStatus)) continue;
     const due = new Date(t.due_date);
     const link = `/pm/tasks/${t.id}`;
     if (due < now) {
