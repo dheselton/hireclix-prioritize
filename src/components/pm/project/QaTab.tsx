@@ -38,7 +38,10 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
     [tasks],
   );
 
-  const filtered = useMemo(() => {
+  /** Stat-chip drill-down: clicking a count narrows the board to that slice. */
+  const [statFilter, setStatFilter] = useState<"new" | "in_fix" | "ready" | "blockers" | null>(null);
+
+  const baseFiltered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return qaTasks.filter(t => {
       const details = getQaDetails(t);
@@ -49,11 +52,23 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
     });
   }, [qaTasks, query, severityFilter]);
 
-  const open = filtered.filter(t => t.status !== "complete" && t.status !== "approved");
+  const open = baseFiltered.filter(t => t.status !== "complete" && t.status !== "approved");
   const blockers = open.filter(t => getQaDetails(t).severity === "blocker").length;
   const inFix = open.filter(t => t.status === "in_progress" || t.status === "blocked").length;
   const readyToVerify = open.filter(t => t.status === "in_review").length;
   const newCount = open.filter(t => t.status === "unclaimed").length;
+
+  const filtered = useMemo(() => {
+    if (!statFilter) return baseFiltered;
+    const isOpen = (t: PmTask) => t.status !== "complete" && t.status !== "approved";
+    switch (statFilter) {
+      case "new": return baseFiltered.filter(t => isOpen(t) && t.status === "unclaimed");
+      case "in_fix": return baseFiltered.filter(t => isOpen(t) && (t.status === "in_progress" || t.status === "blocked"));
+      case "ready": return baseFiltered.filter(t => isOpen(t) && t.status === "in_review");
+      case "blockers": return baseFiltered.filter(t => isOpen(t) && getQaDetails(t).severity === "blocker");
+    }
+  }, [baseFiltered, statFilter]);
+
 
   const byColumn = useMemo(() => {
     const map = new Map<string, PmTask[]>();
