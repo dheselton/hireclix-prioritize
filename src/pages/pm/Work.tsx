@@ -63,13 +63,14 @@ export default function Work() {
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const [openCreate, setOpenCreate] = useState<null | "select" | "request" | "project">(null);
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const drawer = useTaskDrawerLink();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const { isMe } = useMeMode();
   // Reuse the "board" viewKey so existing deep links and saved chip state stay intact.
   const chips = useChipFilters("board");
-  const role = user?.role ?? null;
+  // Multi-role users get the widest default column set — PM view wins when held.
+  const role: PmRole | null = roles.includes("pm") ? "pm" : (roles[0] ?? user?.role ?? null);
   const [cols, setCols] = useState<TaskStatus[]>(() => loadCols(role));
 
   useEffect(() => { setCols(loadCols(role)); }, [role]);
