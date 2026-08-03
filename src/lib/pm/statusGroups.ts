@@ -1,4 +1,4 @@
-import type { TaskStatus, TaskType, TaskPriority } from "@/types/pm";
+import { TERMINAL_STATUSES, type TaskStatus, type TaskType, type TaskPriority } from "@/types/pm";
 
 export type StatusGroupId = "ready" | "claimed" | "in_progress" | "in_review" | "complete";
 
