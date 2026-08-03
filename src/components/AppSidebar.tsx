@@ -85,7 +85,7 @@ function useMyWork() {
 }
 
 function useUnclaimedCount() {
-  const { role, roles } = useCurrentUser();
+  const { roles } = useCurrentUser();
   const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const reload = async () => setTasks(await fetchTasks());

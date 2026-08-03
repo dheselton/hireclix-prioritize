@@ -23,7 +23,7 @@ interface Props {
  * Dismiss is per-session and resets when the count grows.
  */
 export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
-  const { user, role } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const { isMe } = useMeMode();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
@@ -40,7 +40,9 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   useEffect(() => { reload(); }, [projectId]);
   useTasksChanged(reload);
 
-  const myTeam = useMemo(() => teamForRole(role), [role]);
+  const isPM = roles.includes("pm");
+  const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);
+  const myTeam = useMemo(() => teamForRole(roles[0]), [roles]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
