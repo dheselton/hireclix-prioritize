@@ -93,12 +93,12 @@ export default function Workload() {
               <CardContent className="p-4 space-y-3">
                 <Link
                   to={`/pm/work?user=${u.id}`}
-                  className="flex items-center gap-3 rounded-md -m-1 p-1 hover:bg-muted/60 transition"
+                  className="group flex items-center gap-3 rounded-md -m-1 p-1 hover:bg-muted/60 transition cursor-pointer"
                   title={`See all work assigned to ${u.name}`}
                 >
                   <UserAvatar userId={u.id} size="md" />
                   <div>
-                    <div className="font-semibold">{u.name}{isMyRow && <span className="ml-1.5 text-[10px] uppercase text-primary">you</span>}</div>
+                    <div className="font-semibold group-hover:underline">{u.name}{isMyRow && <span className="ml-1.5 text-[10px] uppercase text-primary no-underline">you</span>}</div>
                     <div className="text-xs text-muted-foreground">{formatRoleLabel(u.role)}</div>
                   </div>
                 </Link>
