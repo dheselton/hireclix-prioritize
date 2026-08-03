@@ -17,6 +17,7 @@ import { ClientSearchCombobox, type ClientOption } from "@/components/pm/intake/
 import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { aliasFor } from "@/lib/pm/requestAliases";
+import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
 import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { REQUEST_TYPE_LABELS, requestTypeLabel, type RequestType } from "@/lib/pm/requestTypes";
 import { refreshCareerSiteProjects, useInternalClientIds } from "@/lib/pm/clients";
