@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock,
-  Zap, Folder, ChevronRight,
+  Zap, Folder, ChevronRight, UserCircle,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -23,6 +23,7 @@ import type { PmTask, PmProject } from "@/types/pm";
 type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
 
 const primaryNav: NavItem[] = [
+  { title: "My Work", url: "/pm/my-work", icon: UserCircle, key: "myWork" },
   { title: "Daily Briefing", url: "/pm", icon: Inbox, end: true, key: "queue" },
   { title: "Triage Inbox", url: "/pm/inbox", icon: InboxIcon, key: "inbox" },
   { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" },
@@ -175,11 +176,14 @@ export function AppSidebar() {
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllQuick, setShowAllQuick] = useState(false);
 
-  const visiblePrimary = primaryNav.filter(i => canSee(roles, i.key));
-  const visibleConfigure = configureNav.filter(i => canSee(roles, i.key));
-  const canSeeSnippets = canSee(roles, "snippets");
+  const submitterOnly = roles.length > 0 && roles.every(r => r === "submitter");
+  const visiblePrimary = submitterOnly
+    ? primaryNav.filter(i => i.key === "myWork")
+    : primaryNav.filter(i => canSee(roles, i.key));
+  const visibleConfigure = submitterOnly ? [] : configureNav.filter(i => canSee(roles, i.key));
+  const canSeeSnippets = !submitterOnly && canSee(roles, "snippets");
   const canSeeHelp = canSee(roles, helpItem.key);
-  const canSeeMyWork = canSee(roles, "work");
+  const canSeeMyWork = !submitterOnly && canSee(roles, "work");
 
   const PROJ_LIMIT = 6;
   const QUICK_LIMIT = 5;
@@ -226,7 +230,7 @@ export function AppSidebar() {
         {canSeeMyWork && (
           <SidebarGroup>
             <div className="rounded-lg border border-border/40 bg-card/50 p-2">
-              <SectionLabel featured>My Work</SectionLabel>
+              <SectionLabel featured>Assigned to me</SectionLabel>
               <SidebarGroupContent>
                 <div className="space-y-3">
                   {/* Quick Tasks */}
