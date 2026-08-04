@@ -29,7 +29,7 @@ export function ClientNotesTab({ clientId }: { clientId: string }) {
   const [saving, setSaving] = useState(false);
 
   const nameFor = (id: string | null) =>
-    (id && (users.users ?? []).find((u: any) => u.id === id)?.name) || "Someone";
+    (id && users.find((u: any) => u.id === id)?.name) || "Someone";
 
   async function save() {
     if (!draft.trim() || draft === "<p></p>") { toast.error("Write something first"); return; }
@@ -77,7 +77,7 @@ export function ClientNotesTab({ clientId }: { clientId: string }) {
             value={draft}
             onChange={setDraft}
             placeholder="e.g. Always route job feed changes through their IT contact first…"
-            users={users.users ?? []}
+            users={users}
           />
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setDrafting(false); setDraft(""); }}>Cancel</Button>
@@ -118,7 +118,7 @@ export function ClientNotesTab({ clientId }: { clientId: string }) {
 
           {editingId === n.id ? (
             <div className="space-y-2">
-              <RichTextEditor value={editBody} onChange={setEditBody} users={users.users ?? []} />
+              <RichTextEditor value={editBody} onChange={setEditBody} users={users} />
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
                 <Button size="sm" onClick={() => saveEdit(n.id)} disabled={saving}>Save</Button>
