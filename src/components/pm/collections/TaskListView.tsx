@@ -17,6 +17,7 @@ import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TeamPill } from "@/components/pm/TeamsMultiSelect";
 import { teamsFromTask, TEAM_COLORS } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
+import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
