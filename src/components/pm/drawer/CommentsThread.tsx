@@ -89,7 +89,13 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-sm font-medium">{u?.name ?? "Unknown"}</span>
+                  {c.visibility === "client" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">
+                      <Eye className="h-2.5 w-2.5" /> Client visible
+                    </span>
+                  )}
                   <span className="text-[11px] text-muted-foreground">{new Date(c.created_at).toLocaleString()}</span>
+
                   {canEdit(c) && (
                     <Button size="icon" variant="ghost" className="h-5 w-5 ml-auto"
                       onClick={() => { setEditingId(c.id); setEditValue(c.body); }}>
