@@ -111,23 +111,28 @@ export default function Work() {
   const tagFilter = useTagFilter("board");
 
   // Deep-link filters: ?user=<id> (Team Workload / Team Report), ?client=<id>
-  // (Team Report) and ?section=raid (Daily Briefing hero). All consumed on
+  // (Team Report), ?filter=overdue|due-this-week|blocked|no-date (Workload
+  // diagnosis chips) and ?section=raid (Daily Briefing hero). All consumed on
   // mount and stripped from the URL.
   const [personId, setPersonId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [stateFilter, setStateFilter] = useState<WorkStateFilter | null>(null);
   const [raidOnly, setRaidOnly] = useState(false);
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const u = params.get("user");
       const c = params.get("client");
+      const f = params.get("filter");
       const section = params.get("section");
       if (u) setPersonId(u);
       if (c) setClientId(c);
+      if (isWorkStateFilter(f)) setStateFilter(f);
       if (section === "raid") setRaidOnly(true);
-      if (u || c || section) {
+      if (u || c || f || section) {
         params.delete("user");
         params.delete("client");
+        params.delete("filter");
         if (section === "raid") params.delete("section");
         const url = new URL(window.location.href);
         url.search = params.toString();
