@@ -20,6 +20,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { SharePortalDialog } from "@/components/pm/portal/SharePortalDialog";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus } from "@/types/pm";
 
@@ -45,6 +46,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   const [supportBusy, setSupportBusy] = useState(false);
   const [confirmExitSupport, setConfirmExitSupport] = useState(false);
   const [confirmExitQa, setConfirmExitQa] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const internalIds = useInternalClientIds();
   const careerSiteMap = useCareerSiteProjects();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
@@ -135,7 +137,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
           <Button variant="outline" size="sm" onClick={onAddTask}>
             <Plus className="h-4 w-4 mr-1" /> Add Task
           </Button>
-          <Button size="sm" variant={inSupport ? "outline" : "default"} onClick={share}>
+          <Button size="sm" variant={inSupport ? "outline" : "default"} onClick={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4 mr-1" /> Share
           </Button>
           {isPM && (
@@ -191,6 +193,13 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
           )}
         </div>
       </div>
+
+      <SharePortalDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        clientId={project.client_id ?? null}
+        canManagePortal={canManagePortal}
+      />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
