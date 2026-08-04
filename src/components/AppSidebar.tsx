@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock,
-  Zap, Folder, ChevronRight, UserCircle,
+  Zap, Folder, ChevronRight, UserCircle, Building2,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -31,6 +31,7 @@ const primaryNav: NavItem[] = [
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" },
   { title: "Time", url: "/pm/time", icon: Clock, key: "time" },
   { title: "Team Report", url: "/pm/report", icon: BarChart3, key: "report" },
+  { title: "Clients", url: "/pm/clients", icon: Building2, key: "clients" },
 ];
 
 const configureNav: NavItem[] = [
