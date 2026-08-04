@@ -30,8 +30,8 @@ export default function ClientDetail() {
   const { client, loading: clientLoading, reload: reloadClient } = useClientRecord(id);
   const { projects, stats, contacts, loading, error } = useClientHub(id);
   const withPortal = useClientsWithPortal();
-  const { user } = useCurrentUser();
-  const canManage = canSee(user?.roles ?? user?.role, "clients");
+  const { roles } = useCurrentUser();
+  const canManage = canSee(roles, "clients");
 
   const [editOpen, setEditOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
