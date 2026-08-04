@@ -19,6 +19,7 @@ import { QuickTasksColumn } from "@/components/pm/workqueue/QuickTasksColumn";
 import { ProjectWorkColumn } from "@/components/pm/workqueue/ProjectWorkColumn";
 import { NotesSection } from "@/components/pm/workqueue/NotesSection";
 import { SupportHandoffCallout } from "@/components/pm/workqueue/SupportHandoffCallout";
+import { ActivityDigest } from "@/components/pm/workqueue/ActivityDigest";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
@@ -135,6 +136,8 @@ export default function WorkQueue() {
         <QuickTasksColumn tasks={quickTasks} totalCount={counts.quickTasks} unclaimed={unclaimedQuickTasks} />
         <ProjectWorkColumn projects={projects} />
       </div>
+
+      {user?.id && <ActivityDigest userId={user.id} />}
 
       {user?.id && <NotesSection userId={user.id} />}
 
