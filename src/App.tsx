@@ -77,6 +77,7 @@ function App() {
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/f/:slug" element={<Suspense fallback={<RouteFallback />}><PublicForm /></Suspense>} />
+                <Route path="/portal/:token" element={<Suspense fallback={<RouteFallback />}><PortalView /></Suspense>} />
                 <Route path="/request" element={<Navigate to="/f/quick-request" replace />} />
                 <Route path="/pm/request" element={<Navigate to="/f/quick-request" replace />} />
 
