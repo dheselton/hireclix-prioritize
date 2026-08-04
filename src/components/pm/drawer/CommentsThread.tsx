@@ -135,15 +135,24 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
           users={users}
           placeholder="Write a comment… use @ to mention someone"
         />
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-3 flex-wrap">
           <div className="text-[11px] text-muted-foreground">
             {mentions.length > 0 && `Mentions: ${mentions.length}`}
             {" "}Enter to send · Shift+Enter for newline
           </div>
-          <Button size="sm" onClick={submit} disabled={!draft.trim()}>
-            <Send className="h-3 w-3 mr-1" /> Send
-          </Button>
+          <div className="flex items-center gap-3">
+            {canShareWithClient && (
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                <Switch checked={clientVisible} onCheckedChange={setClientVisible} />
+                Visible to client
+              </label>
+            )}
+            <Button size="sm" onClick={submit} disabled={!draft.trim()}>
+              <Send className="h-3 w-3 mr-1" /> Send
+            </Button>
+          </div>
         </div>
+
       </div>
     </SectionShell>
   );
