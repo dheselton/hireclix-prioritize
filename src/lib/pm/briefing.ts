@@ -256,7 +256,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
           .from("pm_tasks")
           .select("*")
           .in("project_id", ids);
-        for (const t of (raidRaw ?? []) as PmTask[]) {
+        for (const t of ((raidRaw ?? []) as unknown) as PmTask[]) {
           if (isStaleDecision(t) || isHighSeverityRisk(t)) raidAttention++;
         }
       }

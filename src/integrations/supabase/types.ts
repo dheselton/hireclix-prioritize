@@ -755,6 +755,7 @@ export type Database = {
           project_id: string | null
           task_id: string | null
           user_id: string | null
+          visibility: string
         }
         Insert: {
           body: string
@@ -765,6 +766,7 @@ export type Database = {
           project_id?: string | null
           task_id?: string | null
           user_id?: string | null
+          visibility?: string
         }
         Update: {
           body?: string
@@ -775,6 +777,7 @@ export type Database = {
           project_id?: string | null
           task_id?: string | null
           user_id?: string | null
+          visibility?: string
         }
         Relationships: [
           {
@@ -1111,6 +1114,179 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pm_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_portal_access: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          invite_sent_at: string | null
+          is_active: boolean
+          label: string | null
+          last_accessed_at: string | null
+          token: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          invite_sent_at?: string | null
+          is_active?: boolean
+          label?: string | null
+          last_accessed_at?: string | null
+          token?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          invite_sent_at?: string | null
+          is_active?: boolean
+          label?: string | null
+          last_accessed_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_portal_access_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_portal_access_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_portal_messages: {
+        Row: {
+          attachments: Json
+          author_name: string
+          author_portal_id: string | null
+          author_user_id: string | null
+          body: string
+          created_at: string
+          id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json
+          author_name: string
+          author_portal_id?: string | null
+          author_user_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json
+          author_name?: string
+          author_portal_id?: string | null
+          author_user_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_portal_messages_author_portal_id_fkey"
+            columns: ["author_portal_id"]
+            isOneToOne: false
+            referencedRelation: "pm_portal_access"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_portal_messages_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_portal_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_portal_notifications: {
+        Row: {
+          created_at: string
+          emailed_at: string | null
+          id: string
+          kind: string
+          message: string | null
+          portal_access_id: string | null
+          project_id: string | null
+          subject: string | null
+          task_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          emailed_at?: string | null
+          id?: string
+          kind: string
+          message?: string | null
+          portal_access_id?: string | null
+          project_id?: string | null
+          subject?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          emailed_at?: string | null
+          id?: string
+          kind?: string
+          message?: string | null
+          portal_access_id?: string | null
+          project_id?: string | null
+          subject?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_portal_notifications_portal_access_id_fkey"
+            columns: ["portal_access_id"]
+            isOneToOne: false
+            referencedRelation: "pm_portal_access"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_portal_notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_portal_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "mock_users"
@@ -1793,6 +1969,7 @@ export type Database = {
           locked_to_go_live: boolean
           locked_to_kickoff: boolean
           min_duration_days: number | null
+          needs_client_update: boolean
           page_group_key: string | null
           page_label: string | null
           parent_task_id: string | null
@@ -1828,6 +2005,7 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          needs_client_update?: boolean
           page_group_key?: string | null
           page_label?: string | null
           parent_task_id?: string | null
@@ -1863,6 +2041,7 @@ export type Database = {
           locked_to_go_live?: boolean
           locked_to_kickoff?: boolean
           min_duration_days?: number | null
+          needs_client_update?: boolean
           page_group_key?: string | null
           page_label?: string | null
           parent_task_id?: string | null
