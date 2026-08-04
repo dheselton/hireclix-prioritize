@@ -102,6 +102,11 @@ export function fallbackPath(role: RoleOrRoles): string {
   return canSee(role, "work") ? "/pm/work" : "/pm";
 }
 
+/** Only PM/BA (and tech leads) may publish comments to the client portal. */
+export function canPostClientVisible(role: RoleOrRoles): boolean {
+  return toRoles(role).some(r => r === "pm" || r === "ba" || r === "tech_lead");
+}
+
 /** Daily Briefing data scope. PM in the role set wins. */
 export type BriefingScope = "team" | "personal" | "submitter";
 export function briefingScope(role: RoleOrRoles): BriefingScope {
