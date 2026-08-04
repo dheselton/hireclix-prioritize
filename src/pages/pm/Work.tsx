@@ -25,7 +25,7 @@ import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
-import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
+import { applyTaskChips, applyTaskMeMode, applyTaskTypes, isWorkStateFilter, matchesWorkState, WORK_STATE_LABEL, type WorkStateFilter } from "@/lib/pm/filters";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
