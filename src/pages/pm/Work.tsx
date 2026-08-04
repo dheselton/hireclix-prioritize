@@ -144,6 +144,12 @@ export default function Work() {
     () => new Set(projects.filter(p => p.client_id === clientId).map(p => p.id)),
     [projects, clientId],
   );
+  const [clientName, setClientName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!clientId) { setClientName(null); return; }
+    supabase.from("clients").select("name").eq("id", clientId).maybeSingle()
+      .then(({ data }) => setClientName((data as any)?.name ?? null));
+  }, [clientId]);
 
   const visibleTasks = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
