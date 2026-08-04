@@ -240,13 +240,13 @@ export default function MyPortal() {
               <TaskGroup
                 title="In progress" icon={<CircleDot className="h-4 w-4" />}
                 tasks={myTasks.inProgress} projects={projectTitles}
-                link={buildQueueLink({ chips: ["mine"] })}
+                link={buildQueueLink({ chips: ["assigned_to_me"] })}
                 emptyHint="Nothing started yet."
               />
               <TaskGroup
                 title="Up next" icon={<ListTodo className="h-4 w-4" />}
                 tasks={myTasks.upNext} projects={projectTitles}
-                link={buildQueueLink({ chips: ["mine"] })}
+                link={buildQueueLink({ chips: ["assigned_to_me"] })}
                 emptyHint="Your queue is clear."
               />
               {myTasks.recentlyCompleted.length > 0 && (
