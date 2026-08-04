@@ -63,9 +63,11 @@ function computeAvailableTabs(project: PmProject, user: any): ProjectTabId[] {
     ...(!isRequest ? (["timeline"] as const) : []),
     ...(!isRequest && hasTemplate ? (["pages"] as const) : []),
     "files",
+    ...(canPostClientVisible(user?.roles ?? user?.role) ? (["client"] as const) : []),
     ...(canSeeSnippets ? (["snippets"] as const) : []),
     ...(inSupport ? (["documentation"] as const) : []),
   ] as ProjectTabId[];
+
 }
 
 export default function ProjectDetail() {
