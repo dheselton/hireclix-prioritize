@@ -251,6 +251,16 @@ export default function Work() {
                 {clientName ?? "Client"} ✕
               </button>
             )}
+            {stateFilter && (
+              <button
+                type="button"
+                onClick={() => setStateFilter(null)}
+                className="h-8 px-2.5 rounded-md border border-primary bg-primary/10 text-primary text-xs font-medium"
+                title="Clear state filter"
+              >
+                {WORK_STATE_LABEL[stateFilter]} ✕
+              </button>
+            )}
             {raidOnly && (
               <button
                 type="button"
