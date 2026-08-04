@@ -26,6 +26,8 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
   const users = useMockUsers();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reschedOpen, setReschedOpen] = useState(false);
+  const [shiftDays, setShiftDays] = useState("7");
   const n = selected.size;
   if (!n) return null;
 
