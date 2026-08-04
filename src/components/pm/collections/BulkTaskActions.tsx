@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -10,7 +13,8 @@ import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, type TaskStatus } from "@/types/pm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, CalendarClock } from "lucide-react";
+import { format, addDays, parse, isValid } from "date-fns";
 
 interface Props {
   selected: Set<string>;
@@ -22,6 +26,8 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
   const users = useMockUsers();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reschedOpen, setReschedOpen] = useState(false);
+  const [shiftDays, setShiftDays] = useState("7");
   const n = selected.size;
   if (!n) return null;
 
@@ -48,6 +54,49 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
   const bulkDelete = () =>
     run("Deleted", async () => await supabase.from("pm_tasks").delete().in("id", ids));
 
+  /** Absolute reschedule — every selected task gets the same due date. */
+  async function setDateAll(iso: string) {
+    if (busy) return;
+    setBusy(true);
+    const { error } = await supabase.from("pm_tasks").update({ due_date: iso }).in("id", ids);
+    setBusy(false);
+    setReschedOpen(false);
+    if (error) { toast.error("Couldn't reschedule"); return; }
+    toast.success(`${n} task${plural} rescheduled`);
+    onClear();
+    onChanged?.();
+  }
+
+  /** Relative shift — tasks with no due date are skipped and reported. */
+  async function shiftAll(days: number) {
+    if (busy || !Number.isFinite(days) || days === 0) return;
+    setBusy(true);
+    const { data, error: readErr } = await supabase
+      .from("pm_tasks").select("id, due_date").in("id", ids);
+    if (readErr || !data) { setBusy(false); toast.error("Couldn't reschedule"); return; }
+    const dated = data.filter(t => !!t.due_date);
+    const skipped = data.length - dated.length;
+    let failures = 0;
+    for (const t of dated) {
+      const base = parse(t.due_date as string, "yyyy-MM-dd", new Date());
+      if (!isValid(base)) { failures++; continue; }
+      const next = format(addDays(base, days), "yyyy-MM-dd");
+      const { error } = await supabase.from("pm_tasks").update({ due_date: next }).eq("id", t.id);
+      if (error) failures++;
+    }
+    setBusy(false);
+    setReschedOpen(false);
+    const moved = dated.length - failures;
+    if (!moved) { toast.error("Couldn't reschedule"); return; }
+    const suffix = [
+      skipped ? `${skipped} skipped (no due date)` : "",
+      failures ? `${failures} failed` : "",
+    ].filter(Boolean).join(", ");
+    toast.success(`${moved} task${moved === 1 ? "" : "s"} rescheduled${suffix ? ` — ${suffix}` : ""}`);
+    onClear();
+    onChanged?.();
+  }
+
   const bar = (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-in fade-in slide-in-from-bottom-2">
       <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-popover shadow-lg text-sm">
@@ -66,6 +115,41 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
             {users.filter(u => u.role !== "submitter").map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Popover open={reschedOpen} onOpenChange={setReschedOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" disabled={busy} className="h-8 rounded-full">
+              <CalendarClock className="h-3.5 w-3.5 mr-1" /> Reschedule
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="center" className="w-auto p-3 space-y-3 bg-popover z-50">
+            <div>
+              <div className="text-xs font-medium mb-1">Shift by days</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={shiftDays}
+                  onChange={e => setShiftDays(e.target.value)}
+                  className="h-8 w-24"
+                  aria-label="Days to shift"
+                />
+                <Button size="sm" className="h-8" disabled={busy} onClick={() => shiftAll(Number(shiftDays))}>
+                  Shift
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Use a negative number to pull dates earlier. Tasks with no due date are skipped.
+              </p>
+            </div>
+            <div className="border-t border-border pt-2">
+              <div className="text-xs font-medium mb-1">Set a specific date</div>
+              <Calendar
+                mode="single"
+                onSelect={d => d && setDateAll(format(d, "yyyy-MM-dd"))}
+                className="p-0 pointer-events-auto"
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
         <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)} disabled={busy} className="h-8 rounded-full">
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
         </Button>

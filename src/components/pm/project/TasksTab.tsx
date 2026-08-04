@@ -21,6 +21,7 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { BoardColumn } from "./board/BoardColumn";
 import { BoardTaskCard } from "./board/BoardTaskCard";
 import { GROUP_PRIMARY_STATUS } from "./board/boardStyles";
+import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
@@ -909,6 +910,9 @@ const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onO
       </span>
       <span className="text-[11px] text-muted-foreground w-16 text-right">{fmtDate(task.due_date)}</span>
       <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} title={task.priority} />
+      <span onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <TaskTriagePopover task={task} hideClaimed />
+      </span>
     </div>
   );
 });

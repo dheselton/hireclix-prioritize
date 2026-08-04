@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { buildQueueLink } from "@/lib/pm/links";
 import { fmtDate } from "@/lib/pm/format";
 import type { EnrichedQuickTask } from "@/lib/pm/briefing";
@@ -92,21 +93,21 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
     t.due_date ? <span className="text-[10px] text-muted-foreground">{fmtDate(t.due_date)}</span> :
     <span className="text-[10px] text-muted-foreground">No date</span>;
   return (
-    <button
-      onClick={() => onOpen(t.id)}
-      className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md border border-border bg-card text-left"
-    >
+    <div className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md border border-border bg-card text-left group">
       <span className={`h-2 w-2 rounded-full shrink-0 mt-1.5 ${dot}`} />
-      <div className="flex-1 min-w-0">
+      <button onClick={() => onOpen(t.id)} className="flex-1 min-w-0 text-left">
         <div className="text-sm font-medium truncate flex items-center gap-1.5">
           <PriorityFlag priority={t.priority} size="xs" />
           <span className="truncate">{t.title}</span>
         </div>
         <MetaRow t={t} />
-      </div>
+      </button>
 
       <div className="shrink-0 mt-0.5">{badge}</div>
-    </button>
+      <div className="mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <TaskTriagePopover task={t} />
+      </div>
+    </div>
   );
 }
 
