@@ -28,6 +28,7 @@ const GlobalTimeline = lazy(() => import("./pages/pm/GlobalTimeline"));
 const Forms = lazy(() => import("./pages/pm/Forms"));
 const FormBuilder = lazy(() => import("./pages/pm/FormBuilder"));
 const PublicForm = lazy(() => import("./pages/pm/PublicForm"));
+const PortalView = lazy(() => import("./pages/PortalView"));
 const Templates = lazy(() => import("./pages/pm/Templates"));
 const TemplateBuilder = lazy(() => import("./pages/pm/TemplateBuilder"));
 const Integrations = lazy(() => import("./pages/pm/Integrations"));
