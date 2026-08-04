@@ -29,6 +29,7 @@ const primaryNav: NavItem[] = [
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" },
   { title: "Time", url: "/pm/time", icon: Clock, key: "time" },
+  { title: "Team Report", url: "/pm/report", icon: BarChart3, key: "report" },
 ];
 
 const configureNav: NavItem[] = [

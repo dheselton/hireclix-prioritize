@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -109,19 +110,24 @@ export default function Work() {
   const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
   const tagFilter = useTagFilter("board");
 
-  // Deep-link filters: ?user=<id> (from Team Workload) and ?section=raid
-  // (from the Daily Briefing hero). Both are consumed on mount and stripped.
+  // Deep-link filters: ?user=<id> (Team Workload / Team Report), ?client=<id>
+  // (Team Report) and ?section=raid (Daily Briefing hero). All consumed on
+  // mount and stripped from the URL.
   const [personId, setPersonId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [raidOnly, setRaidOnly] = useState(false);
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const u = params.get("user");
+      const c = params.get("client");
       const section = params.get("section");
       if (u) setPersonId(u);
+      if (c) setClientId(c);
       if (section === "raid") setRaidOnly(true);
-      if (u || section) {
+      if (u || c || section) {
         params.delete("user");
+        params.delete("client");
         if (section === "raid") params.delete("section");
         const url = new URL(window.location.href);
         url.search = params.toString();
@@ -135,6 +141,16 @@ export default function Work() {
     () => (personId ? allUsers.find(u => u.id === personId)?.name ?? "this person" : null),
     [personId, allUsers],
   );
+  const clientProjectIds = useMemo(
+    () => new Set(projects.filter(p => p.client_id === clientId).map(p => p.id)),
+    [projects, clientId],
+  );
+  const [clientName, setClientName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!clientId) { setClientName(null); return; }
+    supabase.from("clients").select("name").eq("id", clientId).maybeSingle()
+      .then(({ data }) => setClientName((data as any)?.name ?? null));
+  }, [clientId]);
 
   const visibleTasks = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
@@ -149,6 +165,9 @@ export default function Work() {
     if (personId) {
       v = v.filter(t => t.assignee_id === personId || (coMap.get(t.id) ?? []).includes(personId));
     }
+    if (clientId) {
+      v = v.filter(t => clientProjectIds.has(t.project_id));
+    }
     if (raidOnly) {
       v = v.filter(t => {
         const k = getTaskKind(t);
@@ -157,7 +176,7 @@ export default function Work() {
     }
     if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, raidOnly, coMap]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, clientId, clientProjectIds, raidOnly, coMap]);
 
   // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
   const clientTagsInUse = useMemo(() => {
@@ -212,6 +231,16 @@ export default function Work() {
                 title="Clear person filter"
               >
                 {personName} ✕
+              </button>
+            )}
+            {clientId && (
+              <button
+                type="button"
+                onClick={() => setClientId(null)}
+                className="h-8 px-2.5 rounded-md border border-primary bg-primary/10 text-primary text-xs font-medium"
+                title="Clear client filter"
+              >
+                {clientName ?? "Client"} ✕
               </button>
             )}
             {raidOnly && (
