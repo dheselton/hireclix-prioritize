@@ -23,6 +23,7 @@ export type Surface =
   | "queue"
   | "inbox"
   | "report"
+  | "clients"
   | "work"
   | "workload"
   | "timeline"
@@ -52,6 +53,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
       case "templates":
       case "formBuilder":
       case "integrations":
+      case "clients":
         return false;
       default:
         return true;
@@ -60,6 +62,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   switch (surface) {
     case "inbox":
     case "report":
+    case "clients":
     case "templates":
     case "formBuilder":
     case "integrations":
@@ -81,6 +84,7 @@ export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
   const out: string[] = [];
   if (!canSee(role, "inbox")) out.push("/pm/inbox");
   if (!canSee(role, "report")) out.push("/pm/report");
+  if (!canSee(role, "clients")) out.push("/pm/clients");
   if (!canSee(role, "templates")) out.push("/pm/templates");
   if (!canSee(role, "formBuilder")) out.push("/pm/forms/");
   if (!canSee(role, "integrations")) out.push("/pm/integrations");

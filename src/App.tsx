@@ -20,6 +20,8 @@ import NotFound from "./pages/NotFound";
 // Lazy: everything else — keeps initial bundle small
 const Inbox = lazy(() => import("./pages/pm/Inbox"));
 const MyPortal = lazy(() => import("./pages/pm/MyPortal"));
+const Clients = lazy(() => import("./pages/pm/Clients"));
+const ClientDetail = lazy(() => import("./pages/pm/ClientDetail"));
 const Report = lazy(() => import("./pages/pm/Report"));
 const Work = lazy(() => import("./pages/pm/Work"));
 const ProjectDetail = lazy(() => import("./pages/pm/ProjectDetail"));
@@ -87,6 +89,8 @@ function App() {
                 <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
                 <Route path="/pm/my-work" element={<AppLayout><MyPortal /></AppLayout>} />
                 <Route path="/pm/inbox" element={<AppLayout><Inbox /></AppLayout>} />
+                <Route path="/pm/clients" element={<AppLayout><Clients /></AppLayout>} />
+                <Route path="/pm/clients/:id" element={<AppLayout><ClientDetail /></AppLayout>} />
                 <Route path="/pm/report" element={<AppLayout><Report /></AppLayout>} />
                 <Route path="/pm/work" element={<AppLayout><Work /></AppLayout>} />
                 <Route path="/pm/board" element={<Navigate to="/pm/work" replace />} />
