@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type ProjectTabId = "overview" | "tasks" | "qa" | "timeline" | "pages" | "files" | "snippets" | "documentation";
+export type ProjectTabId = "overview" | "tasks" | "qa" | "timeline" | "pages" | "files" | "snippets" | "documentation" | "client";
 
 export type ProjectTabItem = { id: ProjectTabId; label: string; badge?: ReactNode };
 
