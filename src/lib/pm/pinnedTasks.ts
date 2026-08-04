@@ -12,7 +12,7 @@ export async function fetchPinnedTasks(userId: string): Promise<PinnedTask[]> {
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) throw error;
-  const rows = (data ?? []) as Array<{ id: string; sort_order: number; pm_tasks: PmTask | null }>;
+  const rows = ((data ?? []) as unknown) as Array<{ id: string; sort_order: number; pm_tasks: PmTask | null }>;
   return rows
     .filter(r => r.pm_tasks)
     .map(r => ({ ...(r.pm_tasks as PmTask), pin_id: r.id }));
