@@ -3,26 +3,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { SectionShell } from "./SectionShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { canPostClientVisible } from "@/lib/pm/permissions";
 import { MentionTextarea, MentionText } from "./MentionTextarea";
-import { Pencil, Trash2, Send, X } from "lucide-react";
+import { Pencil, Trash2, Send, X, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
   user_id: string | null; body: string; mentions: string[];
-  created_at: string; pinned: boolean;
+  created_at: string; pinned: boolean; visibility?: string | null;
 }
 
 export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: string; projectId: string; taskTitle: string }) {
   const [rows, setRows] = useState<Comment[]>([]);
   const [draft, setDraft] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
+  const [clientVisible, setClientVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const users = useMockUsers();
+  const canShareWithClient = canPostClientVisible(roles);
 
   async function load() {
     const { data } = await supabase.from("pm_comments").select("*").eq("task_id", taskId).order("created_at");
@@ -36,7 +40,9 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
     await supabase.from("pm_comments").insert({
       task_id: taskId, project_id: projectId, user_id: user.id,
       body, mentions, pinned: false,
+      visibility: canShareWithClient && clientVisible ? "client" : "internal",
     } as any);
+
     if (mentions.length) {
       const { createNotification } = await import("@/lib/pm/notifications");
       for (const uid of mentions) {
