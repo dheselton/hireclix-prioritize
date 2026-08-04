@@ -52,6 +52,49 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
   const bulkDelete = () =>
     run("Deleted", async () => await supabase.from("pm_tasks").delete().in("id", ids));
 
+  /** Absolute reschedule — every selected task gets the same due date. */
+  async function setDateAll(iso: string) {
+    if (busy) return;
+    setBusy(true);
+    const { error } = await supabase.from("pm_tasks").update({ due_date: iso }).in("id", ids);
+    setBusy(false);
+    setReschedOpen(false);
+    if (error) { toast.error("Couldn't reschedule"); return; }
+    toast.success(`${n} task${plural} rescheduled`);
+    onClear();
+    onChanged?.();
+  }
+
+  /** Relative shift — tasks with no due date are skipped and reported. */
+  async function shiftAll(days: number) {
+    if (busy || !Number.isFinite(days) || days === 0) return;
+    setBusy(true);
+    const { data, error: readErr } = await supabase
+      .from("pm_tasks").select("id, due_date").in("id", ids);
+    if (readErr || !data) { setBusy(false); toast.error("Couldn't reschedule"); return; }
+    const dated = data.filter(t => !!t.due_date);
+    const skipped = data.length - dated.length;
+    let failures = 0;
+    for (const t of dated) {
+      const base = parse(t.due_date as string, "yyyy-MM-dd", new Date());
+      if (!isValid(base)) { failures++; continue; }
+      const next = format(addDays(base, days), "yyyy-MM-dd");
+      const { error } = await supabase.from("pm_tasks").update({ due_date: next }).eq("id", t.id);
+      if (error) failures++;
+    }
+    setBusy(false);
+    setReschedOpen(false);
+    const moved = dated.length - failures;
+    if (!moved) { toast.error("Couldn't reschedule"); return; }
+    const suffix = [
+      skipped ? `${skipped} skipped (no due date)` : "",
+      failures ? `${failures} failed` : "",
+    ].filter(Boolean).join(", ");
+    toast.success(`${moved} task${moved === 1 ? "" : "s"} rescheduled${suffix ? ` — ${suffix}` : ""}`);
+    onClear();
+    onChanged?.();
+  }
+
   const bar = (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-in fade-in slide-in-from-bottom-2">
       <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-popover shadow-lg text-sm">
