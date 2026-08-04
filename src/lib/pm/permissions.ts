@@ -45,6 +45,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   if (r === "tech_lead") {
     switch (surface) {
       case "inbox":
+      case "report":
       case "templates":
       case "formBuilder":
       case "integrations":
@@ -55,6 +56,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   }
   switch (surface) {
     case "inbox":
+    case "report":
     case "templates":
     case "formBuilder":
     case "integrations":
