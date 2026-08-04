@@ -116,3 +116,39 @@ export function applyProjectChips(
     return true;
   });
 }
+
+// ── Workload diagnosis filters ───────────────────────────────────────────────
+/** State filters used by the Workload person-card chips (`/pm/work?filter=`). */
+export type WorkStateFilter = "overdue" | "due-this-week" | "blocked" | "no-date";
+
+export const WORK_STATE_FILTERS: WorkStateFilter[] = ["overdue", "due-this-week", "blocked", "no-date"];
+
+export const WORK_STATE_LABEL: Record<WorkStateFilter, string> = {
+  overdue: "Overdue",
+  "due-this-week": "Due this week",
+  blocked: "Blocked",
+  "no-date": "No date",
+};
+
+export const isWorkStateFilter = (v: unknown): v is WorkStateFilter =>
+  typeof v === "string" && (WORK_STATE_FILTERS as string[]).includes(v);
+
+/** Does an (already active/open) task match the given state filter? */
+export function matchesWorkState(t: PmTask, filter: WorkStateFilter): boolean {
+  if (isDone(t.status)) return false;
+  const today = startOfToday();
+  const week = endOfWeek();
+  switch (filter) {
+    case "overdue":
+      return !!t.due_date && new Date(t.due_date) < today;
+    case "due-this-week": {
+      if (!t.due_date) return false;
+      const d = new Date(t.due_date);
+      return d >= today && d <= week;
+    }
+    case "blocked":
+      return t.status === "blocked";
+    case "no-date":
+      return !t.due_date;
+  }
+}
