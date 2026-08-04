@@ -23,6 +23,8 @@ import { FilesTab } from "@/components/pm/project/FilesTab";
 import { ProjectHeader } from "@/components/pm/project/ProjectHeader";
 import { KpiStrip } from "@/components/pm/project/KpiStrip";
 import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
+import { canPostClientVisible } from "@/lib/pm/permissions";
+import { PortalMessageThread } from "@/components/pm/portal/PortalMessageThread";
 import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
@@ -83,7 +85,7 @@ export default function ProjectDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<ProjectTabId>(() => {
     const t = searchParams.get("tab");
-    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation"];
+    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation", "client"];
     if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
     return "tasks";
   });
@@ -187,6 +189,7 @@ export default function ProjectDetail() {
   const canSeeSnippets = !!user?.roles?.some(r => r === "developer" || r === "designer") || user?.role === "developer" || user?.role === "designer";
 
   const hasTemplate = !!project.template_id;
+  const canShareWithClient = canPostClientVisible(user?.roles ?? user?.role);
   const tabs: { id: ProjectTabId; label: string; badge?: React.ReactNode }[] = [
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
@@ -194,6 +197,7 @@ export default function ProjectDetail() {
     ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline" }] : []),
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },
+    ...(canShareWithClient ? [{ id: "client" as const, label: "Client" }] : []),
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
     ...(inSupport ? [{ id: "documentation" as const, label: "Documentation" }] : []),
 
@@ -313,6 +317,19 @@ export default function ProjectDetail() {
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">All files attached to this project and its tasks, in one place.</p>
           <FilesTab projectId={project.id} tasks={tasks} onOpenTask={drawer.open} />
+        </div>
+      )}
+
+      {tab === "client" && canShareWithClient && (
+        <div className="space-y-2 max-w-3xl">
+          <p className="text-xs text-muted-foreground">
+            Shared conversation with the client for this project. Anything posted here is visible in the client portal.
+          </p>
+          <PortalMessageThread
+            projectId={project.id}
+            authorName={user?.name ?? "Team"}
+            authorUserId={user?.id ?? null}
+          />
         </div>
       )}
 
