@@ -41,6 +41,18 @@ export function projectFilterLink(projectId: string, filter?: ProjectTaskFilterI
   return filter ? `${base}&taskFilter=${filter}` : base;
 }
 
+/**
+ * Client-scoped stat link: lands on /pm/work filtered to one client's projects
+ * (`?client=`), optionally with chip filters pre-applied. Used by every number
+ * on the client hub so no count is a dead end.
+ */
+export function clientWorkLink(clientId: string, chips: ChipId[] = []): string {
+  const link = buildQueueLink({ chips });
+  return link.includes("?") ? `${link}&client=${clientId}` : `${link}?client=${clientId}`;
+}
+
+
+
 /** Strip our deep-link params from the URL without triggering navigation. */
 export function consumeQueueLinkParams(keys: string[] = ["chips", "workType", "section", "taskFilter"]) {
   if (typeof window === "undefined") return;
