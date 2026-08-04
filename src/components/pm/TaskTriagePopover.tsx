@@ -97,10 +97,10 @@ export function TaskTriagePopover({
             size="xs"
             onChanged={onChanged}
             trigger={
-              <button type="button" className="inline-flex items-center gap-1.5 text-[11px] hover:text-foreground text-muted-foreground transition">
+              <span className="inline-flex items-center gap-1.5 text-[11px] hover:text-foreground text-muted-foreground transition">
                 <UserAvatar userId={task.assignee_id ?? undefined} size="xs" />
                 <span>{task.assignee_id ? "Change" : "Assign"}</span>
-              </button>
+              </span>
             }
           />
         </Row>
