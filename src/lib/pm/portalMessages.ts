@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyClientsOfUpdate } from "@/lib/pm/portalNotify";
 
 export const PORTAL_BUCKET = "portal-attachments";
 
@@ -93,6 +94,17 @@ export async function postPortalMessage(opts: {
     .select("*")
     .single();
   if (error) throw error;
+
+  // Team-authored posts email the client contacts; client-authored posts are
+  // handled server-side by the portal-api function.
+  if (opts.authorUserId) {
+    void notifyClientsOfUpdate({
+      projectId: opts.projectId,
+      subject: `New message from ${opts.authorName}`,
+      message: opts.body.slice(0, 1000),
+    });
+  }
+
   return toMessage(data);
 }
 
