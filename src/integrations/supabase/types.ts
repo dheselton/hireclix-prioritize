@@ -46,6 +46,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           is_internal: boolean
@@ -53,6 +54,7 @@ export type Database = {
           notes: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           is_internal?: boolean
@@ -60,6 +62,7 @@ export type Database = {
           notes?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           is_internal?: boolean
@@ -665,6 +668,57 @@ export type Database = {
           },
         ]
       }
+      pm_client_assets: {
+        Row: {
+          client_id: string
+          content_type: string | null
+          created_at: string
+          file_size: number | null
+          id: string
+          label: string | null
+          name: string
+          path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          content_type?: string | null
+          created_at?: string
+          file_size?: number | null
+          id?: string
+          label?: string | null
+          name: string
+          path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          content_type?: string | null
+          created_at?: string
+          file_size?: number | null
+          id?: string
+          label?: string | null
+          name?: string
+          path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_client_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_client_assets_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_client_environments: {
         Row: {
           client_id: string
@@ -699,6 +753,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pm_client_environments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_client_notes: {
+        Row: {
+          author_id: string | null
+          body: string
+          client_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body?: string
+          client_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_client_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "mock_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_client_notes_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
