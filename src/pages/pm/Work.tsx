@@ -109,19 +109,24 @@ export default function Work() {
   const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
   const tagFilter = useTagFilter("board");
 
-  // Deep-link filters: ?user=<id> (from Team Workload) and ?section=raid
-  // (from the Daily Briefing hero). Both are consumed on mount and stripped.
+  // Deep-link filters: ?user=<id> (Team Workload / Team Report), ?client=<id>
+  // (Team Report) and ?section=raid (Daily Briefing hero). All consumed on
+  // mount and stripped from the URL.
   const [personId, setPersonId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [raidOnly, setRaidOnly] = useState(false);
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const u = params.get("user");
+      const c = params.get("client");
       const section = params.get("section");
       if (u) setPersonId(u);
+      if (c) setClientId(c);
       if (section === "raid") setRaidOnly(true);
-      if (u || section) {
+      if (u || c || section) {
         params.delete("user");
+        params.delete("client");
         if (section === "raid") params.delete("section");
         const url = new URL(window.location.href);
         url.search = params.toString();
@@ -134,6 +139,10 @@ export default function Work() {
   const personName = useMemo(
     () => (personId ? allUsers.find(u => u.id === personId)?.name ?? "this person" : null),
     [personId, allUsers],
+  );
+  const clientProjectIds = useMemo(
+    () => new Set(projects.filter(p => p.client_id === clientId).map(p => p.id)),
+    [projects, clientId],
   );
 
   const visibleTasks = useMemo(() => {

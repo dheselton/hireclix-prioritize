@@ -83,6 +83,7 @@ function App() {
 
                 <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
                 <Route path="/pm/inbox" element={<AppLayout><Inbox /></AppLayout>} />
+                <Route path="/pm/report" element={<AppLayout><Report /></AppLayout>} />
                 <Route path="/pm/work" element={<AppLayout><Work /></AppLayout>} />
                 <Route path="/pm/board" element={<Navigate to="/pm/work" replace />} />
                 <Route path="/pm/projects" element={<Navigate to="/pm/work" replace />} />
