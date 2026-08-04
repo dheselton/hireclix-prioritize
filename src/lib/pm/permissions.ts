@@ -19,6 +19,7 @@ export function toRoles(input: RoleOrRoles): PmRole[] {
 
 /** Logical surfaces in the app. Used by the sidebar + route guard. */
 export type Surface =
+  | "myWork"
   | "queue"
   | "inbox"
   | "report"
@@ -36,6 +37,8 @@ export type Surface =
   | "taskWorkspace";
 
 function canSeeSingle(r: PmRole, surface: Surface): boolean {
+  // Everyone has a personal "My Work" portal.
+  if (surface === "myWork") return true;
   if (r === "submitter") {
     return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
@@ -93,7 +96,8 @@ export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
 export function fallbackPath(role: RoleOrRoles): string {
   const roles = toRoles(role);
   const isSubmitterOnly = roles.every(r => r === "submitter");
-  return canSee(role, "work") && !isSubmitterOnly ? "/pm/work" : "/pm";
+  if (isSubmitterOnly) return "/pm/my-work";
+  return canSee(role, "work") ? "/pm/work" : "/pm";
 }
 
 /** Daily Briefing data scope. PM in the role set wins. */
