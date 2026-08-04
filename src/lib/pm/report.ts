@@ -121,7 +121,7 @@ export function computeAtRisk(
 
   const out: AtRiskProject[] = [];
   for (const p of projects) {
-    if (p.status === "complete" || (p as any).status === "archived") continue;
+    if (p.status === "complete" || p.status === "archived") continue;
     const list = byProject.get(p.id) ?? [];
     const open = list.filter(t => !isDone(t.status));
     if (!open.length) continue;
