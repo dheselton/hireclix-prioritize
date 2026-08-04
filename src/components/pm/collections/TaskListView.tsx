@@ -163,7 +163,12 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   </td>
                   <td className="p-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.due_date)}</td>
                   <td className="p-2 text-center">
-                    <PriorityFlag priority={t.priority} size="sm" />
+                    <div className="flex items-center justify-end gap-1">
+                      <PriorityFlag priority={t.priority} size="sm" />
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <TaskTriagePopover task={t} onChanged={onChanged} />
+                      </span>
+                    </div>
                   </td>
 
                 </tr>
