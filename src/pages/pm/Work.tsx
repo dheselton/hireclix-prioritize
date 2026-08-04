@@ -25,7 +25,7 @@ import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
-import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
+import { applyTaskChips, applyTaskMeMode, applyTaskTypes, isWorkStateFilter, matchesWorkState, WORK_STATE_LABEL, type WorkStateFilter } from "@/lib/pm/filters";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
@@ -111,23 +111,28 @@ export default function Work() {
   const tagFilter = useTagFilter("board");
 
   // Deep-link filters: ?user=<id> (Team Workload / Team Report), ?client=<id>
-  // (Team Report) and ?section=raid (Daily Briefing hero). All consumed on
+  // (Team Report), ?filter=overdue|due-this-week|blocked|no-date (Workload
+  // diagnosis chips) and ?section=raid (Daily Briefing hero). All consumed on
   // mount and stripped from the URL.
   const [personId, setPersonId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [stateFilter, setStateFilter] = useState<WorkStateFilter | null>(null);
   const [raidOnly, setRaidOnly] = useState(false);
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const u = params.get("user");
       const c = params.get("client");
+      const f = params.get("filter");
       const section = params.get("section");
       if (u) setPersonId(u);
       if (c) setClientId(c);
+      if (isWorkStateFilter(f)) setStateFilter(f);
       if (section === "raid") setRaidOnly(true);
-      if (u || c || section) {
+      if (u || c || f || section) {
         params.delete("user");
         params.delete("client");
+        params.delete("filter");
         if (section === "raid") params.delete("section");
         const url = new URL(window.location.href);
         url.search = params.toString();
@@ -168,6 +173,9 @@ export default function Work() {
     if (clientId) {
       v = v.filter(t => clientProjectIds.has(t.project_id));
     }
+    if (stateFilter) {
+      v = v.filter(t => matchesWorkState(t, stateFilter));
+    }
     if (raidOnly) {
       v = v.filter(t => {
         const k = getTaskKind(t);
@@ -176,7 +184,7 @@ export default function Work() {
     }
     if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, clientId, clientProjectIds, raidOnly, coMap]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap]);
 
   // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
   const clientTagsInUse = useMemo(() => {
@@ -241,6 +249,16 @@ export default function Work() {
                 title="Clear client filter"
               >
                 {clientName ?? "Client"} ✕
+              </button>
+            )}
+            {stateFilter && (
+              <button
+                type="button"
+                onClick={() => setStateFilter(null)}
+                className="h-8 px-2.5 rounded-md border border-primary bg-primary/10 text-primary text-xs font-medium"
+                title="Clear state filter"
+              >
+                {WORK_STATE_LABEL[stateFilter]} ✕
               </button>
             )}
             {raidOnly && (
