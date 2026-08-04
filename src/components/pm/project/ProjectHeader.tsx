@@ -70,12 +70,8 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
     })();
   }, [project.id, project.client_id]);
 
-  function share() {
-    try {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied to clipboard");
-    } catch { toast.error("Could not copy link"); }
-  }
+  const canManagePortal = roles.some(r => r === "pm" || r === "ba" || r === "tech_lead");
+
 
   return (
     <header className="space-y-2">
