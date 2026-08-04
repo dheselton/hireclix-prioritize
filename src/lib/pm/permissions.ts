@@ -89,6 +89,8 @@ export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
   if (!canSee(role, "time")) out.push("/pm/time");
   if (!canSee(role, "snippets")) out.push("/snippets");
   if (!canSee(role, "work")) out.push("/pm/work");
+  // Submitter-only users live in their personal portal.
+  if (toRoles(role).every(r => r === "submitter")) out.push("/pm/work");
   return out;
 }
 
