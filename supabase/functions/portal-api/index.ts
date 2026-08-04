@@ -189,13 +189,36 @@ serve(async (req: Request): Promise<Response> => {
         .single();
       if (error) return json({ error: "insert_failed" }, 400);
 
-      await admin.from("pm_portal_notifications").insert({
-        portal_access_id: access.id,
-        kind: "portal_message",
-        project_id: project.id,
-        subject: `New client message on ${project.title}`,
-        message: input.body.slice(0, 500),
-      });
+      // Notify the internal project team (kind must match the table's CHECK).
+      const { data: members } = await admin
+        .from("pm_project_members")
+        .select("user_id")
+        .eq("project_id", project.id);
+      const userIds = [...new Set(((members ?? []) as { user_id: string }[]).map(m => m.user_id))];
+      if (userIds.length) {
+        await admin.from("pm_portal_notifications").insert(
+          userIds.map(uid => ({
+            user_id: uid,
+            kind: "update_posted",
+            project_id: project.id,
+            subject: `New client message on ${project.title}`,
+            message: `${access.label || access.email}: ${input.body.slice(0, 500)}`,
+          })),
+        );
+        // Nudge the mailer; failures here must not break the post.
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-portal-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({}),
+          });
+        } catch (e) {
+          console.error("send-portal-email nudge failed", e);
+        }
+      }
 
       return json({ message: data });
     }

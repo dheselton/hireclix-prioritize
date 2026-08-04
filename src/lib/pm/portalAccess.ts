@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { drainPortalEmails } from "@/lib/pm/portalNotify";
 
 export interface PortalAccess {
   id: string;
@@ -71,6 +72,7 @@ export async function queueInvite(access: PortalAccess): Promise<void> {
     .from("pm_portal_access")
     .update({ invite_sent_at: new Date().toISOString() })
     .eq("id", access.id);
+  drainPortalEmails();
 }
 
 export async function setPortalAccessActive(id: string, active: boolean): Promise<void> {
