@@ -137,6 +137,8 @@ export default function WorkQueue() {
         <ProjectWorkColumn projects={projects} />
       </div>
 
+      {user?.id && <ActivityDigest userId={user.id} />}
+
       {user?.id && <NotesSection userId={user.id} />}
 
       {loading && (
