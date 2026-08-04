@@ -3,26 +3,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { SectionShell } from "./SectionShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { canPostClientVisible } from "@/lib/pm/permissions";
 import { MentionTextarea, MentionText } from "./MentionTextarea";
-import { Pencil, Trash2, Send, X } from "lucide-react";
+import { Pencil, Trash2, Send, X, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
   user_id: string | null; body: string; mentions: string[];
-  created_at: string; pinned: boolean;
+  created_at: string; pinned: boolean; visibility?: string | null;
 }
 
 export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: string; projectId: string; taskTitle: string }) {
   const [rows, setRows] = useState<Comment[]>([]);
   const [draft, setDraft] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
+  const [clientVisible, setClientVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const { user } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const users = useMockUsers();
+  const canShareWithClient = canPostClientVisible(roles);
 
   async function load() {
     const { data } = await supabase.from("pm_comments").select("*").eq("task_id", taskId).order("created_at");
@@ -36,7 +40,9 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
     await supabase.from("pm_comments").insert({
       task_id: taskId, project_id: projectId, user_id: user.id,
       body, mentions, pinned: false,
+      visibility: canShareWithClient && clientVisible ? "client" : "internal",
     } as any);
+
     if (mentions.length) {
       const { createNotification } = await import("@/lib/pm/notifications");
       for (const uid of mentions) {
@@ -83,7 +89,13 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-sm font-medium">{u?.name ?? "Unknown"}</span>
+                  {c.visibility === "client" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">
+                      <Eye className="h-2.5 w-2.5" /> Client visible
+                    </span>
+                  )}
                   <span className="text-[11px] text-muted-foreground">{new Date(c.created_at).toLocaleString()}</span>
+
                   {canEdit(c) && (
                     <Button size="icon" variant="ghost" className="h-5 w-5 ml-auto"
                       onClick={() => { setEditingId(c.id); setEditValue(c.body); }}>
@@ -123,15 +135,24 @@ export function CommentsThread({ taskId, projectId, taskTitle }: { taskId: strin
           users={users}
           placeholder="Write a comment… use @ to mention someone"
         />
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-3 flex-wrap">
           <div className="text-[11px] text-muted-foreground">
             {mentions.length > 0 && `Mentions: ${mentions.length}`}
             {" "}Enter to send · Shift+Enter for newline
           </div>
-          <Button size="sm" onClick={submit} disabled={!draft.trim()}>
-            <Send className="h-3 w-3 mr-1" /> Send
-          </Button>
+          <div className="flex items-center gap-3">
+            {canShareWithClient && (
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                <Switch checked={clientVisible} onCheckedChange={setClientVisible} />
+                Visible to client
+              </label>
+            )}
+            <Button size="sm" onClick={submit} disabled={!draft.trim()}>
+              <Send className="h-3 w-3 mr-1" /> Send
+            </Button>
+          </div>
         </div>
+
       </div>
     </SectionShell>
   );

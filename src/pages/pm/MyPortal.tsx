@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { PortalMessageThread } from "@/components/pm/portal/PortalMessageThread";
 import { AlertTriangle, CircleDot, ListTodo, MessageSquare, FileText, ExternalLink, Paperclip } from "lucide-react";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { UserAvatar } from "@/components/pm/UserAvatar";
@@ -195,6 +196,7 @@ export default function MyPortal() {
   const { requests, loading: reqLoading } = useMyRequests(userId, user?.email ?? null);
   const { threads, loading: msgLoading } = useMyMessageThreads(userId);
   const [openRequest, setOpenRequest] = useState<MyRequest | null>(null);
+  const [openThread, setOpenThread] = useState<{ projectId: string; title: string } | null>(null);
 
   const projectTitles = useMemo(
     () => new Map([...myTasks.projects].map(([id, p]) => [id, { title: p.title }])),
@@ -304,11 +306,14 @@ export default function MyPortal() {
                 <p className="text-sm text-muted-foreground">No project conversations yet.</p>
               </div>
             ) : threads.map(t => (
-              <Link
+              <button
                 key={t.projectId}
-                to={`/pm/projects/${t.projectId}`}
-                onClick={() => userId && markThreadRead(userId, t.projectId)}
-                className="flex items-center gap-3 px-3 py-2 rounded-md border border-border/60 hover:bg-accent/30 transition"
+                type="button"
+                onClick={() => {
+                  if (userId) markThreadRead(userId, t.projectId);
+                  setOpenThread({ projectId: t.projectId, title: t.projectTitle });
+                }}
+                className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-md border border-border/60 hover:bg-accent/30 transition"
               >
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium truncate">
@@ -325,13 +330,32 @@ export default function MyPortal() {
                   </span>
                 )}
                 <span className="text-[11px] text-muted-foreground whitespace-nowrap">{fmtDate(t.lastAt)}</span>
-              </Link>
+              </button>
             ))}
           </CardContent>
         </Card>
       )}
 
       <RequestDetail request={openRequest} onClose={() => setOpenRequest(null)} />
+
+      <Sheet open={!!openThread} onOpenChange={(o) => { if (!o) setOpenThread(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+          {openThread && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="pr-6">{openThread.title}</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <PortalMessageThread
+                  projectId={openThread.projectId}
+                  authorName={user?.name ?? "Team"}
+                  authorUserId={userId}
+                />
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
