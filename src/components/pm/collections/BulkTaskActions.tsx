@@ -115,6 +115,41 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
             {users.filter(u => u.role !== "submitter").map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Popover open={reschedOpen} onOpenChange={setReschedOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" disabled={busy} className="h-8 rounded-full">
+              <CalendarClock className="h-3.5 w-3.5 mr-1" /> Reschedule
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="center" className="w-auto p-3 space-y-3 bg-popover z-50">
+            <div>
+              <div className="text-xs font-medium mb-1">Shift by days</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={shiftDays}
+                  onChange={e => setShiftDays(e.target.value)}
+                  className="h-8 w-24"
+                  aria-label="Days to shift"
+                />
+                <Button size="sm" className="h-8" disabled={busy} onClick={() => shiftAll(Number(shiftDays))}>
+                  Shift
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Use a negative number to pull dates earlier. Tasks with no due date are skipped.
+              </p>
+            </div>
+            <div className="border-t border-border pt-2">
+              <div className="text-xs font-medium mb-1">Set a specific date</div>
+              <Calendar
+                mode="single"
+                onSelect={d => d && setDateAll(format(d, "yyyy-MM-dd"))}
+                className="p-0 pointer-events-auto"
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
         <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)} disabled={busy} className="h-8 rounded-full">
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
         </Button>
