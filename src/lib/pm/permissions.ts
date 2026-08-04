@@ -21,6 +21,7 @@ export function toRoles(input: RoleOrRoles): PmRole[] {
 export type Surface =
   | "queue"
   | "inbox"
+  | "report"
   | "work"
   | "workload"
   | "timeline"

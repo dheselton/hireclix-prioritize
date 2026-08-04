@@ -210,7 +210,7 @@ export default function Report() {
                   className="flex items-center gap-3 py-2 px-1 rounded hover:bg-accent/60 transition"
                 >
                   {row.user
-                    ? <UserAvatar user={row.user} size="sm" />
+                    ? <UserAvatar userId={row.user.id} size="sm" />
                     : <span className="h-6 w-6 rounded-full bg-muted inline-block" />}
                   <span className="text-sm font-medium flex-1 min-w-0 truncate">
                     {row.user?.name ?? "Unassigned"}
