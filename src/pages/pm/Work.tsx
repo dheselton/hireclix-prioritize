@@ -173,6 +173,9 @@ export default function Work() {
     if (clientId) {
       v = v.filter(t => clientProjectIds.has(t.project_id));
     }
+    if (stateFilter) {
+      v = v.filter(t => matchesWorkState(t, stateFilter));
+    }
     if (raidOnly) {
       v = v.filter(t => {
         const k = getTaskKind(t);
