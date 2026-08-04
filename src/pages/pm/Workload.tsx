@@ -16,7 +16,7 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
-import { applyTaskChips, applyTaskTypes } from "@/lib/pm/filters";
+import { applyTaskChips, applyTaskTypes, matchesWorkState, WORK_STATE_FILTERS, WORK_STATE_LABEL } from "@/lib/pm/filters";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { ChevronDown } from "lucide-react";
