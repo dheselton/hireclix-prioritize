@@ -226,6 +226,16 @@ export default function Work() {
                 {personName} ✕
               </button>
             )}
+            {clientId && (
+              <button
+                type="button"
+                onClick={() => setClientId(null)}
+                className="h-8 px-2.5 rounded-md border border-primary bg-primary/10 text-primary text-xs font-medium"
+                title="Clear client filter"
+              >
+                {clientName ?? "Client"} ✕
+              </button>
+            )}
             {raidOnly && (
               <button
                 type="button"
