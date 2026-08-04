@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -10,7 +13,8 @@ import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, type TaskStatus } from "@/types/pm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, CalendarClock } from "lucide-react";
+import { format, addDays, parse, isValid } from "date-fns";
 
 interface Props {
   selected: Set<string>;
