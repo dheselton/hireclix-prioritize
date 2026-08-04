@@ -171,6 +171,33 @@ export default function Workload() {
                     <div className={cn("h-full", tone)} style={{ width: `${Math.min(100, ratio*100)}%` }} />
                   </div>
                 </div>
+                {/* Diagnosis chips — why this person is loaded. Each opens the exact list. */}
+                {(() => {
+                  const counts = WORK_STATE_FILTERS.map(f => ({ f, n: active.filter(t => matchesWorkState(t, f)).length }))
+                    .filter(c => c.n > 0);
+                  if (!counts.length) {
+                    return <div className="text-[11px] text-muted-foreground">All on track</div>;
+                  }
+                  return (
+                    <div className="flex flex-wrap gap-1.5">
+                      {counts.map(({ f, n }) => (
+                        <Link
+                          key={f}
+                          to={`/pm/work?user=${u.id}&filter=${f}`}
+                          className={cn(
+                            "text-[11px] px-2 py-0.5 rounded-full border transition hover:bg-muted",
+                            f === "overdue" && "border-red-500/40 text-red-600 dark:text-red-400",
+                            f === "blocked" && "border-amber-500/40 text-amber-600 dark:text-amber-400",
+                            f !== "overdue" && f !== "blocked" && "border-border text-muted-foreground",
+                          )}
+                          title={`See ${u.name}'s ${WORK_STATE_LABEL[f].toLowerCase()} work`}
+                        >
+                          {WORK_STATE_LABEL[f]} {n}
+                        </Link>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {mode === "list" ? (
                   <div className="space-y-1 max-h-56 overflow-auto">
                     {active.slice(0, 8).map(t => (
