@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { buildQueueLink } from "@/lib/pm/links";
 import { fmtDate } from "@/lib/pm/format";
 import type { EnrichedQuickTask } from "@/lib/pm/briefing";
