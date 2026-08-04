@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 
 // Lazy: everything else — keeps initial bundle small
 const Inbox = lazy(() => import("./pages/pm/Inbox"));
+const Report = lazy(() => import("./pages/pm/Report"));
 const Work = lazy(() => import("./pages/pm/Work"));
 const ProjectDetail = lazy(() => import("./pages/pm/ProjectDetail"));
 const Workload = lazy(() => import("./pages/pm/Workload"));
