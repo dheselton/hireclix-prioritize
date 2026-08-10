@@ -24,6 +24,7 @@ import { LinksSection } from "@/components/pm/workspace/LinksSection";
 import { AssetHub } from "@/components/pm/workspace/AssetHub";
 import { CollabHub } from "@/components/pm/workspace/CollabHub";
 import { QuickChecklist } from "@/components/pm/workspace/QuickChecklist";
+import { SubtasksSection } from "@/components/pm/workspace/SubtasksSection";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
 
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
@@ -218,6 +219,7 @@ export default function TaskWorkspace() {
             )}
             <DescriptionSection task={task} patch={patch} />
             {task.status === "blocked" && <BlockerBanner />}
+            <SubtasksSection task={task} />
             <AssetHub taskId={task.id} projectId={task.project_id} />
             <LinksSection taskId={task.id} />
             <SnippetsSection taskId={task.id} />
