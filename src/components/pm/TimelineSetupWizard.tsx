@@ -11,7 +11,7 @@ import { scheduleForwardFromKickoff, fitToWindow, type ScheduleDep } from "@/lib
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 export function TimelineSetupWizard({
   templateId, open, onOpenChange,
@@ -30,7 +30,7 @@ export function TimelineSetupWizard({
   const [loading, setLoading] = useState(false);
 
   const hasPageGroups = pageGroups.length > 0;
-  const totalSteps = 3;
+  const totalSteps = 2;
 
   useEffect(() => {
     if (!open || !templateId) return;
@@ -135,49 +135,62 @@ export function TimelineSetupWizard({
     }
   }
 
-  // Steps: 1 = kickoff, 2 = go-live, 3 = review. Pages are never chosen here —
-  // the BA defines them after Discovery from the project's Pages tab.
-  const showGoLive = step === 2;
-  const showReview = step === 3;
+  // Steps: 1 = dates (kickoff + go-live together), 2 = review. Pages are never
+  // chosen here — the BA defines them after Discovery from the Pages tab.
+  const showDates = step === 1;
+  const showReview = step === 2;
 
-  const canAdvance = step === 1 ? !!kickoff : showGoLive ? !!goLive : true;
+  const canAdvance = !!kickoff && !!goLive;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Create project from {template?.name || "template"} — Step {step} of {totalSteps}</DialogTitle>
+          <DialogTitle>
+            Create project from {template?.name || "template"} — {showDates ? "Dates" : "Review"} (step {step} of {totalSteps})
+          </DialogTitle>
         </DialogHeader>
 
-        {step === 1 && (
-          <div className="space-y-3">
-            <Label>Kickoff date</Label>
-            <Input type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} className="w-56" />
-            <p className="text-xs text-muted-foreground">All tasks will be scheduled forward from this date.</p>
-          </div>
-        )}
-
-        {showGoLive && (
+        {showDates && (
           <div className="space-y-4">
-            <div className="rounded border border-border p-3 bg-muted/30">
-              <div className="text-xs text-muted-foreground">Based on your kickoff date of {fmtDate(kickoff)}</div>
-              <div className="text-base font-medium mt-1">
-                Suggested go-live: {fmtDate(suggested?.suggestedGoLive)}
-                {suggestedWeeks && (
-                  <span className="text-muted-foreground font-normal"> — {suggestedWeeks.label} ({suggestedWeeks.days} days)</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Kickoff date</Label>
+                <Input type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} className="mt-1" />
+                <p className="text-xs text-muted-foreground mt-1">All tasks schedule forward from here.</p>
+              </div>
+              <div>
+                <Label>Go-live date</Label>
+                <Input type="date" value={goLive} onChange={e => { setGoLive(e.target.value); setGoLiveTouched(true); }} className="mt-1" />
+                {chosenWeeks && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {chosenWeeks.label} from kickoff ({chosenWeeks.days} days)
+                    {suggestedWeeks && chosenWeeks.days !== suggestedWeeks.days
+                      ? ` · ${chosenWeeks.days < suggestedWeeks.days ? "shorter" : "longer"} than suggested`
+                      : ""}
+                  </p>
                 )}
               </div>
             </div>
-            <div>
-              <Label>Or choose your own go-live</Label>
-              <Input type="date" value={goLive} onChange={e => { setGoLive(e.target.value); setGoLiveTouched(true); }} className="w-56" />
-              {chosenWeeks && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {chosenWeeks.label} from kickoff ({chosenWeeks.days} days)
-                  {suggestedWeeks && chosenWeeks.days !== suggestedWeeks.days
-                    ? ` · ${chosenWeeks.days < suggestedWeeks.days ? "shorter" : "longer"} than suggested`
-                    : ""}
-                </p>
+            <div className="rounded border border-border p-3 bg-muted/30 flex items-center gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-xs text-muted-foreground">Based on your kickoff date of {fmtDate(kickoff)}</div>
+                <div className="text-base font-medium mt-1">
+                  Suggested go-live: {fmtDate(suggested?.suggestedGoLive)}
+                  {suggestedWeeks && (
+                    <span className="text-muted-foreground font-normal"> — {suggestedWeeks.label} ({suggestedWeeks.days} days)</span>
+                  )}
+                </div>
+              </div>
+              {suggested && goLive !== suggested.suggestedGoLive && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto"
+                  onClick={() => { setGoLive(suggested.suggestedGoLive); setGoLiveTouched(false); }}
+                >
+                  Use suggested
+                </Button>
               )}
             </div>
             {warning && (
@@ -201,8 +214,23 @@ export function TimelineSetupWizard({
 
         {showReview && (
           <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              Kickoff <strong className="text-foreground">{fmtDate(kickoff)}</strong> → Go-live <strong className="text-foreground">{fmtDate(goLive)}</strong> ({chosenWeeks ? `${chosenWeeks.label}, ` : ""}{totalDays} days) · {tasks.length} tasks
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <Label className="text-xs">Kickoff</Label>
+                <Input type="date" value={kickoff} onChange={e => setKickoff(e.target.value)} className="mt-1 h-8 w-40" />
+              </div>
+              <div>
+                <Label className="text-xs">Go-live</Label>
+                <Input
+                  type="date"
+                  value={goLive}
+                  onChange={e => { setGoLive(e.target.value); setGoLiveTouched(true); }}
+                  className="mt-1 h-8 w-40"
+                />
+              </div>
+              <div className="text-sm text-muted-foreground pb-1.5">
+                {chosenWeeks ? `${chosenWeeks.label}, ` : ""}{totalDays} days · {tasks.length} tasks
+              </div>
             </div>
             {hasPageGroups && (
               <div className="rounded border border-info/40 bg-info/5 p-3 flex items-start gap-2">
