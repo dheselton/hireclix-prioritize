@@ -18,6 +18,7 @@ import { TeamPill } from "@/components/pm/TeamsMultiSelect";
 import { teamsFromTask, TEAM_COLORS } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
+import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
@@ -143,6 +144,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                     <div className="flex items-center gap-2">
                       <span>{t.title}</span>
                       <SubtaskBadge count={subCounts.get(t.id)} />
+                      <TimeTotalBadge taskId={t.id} size="sm" />
                       <ClaimButton task={t} onChanged={onChanged} />
                     </div>
                   </td>
