@@ -542,6 +542,122 @@ async function stampDiscoveryLinks(params: {
   }
 }
 
+/**
+ * Create ONE "Define pages" task per project (all page groups combined), owned by the BA.
+ * Pages are no longer chosen at project setup — the BA defines them after Discovery.
+ * The task depends on every discovery task, and every reserved page-phase placeholder
+ * depends on it, so downstream page work is hard-blocked until pages exist.
+ */
+export async function createDefinePagesTask(params: {
+  projectId: string;
+  templateId: string;
+  idByTemp: Map<string, string>;
+}): Promise<string | null> {
+  const { projectId, templateId, idByTemp } = params;
+
+  const { data: groups } = await supabase
+    .from('pm_template_page_groups')
+    .select('id, name, discovery_task_temp_id')
+    .eq('template_id', templateId)
+    .order('sort_order');
+  if (!groups?.length) return null;
+
+  // Skip if one already exists for this project
+  const { data: existingTasks } = await supabase
+    .from('pm_tasks')
+    .select('id, custom_fields')
+    .eq('project_id', projectId);
+  const already = (existingTasks || []).find((t: any) => t.custom_fields?.define_pages === true);
+  if (already) return (already as any).id;
+
+  const groupIds = (groups as any[]).map(g => g.id);
+  const names = (groups as any[]).map(g => g.name).join(', ');
+
+  // Discovery predecessors (live task ids)
+  const discoveryIds = Array.from(new Set(
+    (groups as any[])
+      .map(g => (g.discovery_task_temp_id ? idByTemp.get(g.discovery_task_temp_id) : null))
+      .filter((x): x is string => !!x),
+  ));
+
+  // Reserved placeholders for these groups
+  const { data: reservedTasks } = await supabase
+    .from('pm_tasks')
+    .select('id, start_date, page_group_key')
+    .eq('project_id', projectId)
+    .like('page_group_key', `${RESERVED_PREFIX}%`);
+  const reserved = (reservedTasks || []).filter((t: any) =>
+    groupIds.some(gid => t.page_group_key === `${RESERVED_PREFIX}${gid}`),
+  );
+
+  // Dates: land between the last discovery task and the first reserved page phase
+  let start: string | null = null;
+  let due: string | null = null;
+  if (discoveryIds.length) {
+    const { data: discRows } = await supabase
+      .from('pm_tasks').select('due_date').in('id', discoveryIds);
+    const dues = (discRows || []).map((r: any) => r.due_date).filter(Boolean).sort();
+    if (dues.length) start = addDaysISO(dues[dues.length - 1], 1);
+  }
+  const resStarts = reserved.map((r: any) => r.start_date).filter(Boolean).sort();
+  if (resStarts.length) due = addDaysISO(resStarts[0], -1);
+  if (!start && due) start = addDaysISO(due, -2);
+  if (start && (!due || due < start)) due = addDaysISO(start, 2);
+
+  // Owner: project's BA slot, else any BA-capable user, else unclaimed
+  let assigneeId: string | null = null;
+  const { data: members } = await supabase
+    .from('pm_project_members').select('user_id, role').eq('project_id', projectId);
+  const baMember = (members || []).find((m: any) => String(m.role).toLowerCase() === 'ba');
+  if (baMember) assigneeId = (baMember as any).user_id;
+
+  const { data: maxSort } = await supabase
+    .from('pm_tasks').select('sort_order').eq('project_id', projectId)
+    .order('sort_order', { ascending: false }).limit(1);
+
+  const { data: inserted, error } = await supabase.from('pm_tasks').insert({
+    project_id: projectId,
+    title: `Define pages (${names})`,
+    description:
+      `After Discovery wraps, list every page this site needs for: ${names}.\n\n` +
+      `Adding a page automatically stamps its full task bundle (concept, design, build, QA) ` +
+      `and consumes the reserved time. This task can't be completed until at least one page is defined.`,
+    type: 'research',
+    status: assigneeId ? 'claimed' : 'unclaimed',
+    priority: 'high',
+    assignee_id: assigneeId,
+    duration_days: 2,
+    start_date: start,
+    due_date: due,
+    sort_order: (maxSort?.[0]?.sort_order ?? 0) + 5,
+    teams: ['pm'],
+    custom_fields: { define_pages: true, page_group_ids: groupIds },
+  } as any).select().single();
+  if (error || !inserted) return null;
+  const defineId = (inserted as any).id as string;
+
+  const depRows: any[] = [
+    // Define pages waits on Discovery
+    ...discoveryIds.map(d => ({
+      task_id: defineId, depends_on_task_id: d, type: 'FS', lag_days: 0, reveal_mode: 'always',
+    })),
+    // Reserved page phases wait on Define pages
+    ...reserved.map((r: any) => ({
+      task_id: r.id, depends_on_task_id: defineId, type: 'FS', lag_days: 0, reveal_mode: 'always',
+    })),
+  ];
+  if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
+
+  return defineId;
+}
+
+const addDaysISO = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return localDateISO(d);
+};
+
+
 /** Convert a request project into a full project by applying a template. */
 export const convertRequestToProject = async (params: {
   projectId: string;
