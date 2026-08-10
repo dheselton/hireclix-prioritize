@@ -34,6 +34,7 @@ import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection
 import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPanel";
 import { IncidentContextBanner } from "@/components/pm/workspace/IncidentContextBanner";
 import { UpcomingBanner } from "@/components/pm/workspace/UpcomingBanner";
+import { DefinePagesBanner } from "@/components/pm/workspace/DefinePagesBanner";
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
 import { DesignRoundsSection } from "@/components/pm/drawer/DesignRoundsSection";
 import { BlockerBanner } from "@/components/pm/drawer/Banners";
@@ -210,6 +211,9 @@ export default function TaskWorkspace() {
           <div className="space-y-4 md:space-y-6 min-w-0">
             <RequestContextPanel projectId={task.project_id} />
             <UpcomingBanner taskId={task.id} />
+            {(task.custom_fields as any)?.define_pages === true && (
+              <DefinePagesBanner projectId={task.project_id} />
+            )}
             {(task.custom_fields as any)?.snippet_incident_id && (
               <IncidentContextBanner
                 incidentId={(task.custom_fields as any).snippet_incident_id}

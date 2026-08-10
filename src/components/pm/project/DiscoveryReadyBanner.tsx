@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, X } from "lucide-react";
-import { getGroupsAwaitingPages, type AwaitingGroup } from "@/lib/pm/pageGroups";
+import { getGroupsAwaitingPages, getDefinePagesTask, type AwaitingGroup } from "@/lib/pm/pageGroups";
+import { useMockUsers } from "@/lib/pm/mockUser";
+import { Link } from "react-router-dom";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmTask } from "@/types/pm";
 
@@ -23,6 +25,8 @@ export function DiscoveryReadyBanner({
   onDefinePages: () => void;
 }) {
   const [awaiting, setAwaiting] = useState<AwaitingGroup[]>([]);
+  const [defineTask, setDefineTask] = useState<any>(null);
+  const users = useMockUsers();
   const dismissKey = `pm.discoveryBannerDismissed.${projectId}`;
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try { return sessionStorage.getItem(dismissKey) === "1"; } catch { return false; }
@@ -30,13 +34,19 @@ export function DiscoveryReadyBanner({
 
   const reload = async () => {
     if (!templateId) { setAwaiting([]); return; }
-    setAwaiting(await getGroupsAwaitingPages(projectId, templateId, tasks as any));
+    const [a, dt] = await Promise.all([
+      getGroupsAwaitingPages(projectId, templateId, tasks as any),
+      getDefinePagesTask(projectId),
+    ]);
+    setAwaiting(a);
+    setDefineTask(dt);
   };
   useEffect(() => { reload(); }, [projectId, templateId, tasks]);
   useTasksChanged(reload);
 
   if (dismissed || !awaiting.length) return null;
   const names = awaiting.map(a => a.group.name).join(", ");
+  const owner = defineTask?.assignee_id ? users.find(u => u.id === defineTask.assignee_id) : null;
 
   return (
     <div className="rounded-md border border-amber-500/60 bg-amber-500/5 p-3 flex items-start gap-3">
@@ -44,7 +54,16 @@ export function DiscoveryReadyBanner({
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold">Discovery complete — define pages for {names}</div>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Reserved time is holding the schedule. Add the pages now so the reservation converts into real tasks per page.
+          Reserved time is holding the schedule and all page work is blocked until pages are defined.
+          {owner ? ` Owned by ${owner.name}` : " No owner yet"}
+          {defineTask ? (
+            <>
+              {" · "}
+              <Link to={`/pm/tasks/${defineTask.id}`} className="underline hover:text-foreground">
+                Open the Define pages task
+              </Link>
+            </>
+          ) : null}
         </p>
       </div>
       <Button size="sm" onClick={onDefinePages}>Define pages</Button>

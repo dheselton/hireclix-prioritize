@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Layers, AlertTriangle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  fetchPageGroups, fetchProjectReservations,
+  fetchPageGroups, fetchProjectReservations, getDefinePagesTask,
   removePageFromProject, RESERVED_PREFIX, getGroupsAwaitingPages,
   type PageGroup, type AwaitingGroup,
 } from "@/lib/pm/pageGroups";
@@ -14,6 +14,9 @@ import { emitTasksChanged, useTasksChanged } from "@/lib/pm/refresh";
 import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useMockUsers } from "@/lib/pm/mockUser";
+import { isDone } from "@/types/pm";
 
 export function PagesTab({
   projectId, templateId, tasks,
@@ -24,15 +27,18 @@ export function PagesTab({
   const [addOpen, setAddOpen] = useState(false);
   const [addInitialGroupId, setAddInitialGroupId] = useState<string | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ key: string; label: string } | null>(null);
+  const [defineTask, setDefineTask] = useState<any>(null);
+  const users = useMockUsers();
 
   const reload = async () => {
-    if (!templateId) { setGroups([]); setReservations([]); setAwaiting([]); return; }
-    const [g, r, a] = await Promise.all([
+    if (!templateId) { setGroups([]); setReservations([]); setAwaiting([]); setDefineTask(null); return; }
+    const [g, r, a, dt] = await Promise.all([
       fetchPageGroups(templateId),
       fetchProjectReservations(projectId),
       getGroupsAwaitingPages(projectId, templateId, tasks as any),
+      getDefinePagesTask(projectId),
     ]);
-    setGroups(g); setReservations(r); setAwaiting(a);
+    setGroups(g); setReservations(r); setAwaiting(a); setDefineTask(dt);
   };
   useEffect(() => { reload(); }, [templateId, projectId, tasks]);
   useTasksChanged(reload);
@@ -106,6 +112,24 @@ export function PagesTab({
           <Plus className="h-3 w-3 mr-1" /> Add pages
         </Button>
       </div>
+
+      {defineTask && (
+        <div className="rounded-md border border-border bg-muted/30 p-3 flex items-center gap-3 flex-wrap">
+          <div className="text-sm min-w-0">
+            <span className="font-medium">Pages are defined after Discovery.</span>{" "}
+            <span className="text-muted-foreground">
+              Owned by {defineTask.assignee_id
+                ? (users.find(u => u.id === defineTask.assignee_id)?.name ?? "a team member")
+                : "nobody yet — assign a BA"}
+              {" · "}
+              {isDone(defineTask.status) ? "Definition complete" : "In progress"}
+            </span>
+          </div>
+          <Button size="sm" variant="outline" asChild className="ml-auto">
+            <Link to={`/pm/tasks/${defineTask.id}`}>Open Define pages task</Link>
+          </Button>
+        </div>
+      )}
 
       {awaiting.length > 0 && (
         <div className="rounded-md border border-amber-500/60 bg-amber-500/5 p-3 space-y-2">
