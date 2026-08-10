@@ -2,9 +2,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { emitTasksChanged } from '@/lib/pm/refresh';
 import { getCurrentUserId } from '@/lib/pm/mockUser';
 import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
+import { isDone } from '@/types/pm';
 import { localDateISO } from '@/lib/pm/format';
 import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
-import { RESERVED_PREFIX } from '@/lib/pm/pageGroups';
+import { RESERVED_PREFIX, definedPageCount } from '@/lib/pm/pageGroups';
 
 
 export const fetchProjects = async () => {
