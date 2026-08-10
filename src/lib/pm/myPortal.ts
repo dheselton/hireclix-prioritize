@@ -72,7 +72,133 @@ export function useMyTasks(userId: string | null): MyTasksData {
   };
 }
 
+/* --------------------------------------------------------------- projects */
+
+export type MyProjectRelation = "member" | "requester" | "watcher" | "assignee";
+
+export interface MyProject {
+  id: string;
+  title: string;
+  clientName: string | null;
+  status: string;
+  workType: string;
+  goLiveDate: string | null;
+  relations: MyProjectRelation[];
+  roleLabel: string | null;
+  myOpenTasks: number;
+  myOverdueTasks: number;
+  totalTasks: number;
+  doneTasks: number;
+}
+
+const RELATION_RANK: Record<MyProjectRelation, number> = {
+  member: 0, assignee: 1, requester: 2, watcher: 3,
+};
+
+/**
+ * Every project the current user is attached to — as a team member, a
+ * watcher, the requester, or simply because they own a task on it.
+ */
+export function useMyProjects(userId: string | null) {
+  const [projects, setProjects] = useState<MyProject[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!userId) { setProjects([]); setLoading(false); return; }
+    setLoading(true);
+
+    const [memberRes, requestedRes, myTaskRes] = await Promise.all([
+      supabase.from("pm_project_members").select("project_id, role").eq("user_id", userId),
+      supabase.from("pm_projects").select("id").eq("requested_by", userId),
+      supabase.from("pm_tasks").select("project_id").eq("assignee_id", userId),
+    ]);
+
+    const relations = new Map<string, Set<MyProjectRelation>>();
+    const roles = new Map<string, string>();
+    const add = (id: string, rel: MyProjectRelation) => {
+      if (!id) return;
+      const set = relations.get(id) ?? new Set<MyProjectRelation>();
+      set.add(rel);
+      relations.set(id, set);
+    };
+    for (const r of (memberRes.data ?? []) as any[]) {
+      const role = String(r.role ?? "");
+      add(r.project_id, role === "watcher" ? "watcher" : role === "requester" ? "requester" : "member");
+      if (role && role !== "watcher" && role !== "requester") roles.set(r.project_id, role);
+    }
+    for (const r of (requestedRes.data ?? []) as any[]) add(r.id, "requester");
+    for (const r of (myTaskRes.data ?? []) as any[]) add(r.project_id, "assignee");
+
+    const ids = [...relations.keys()];
+    if (!ids.length) { setProjects([]); setLoading(false); return; }
+
+    const [projRes, taskRes] = await Promise.all([
+      supabase.from("pm_projects").select("id, title, client_id, status, work_type, go_live_date").in("id", ids),
+      supabase.from("pm_tasks").select("id, project_id, status, due_date, assignee_id").in("project_id", ids),
+    ]);
+
+    const projRows = (projRes.data ?? []) as any[];
+    const clientIds = [...new Set(projRows.map(p => p.client_id).filter(Boolean))];
+    const clientNames = new Map<string, string>();
+    if (clientIds.length) {
+      const { data } = await supabase.from("clients").select("id, name").in("id", clientIds);
+      for (const c of (data ?? []) as any[]) clientNames.set(c.id, c.name);
+    }
+
+    const today = todayISO();
+    const stats = new Map<string, { total: number; done: number; mine: number; overdue: number }>();
+    for (const t of (taskRes.data ?? []) as any[]) {
+      const s = stats.get(t.project_id) ?? { total: 0, done: 0, mine: 0, overdue: 0 };
+      s.total += 1;
+      const done = isDone(t.status);
+      if (done) s.done += 1;
+      if (t.assignee_id === userId && !done) {
+        s.mine += 1;
+        if (t.due_date && t.due_date < today) s.overdue += 1;
+      }
+      stats.set(t.project_id, s);
+    }
+
+    const out: MyProject[] = projRows.map(p => {
+      const s = stats.get(p.id) ?? { total: 0, done: 0, mine: 0, overdue: 0 };
+      const rels = [...(relations.get(p.id) ?? new Set<MyProjectRelation>())]
+        .sort((a, b) => RELATION_RANK[a] - RELATION_RANK[b]);
+      return {
+        id: p.id,
+        title: p.title,
+        clientName: p.client_id ? clientNames.get(p.client_id) ?? null : null,
+        status: p.status,
+        workType: p.work_type ?? "project",
+        goLiveDate: p.go_live_date ?? null,
+        relations: rels,
+        roleLabel: roles.get(p.id) ?? null,
+        myOpenTasks: s.mine,
+        myOverdueTasks: s.overdue,
+        totalTasks: s.total,
+        doneTasks: s.done,
+      };
+    });
+
+    // Active work first, then soonest go-live, then title.
+    const archived = (st: string) => st === "complete" || st === "archived";
+    out.sort((a, b) => {
+      if (archived(a.status) !== archived(b.status)) return archived(a.status) ? 1 : -1;
+      const ga = a.goLiveDate ?? "9999-12-31";
+      const gb = b.goLiveDate ?? "9999-12-31";
+      if (ga !== gb) return ga.localeCompare(gb);
+      return a.title.localeCompare(b.title);
+    });
+
+    setProjects(out);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
+  return { projects, loading, reload: load };
+}
+
 /* --------------------------------------------------------------- requests */
+
 
 export interface MyRequest {
   id: string;
