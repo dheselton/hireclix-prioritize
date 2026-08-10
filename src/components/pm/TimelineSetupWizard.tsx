@@ -4,10 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, AlertTriangle, ArrowRight, Rocket, Plus, X } from "lucide-react";
+import { Lock, AlertTriangle, ArrowRight, Rocket, FileText } from "lucide-react";
 import { fetchTemplateBundle, buildPreviewFromTemplate, createProjectFromTemplate, type PreviewTask } from "@/lib/pm/api";
-import { fetchPageGroups, fetchPagePresets, expandPageGroupsInTemplate, type PageGroup, type PagePreset, type SelectedPage } from "@/lib/pm/pageGroups";
+import { fetchPageGroups, expandPageGroupsInTemplate, type PageGroup } from "@/lib/pm/pageGroups";
 import { scheduleForwardFromKickoff, fitToWindow, type ScheduleDep } from "@/lib/pm/scheduler";
 import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
@@ -176,6 +175,18 @@ export function TimelineSetupWizard({
             <div className="text-sm text-muted-foreground">
               Kickoff <strong className="text-foreground">{fmtDate(kickoff)}</strong> → Go-live <strong className="text-foreground">{fmtDate(goLive)}</strong> ({totalDays} days) · {tasks.length} tasks
             </div>
+            {hasPageGroups && (
+              <div className="rounded border border-info/40 bg-info/5 p-3 flex items-start gap-2">
+                <FileText className="h-4 w-4 text-info mt-0.5 shrink-0" />
+                <div className="text-xs text-muted-foreground">
+                  <span className="text-foreground font-medium">Pages are defined after Discovery.</span>{" "}
+                  Time is reserved now across every phase your page work touches
+                  ({pageGroups.map(g => g.name).join(", ")}). A <strong className="text-foreground">Define pages</strong> task
+                  will be created for the BA — once they list the real pages, each one stamps out its full
+                  concept / design / build / QA bundle and consumes the reserved time.
+                </div>
+              </div>
+            )}
             <div className="max-h-[420px] overflow-auto border border-border rounded">
               {phases.map(([phaseName, phaseTasks]) => (
                 <div key={phaseName} className="border-b border-border last:border-b-0">
