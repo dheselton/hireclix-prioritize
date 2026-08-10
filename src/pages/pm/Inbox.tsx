@@ -470,146 +470,161 @@ export default function Inbox() {
                     const wt = (projectGroup.project as any)?.work_type ?? "project";
                     const reqType = (projectGroup.project?.custom_fields as any)?.request_type as string | undefined;
                     return (
-                    <div key={projectGroup.projectId} className="pl-4 md:pl-6 space-y-2">
-                      <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-                        <Checkbox
-                          checked={projectAll ? true : projectNone ? false : "indeterminate"}
-                          onCheckedChange={(v) => {
-                            setSelected(prev => {
-                              const next = new Set(prev);
-                              for (const id of projectTaskIds) {
-                                if (v) next.add(id); else next.delete(id);
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                        {projectGroup.project ? (
-                          <Link to={`/pm/projects/${projectGroup.project.id}`} className="text-sm font-medium hover:underline">
-                            {projectGroup.project.title}
-                          </Link>
-                        ) : (
-                          <span className="text-sm font-medium text-muted-foreground">Unknown project</span>
-                        )}
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted uppercase">
-                          {(reqType || wt).replace(/_/g, " ")}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {projectGroup.tasks.length} task{projectGroup.tasks.length === 1 ? "" : "s"}
-                        </span>
-                      </div>
+                      <div key={projectGroup.projectId} className="pl-4 md:pl-6 space-y-2">
+                        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleProject(projectGroup.projectId)}
+                            className="flex items-center justify-center h-6 w-6 rounded hover:bg-muted/70 transition"
+                            aria-label={collapsedProjects.has(projectGroup.projectId) ? "Expand project" : "Collapse project"}
+                          >
+                            {collapsedProjects.has(projectGroup.projectId) ? (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </button>
+                          <Checkbox
+                            checked={projectAll ? true : projectNone ? false : "indeterminate"}
+                            onCheckedChange={(v) => {
+                              setSelected(prev => {
+                                const next = new Set(prev);
+                                for (const id of projectTaskIds) {
+                                  if (v) next.add(id); else next.delete(id);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                          {projectGroup.project ? (
+                            <Link to={`/pm/projects/${projectGroup.project.id}`} className="text-sm font-medium hover:underline">
+                              {projectGroup.project.title}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-medium text-muted-foreground">Unknown project</span>
+                          )}
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted uppercase">
+                            {(reqType || wt).replace(/_/g, " ")}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {projectGroup.tasks.length} task{projectGroup.tasks.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
 
-                      <div className="space-y-2">
-                        {projectGroup.tasks.map(({ task, project, clientName, requesterName }) => {
-                          const taskWt = (project as any)?.work_type ?? "project";
-                          const taskReqType = (project?.custom_fields as any)?.request_type as string | undefined;
-                          const d = declineInfo(task);
-                          return (
-                            <Card key={task.id} className={cn("transition", selected.has(task.id) && "ring-1 ring-primary")}>
-                              <CardContent className="p-3 flex gap-3">
-                                <Checkbox
-                                  className="mt-1"
-                                  checked={selected.has(task.id)}
-                                  onCheckedChange={() => toggle(task.id)}
-                                  aria-label={`Select ${task.title}`}
-                                />
-                                <div className="min-w-0 flex-1 space-y-1.5">
-                                  <div className="flex items-start gap-2 flex-wrap">
-                                    <Link
-                                      to={`/pm/tasks/${task.id}`}
-                                      className="font-medium text-sm hover:underline break-words"
-                                    >
-                                      {task.title}
-                                    </Link>
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted uppercase">
-                                      {(taskReqType || taskWt).replace(/_/g, " ")}
-                                    </span>
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-border text-muted-foreground uppercase">
-                                      {TYPE_LABEL[task.type]}
-                                    </span>
+                        {!collapsedProjects.has(projectGroup.projectId) && (
+                          <div className="space-y-2">
+                            {projectGroup.tasks.map(({ task, project, clientName, requesterName }) => {
+                              const taskWt = (project as any)?.work_type ?? "project";
+                              const taskReqType = (project?.custom_fields as any)?.request_type as string | undefined;
+                              const d = declineInfo(task);
+                              return (
+                                <Card key={task.id} className={cn("transition", selected.has(task.id) && "ring-1 ring-primary")}>
+                                  <CardContent className="p-3 flex gap-3">
+                                    <Checkbox
+                                      className="mt-1"
+                                      checked={selected.has(task.id)}
+                                      onCheckedChange={() => toggle(task.id)}
+                                      aria-label={`Select ${task.title}`}
+                                    />
+                                    <div className="min-w-0 flex-1 space-y-1.5">
+                                      <div className="flex items-start gap-2 flex-wrap">
+                                        <Link
+                                          to={`/pm/tasks/${task.id}`}
+                                          className="font-medium text-sm hover:underline break-words"
+                                        >
+                                          {task.title}
+                                        </Link>
+                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted uppercase">
+                                          {(taskReqType || taskWt).replace(/_/g, " ")}
+                                        </span>
+                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-border text-muted-foreground uppercase">
+                                          {TYPE_LABEL[task.type]}
+                                        </span>
 
-                                    {d && (
-                                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">
-                                        Declined
-                                      </span>
-                                    )}
-                                  </div>
+                                        {d && (
+                                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">
+                                            Declined
+                                          </span>
+                                        )}
+                                      </div>
 
-                                  <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                                    {clientName && <span>{clientName}</span>}
-                                    {requesterName && <span>Requested by {requesterName}</span>}
-                                    <span>Submitted {fmtDate(task.created_at)}</span>
-                                    {project && (
-                                      <Link to={`/pm/projects/${project.id}`} className="hover:underline inline-flex items-center gap-1">
-                                        {project.title} <ExternalLink className="h-3 w-3" />
-                                      </Link>
-                                    )}
-                                  </div>
+                                      <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                                        {clientName && <span>{clientName}</span>}
+                                        {requesterName && <span>Requested by {requesterName}</span>}
+                                        <span>Submitted {fmtDate(task.created_at)}</span>
+                                        {project && (
+                                          <Link to={`/pm/projects/${project.id}`} className="hover:underline inline-flex items-center gap-1">
+                                            {project.title} <ExternalLink className="h-3 w-3" />
+                                          </Link>
+                                        )}
+                                      </div>
 
-                                  {snippet(task.description) && (
-                                    <p className="text-xs text-muted-foreground/90">{snippet(task.description)}</p>
-                                  )}
+                                      {snippet(task.description) && (
+                                        <p className="text-xs text-muted-foreground/90">{snippet(task.description)}</p>
+                                      )}
 
-                                  {d && (
-                                    <p className="text-xs text-destructive/90">
-                                      Reason: {d.reason} · {fmtDate(d.at)}
-                                    </p>
-                                  )}
+                                      {d && (
+                                        <p className="text-xs text-destructive/90">
+                                          Reason: {d.reason} · {fmtDate(d.at)}
+                                        </p>
+                                      )}
 
-                                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                                    {d ? (
-                                      <Button
-                                        size="sm" variant="outline" className="h-7 text-xs"
-                                        onClick={async () => { await restoreTask(task, user?.id); toast.success("Back in the inbox"); reload(); }}
-                                      >
-                                        <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restore
-                                      </Button>
-                                    ) : (
-                                      <>
-                                        <AssigneePopover
-                                          taskId={task.id}
-                                          assigneeId={task.assignee_id}
-                                          onChanged={reload}
-                                          trigger={
-                                            <span className="inline-flex items-center h-7 px-2 rounded-md border border-input bg-background text-xs hover:bg-accent">
-                                              {task.assignee_id ? userNames.get(task.assignee_id) ?? "Assigned" : "Assign owner"}
-                                            </span>
-                                          }
-                                        />
-                                        <Select value={task.priority} onValueChange={(v) => setPriority(task, v as TaskPriority)}>
-                                          <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                            {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                                          </SelectContent>
-                                        </Select>
-                                        <ClaimButton task={task} onChanged={reload} size="sm" />
-                                        {project && taskWt === "request" && (
+                                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                                        {d ? (
                                           <Button
                                             size="sm" variant="outline" className="h-7 text-xs"
-                                            onClick={() => setConvertProjectId(project.id)}
+                                            onClick={async () => { await restoreTask(task, user?.id); toast.success("Back in the inbox"); reload(); }}
                                           >
-                                            <Rocket className="h-3.5 w-3.5 mr-1" /> Convert to project
+                                            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restore
                                           </Button>
+                                        ) : (
+                                          <>
+                                            <AssigneePopover
+                                              taskId={task.id}
+                                              assigneeId={task.assignee_id}
+                                              onChanged={reload}
+                                              trigger={
+                                                <span className="inline-flex items-center h-7 px-2 rounded-md border border-input bg-background text-xs hover:bg-accent">
+                                                  {task.assignee_id ? userNames.get(task.assignee_id) ?? "Assigned" : "Assign owner"}
+                                                </span>
+                                              }
+                                            />
+                                            <Select value={task.priority} onValueChange={(v) => setPriority(task, v as TaskPriority)}>
+                                              <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                                              <SelectContent>
+                                                {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                              </SelectContent>
+                                            </Select>
+                                            <ClaimButton task={task} onChanged={reload} size="sm" />
+                                            {project && taskWt === "request" && (
+                                              <Button
+                                                size="sm" variant="outline" className="h-7 text-xs"
+                                                onClick={() => setConvertProjectId(project.id)}
+                                              >
+                                                <Rocket className="h-3.5 w-3.5 mr-1" /> Convert to project
+                                              </Button>
+                                            )}
+                                            <Button
+                                              size="sm" variant="ghost" className="h-7 text-xs text-destructive"
+                                              onClick={() => setDeclineTarget([task])}
+                                            >
+                                              <Ban className="h-3.5 w-3.5 mr-1" /> Decline
+                                            </Button>
+                                          </>
                                         )}
-                                        <Button
-                                          size="sm" variant="ghost" className="h-7 text-xs text-destructive"
-                                          onClick={() => setDeclineTarget([task])}
-                                        >
-                                          <Ban className="h-3.5 w-3.5 mr-1" /> Decline
-                                        </Button>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
-              )}
+                    );
+                  })
+                )}
+              </div>
             );
           })}
         </div>
