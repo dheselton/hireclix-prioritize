@@ -247,7 +247,7 @@ export default function MyPortal() {
   const userId = user?.id ?? null;
   const [params, setParams] = useSearchParams();
   const raw = params.get("tab");
-  const tab: TabId = raw === "requests" || raw === "messages" ? raw : "tasks";
+  const tab: TabId = raw === "requests" || raw === "messages" || raw === "projects" ? raw : "tasks";
   const setTab = (t: TabId) => {
     const next = new URLSearchParams(params);
     next.set("tab", t);
