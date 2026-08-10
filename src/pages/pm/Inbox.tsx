@@ -95,6 +95,9 @@ export default function Inbox() {
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
+  /** Rows visible for the current tab, before type/search narrowing. */
+  const tabRows = useMemo(() => {
+    return rows.filter(r => {
       const declined = isDeclined(r.task);
       if (tab === "declined") return declined;
       if (declined) return false;
@@ -105,7 +108,32 @@ export default function Inbox() {
     });
   }, [rows, tab]);
 
-  const counts = useMemo(() => {
+  /** Counts per task type within the current tab — drives the filter chips. */
+  const typeCounts = useMemo(() => {
+    const m = new Map<TaskType, number>();
+    for (const r of tabRows) m.set(r.task.type, (m.get(r.task.type) ?? 0) + 1);
+    return m;
+  }, [tabRows]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return tabRows.filter(r => {
+      if (typeFilter.size && !typeFilter.has(r.task.type)) return false;
+      if (!q) return true;
+      const hay = [
+        r.task.title,
+        r.task.description,
+        r.clientName,
+        r.requesterName,
+        r.project?.title,
+        TYPE_LABEL[r.task.type],
+        (r.project?.custom_fields as any)?.request_type,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [tabRows, typeFilter, query]);
+
+
     const open = rows.filter(r => !isDeclined(r.task));
     return {
       all: open.length,
