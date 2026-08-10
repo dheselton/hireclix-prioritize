@@ -50,7 +50,7 @@ export function SubtasksSection({ task }: { task: PmTask }) {
         phase_id: task.phase_id ?? null,
         title,
         type: task.type,
-        status: "not_started",
+        status: "claimed",
         priority: task.priority,
         assignee_id: task.assignee_id ?? null,
         due_date: task.due_date ?? null,
@@ -67,9 +67,9 @@ export function SubtasksSection({ task }: { task: PmTask }) {
   }
 
   async function toggle(child: PmTask) {
-    const next = isDone(child.status) ? "in_progress" : "complete";
+    const next: PmTask["status"] = isDone(child.status) ? "in_progress" : "complete";
     try {
-      await updateTask(child.id, { status: next as PmTask["status"] });
+      await updateTask(child.id, { status: next });
       emitTasksChanged();
       await load();
     } catch {
