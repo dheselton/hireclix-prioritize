@@ -239,6 +239,58 @@ export default function Inbox() {
         </div>
       </div>
 
+      {/* Search + task-type filters */}
+      <div className="flex flex-col md:flex-row md:items-center gap-2">
+        <div className="relative md:w-72">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search title, client, project, requester…"
+            className="h-8 pl-8 text-sm"
+            aria-label="Search inbox"
+          />
+        </div>
+        <div className="touch-scroll-x no-scrollbar -mx-1 px-1 flex-1">
+          <div className="flex items-center gap-1.5 min-w-max">
+            {(Object.keys(TYPE_LABEL) as TaskType[])
+              .filter(t => (typeCounts.get(t) ?? 0) > 0 || typeFilter.has(t))
+              .map(t => {
+                const on = typeFilter.has(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTypeFilter(prev => {
+                      const next = new Set(prev);
+                      next.has(t) ? next.delete(t) : next.add(t);
+                      return next;
+                    })}
+                    className={cn(
+                      "h-8 px-3 rounded-full text-xs border transition-colors whitespace-nowrap shrink-0",
+                      on
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-muted",
+                    )}
+                  >
+                    {TYPE_LABEL[t]} ({typeCounts.get(t) ?? 0})
+                  </button>
+                );
+              })}
+            {(typeFilter.size > 0 || query) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs shrink-0"
+                onClick={() => { setTypeFilter(new Set()); setQuery(""); }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Bulk bar */}
       {selectedTasks.length > 0 && (
         <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 shadow">
@@ -254,6 +306,21 @@ export default function Inbox() {
               {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select onValueChange={(v) => bulkStatus(v as TaskStatus)}>
+            <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Change status" /></SelectTrigger>
+            <SelectContent>
+              {TASK_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            onClick={() => bulkStatus("complete")}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Mark complete
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
