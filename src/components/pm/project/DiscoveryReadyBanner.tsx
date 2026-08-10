@@ -26,7 +26,7 @@ export function DiscoveryReadyBanner({
 }) {
   const [awaiting, setAwaiting] = useState<AwaitingGroup[]>([]);
   const [defineTask, setDefineTask] = useState<any>(null);
-  const { users } = useMockUsers();
+  const users = useMockUsers();
   const dismissKey = `pm.discoveryBannerDismissed.${projectId}`;
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try { return sessionStorage.getItem(dismissKey) === "1"; } catch { return false; }
