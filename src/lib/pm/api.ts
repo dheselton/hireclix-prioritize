@@ -688,6 +688,8 @@ export const convertRequestToProject = async (params: {
     sortOffset: 1000, // existing request tasks keep their sort order at top
   });
   await stampDiscoveryLinks({ templateId: template.id, idByTemp });
+  await createDefinePagesTask({ projectId, templateId: template.id, idByTemp });
+
 
   emitTasksChanged();
 };
