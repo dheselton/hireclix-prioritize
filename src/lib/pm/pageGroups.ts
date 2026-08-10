@@ -208,6 +208,30 @@ export function expandPageGroupsInTemplate(params: {
  * per-phase duration / parallel_cap (clamped to 0). When a reservation drops to 0, it stays
  * as a 0-day marker so deps remain valid.
  */
+/** The single "Define pages" task for a project (BA-owned), if one exists. */
+export const getDefinePagesTask = async (projectId: string) => {
+  const { data } = await supabase
+    .from('pm_tasks')
+    .select('id, title, status, assignee_id, due_date, custom_fields')
+    .eq('project_id', projectId);
+  return ((data || []) as any[]).find(t => t.custom_fields?.define_pages === true) || null;
+};
+
+/** How many real (non-reserved) pages have been defined on a project. */
+export const definedPageCount = async (projectId: string) => {
+  const { data } = await supabase
+    .from('pm_tasks')
+    .select('page_group_key')
+    .eq('project_id', projectId)
+    .not('page_group_key', 'is', null);
+  const keys = new Set(
+    ((data || []) as any[])
+      .map(r => r.page_group_key as string)
+      .filter(k => k && !k.startsWith(RESERVED_PREFIX)),
+  );
+  return keys.size;
+};
+
 export const addPageToProject = async (params: {
   projectId: string;
   templateId: string;
@@ -215,6 +239,7 @@ export const addPageToProject = async (params: {
   pageLabel: string;
 }): Promise<{ insertedCount: number }> => {
   const { projectId, templateId, pageGroupId, pageLabel } = params;
+
 
   const [{ data: slots }, { data: deps }, { data: phases }, { data: groupRow }] = await Promise.all([
     supabase.from('pm_template_tasks').select('*').eq('template_id', templateId).eq('page_group_id', pageGroupId).order('sort_order'),
