@@ -376,6 +376,10 @@ export default function Inbox() {
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted uppercase">
                         {(reqType || wt).replace(/_/g, " ")}
                       </span>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-border text-muted-foreground uppercase">
+                        {TYPE_LABEL[task.type]}
+                      </span>
+
                       {d && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">
                           Declined
