@@ -3,9 +3,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PortalMessageThread } from "@/components/pm/portal/PortalMessageThread";
-import { AlertTriangle, CircleDot, ListTodo, MessageSquare, FileText, ExternalLink, Paperclip } from "lucide-react";
+import { AlertTriangle, CircleDot, ListTodo, MessageSquare, FileText, ExternalLink, Paperclip, FolderKanban } from "lucide-react";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
@@ -13,18 +14,79 @@ import { useCurrentUser } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
 import { buildQueueLink } from "@/lib/pm/links";
 import {
-  useMyTasks, useMyRequests, useMyMessageThreads, requestRef,
+  useMyTasks, useMyRequests, useMyMessageThreads, useMyProjects, requestRef,
   fetchRequestTimeline, fetchRequestFiles, markThreadRead,
-  type MyRequest, type RequestTimelineEntry, type RequestFile,
+  type MyRequest, type RequestTimelineEntry, type RequestFile, type MyProject,
 } from "@/lib/pm/myPortal";
 import type { PmTask } from "@/types/pm";
 
-type TabId = "tasks" | "requests" | "messages";
+type TabId = "tasks" | "projects" | "requests" | "messages";
 const TABS = [
   { id: "tasks", label: "My Tasks" },
+  { id: "projects", label: "My Projects" },
   { id: "requests", label: "My Requests" },
   { id: "messages", label: "Messages" },
 ] as const;
+
+const RELATION_LABEL: Record<string, string> = {
+  member: "Team", assignee: "Assigned", requester: "Requester", watcher: "Watching",
+};
+
+/* ------------------------------------------------------------ project list */
+
+function MyProjectCard({ project }: { project: MyProject }) {
+  const pct = project.totalTasks ? Math.round((project.doneTasks / project.totalTasks) * 100) : 0;
+  const roleChip = project.roleLabel
+    ? project.roleLabel.replace(/_/g, " ")
+    : RELATION_LABEL[project.relations[0]] ?? "Team";
+
+  return (
+    <div className="rounded-md border border-border/60 bg-card p-3 space-y-2 hover:bg-accent/20 transition">
+      <div className="flex items-start gap-3">
+        <Link to={`/pm/projects/${project.id}`} className="flex-1 min-w-0">
+          <span className="block text-sm font-medium truncate hover:underline">{project.title}</span>
+          <span className="block text-[11px] text-muted-foreground truncate">
+            {project.clientName ?? "No client"}
+            {project.goLiveDate ? ` · Go-live ${fmtDate(project.goLiveDate)}` : ""}
+          </span>
+        </Link>
+        <Badge variant="outline" className="text-[10px] capitalize shrink-0">
+          {project.status.replace(/_/g, " ")}
+        </Badge>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Progress value={pct} className="h-1.5 flex-1" />
+        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+          {project.doneTasks}/{project.totalTasks} done
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant="secondary" className="text-[10px] capitalize">{roleChip}</Badge>
+        {project.relations.filter(r => r !== "member").map(r => (
+          <Badge key={r} variant="outline" className="text-[10px]">{RELATION_LABEL[r]}</Badge>
+        ))}
+        <span className="flex-1" />
+        {project.myOverdueTasks > 0 && (
+          <Link
+            to={buildQueueLink({ base: `/pm/projects/${project.id}`, chips: ["assigned_to_me", "overdue"] })}
+            className="text-[11px] font-medium text-destructive hover:underline"
+          >
+            {project.myOverdueTasks} overdue
+          </Link>
+        )}
+        <Link
+          to={buildQueueLink({ base: `/pm/projects/${project.id}`, chips: ["assigned_to_me"] })}
+          className="text-[11px] text-info hover:underline"
+        >
+          {project.myOpenTasks} of my tasks
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 
 /* --------------------------------------------------------------- task list */
 
