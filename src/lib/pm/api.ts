@@ -49,8 +49,18 @@ export const fetchDependencies = async (projectId: string) => {
 
 export const updateTask = async (id: string, patch: Partial<PmTask>) => {
   // Load prior state for change detection
-  const { data: prev } = await supabase.from('pm_tasks').select('assignee_id, status, title, project_id').eq('id', id).maybeSingle();
+  const { data: prev } = await supabase.from('pm_tasks').select('assignee_id, status, title, project_id, custom_fields').eq('id', id).maybeSingle();
+
+  // Guard: the BA's "Define pages" task can't be completed until pages exist
+  if (patch.status && isDone(patch.status as any) && (prev as any)?.custom_fields?.define_pages === true) {
+    const count = await definedPageCount((prev as any).project_id);
+    if (count === 0) {
+      throw new Error('Define at least one page before completing this task — open the Pages tab to add them.');
+    }
+  }
+
   const { data, error } = await supabase.from('pm_tasks').update(patch as any).eq('id', id).select().single();
+
   if (error) throw error;
   emitTasksChanged();
   // Fire notifications (best-effort; never block on failure)
