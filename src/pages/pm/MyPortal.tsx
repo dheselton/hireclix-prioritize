@@ -272,7 +272,7 @@ export default function MyPortal() {
       <div>
         <h1 className="text-xl font-semibold">My Work</h1>
         <p className="text-sm text-muted-foreground">
-          Everything assigned to you, everything you've requested, and your project conversations.
+          Everything assigned to you, the projects you're attached to, your requests, and your project conversations.
         </p>
       </div>
 
