@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy, RotateCcw, Headphones, Bug, ListPlus } from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
+import { ProjectAssignmentsBar } from "./ProjectAssignmentsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
@@ -193,6 +194,8 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
           )}
         </div>
       </div>
+
+      <ProjectAssignmentsBar projectId={project.id} />
 
       <SharePortalDialog
         open={shareOpen}
