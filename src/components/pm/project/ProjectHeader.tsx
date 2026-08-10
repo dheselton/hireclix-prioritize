@@ -194,6 +194,8 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
         </div>
       </div>
 
+      <ProjectAssignmentsBar projectId={project.id} />
+
       <SharePortalDialog
         open={shareOpen}
         onOpenChange={setShareOpen}
