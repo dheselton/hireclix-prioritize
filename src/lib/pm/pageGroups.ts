@@ -296,6 +296,21 @@ export const addPageToProject = async (params: {
     .filter(r => r.task_id && r.depends_on_task_id);
   if (depRows.length) await supabase.from('pm_task_dependencies').insert(depRows as any);
 
+  // Hard gate: every new page task waits on the BA's "Define pages" task
+  const definePages = await getDefinePagesTask(projectId);
+  if (definePages) {
+    const gateRows = Array.from(tempToReal.values()).map(id => ({
+      task_id: id,
+      depends_on_task_id: definePages.id,
+      type: 'FS',
+      lag_days: 0,
+      reveal_mode: 'always',
+    }));
+    if (gateRows.length) await supabase.from('pm_task_dependencies').insert(gateRows as any);
+  }
+
+
+
   // Shrink reservation placeholders for this group, per phase
   const reservedKey = `${RESERVED_PREFIX}${pageGroupId}`;
   const { data: resTasks } = await supabase
