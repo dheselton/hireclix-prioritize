@@ -153,6 +153,37 @@ export default function Inbox() {
     } as Record<TabId, number>;
   }, [rows]);
 
+  /** Group visible rows by client → project → tasks for easier triage at scale. */
+  const groups = useMemo<ClientGroup[]>(() => {
+    const map = new Map<string, ClientGroup>();
+    for (const r of filtered) {
+      const clientId = r.project?.client_id ?? "_no_client";
+      const clientName = r.clientName ?? "Unknown client";
+      if (!map.has(clientId)) {
+        map.set(clientId, { clientId, clientName, projects: new Map() });
+      }
+      const cg = map.get(clientId)!;
+      const projectId = r.project?.id ?? "_no_project";
+      if (!cg.projects.has(projectId)) {
+        cg.projects.set(projectId, { projectId, project: r.project, tasks: [] });
+      }
+      cg.projects.get(projectId)!.tasks.push(r);
+    }
+    return Array.from(map.values())
+      .sort((a, b) => a.clientName.localeCompare(b.clientName))
+      .map(cg => {
+        const sortedProjects = Array.from(cg.projects.values())
+          .sort((a, b) => (a.project?.title ?? "").localeCompare(b.project?.title ?? ""))
+          .map(pg => ({
+            ...pg,
+            tasks: pg.tasks.sort((a, b) =>
+              (a.task.created_at || "").localeCompare(b.task.created_at || "")
+            ),
+          }));
+        return { ...cg, projects: new Map(sortedProjects.map(pg => [pg.projectId, pg])) };
+      });
+  }, [filtered]);
+
   // Selection is scoped to the visible tab.
   useEffect(() => { setSelected(new Set()); }, [tab]);
   const visibleIds = filtered.map(r => r.task.id);
