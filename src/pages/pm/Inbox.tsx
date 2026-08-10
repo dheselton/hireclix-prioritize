@@ -432,6 +432,18 @@ export default function Inbox() {
             return (
               <div key={clientGroup.clientId} className="space-y-3">
                 <div className="flex items-center gap-2 border-l-2 border-primary/40 pl-3 py-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleClient(clientGroup.clientId)}
+                    className="flex items-center justify-center h-6 w-6 rounded hover:bg-muted transition"
+                    aria-label={collapsedClients.has(clientGroup.clientId) ? "Expand client" : "Collapse client"}
+                  >
+                    {collapsedClients.has(clientGroup.clientId) ? (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
                   <Checkbox
                     checked={clientAll ? true : clientNone ? false : "indeterminate"}
                     onCheckedChange={(v) => {
@@ -450,7 +462,7 @@ export default function Inbox() {
                   </span>
                 </div>
 
-                {Array.from(clientGroup.projects.values()).map(projectGroup => {
+                {!collapsedClients.has(clientGroup.clientId) && (
                   const projectTaskIds = projectGroup.tasks.map(r => r.task.id);
                   const projectAll = projectTaskIds.length > 0 && projectTaskIds.every(id => selected.has(id));
                   const projectNone = projectTaskIds.every(id => !selected.has(id));
