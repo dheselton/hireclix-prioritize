@@ -15,6 +15,7 @@ import { teamsFromTask } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmTask } from "@/types/pm";
 import { TagPillList } from "@/components/pm/tags/TagPill";
+import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 
 
 interface Props {
@@ -82,6 +83,7 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
               Due {fmtDate(task.due_date)}
             </span>
           )}
+          <TimeTotalBadge taskId={task.id} size="sm" />
           <TagPillList tags={task.tags ?? []} max={2} />
         </div>
       </div>

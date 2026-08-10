@@ -18,6 +18,7 @@ import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmProject, PmTask } from "@/types/pm";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TagPillList } from "@/components/pm/tags/TagPill";
+import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
 import { getTaskKind } from "@/lib/pm/taskKind";
 
@@ -112,6 +113,7 @@ export function ProjectTaskCard({
                 Due {fmtDate(task.due_date)}
               </span>
             )}
+            <TimeTotalBadge taskId={task.id} size="sm" />
           </div>
           <div className="flex items-center gap-2">
             {unclaimed ? (

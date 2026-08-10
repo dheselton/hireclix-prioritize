@@ -23,6 +23,7 @@ import type { StatusGroupId } from "@/lib/pm/statusGroups";
 import { cn } from "@/lib/utils";
 import { TagPillList } from "@/components/pm/tags/TagPill";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
+import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 import { getTaskKind, getKindGroupLabel } from "@/lib/pm/taskKind";
 
 
@@ -165,6 +166,7 @@ function BoardTaskCardInner({
                   {count && count.total > 0 && (
                     <span className="text-[11px] text-muted-foreground">{count.done}/{count.total} subtasks</span>
                   )}
+                  <TimeTotalBadge taskId={task.id} />
                 </div>
                 <TagPillList tags={task.tags ?? []} max={3} />
                 <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
