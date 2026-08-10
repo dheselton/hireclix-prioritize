@@ -463,12 +463,13 @@ export default function Inbox() {
                 </div>
 
                 {!collapsedClients.has(clientGroup.clientId) && (
-                  const projectTaskIds = projectGroup.tasks.map(r => r.task.id);
-                  const projectAll = projectTaskIds.length > 0 && projectTaskIds.every(id => selected.has(id));
-                  const projectNone = projectTaskIds.every(id => !selected.has(id));
-                  const wt = (projectGroup.project as any)?.work_type ?? "project";
-                  const reqType = (projectGroup.project?.custom_fields as any)?.request_type as string | undefined;
-                  return (
+                  Array.from(clientGroup.projects.values()).map(projectGroup => {
+                    const projectTaskIds = projectGroup.tasks.map(r => r.task.id);
+                    const projectAll = projectTaskIds.length > 0 && projectTaskIds.every(id => selected.has(id));
+                    const projectNone = projectTaskIds.every(id => !selected.has(id));
+                    const wt = (projectGroup.project as any)?.work_type ?? "project";
+                    const reqType = (projectGroup.project?.custom_fields as any)?.request_type as string | undefined;
+                    return (
                     <div key={projectGroup.projectId} className="pl-4 md:pl-6 space-y-2">
                       <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
                         <Checkbox
