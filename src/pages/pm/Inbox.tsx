@@ -171,6 +171,21 @@ export default function Inbox() {
     reload();
   }
 
+  /** Bulk status change — the fast path for closing out dozens of stale requests. */
+  async function bulkStatus(status: TaskStatus) {
+    const n = selectedTasks.length;
+    let failed = 0;
+    for (const t of selectedTasks) {
+      try { await updateTask(t.id, { status }); } catch { failed++; }
+    }
+    if (failed === n) toast.error("Couldn't update status");
+    else if (failed) toast.warning(`${n - failed} updated, ${failed} failed`);
+    else toast.success(`${n} task${n === 1 ? "" : "s"} moved to ${status.replace(/_/g, " ")}`);
+    setSelected(new Set());
+    reload();
+  }
+
+
   async function setPriority(task: PmTask, priority: TaskPriority) {
     await updateTask(task.id, { priority });
     toast.success("Priority updated");
