@@ -10,7 +10,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink, Search, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchProjects, fetchTasks, updateTask } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
@@ -20,9 +21,11 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { fmtDate } from "@/lib/pm/format";
 import { declineTask, restoreTask, isDeclined, declineInfo, snippet } from "@/lib/pm/inbox";
-import { PRIORITIES, type PmProject, type PmTask, type TaskPriority } from "@/types/pm";
+import { TYPE_LABEL } from "@/hooks/useTypeFilter";
+import { PRIORITIES, TASK_STATUSES, type PmProject, type PmTask, type TaskPriority, type TaskStatus, type TaskType } from "@/types/pm";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
 
 type TabId = "all" | "quick" | "projects" | "declined";
 
