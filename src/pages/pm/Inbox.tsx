@@ -131,7 +131,7 @@ export default function Inbox() {
             ? userNames.get((project as any).requested_by) ?? null
             : null,
         };
-                  })
+      })
       .sort((a, b) => (a.task.created_at || "").localeCompare(b.task.created_at || ""));
   }, [tasks, projects, clients, userNames]);
 
