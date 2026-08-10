@@ -70,14 +70,14 @@ function MyProjectCard({ project }: { project: MyProject }) {
         <span className="flex-1" />
         {project.myOverdueTasks > 0 && (
           <Link
-            to={buildQueueLink({ base: `/pm/projects/${project.id}`, chips: ["assigned_to_me", "overdue"] })}
+            to={buildQueueLink({ base: `/pm/projects/${project.id}`, section: "tasks", chips: ["assigned_to_me", "overdue"] })}
             className="text-[11px] font-medium text-destructive hover:underline"
           >
             {project.myOverdueTasks} overdue
           </Link>
         )}
         <Link
-          to={buildQueueLink({ base: `/pm/projects/${project.id}`, chips: ["assigned_to_me"] })}
+          to={buildQueueLink({ base: `/pm/projects/${project.id}`, section: "tasks", chips: ["assigned_to_me"] })}
           className="text-[11px] text-info hover:underline"
         >
           {project.myOpenTasks} of my tasks
