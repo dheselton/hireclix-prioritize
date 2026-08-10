@@ -98,6 +98,19 @@ export function TimelineSetupWizard({
     placement.forEach(p => { if (!m || p.end > m) m = p.end; });
     return m;
   }, [placement]);
+  /** Whole/half weeks between two ISO dates, phrased for humans. */
+  const weeksBetween = (from: string, to: string | undefined | null) => {
+    if (!from || !to) return null;
+    const days = Math.round((new Date(to + "T00:00:00").getTime() - new Date(from + "T00:00:00").getTime()) / 86400000);
+    if (days < 0) return null;
+    const weeks = days / 7;
+    const rounded = Math.round(weeks * 2) / 2;
+    return { days, label: `${rounded} ${rounded === 1 ? "week" : "weeks"}` };
+  };
+  const suggestedWeeks = weeksBetween(kickoff, suggested?.suggestedGoLive);
+  const chosenWeeks = weeksBetween(kickoff, goLive);
+  const earliestWeeks = weeksBetween(kickoff, warning?.earliestGoLive);
+
   const totalDays = minDate && maxDate ? Math.max(1, Math.round((maxDate.getTime() - minDate.getTime()) / 86400000) + 1) : 1;
 
   async function confirm() {
@@ -148,11 +161,24 @@ export function TimelineSetupWizard({
           <div className="space-y-4">
             <div className="rounded border border-border p-3 bg-muted/30">
               <div className="text-xs text-muted-foreground">Based on your kickoff date of {fmtDate(kickoff)}</div>
-              <div className="text-base font-medium mt-1">Suggested go-live: {fmtDate(suggested?.suggestedGoLive)}</div>
+              <div className="text-base font-medium mt-1">
+                Suggested go-live: {fmtDate(suggested?.suggestedGoLive)}
+                {suggestedWeeks && (
+                  <span className="text-muted-foreground font-normal"> — {suggestedWeeks.label} ({suggestedWeeks.days} days)</span>
+                )}
+              </div>
             </div>
             <div>
               <Label>Or choose your own go-live</Label>
               <Input type="date" value={goLive} onChange={e => { setGoLive(e.target.value); setGoLiveTouched(true); }} className="w-56" />
+              {chosenWeeks && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {chosenWeeks.label} from kickoff ({chosenWeeks.days} days)
+                  {suggestedWeeks && chosenWeeks.days !== suggestedWeeks.days
+                    ? ` · ${chosenWeeks.days < suggestedWeeks.days ? "shorter" : "longer"} than suggested`
+                    : ""}
+                </p>
+              )}
             </div>
             {warning && (
               <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/40 rounded text-sm">
@@ -163,7 +189,10 @@ export function TimelineSetupWizard({
                     This compresses {warning.offendingTasks.slice(0, 3).map(t => t.title).join(", ")}
                     {warning.offendingTasks.length > 3 ? `, +${warning.offendingTasks.length - 3} more` : ""} below their minimum duration.
                   </div>
-                  <div className="mt-1">Suggested earliest go-live: <strong>{fmtDate(warning.earliestGoLive)}</strong></div>
+                  <div className="mt-1">
+                    Suggested earliest go-live: <strong>{fmtDate(warning.earliestGoLive)}</strong>
+                    {earliestWeeks && <span className="text-muted-foreground"> — {earliestWeeks.label} from kickoff</span>}
+                  </div>
                 </div>
               </div>
             )}
@@ -173,7 +202,7 @@ export function TimelineSetupWizard({
         {showReview && (
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
-              Kickoff <strong className="text-foreground">{fmtDate(kickoff)}</strong> → Go-live <strong className="text-foreground">{fmtDate(goLive)}</strong> ({totalDays} days) · {tasks.length} tasks
+              Kickoff <strong className="text-foreground">{fmtDate(kickoff)}</strong> → Go-live <strong className="text-foreground">{fmtDate(goLive)}</strong> ({chosenWeeks ? `${chosenWeeks.label}, ` : ""}{totalDays} days) · {tasks.length} tasks
             </div>
             {hasPageGroups && (
               <div className="rounded border border-info/40 bg-info/5 p-3 flex items-start gap-2">
