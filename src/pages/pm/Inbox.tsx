@@ -43,6 +43,18 @@ interface Row {
   requesterName: string | null;
 }
 
+type ClientGroup = {
+  clientId: string;
+  clientName: string;
+  projects: Map<string, ProjectGroup>;
+};
+
+type ProjectGroup = {
+  projectId: string;
+  project: PmProject | undefined;
+  tasks: Row[];
+};
+
 export default function Inbox() {
   const { user } = useCurrentUser();
   const users = useMockUsers();
