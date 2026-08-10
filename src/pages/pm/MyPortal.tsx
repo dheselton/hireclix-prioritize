@@ -329,6 +329,31 @@ export default function MyPortal() {
         </div>
       )}
 
+      {tab === "projects" && (
+        <div className="space-y-2">
+          {projLoading ? (
+            <p className="text-sm text-muted-foreground">Loading your projects…</p>
+          ) : myProjects.length === 0 ? (
+            <Card><CardContent className="text-center py-10 space-y-2">
+              <FolderKanban className="h-6 w-6 mx-auto text-muted-foreground/60" />
+              <p className="text-sm text-muted-foreground">You're not attached to any projects yet.</p>
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/pm/work?mode=projects">Browse all projects</Link>
+              </Button>
+            </CardContent></Card>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground px-1">
+                Projects where you're on the team, watching, the requester, or own a task.
+              </p>
+              {myProjects.map(p => <MyProjectCard key={p.id} project={p} />)}
+            </>
+          )}
+        </div>
+      )}
+
+
+
       {tab === "requests" && (
         <Card>
           <CardContent className="p-3 space-y-1.5">
