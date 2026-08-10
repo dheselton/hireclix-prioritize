@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink, Search, CheckCircle2 } from "lucide-react";
+import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink, Search, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchProjects, fetchTasks, updateTask } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
