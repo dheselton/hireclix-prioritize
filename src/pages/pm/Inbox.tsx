@@ -55,6 +55,9 @@ export default function Inbox() {
   const [declineTarget, setDeclineTarget] = useState<PmTask[] | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [convertProjectId, setConvertProjectId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<Set<TaskType>>(new Set());
+
 
   const reload = async () => {
     const [t, p, c] = await Promise.all([
