@@ -257,6 +257,7 @@ export default function MyPortal() {
   const myTasks = useMyTasks(userId);
   const { requests, loading: reqLoading } = useMyRequests(userId, user?.email ?? null);
   const { threads, loading: msgLoading } = useMyMessageThreads(userId);
+  const { projects: myProjects, loading: projLoading } = useMyProjects(userId);
   const [openRequest, setOpenRequest] = useState<MyRequest | null>(null);
   const [openThread, setOpenThread] = useState<{ projectId: string; title: string } | null>(null);
 
