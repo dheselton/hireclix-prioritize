@@ -93,8 +93,6 @@ export default function Inbox() {
       .sort((a, b) => (a.task.created_at || "").localeCompare(b.task.created_at || ""));
   }, [tasks, projects, clients, userNames]);
 
-  const filtered = useMemo(() => {
-    return rows.filter(r => {
   /** Rows visible for the current tab, before type/search narrowing. */
   const tabRows = useMemo(() => {
     return rows.filter(r => {
