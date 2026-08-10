@@ -609,7 +609,7 @@ export default function Inbox() {
                     </div>
                   );
                 })}
-              </div>
+              )}
             );
           })}
         </div>
