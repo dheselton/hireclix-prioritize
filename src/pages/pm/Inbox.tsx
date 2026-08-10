@@ -70,6 +70,36 @@ export default function Inbox() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<Set<TaskType>>(new Set());
 
+  // Collapsible sections — clients and projects can be folded so the inbox
+  // scales when there are dozens of tasks.
+  const CLIENTS_KEY = "inbox_collapsed_clients";
+  const PROJECTS_KEY = "inbox_collapsed_projects";
+  const readIdSet = (key: string) => {
+    try { return new Set<string>(JSON.parse(window.localStorage.getItem(key) || "[]")); } catch { return new Set<string>(); }
+  };
+  const writeIdSet = (key: string, set: Set<string>) => {
+    try { window.localStorage.setItem(key, JSON.stringify(Array.from(set))); } catch {}
+  };
+  const [collapsedClients, setCollapsedClients] = useState<Set<string>>(() => readIdSet(CLIENTS_KEY));
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() => readIdSet(PROJECTS_KEY));
+
+  const toggleClient = (id: string) => {
+    setCollapsedClients(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      writeIdSet(CLIENTS_KEY, next);
+      return next;
+    });
+  };
+  const toggleProject = (id: string) => {
+    setCollapsedProjects(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      writeIdSet(PROJECTS_KEY, next);
+      return next;
+    });
+  };
+
 
   const reload = async () => {
     const [t, p, c] = await Promise.all([
