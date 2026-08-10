@@ -130,9 +130,9 @@ export default function Inbox() {
       return hay.includes(q);
     });
   }, [tabRows, typeFilter, query]);
-
-
+  const counts = useMemo(() => {
     const open = rows.filter(r => !isDeclined(r.task));
+
     return {
       all: open.length,
       quick: open.filter(r => ((r.project as any)?.work_type ?? "project") === "request").length,
