@@ -498,6 +498,8 @@ export const createProjectFromTemplate = async (params: {
   });
 
   await stampDiscoveryLinks({ templateId: template.id, idByTemp });
+  await createDefinePagesTask({ projectId: (proj as any).id, templateId: template.id, idByTemp });
+
 
   emitTasksChanged();
   return proj as unknown as PmProject;
