@@ -56,6 +56,34 @@ export async function uploadAttachments(opts: {
   return { succeeded, failed };
 }
 
+export interface UploadedFileRef { name: string; url: string; size: number }
+
+/**
+ * Upload files to storage WITHOUT inserting attachment rows.
+ * Used where the file reference is stored inline (e.g. comment attachments).
+ */
+export async function uploadFilesToStorage(opts: {
+  files: File[] | FileList;
+  pathPrefix: string;
+  bucket?: string;
+}): Promise<{ uploaded: UploadedFileRef[]; failed: string[] }> {
+  const bucket = opts.bucket ?? ATTACHMENT_BUCKET;
+  const uploaded: UploadedFileRef[] = [];
+  const failed: string[] = [];
+  for (const f of Array.from(opts.files)) {
+    const path = `${opts.pathPrefix.replace(/\/+$/, "")}/${crypto.randomUUID()}-${f.name}`;
+    const { error } = await supabase.storage.from(bucket).upload(path, f);
+    if (error) {
+      console.error("storage upload failed", f.name, error);
+      failed.push(f.name);
+      continue;
+    }
+    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
+    uploaded.push({ name: f.name, url: pub.publicUrl, size: f.size });
+  }
+  return { uploaded, failed };
+}
+
 /** Emit per-file error toasts plus a mixed-batch summary. */
 export function reportUploadResult(result: UploadResult, opts?: { silentOnSuccess?: boolean }) {
   const { succeeded, failed } = result;
