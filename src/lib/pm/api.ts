@@ -139,7 +139,7 @@ export const createTask = async (task: Partial<PmTask>) => {
     // Notify PM/CSM on new unclaimed request-type tasks
     if ((data as any).status === 'unclaimed') {
       // Multi-role aware: notify anyone holding pm/csm in any of their roles.
-      const { data: allUsers } = await supabase.from('mock_users').select('id, role, secondary_role, roles');
+      const { data: allUsers } = await supabase.from('pm_users').select('id, role, secondary_role, roles');
       const pms = ((allUsers ?? []) as any[]).filter(u => {
         const r: string[] = Array.isArray(u.roles) && u.roles.length
           ? u.roles
@@ -161,7 +161,7 @@ export const createTask = async (task: Partial<PmTask>) => {
       // Notify the task's team(s) that unclaimed work landed in their queue.
       const {
         teamsFromTask, DEFAULT_TEAMS_FOR_TYPE, ROLE_TO_TEAM, TEAM_PEERS,
-        USER_TEAM_OVERRIDES, TEAM_LABEL,
+        peerTeamsForRoles, TEAM_LABEL,
       } = await import('./teams');
       let taskTeams = teamsFromTask(data as any);
       if (!taskTeams.length) {
@@ -181,7 +181,7 @@ export const createTask = async (task: Partial<PmTask>) => {
             mine.add(t);
             for (const p of TEAM_PEERS[t] ?? []) mine.add(p);
           }
-          for (const p of USER_TEAM_OVERRIDES[u.id]?.peers ?? []) mine.add(p);
+          for (const p of peerTeamsForRoles(roles)?.peers ?? []) mine.add(p);
           const hit = taskTeams.find(t => mine.has(t)) ?? [...mine].find(t => wanted.has(t as any));
           if (!hit) continue;
           notified.add(u.id);

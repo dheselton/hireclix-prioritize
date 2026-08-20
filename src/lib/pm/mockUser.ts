@@ -1,115 +1,88 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { queryClient } from '@/lib/queryClient';
-import type { MockUser, PmRole } from '@/types/pm';
+import type { PmUser, PmRole } from '@/types/pm';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  getCurrentUserId as getCachedId,
+  getCachedPmUser,
+} from '@/lib/pm/pmIdentity';
+import { loadPmRoster, getCachedRoster, subscribeRoster } from '@/lib/pm/pmRoster';
 
-const STORAGE_KEY = 'pm.currentUserId';
+/** @deprecated Prefer PmUser — kept for existing imports */
+export type MockUser = PmUser;
 
-let cachedUsers: MockUser[] = [];
-const userSubscribers = new Set<() => void>();
-
-async function loadUsers() {
-  const { data } = await supabase.from('mock_users').select('*').order('role');
-  cachedUsers = (data || []) as MockUser[];
-  userSubscribers.forEach(fn => fn());
-  // If no current id yet, default to a PM
-  if (!currentId && cachedUsers.length) {
-    const pm = cachedUsers.find(u => u.role === 'pm') ?? cachedUsers[0];
-    writeCurrentId(pm.id);
-  }
-}
+export { loadPmRoster };
 
 export function useMockUsers() {
-  const [users, setUsers] = useState<MockUser[]>(cachedUsers);
+  const [users, setUsers] = useState<PmUser[]>(getCachedRoster());
   useEffect(() => {
-    const fn = () => setUsers([...cachedUsers]);
-    userSubscribers.add(fn);
-    if (!cachedUsers.length) loadUsers();
-    else fn();
-    return () => { userSubscribers.delete(fn); };
+    const unsub = subscribeRoster(() => setUsers([...getCachedRoster()]));
+    if (!getCachedRoster().length) void loadPmRoster();
+    else setUsers([...getCachedRoster()]);
+    return unsub;
   }, []);
   return users;
 }
 
-// --- Current user pub/sub store ---
-let currentId: string | null =
-  typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-const currentSubscribers = new Set<() => void>();
-
-function writeCurrentId(id: string | null) {
-  const changed = currentId !== id;
-  currentId = id;
-  try {
-    if (id) localStorage.setItem(STORAGE_KEY, id);
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch {}
-  currentSubscribers.forEach(fn => fn());
-  // Invalidate user-scoped caches so briefing/queue/workload/timesheet
-  // repopulate immediately when switching roles in dev mode.
-  if (changed) {
-    try {
-      queryClient.invalidateQueries();
-    } catch {}
-  }
-}
-
-export function useCurrentUser() {
-  const users = useMockUsers();
-  const [, force] = useState(0);
-
-  useEffect(() => {
-    const fn = () => force(n => n + 1);
-    currentSubscribers.add(fn);
-    return () => { currentSubscribers.delete(fn); };
-  }, []);
-
-  const setCurrent = useCallback((nid: string) => {
-    writeCurrentId(nid);
-  }, []);
-
-  const user = users.find(u => u.id === currentId) ?? null;
-  const roles: PmRole[] = (user?.roles && user.roles.length
-    ? user.roles
-    : [user?.role, user?.secondary_role].filter(Boolean) as PmRole[]) as PmRole[];
-  return { user, users, setCurrent, role: (user?.role ?? 'pm') as PmRole, roles: roles.length ? roles : ['pm' as PmRole] };
-}
-
-/** Non-hook accessor for the active mock user id (reads localStorage). */
-export function getCurrentUserId(): string | null {
-  if (currentId) return currentId;
-  if (typeof window !== 'undefined') {
-    try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
-  }
-  return null;
-}
-
-/** Role of the active mock user, if known in cache. */
-export function getCurrentUserRole(): PmRole | null {
-  const id = getCurrentUserId();
-  if (!id) return null;
-  const u = cachedUsers.find(x => x.id === id);
-  return (u?.role as PmRole) ?? null;
-}
+/** Alias for the authenticated roster directory */
+export const usePmUsers = useMockUsers;
 
 /**
- * Auth-ready accessor. When `VITE_PM_AUTH_ENABLED` is true and a Supabase
- * session exists, this returns the authenticated user id; otherwise it falls
- * back to the localStorage-backed mock user. All call sites that need the
- * "current actor" id should go through this helper so flipping auth on later
- * is a single-flag change.
+ * Signed-in PM member from AuthProvider (source of truth for React).
  */
-export async function getAuthUserId(): Promise<string | null> {
-  const enabled = typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_PM_AUTH_ENABLED === "true";
-  if (enabled) {
-    try {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user?.id) return data.user.id;
-    } catch { /* fall through to mock */ }
-  }
-  return getCurrentUserId();
+export function useCurrentUser() {
+  const auth = useAuth();
+  const users = useMockUsers();
+
+  const setCurrent = useCallback((_nid: string) => {
+    // impersonation removed
+  }, []);
+
+  const user = auth.pmUser ?? getCachedPmUser();
+  const roles: PmRole[] = auth.roles.length
+    ? auth.roles
+    : ((user?.roles && user.roles.length
+      ? user.roles
+      : [user?.role, user?.secondary_role].filter(Boolean)) as PmRole[]);
+
+  return {
+    user,
+    users,
+    setCurrent,
+    role: (user?.role ?? roles[0] ?? 'pm') as PmRole,
+    roles: roles.length ? roles : (['pm'] as PmRole[]),
+    loading: auth.loading || auth.access === 'loading',
+    access: auth.access,
+  };
 }
 
-/** True when real auth is enabled. The TopBar role switcher hides when true. */
+export {
+  setCurrentPmUserCache,
+  clearCurrentPmUserCache,
+  getCurrentUserId,
+  getCurrentUserRole,
+} from '@/lib/pm/pmIdentity';
+
+/** Auth-ready accessor — always the linked PM user when signed in. */
+export async function getAuthUserId(): Promise<string | null> {
+  const cached = getCachedId();
+  if (cached) return cached;
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user?.id) return null;
+    const { data } = await supabase
+      .from('pm_users')
+      .select('id')
+      .eq('auth_user_id', auth.user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+    return (data as { id: string } | null)?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Real auth is always on. */
 export function isAuthEnabled(): boolean {
-  return typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_PM_AUTH_ENABLED === "true";
+  return true;
 }

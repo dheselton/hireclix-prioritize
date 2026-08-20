@@ -9,7 +9,7 @@ export type ProjectType = 'quick_request' | 'career_site' | 'rfp' | 'evp' | 'dev
 export type ProjectStatus = 'draft' | 'active' | 'on_hold' | 'in_review' | 'complete' | 'archived';
 export type DepType = 'finish_start' | 'start_start' | 'finish_finish';
 
-export interface MockUser {
+export interface PmUser {
   id: string;
   name: string;
   role: PmRole;
@@ -19,7 +19,12 @@ export interface MockUser {
   avatar_url: string | null;
   avatar_color?: string | null;
   capacity_hours_per_week: number;
+  auth_user_id?: string | null;
+  is_active?: boolean;
 }
+
+/** @deprecated Use PmUser */
+export type MockUser = PmUser;
 
 export type Track = 'pm' | 'production' | 'strategy' | 'analytics';
 

@@ -60,7 +60,7 @@ export async function runGlobalSearch(rawQuery: string, opts: { meId?: string | 
       ? supabase.from("pm_forms").select("id,name,description,kind").ilike("name", like).limit(10)
       : Promise.resolve({ data: [] as any[] }),
     wants("people") && term
-      ? supabase.from("mock_users").select("id,name,email,role").or(`name.ilike.${like},email.ilike.${like}`).limit(10)
+      ? supabase.from("pm_users").select("id,name,email,role").or(`name.ilike.${like},email.ilike.${like}`).limit(10)
       : Promise.resolve({ data: [] as any[] }),
   ]);
 

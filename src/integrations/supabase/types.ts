@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
@@ -401,45 +401,6 @@ export type Database = {
         }
         Relationships: []
       }
-      mock_users: {
-        Row: {
-          avatar_color: string | null
-          avatar_url: string | null
-          capacity_hours_per_week: number | null
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          role: string
-          roles: string[]
-          secondary_role: string | null
-        }
-        Insert: {
-          avatar_color?: string | null
-          avatar_url?: string | null
-          capacity_hours_per_week?: number | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          role: string
-          roles?: string[]
-          secondary_role?: string | null
-        }
-        Update: {
-          avatar_color?: string | null
-          avatar_url?: string | null
-          capacity_hours_per_week?: number | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          role?: string
-          roles?: string[]
-          secondary_role?: string | null
-        }
-        Relationships: []
-      }
       pm_active_timers: {
         Row: {
           activity_id: string | null
@@ -570,7 +531,7 @@ export type Database = {
             foreignKeyName: "pm_activity_log_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -631,7 +592,7 @@ export type Database = {
             foreignKeyName: "pm_attachments_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -714,7 +675,7 @@ export type Database = {
             foreignKeyName: "pm_client_assets_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -790,7 +751,7 @@ export type Database = {
             foreignKeyName: "pm_client_notes_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
@@ -836,7 +797,7 @@ export type Database = {
             foreignKeyName: "pm_client_watchers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -897,7 +858,7 @@ export type Database = {
             foreignKeyName: "pm_comments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1174,7 +1135,7 @@ export type Database = {
             foreignKeyName: "pm_notification_prefs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1215,7 +1176,7 @@ export type Database = {
             foreignKeyName: "pm_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1269,7 +1230,7 @@ export type Database = {
             foreignKeyName: "pm_portal_access_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1320,7 +1281,7 @@ export type Database = {
             foreignKeyName: "pm_portal_messages_author_user_id_fkey"
             columns: ["author_user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
@@ -1388,7 +1349,7 @@ export type Database = {
             foreignKeyName: "pm_portal_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1487,7 +1448,7 @@ export type Database = {
             foreignKeyName: "pm_project_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1630,7 +1591,7 @@ export type Database = {
             foreignKeyName: "pm_projects_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
@@ -1702,7 +1663,7 @@ export type Database = {
             foreignKeyName: "pm_snippet_incidents_reported_by_fkey"
             columns: ["reported_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
@@ -1892,7 +1853,7 @@ export type Database = {
             foreignKeyName: "pm_task_assignees_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -1993,7 +1954,7 @@ export type Database = {
             foreignKeyName: "pm_task_snippets_linked_by_fkey"
             columns: ["linked_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
@@ -2043,7 +2004,7 @@ export type Database = {
             foreignKeyName: "pm_task_watchers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -2162,14 +2123,14 @@ export type Database = {
             foreignKeyName: "pm_tasks_assignee_id_fkey"
             columns: ["assignee_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "pm_tasks_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
           {
@@ -2465,7 +2426,7 @@ export type Database = {
             foreignKeyName: "pm_time_entries_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
@@ -2504,10 +2465,55 @@ export type Database = {
             foreignKeyName: "pm_user_pinned_tasks_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "mock_users"
+            referencedRelation: "pm_users"
             referencedColumns: ["id"]
           },
         ]
+      }
+      pm_users: {
+        Row: {
+          auth_user_id: string | null
+          avatar_color: string | null
+          avatar_url: string | null
+          capacity_hours_per_week: number | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          role: string
+          roles: string[]
+          secondary_role: string | null
+        }
+        Insert: {
+          auth_user_id?: string | null
+          avatar_color?: string | null
+          avatar_url?: string | null
+          capacity_hours_per_week?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          role: string
+          roles?: string[]
+          secondary_role?: string | null
+        }
+        Update: {
+          auth_user_id?: string | null
+          avatar_color?: string | null
+          avatar_url?: string | null
+          capacity_hours_per_week?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: string
+          roles?: string[]
+          secondary_role?: string | null
+        }
+        Relationships: []
       }
       pm_webhook_deliveries: {
         Row: {
@@ -2717,6 +2723,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_pm_user: { Args: never; Returns: string }
       get_job_api_stats: {
         Args: never
         Returns: {

@@ -1,1 +1,31 @@
-project_id = "ybdtzajgkpxsiennooax"
+# HireClix Prioritize — linked to project naazebxkoyuxbcmcwytc
+project_id = "naazebxkoyuxbcmcwytc"
+
+[api]
+enabled = true
+
+[db]
+major_version = 17
+
+[auth]
+enabled = true
+# Custom domain + Netlify fallback + local Vite
+site_url = "https://prioritize.hireclix.com"
+additional_redirect_urls = [
+  "https://prioritize.hireclix.com",
+  "https://prioritize.hireclix.com/**",
+  "https://hc-prioritize.netlify.app",
+  "https://hc-prioritize.netlify.app/**",
+  "http://localhost:8080",
+  "http://localhost:8080/**",
+  "http://127.0.0.1:8080",
+  "http://127.0.0.1:8080/**",
+]
+enable_signup = true
+
+[auth.external.google]
+enabled = true
+# Set via Management API / dashboard — do not commit real secrets
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false

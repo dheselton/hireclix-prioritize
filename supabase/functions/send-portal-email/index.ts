@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 const FROM = "HireClix Prioritize <prioritize@hireclix.com>";
-const APP_URL = Deno.env.get("APP_URL") || "https://hireclix-prioritize.lovable.app";
+const APP_URL = Deno.env.get("APP_URL") || "http://localhost:8080";
 
 const BodySchema = z.object({
   notificationId: z.string().uuid().optional(),
@@ -95,7 +95,7 @@ async function sendOne(n: any, apiKey: string): Promise<boolean> {
     ctaLabel = n.kind === "portal_invite" ? "Open your portal" : "View the thread";
   } else if (n.user_id) {
     const { data: user } = await admin
-      .from("mock_users")
+      .from("pm_users")
       .select("email")
       .eq("id", n.user_id)
       .maybeSingle();

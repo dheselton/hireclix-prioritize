@@ -1,6 +1,6 @@
 # HireClix Prioritize
 
-Build a visually stunning internal intranet called “Career Site Dev & Design Ops” using Tailwind with semantic tokens from the HireClix Style Guide, Unbounded for headings, and Roboto for body. Use a left sidebar for primary navigation and a dashboard home that summarizes everything with drill-down pages. Defer authentication for now.
+Build a visually stunning internal intranet called “Career Site Dev & Design Ops” using Tailwind with semantic tokens from the HireClix Style Guide, Unbounded for headings, and Roboto for body. Use a left sidebar for primary navigation and a dashboard home that summarizes everything with drill-down pages. Authentication uses Google OAuth for approved `@hireclix.com` roster members.
 
 #### Branding and Theme
 - Implement CSS variables and semantic tokens exactly as specified below. Do not use raw hex values in components; only use tokens.
@@ -338,25 +338,29 @@ Seed content specifics to include immediately:
 - Docs: “Client-First Quickstart”; “ATS Integration Playbook”; “Career Site Launch Checklist”
 - Integrations: iCIMS, Workday, Greenhouse, UKG, Crelate, SmartRecruiters, Hirebridge, Jobvite, Eightfold, SuccessFactors (SAP) with fields as defined above.
 
-This project was built with [Lovable](https://lovable.dev).
+## Stack
 
-**Live app**: https://hireclix-prioritize.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/f33c12f9-f6c0-41e4-a13c-bf3e6a3f17de).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- **Frontend**: Vite + React + TypeScript (hosted on Netlify)
+- **Backend**: HireClix Supabase project `naazebxkoyuxbcmcwytc`
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
 git clone <this-repository-url>
 cd <repository-name>
+cp .env.example .env   # fill VITE_SUPABASE_* from Supabase dashboard
 npm i
 npm run dev
+```
+
+## Deploy (Netlify)
+
+Site: https://prioritize.hireclix.com (Netlify team: `dheselton`, also `hc-prioritize.netlify.app`)
+
+```sh
+npm run build
+# Netlify uses netlify.toml (publish=dist, SPA fallback to index.html)
+# Set site env vars: VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_PROJECT_ID
 ```

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, USER_TEAM_OVERRIDES, teamsFromTask, type Team } from "@/lib/pm/teams";
+import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, peerTeamsForRoles, teamsFromTask, type Team } from "@/lib/pm/teams";
 import type { PmTask } from "@/types/pm";
 
 const key = (scope: string, userId: string | null | undefined) =>
@@ -16,7 +16,7 @@ export function useTeamFilter(scope: string) {
   const role = user?.role ?? null;
   const meId = user?.id ?? null;
   const myTeam: Team | null = role ? ROLE_TO_TEAM[role] : null;
-  const override = meId ? USER_TEAM_OVERRIDES[meId] : undefined;
+  const override = peerTeamsForRoles(roles);
   // Multi-role users: peer set = union of teams from every role they hold.
   const multiRolePeers: Team[] | null = (() => {
     if (!roles || roles.length <= 1) return null;

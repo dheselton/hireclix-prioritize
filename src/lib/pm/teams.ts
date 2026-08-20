@@ -74,17 +74,26 @@ export const TEAM_PEER_LABEL: Partial<Record<Team, string>> = {
 };
 
 /**
- * Per-user peer-team overrides. Some folks wear multiple hats — e.g. Dan
- * Heselton is a PM who also designs and develops, so he needs visibility into
- * design + dev tasks alongside his PM queue. Keyed by mock_users.id.
+ * Per-user peer-team overrides keyed by primary+extra roles rather than a hardcoded
+ * user id. Anyone whose roles include PM + design +/or developer gets the
+ * combined peer set.
  */
-export const USER_TEAM_OVERRIDES: Record<string, { peers: Team[]; label: string }> = {
-  // Dan Heselton — PM + Designer + Developer
-  "2cd08a7f-035c-4956-b2a9-ee202fb67a8a": {
-    peers: ["pm", "design", "dev"],
-    label: "My team (PM + Creative + Dev)",
-  },
-};
+export function peerTeamsForRoles(roles: string[]): { peers: Team[]; label: string } | null {
+  const set = new Set(roles);
+  const hasPm = set.has("pm") || set.has("ba");
+  const hasDesign = set.has("designer");
+  const hasDev = set.has("developer") || set.has("tech_lead");
+  if (hasPm && (hasDesign || hasDev)) {
+    const peers: Team[] = ["pm"];
+    if (hasDesign) peers.push("design");
+    if (hasDev) peers.push("dev");
+    return { peers, label: "My team (PM + Creative + Dev)" };
+  }
+  return null;
+}
+
+/** @deprecated Prefer peerTeamsForRoles — kept empty for safety */
+export const USER_TEAM_OVERRIDES: Record<string, { peers: Team[]; label: string }> = {};
 
 /** Default team set per task type (matches the DB trigger). */
 export const DEFAULT_TEAMS_FOR_TYPE: Record<TaskType, Team[]> = {

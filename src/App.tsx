@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 import { RouteFallback } from "@/components/RouteFallback";
 import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Eager: default landing + auth entry (small, always needed early)
 import WorkQueue from "./pages/pm/WorkQueue";
@@ -50,19 +51,21 @@ import { RoleRouteGuard } from "@/components/pm/SubmitterRouteGuard";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <div className="min-h-dvh flex w-full">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <TopBar />
-          <main className="flex-1 min-w-0">
-            <RoleRouteGuard>
-              <Suspense fallback={<RouteFallback />}>{children}</Suspense>
-            </RoleRouteGuard>
-          </main>
+    <ProtectedRoute>
+      <SidebarProvider>
+        <div className="min-h-dvh flex w-full overflow-x-hidden">
+          <AppSidebar />
+          <div className="flex-1 flex flex-col min-w-0 max-w-full">
+            <TopBar />
+            <main className="flex-1 min-w-0 max-w-full overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
+              <RoleRouteGuard>
+                <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+              </RoleRouteGuard>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </ProtectedRoute>
   );
 }
 
