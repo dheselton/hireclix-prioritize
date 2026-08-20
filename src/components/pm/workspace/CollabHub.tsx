@@ -1,19 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { MentionTextarea, MentionText } from "@/components/pm/drawer/MentionTextarea";
-import { Trash2 } from "lucide-react";
+import { Trash2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { fmtDate } from "@/lib/pm/format";
+import { uploadFilesToStorage, type UploadedFileRef } from "@/lib/pm/uploads";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
   user_id: string | null; body: string; mentions: string[];
-  created_at: string; pinned: boolean;
+  created_at: string; pinned: boolean; attachments: UploadedFileRef[];
 }
+
 
 function timeAgo(iso: string) {
   const d = new Date(iso).getTime();
@@ -29,36 +33,58 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
   const [rows, setRows] = useState<Comment[]>([]);
   const [draft, setDraft] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [sending, setSending] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
   const users = useMockUsers();
+  const { openPreview } = usePreview();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase.from("pm_comments").select("*").eq("task_id", taskId).order("created_at");
-    setRows((data || []) as Comment[]);
+    setRows((data || []).map((r: any) => ({
+      ...r,
+      attachments: Array.isArray(r.attachments) ? (r.attachments as UploadedFileRef[]) : [],
+    })) as Comment[]);
   }
   useEffect(() => { load(); }, [taskId]);
 
   async function submit() {
-    if (!draft.trim() || !user) return;
-    const body = draft.trim();
-    await supabase.from("pm_comments").insert({
-      task_id: taskId, project_id: projectId, user_id: user.id,
-      body, mentions, pinned: false,
-    } as any);
-    if (mentions.length) {
-      const notifs = mentions.filter(id => id !== user.id).map(uid => ({
-        user_id: uid, type: "mention",
-        title: `${user.name} mentioned you in ${taskTitle}`,
-        body: body.slice(0, 200),
-        link: `/pm/tasks/${taskId}`,
-        read: false,
-      }));
-      if (notifs.length) await supabase.from("pm_notifications").insert(notifs as any);
+    if ((!draft.trim() && !pendingFiles.length) || !user || sending) return;
+    setSending(true);
+    try {
+      const body = draft.trim();
+      let attachments: UploadedFileRef[] = [];
+      if (pendingFiles.length) {
+        const { uploaded, failed } = await uploadFilesToStorage({ files: pendingFiles, pathPrefix: `${taskId}/comments` });
+        attachments = uploaded;
+        for (const name of failed) toast.error(`Failed to upload: ${name}`);
+      }
+      const { error } = await supabase.from("pm_comments").insert({
+        task_id: taskId, project_id: projectId, user_id: user.id,
+        body, mentions, pinned: false, attachments: attachments as any,
+      } as any);
+      if (error) throw error;
+      if (mentions.length) {
+        const notifs = mentions.filter(id => id !== user.id).map(uid => ({
+          user_id: uid, type: "mention",
+          title: `${user.name} mentioned you in ${taskTitle}`,
+          body: body.slice(0, 200),
+          link: `/pm/tasks/${taskId}`,
+          read: false,
+        }));
+        if (notifs.length) await supabase.from("pm_notifications").insert(notifs as any);
+      }
+      setDraft(""); setMentions([]); setPendingFiles([]);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not post comment");
+    } finally {
+      setSending(false);
     }
-    setDraft(""); setMentions([]);
-    await load();
   }
+
 
   async function remove(id: string) {
     try {
@@ -99,7 +125,25 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
                     </button>
                   )}
                 </div>
-                <div className="text-sm whitespace-pre-wrap break-words"><MentionText text={c.body} /></div>
+                {c.body && (
+                  <div className="text-sm whitespace-pre-wrap break-words"><MentionText text={c.body} /></div>
+                )}
+                {c.attachments?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {c.attachments.map((a, i) => (
+                      <div key={a.url} className="w-24">
+                        <AttachmentThumb
+                          item={{ id: `${c.id}-${i}`, name: a.name, url: a.url, type: "file" }}
+                          onClick={() => openPreview(
+                            c.attachments.map((x, j) => ({ id: `${c.id}-${j}`, name: x.name, url: x.url, type: "file" })),
+                            i
+                          )}
+                        />
+                        <div className="mt-1 text-[11px] truncate text-muted-foreground" title={a.name}>{a.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -120,9 +164,43 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
             users={users}
             placeholder="Write a comment or tag @team…"
           />
-          <div className="flex justify-end">
-            <Button size="sm" onClick={submit} disabled={!draft.trim()}>
-              Post Comment
+
+          {pendingFiles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {pendingFiles.map((f, i) => (
+                <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1.5 max-w-[220px] px-2 py-1 rounded-md border border-border/70 bg-muted/40 text-[11px]">
+                  <Paperclip className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPendingFiles(p => p.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${f.name}`}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={e => {
+              if (e.target.files?.length) setPendingFiles(p => [...p, ...Array.from(e.target.files!)]);
+              e.target.value = "";
+            }}
+          />
+
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+              <Paperclip className="h-3.5 w-3.5 mr-1" /> Attach
+            </Button>
+            <Button size="sm" onClick={submit} disabled={sending || (!draft.trim() && !pendingFiles.length)}>
+              {sending ? "Posting…" : "Post Comment"}
             </Button>
           </div>
         </div>
