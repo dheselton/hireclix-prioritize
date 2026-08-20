@@ -1,19 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { MentionTextarea, MentionText } from "@/components/pm/drawer/MentionTextarea";
-import { Trash2 } from "lucide-react";
+import { Trash2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { fmtDate } from "@/lib/pm/format";
+import { uploadFilesToStorage, type UploadedFileRef } from "@/lib/pm/uploads";
+import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
+import { usePreview } from "@/components/pm/attachments/PreviewProvider";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
   user_id: string | null; body: string; mentions: string[];
-  created_at: string; pinned: boolean;
+  created_at: string; pinned: boolean; attachments: UploadedFileRef[];
 }
+
 
 function timeAgo(iso: string) {
   const d = new Date(iso).getTime();
