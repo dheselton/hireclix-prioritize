@@ -843,6 +843,7 @@ export type Database = {
       }
       pm_comments: {
         Row: {
+          attachments: Json
           body: string
           created_at: string
           id: string
@@ -854,6 +855,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          attachments?: Json
           body: string
           created_at?: string
           id?: string
@@ -865,6 +867,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          attachments?: Json
           body?: string
           created_at?: string
           id?: string
