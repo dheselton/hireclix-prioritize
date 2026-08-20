@@ -33,36 +33,58 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
   const [rows, setRows] = useState<Comment[]>([]);
   const [draft, setDraft] = useState("");
   const [mentions, setMentions] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [sending, setSending] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useCurrentUser();
   const users = useMockUsers();
+  const { openPreview } = usePreview();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase.from("pm_comments").select("*").eq("task_id", taskId).order("created_at");
-    setRows((data || []) as Comment[]);
+    setRows((data || []).map((r: any) => ({
+      ...r,
+      attachments: Array.isArray(r.attachments) ? (r.attachments as UploadedFileRef[]) : [],
+    })) as Comment[]);
   }
   useEffect(() => { load(); }, [taskId]);
 
   async function submit() {
-    if (!draft.trim() || !user) return;
-    const body = draft.trim();
-    await supabase.from("pm_comments").insert({
-      task_id: taskId, project_id: projectId, user_id: user.id,
-      body, mentions, pinned: false,
-    } as any);
-    if (mentions.length) {
-      const notifs = mentions.filter(id => id !== user.id).map(uid => ({
-        user_id: uid, type: "mention",
-        title: `${user.name} mentioned you in ${taskTitle}`,
-        body: body.slice(0, 200),
-        link: `/pm/tasks/${taskId}`,
-        read: false,
-      }));
-      if (notifs.length) await supabase.from("pm_notifications").insert(notifs as any);
+    if ((!draft.trim() && !pendingFiles.length) || !user || sending) return;
+    setSending(true);
+    try {
+      const body = draft.trim();
+      let attachments: UploadedFileRef[] = [];
+      if (pendingFiles.length) {
+        const { uploaded, failed } = await uploadFilesToStorage({ files: pendingFiles, pathPrefix: `${taskId}/comments` });
+        attachments = uploaded;
+        for (const name of failed) toast.error(`Failed to upload: ${name}`);
+      }
+      const { error } = await supabase.from("pm_comments").insert({
+        task_id: taskId, project_id: projectId, user_id: user.id,
+        body, mentions, pinned: false, attachments: attachments as any,
+      } as any);
+      if (error) throw error;
+      if (mentions.length) {
+        const notifs = mentions.filter(id => id !== user.id).map(uid => ({
+          user_id: uid, type: "mention",
+          title: `${user.name} mentioned you in ${taskTitle}`,
+          body: body.slice(0, 200),
+          link: `/pm/tasks/${taskId}`,
+          read: false,
+        }));
+        if (notifs.length) await supabase.from("pm_notifications").insert(notifs as any);
+      }
+      setDraft(""); setMentions([]); setPendingFiles([]);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not post comment");
+    } finally {
+      setSending(false);
     }
-    setDraft(""); setMentions([]);
-    await load();
   }
+
 
   async function remove(id: string) {
     try {
