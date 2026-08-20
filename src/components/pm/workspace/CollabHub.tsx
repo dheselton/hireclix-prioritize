@@ -125,7 +125,25 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
                     </button>
                   )}
                 </div>
-                <div className="text-sm whitespace-pre-wrap break-words"><MentionText text={c.body} /></div>
+                {c.body && (
+                  <div className="text-sm whitespace-pre-wrap break-words"><MentionText text={c.body} /></div>
+                )}
+                {c.attachments?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {c.attachments.map((a, i) => (
+                      <div key={a.url} className="w-24">
+                        <AttachmentThumb
+                          item={{ id: `${c.id}-${i}`, name: a.name, url: a.url, type: "file" }}
+                          onClick={() => openPreview(
+                            c.attachments.map((x, j) => ({ id: `${c.id}-${j}`, name: x.name, url: x.url, type: "file" })),
+                            i
+                          )}
+                        />
+                        <div className="mt-1 text-[11px] truncate text-muted-foreground" title={a.name}>{a.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -146,9 +164,43 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
             users={users}
             placeholder="Write a comment or tag @team…"
           />
-          <div className="flex justify-end">
-            <Button size="sm" onClick={submit} disabled={!draft.trim()}>
-              Post Comment
+
+          {pendingFiles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {pendingFiles.map((f, i) => (
+                <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1.5 max-w-[220px] px-2 py-1 rounded-md border border-border/70 bg-muted/40 text-[11px]">
+                  <Paperclip className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPendingFiles(p => p.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${f.name}`}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={e => {
+              if (e.target.files?.length) setPendingFiles(p => [...p, ...Array.from(e.target.files!)]);
+              e.target.value = "";
+            }}
+          />
+
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+              <Paperclip className="h-3.5 w-3.5 mr-1" /> Attach
+            </Button>
+            <Button size="sm" onClick={submit} disabled={sending || (!draft.trim() && !pendingFiles.length)}>
+              {sending ? "Posting…" : "Post Comment"}
             </Button>
           </div>
         </div>
