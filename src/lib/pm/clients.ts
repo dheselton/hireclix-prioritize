@@ -130,6 +130,54 @@ export function refreshCareerSiteProjects() {
   return csPending;
 }
 
+// --- Client id → name map (cached, for card identity) ---
+let nameCache: Map<string, string> | null = null;
+let namePending: Promise<Map<string, string>> | null = null;
+const nameSubs = new Set<(m: Map<string, string>) => void>();
+
+async function fetchClientNames(): Promise<Map<string, string>> {
+  const { data } = await supabase.from("clients").select("id,name");
+  const map = new Map<string, string>(
+    ((data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
+  );
+  nameCache = map;
+  nameSubs.forEach((fn) => { try { fn(map); } catch {} });
+  return map;
+}
+
+/** App-wide Map of client id → display name for task/project cards. */
+export function useClientNamesMap(): Map<string, string> {
+  const [map, setMap] = useState<Map<string, string>>(nameCache ?? new Map());
+  useEffect(() => {
+    let cancelled = false;
+    if (nameCache) {
+      setMap(nameCache);
+    } else {
+      namePending = namePending ?? fetchClientNames();
+      namePending.then((m) => { if (!cancelled) setMap(m); });
+    }
+    const fn = (m: Map<string, string>) => { if (!cancelled) setMap(m); };
+    nameSubs.add(fn);
+    return () => { cancelled = true; nameSubs.delete(fn); };
+  }, []);
+  return map;
+}
+
+export function refreshClientNames() {
+  namePending = fetchClientNames();
+  return namePending;
+}
+
+/** Resolve a client display name from a project + names map. */
+export function clientNameForProject(
+  project: { client_id?: string | null } | null | undefined,
+  names: Map<string, string>,
+): string | null {
+  const id = project?.client_id;
+  if (!id) return null;
+  return names.get(id) ?? null;
+}
+
 /** True when a project/task's custom_fields.request_type belongs to the Career Site Support family. */
 export function isCareerSiteRequest(customFields: any): boolean {
   const t = customFields?.request_type;

@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { StatusPill } from "@/components/pm/StatusPill";
-import { fmtDateShort } from "@/lib/pm/format";
 import type { PmTask, PmProject, TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
+import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -163,11 +165,17 @@ function KCard({ task, project, onOpen, overlay }: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = sortable;
   const style = overlay ? undefined : { transform: CSS.Transform.toString(transform), transition };
   const blocked = task.status === "blocked";
+  const clientNames = useClientNamesMap();
   return (
     <div ref={overlay ? undefined : setNodeRef} style={style} {...(overlay ? {} : attributes)} {...(overlay ? {} : listeners)}
       className={isDragging && !overlay ? "opacity-40" : ""}>
       <Card onClick={() => onOpen(task.id)}
-        className={cn("cursor-pointer hover:shadow-md transition", blocked && "border-red-500/60", overlay && "shadow-lg")}>
+        className={cn(
+          "cursor-pointer hover:shadow-md transition",
+          blocked && "border-red-500/60",
+          overlay && "shadow-lg",
+          overdueAccentClass(task.due_date),
+        )}>
         <CardContent className="p-2.5 space-y-1.5">
           <div className="flex items-start gap-2">
             <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
@@ -176,14 +184,19 @@ function KCard({ task, project, onOpen, overlay }: {
               <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={task.status === "unclaimed"} />
             </span>
           </div>
+          <ClientContext
+            clientName={clientNameForProject(project, clientNames)}
+            clientId={project?.client_id}
+            projectTitle={project?.title}
+            taskTitle={task.title}
+          />
           <div className="flex items-center gap-1.5 flex-wrap">
             <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
             <Badge variant="outline" className="text-[10px]">{task.type}</Badge>
           </div>
-          {project && <div className="text-[11px] text-muted-foreground truncate">{project.title}</div>}
           {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
           <div className="flex items-center justify-end pt-1">
-            <span className="text-[11px] text-muted-foreground">{fmtDateShort(task.due_date)}</span>
+            <DueBadge dueDate={task.due_date} />
           </div>
         </CardContent>
       </Card>
@@ -201,8 +214,9 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
 }) {
   const blocked = task.status === "blocked";
   const options = columns.includes(task.status) ? columns : [task.status, ...columns];
+  const clientNames = useClientNamesMap();
   return (
-    <Card className={cn("w-full", blocked && "border-red-500/60")}>
+    <Card className={cn("w-full", blocked && "border-red-500/60", overdueAccentClass(task.due_date))}>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start gap-2" onClick={() => onOpen(task.id)}>
           <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
@@ -211,7 +225,12 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
             <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" muted={task.status === "unclaimed"} />
           </span>
         </div>
-        {project && <div className="text-[11px] text-muted-foreground truncate">{project.title}</div>}
+        <ClientContext
+          clientName={clientNameForProject(project, clientNames)}
+          clientId={project?.client_id}
+          projectTitle={project?.title}
+          taskTitle={task.title}
+        />
         {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
         <div className="flex items-center gap-2">
           <Select value={task.status} onValueChange={(v) => onMove(task.id, v as TaskStatus)}>
@@ -220,7 +239,7 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
               {options.map(s => <SelectItem key={s} value={s} className="text-xs">{COL_LABELS[s]}</SelectItem>)}
             </SelectContent>
           </Select>
-          <span className="text-[11px] text-muted-foreground shrink-0">{fmtDateShort(task.due_date)}</span>
+          <DueBadge dueDate={task.due_date} />
         </div>
       </CardContent>
     </Card>

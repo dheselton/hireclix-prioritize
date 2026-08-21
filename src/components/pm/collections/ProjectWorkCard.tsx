@@ -9,6 +9,9 @@ import { fmtAgo, getResumeForProject, onActivityChanged } from "@/lib/pm/activit
 import { StatusPill } from "@/components/pm/StatusPill";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge } from "@/components/pm/DueBadge";
+import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -49,6 +52,8 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
   });
   const [, force] = useState(0);
   useEffect(() => onActivityChanged(() => force(v => v + 1)), []);
+  const clientNames = useClientNamesMap();
+  const clientName = clientNameForProject(project, clientNames);
 
   function toggle() {
     const next = !expanded;
@@ -115,9 +120,14 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <button
-            className="text-left flex-1 group"
+            className="text-left flex-1 group min-w-0 space-y-1"
             onClick={() => onOpenProject(project.id)}
           >
+            <ClientContext
+              clientName={clientName}
+              clientId={project.client_id}
+              size="md"
+            />
             <div className={cn("font-semibold leading-tight group-hover:underline", isRequest && "text-sm")}>{project.title}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
               <WorkTypeBadge workType={(project as any).work_type ?? "project"} />
@@ -196,9 +206,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
                     </div>
                   </div>
                   <StatusPill status={t.status} />
-                  <span className={cn("text-[11px] tabular-nums whitespace-nowrap", overdue ? "text-red-500 font-medium" : "text-muted-foreground")}>
-                    {t.due_date ? fmtDate(t.due_date) : "—"}
-                  </span>
+                  <DueBadge dueDate={t.due_date} />
                   <div onClick={(e) => e.stopPropagation()}>
                     <ClaimButton task={t} />
                   </div>

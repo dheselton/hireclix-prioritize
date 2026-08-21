@@ -4,8 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { AvatarStack } from "@/components/pm/AvatarStack";
-import { fmtDate } from "@/lib/pm/format";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge, dueUrgency } from "@/components/pm/DueBadge";
+import { fmtDate, todayISO } from "@/lib/pm/format";
+import { useClientNamesMap, useInternalClientIds } from "@/lib/pm/clients";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 
@@ -18,24 +20,13 @@ type ProjectWithMeta = PmProject & {
   team: string[];
 };
 
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function taskUrgency(t: PmTask): "overdue" | "today" | "upcoming" | "none" {
-  if (!t.due_date) return "none";
-  const today = todayIso();
-  if (t.due_date < today) return "overdue";
-  if (t.due_date === today) return "today";
-  return "upcoming";
-}
-
 export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
   const drawer = useTaskDrawerLink();
   const internalIds = useInternalClientIds();
+  const clientNames = useClientNamesMap();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
-  const today = todayIso();
+  const clientName = project.client_id ? clientNames.get(project.client_id) ?? null : null;
+  const today = todayISO();
   const pct = project.total_tasks > 0
     ? Math.round((project.completed_tasks / project.total_tasks) * 100)
     : 0;
@@ -61,8 +52,13 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
   return (
     <Card className={cn("p-4", isInternal && "internal-border-l")}>
       {/* Header */}
-      <div className="pb-2 mb-2 border-b border-border/60">
-        <div className="flex items-center gap-2 mb-1.5">
+      <div className="pb-2 mb-2 border-b border-border/60 space-y-1.5">
+        <ClientContext
+          clientName={clientName}
+          clientId={project.client_id}
+          size="md"
+        />
+        <div className="flex items-center gap-2">
           <Link
             to={`/pm/projects/${project.id}`}
             className="text-sm font-semibold truncate flex-1 hover:underline"
@@ -103,7 +99,7 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
         ) : (
           <div className="space-y-1.5">
             {project.my_top_tasks.map((t) => {
-              const u = taskUrgency(t);
+              const u = dueUrgency(t.due_date);
               const borderColor =
                 u === "overdue" ? "border-l-destructive" :
                 u === "today" ? "border-l-amber-500" :
@@ -112,11 +108,6 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
                 u === "overdue" ? "bg-destructive" :
                 u === "today" ? "bg-amber-500" :
                 u === "upcoming" ? "bg-primary" : "bg-muted-foreground/40";
-              const badge =
-                u === "overdue" ? <span className="text-[10px] font-semibold text-destructive">{fmtDate(t.due_date)}</span> :
-                u === "today" ? <span className="text-[10px] font-semibold text-amber-600">Today</span> :
-                t.due_date ? <span className="text-[10px] text-muted-foreground">{fmtDate(t.due_date)}</span> :
-                <span className="text-[10px] text-muted-foreground">No date</span>;
               return (
                 <button
                   key={t.id}
@@ -125,7 +116,7 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
                 >
                   <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
                   <span className="flex-1 min-w-0 text-xs font-medium truncate">{t.title}</span>
-                  <span className="shrink-0">{badge}</span>
+                  <DueBadge dueDate={t.due_date} />
                 </button>
               );
             })}

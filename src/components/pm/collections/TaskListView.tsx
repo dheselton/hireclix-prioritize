@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown } from "lucide-react";
-import { UserAvatar } from "@/components/pm/UserAvatar";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { StatusPill } from "@/components/pm/StatusPill";
-import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import { useMockUsers } from "@/lib/pm/mockUser";
+import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 import { type PmTask, type PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
 import { ClaimButton } from "@/components/pm/ClaimButton";
@@ -19,11 +17,12 @@ import { teamsFromTask, TEAM_COLORS } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge } from "@/components/pm/DueBadge";
 
 type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
 
 const PRIORITY_RANK: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
-
 
 interface Props {
   tasks: PmTask[];
@@ -38,6 +37,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const users = useMockUsers();
+  const clientNames = useClientNamesMap();
   const subCounts = useSubtaskCounts(tasks.map(t => t.id));
 
   const sorted = useMemo(() => {
@@ -46,7 +46,13 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
       let av: any, bv: any;
       switch (sortKey) {
         case "title": av = a.title; bv = b.title; break;
-        case "client": av = projects?.get(a.project_id)?.title ?? ""; bv = projects?.get(b.project_id)?.title ?? ""; break;
+        case "client": {
+          const pa = projects?.get(a.project_id);
+          const pb = projects?.get(b.project_id);
+          av = clientNameForProject(pa, clientNames) ?? pa?.title ?? "";
+          bv = clientNameForProject(pb, clientNames) ?? pb?.title ?? "";
+          break;
+        }
         case "type": av = a.type; bv = b.type; break;
         case "status": av = a.status; bv = b.status; break;
         case "assignee": av = users.find(u => u.id === a.assignee_id)?.name ?? ""; bv = users.find(u => u.id === b.assignee_id)?.name ?? ""; break;
@@ -58,7 +64,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
       return 0;
     });
     return arr;
-  }, [tasks, sortKey, sortDir, projects, users]);
+  }, [tasks, sortKey, sortDir, projects, users, clientNames]);
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -107,7 +113,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                 </th>
               )}
               <SortHead k="title">Title</SortHead>
-              <SortHead k="client" className="hidden md:table-cell">Project</SortHead>
+              <SortHead k="client" className="hidden md:table-cell">Client / Project</SortHead>
               <SortHead k="type" className="hidden sm:table-cell">Type</SortHead>
               <SortHead k="status">Status</SortHead>
               <SortHead k="assignee" className="hidden md:table-cell">Assignee</SortHead>
@@ -134,7 +140,6 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   style={rowTeamBg ? { boxShadow: `inset 4px 0 0 0 ${rowTeams.length === 1 ? TEAM_COLORS[rowTeams[0]] : "transparent"}`, backgroundImage: rowTeams.length > 1 ? rowTeamBg : undefined, backgroundSize: rowTeams.length > 1 ? "4px 100%" : undefined, backgroundRepeat: rowTeams.length > 1 ? "no-repeat" : undefined, backgroundPosition: rowTeams.length > 1 ? "left center" : undefined, paddingLeft: 4 } : undefined}
                   onClick={() => onOpen(t.id)}
                 >
-
                   {enableBulk && (
                     <td className="p-2" onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={checked} onCheckedChange={(v) => toggleOne(t.id, !!v)} />
@@ -148,11 +153,17 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       <ClaimButton task={t} onChanged={onChanged} />
                     </div>
                   </td>
-                  <td className="p-2 text-muted-foreground hidden md:table-cell truncate max-w-[200px]">
-                    <span className="inline-flex items-center gap-1.5">
+                  <td className="p-2 hidden md:table-cell max-w-[240px]">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <WorkTypeBadge workType={(proj as any)?.work_type} compact />
-                      {proj?.title ?? "—"}
-                    </span>
+                      <ClientContext
+                        clientName={clientNameForProject(proj, clientNames)}
+                        clientId={proj?.client_id}
+                        projectTitle={proj?.title}
+                        taskTitle={t.title}
+                        className="min-w-0"
+                      />
+                    </div>
                   </td>
                   <td className="p-2 hidden sm:table-cell">
                     <div className="flex items-center gap-1 flex-wrap">
@@ -164,7 +175,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   <td className="p-2 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                     <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={onChanged} />
                   </td>
-                  <td className="p-2 text-muted-foreground whitespace-nowrap">{fmtDate(t.due_date)}</td>
+                  <td className="p-2 whitespace-nowrap"><DueBadge dueDate={t.due_date} /></td>
                   <td className="p-2 text-center">
                     <div className="flex items-center justify-end gap-1">
                       <PriorityFlag priority={t.priority} size="sm" />
@@ -173,7 +184,6 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       </span>
                     </div>
                   </td>
-
                 </tr>
               );
             })}

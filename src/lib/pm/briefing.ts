@@ -24,6 +24,7 @@ export interface BriefingCounts {
 export type EnrichedQuickTask = PmTask & {
   project_title: string | null;
   client_name: string | null;
+  client_id: string | null;
   request_type: string | null;
 };
 
@@ -178,6 +179,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       return {
         ...t,
         project_title: p?.title ?? null,
+        client_id: p?.client_id ?? null,
         client_name: p?.client_id ? clientNameById.get(p.client_id) ?? null : null,
         request_type: p?.custom_fields?.request_type ?? null,
       };

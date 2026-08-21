@@ -9,16 +9,20 @@ import { PortalMessageThread } from "@/components/pm/portal/PortalMessageThread"
 import { AlertTriangle, CircleDot, ListTodo, MessageSquare, FileText, ExternalLink, Paperclip, FolderKanban } from "lucide-react";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
 import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
 import { buildQueueLink } from "@/lib/pm/links";
+import { useClientNamesMap, clientNameForProject } from "@/lib/pm/clients";
+import { cn } from "@/lib/utils";
 import {
   useMyTasks, useMyRequests, useMyMessageThreads, useMyProjects, requestRef,
   fetchRequestTimeline, fetchRequestFiles, markThreadRead,
   type MyRequest, type RequestTimelineEntry, type RequestFile, type MyProject,
 } from "@/lib/pm/myPortal";
-import type { PmTask } from "@/types/pm";
+import type { PmProject, PmTask } from "@/types/pm";
 
 type TabId = "tasks" | "projects" | "requests" | "messages";
 const TABS = [
@@ -43,12 +47,14 @@ function MyProjectCard({ project }: { project: MyProject }) {
   return (
     <div className="rounded-md border border-border/60 bg-card p-3 space-y-2 hover:bg-accent/20 transition">
       <div className="flex items-start gap-3">
-        <Link to={`/pm/projects/${project.id}`} className="flex-1 min-w-0">
-          <span className="block text-sm font-medium truncate hover:underline">{project.title}</span>
-          <span className="block text-[11px] text-muted-foreground truncate">
-            {project.clientName ?? "No client"}
-            {project.goLiveDate ? ` · Go-live ${fmtDate(project.goLiveDate)}` : ""}
-          </span>
+        <Link to={`/pm/projects/${project.id}`} className="flex-1 min-w-0 space-y-1">
+          <ClientContext clientName={project.clientName} size="md" />
+          <span className="block text-sm font-semibold truncate hover:underline">{project.title}</span>
+          {project.goLiveDate && (
+            <span className="block text-[11px] text-muted-foreground truncate">
+              Go-live {fmtDate(project.goLiveDate)}
+            </span>
+          )}
         </Link>
         <Badge variant="outline" className="text-[10px] capitalize shrink-0">
           {project.status.replace(/_/g, " ")}
@@ -90,18 +96,33 @@ function MyProjectCard({ project }: { project: MyProject }) {
 
 /* --------------------------------------------------------------- task list */
 
-function TaskRow({ task, projectTitle }: { task: PmTask; projectTitle?: string }) {
+function TaskRow({
+  task,
+  project,
+  clientName,
+}: {
+  task: PmTask;
+  project?: PmProject;
+  clientName?: string | null;
+}) {
   return (
     <Link
       to={`/pm/tasks/${task.id}`}
-      className="flex items-center gap-3 px-3 py-2 rounded-md border border-border/60 bg-card hover:bg-accent/30 transition"
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md border border-border/60 bg-card hover:bg-accent/30 transition",
+        overdueAccentClass(task.due_date),
+      )}
     >
-      <span className="flex-1 min-w-0">
+      <span className="flex-1 min-w-0 space-y-1">
         <span className="block text-sm font-medium truncate">{task.title}</span>
-        <span className="block text-[11px] text-muted-foreground truncate">
-          {projectTitle ?? "—"}{task.due_date ? ` · Due ${fmtDate(task.due_date)}` : ""}
-        </span>
+        <ClientContext
+          clientName={clientName}
+          clientId={project?.client_id}
+          projectTitle={project?.title}
+          taskTitle={task.title}
+        />
       </span>
+      <DueBadge dueDate={task.due_date} />
       <StatusPill status={task.status} />
       <UserAvatar userId={task.assignee_id} size="xs" />
     </Link>
@@ -109,12 +130,13 @@ function TaskRow({ task, projectTitle }: { task: PmTask; projectTitle?: string }
 }
 
 function TaskGroup({
-  title, icon, tasks, projects, link, emptyHint,
+  title, icon, tasks, projects, clientNames, link, emptyHint,
 }: {
   title: string;
   icon: React.ReactNode;
   tasks: PmTask[];
-  projects: Map<string, { title: string }>;
+  projects: Map<string, PmProject>;
+  clientNames: Map<string, string>;
   link: string;
   emptyHint: string;
 }) {
@@ -133,9 +155,17 @@ function TaskGroup({
         <p className="text-xs text-muted-foreground italic px-1">{emptyHint}</p>
       ) : (
         <div className="space-y-1.5">
-          {tasks.map(t => (
-            <TaskRow key={t.id} task={t} projectTitle={projects.get(t.project_id)?.title} />
-          ))}
+          {tasks.map(t => {
+            const project = projects.get(t.project_id);
+            return (
+              <TaskRow
+                key={t.id}
+                task={t}
+                project={project}
+                clientName={clientNameForProject(project, clientNames)}
+              />
+            );
+          })}
         </div>
       )}
     </section>
@@ -258,13 +288,10 @@ export default function MyPortal() {
   const { requests, loading: reqLoading } = useMyRequests(userId, user?.email ?? null);
   const { threads, loading: msgLoading } = useMyMessageThreads(userId);
   const { projects: myProjects, loading: projLoading } = useMyProjects(userId);
+  const clientNames = useClientNamesMap();
   const [openRequest, setOpenRequest] = useState<MyRequest | null>(null);
   const [openThread, setOpenThread] = useState<{ projectId: string; title: string } | null>(null);
 
-  const projectTitles = useMemo(
-    () => new Map([...myTasks.projects].map(([id, p]) => [id, { title: p.title }])),
-    [myTasks.projects],
-  );
   const unreadTotal = threads.reduce((n, t) => n + t.unread, 0);
 
   return (
@@ -298,19 +325,19 @@ export default function MyPortal() {
             <>
               <TaskGroup
                 title="Needs attention" icon={<AlertTriangle className="h-4 w-4" />}
-                tasks={myTasks.attention} projects={projectTitles}
+                tasks={myTasks.attention} projects={myTasks.projects} clientNames={clientNames}
                 link={buildQueueLink({ chips: ["overdue"] })}
                 emptyHint="Nothing blocked or overdue. Nice."
               />
               <TaskGroup
                 title="In progress" icon={<CircleDot className="h-4 w-4" />}
-                tasks={myTasks.inProgress} projects={projectTitles}
+                tasks={myTasks.inProgress} projects={myTasks.projects} clientNames={clientNames}
                 link={buildQueueLink({ chips: ["assigned_to_me"] })}
                 emptyHint="Nothing started yet."
               />
               <TaskGroup
                 title="Up next" icon={<ListTodo className="h-4 w-4" />}
-                tasks={myTasks.upNext} projects={projectTitles}
+                tasks={myTasks.upNext} projects={myTasks.projects} clientNames={clientNames}
                 link={buildQueueLink({ chips: ["assigned_to_me"] })}
                 emptyHint="Your queue is clear."
               />
@@ -318,9 +345,17 @@ export default function MyPortal() {
                 <section className="space-y-2">
                   <h2 className="text-sm font-semibold text-muted-foreground">Recently completed</h2>
                   <div className="space-y-1.5 opacity-70">
-                    {myTasks.recentlyCompleted.map(t => (
-                      <TaskRow key={t.id} task={t} projectTitle={projectTitles.get(t.project_id)?.title} />
-                    ))}
+                    {myTasks.recentlyCompleted.map(t => {
+                      const project = myTasks.projects.get(t.project_id);
+                      return (
+                        <TaskRow
+                          key={t.id}
+                          task={t}
+                          project={project}
+                          clientName={clientNameForProject(project, clientNames)}
+                        />
+                      );
+                    })}
                   </div>
                 </section>
               )}

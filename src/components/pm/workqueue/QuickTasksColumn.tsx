@@ -5,25 +5,13 @@ import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge, dueUrgency, overdueAccentClass } from "@/components/pm/DueBadge";
 import { buildQueueLink } from "@/lib/pm/links";
-import { fmtDate } from "@/lib/pm/format";
+import { cn } from "@/lib/utils";
 import type { EnrichedQuickTask } from "@/lib/pm/briefing";
 
-
 type QuickTask = EnrichedQuickTask;
-
-function todayIso() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function urgency(t: QuickTask): "overdue" | "today" | "upcoming" | "none" {
-  if (!t.due_date) return "none";
-  const today = todayIso();
-  if (t.due_date < today) return "overdue";
-  if (t.due_date === today) return "today";
-  return "upcoming";
-}
 
 interface Props {
   tasks: QuickTask[];
@@ -65,45 +53,37 @@ function TypePill({ value }: { value: string | null }) {
   );
 }
 
-function MetaRow({ t }: { t: QuickTask }) {
-  const parts: string[] = [];
-  if (t.client_name) parts.push(t.client_name);
-  if (t.project_title && t.project_title !== t.client_name) parts.push(t.project_title);
-  return (
-    <div className="flex items-center gap-1.5 mt-0.5 min-w-0 flex-wrap">
-      <TypePill value={t.request_type} />
-      {parts.length > 0 && (
-        <span className="text-[11px] text-muted-foreground truncate">
-          {parts.join(" · ")}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }) {
-  const u = urgency(t);
+  const u = dueUrgency(t.due_date);
   const dot =
     u === "overdue" ? "bg-destructive" :
     u === "today" ? "bg-amber-500" :
     u === "upcoming" ? "bg-primary" : "bg-muted-foreground/40";
-  const badge =
-    u === "overdue" ? <span className="text-[10px] font-semibold text-destructive">Overdue</span> :
-    u === "today" ? <span className="text-[10px] font-semibold text-amber-600">Today</span> :
-    t.due_date ? <span className="text-[10px] text-muted-foreground">{fmtDate(t.due_date)}</span> :
-    <span className="text-[10px] text-muted-foreground">No date</span>;
   return (
-    <div className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md border border-border bg-card text-left group">
+    <div
+      className={cn(
+        "card-lift w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-md border border-border bg-card text-left group",
+        overdueAccentClass(t.due_date),
+      )}
+    >
       <span className={`h-2 w-2 rounded-full shrink-0 mt-1.5 ${dot}`} />
-      <button onClick={() => onOpen(t.id)} className="flex-1 min-w-0 text-left">
+      <button onClick={() => onOpen(t.id)} className="flex-1 min-w-0 text-left space-y-1">
         <div className="text-sm font-medium truncate flex items-center gap-1.5">
           <PriorityFlag priority={t.priority} size="xs" />
           <span className="truncate">{t.title}</span>
         </div>
-        <MetaRow t={t} />
+        <ClientContext
+          clientName={t.client_name}
+          clientId={t.client_id}
+          projectTitle={t.project_title}
+          taskTitle={t.title}
+        />
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <TypePill value={t.request_type} />
+        </div>
       </button>
 
-      <div className="shrink-0 mt-0.5">{badge}</div>
+      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} size="md" /></div>
       <div className="mt-0.5 touch-action">
         <TaskTriagePopover task={t} />
       </div>
@@ -112,27 +92,27 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
 }
 
 function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }) {
-  const u = urgency(t);
-  const badge =
-    u === "overdue" ? <span className="text-[10px] font-semibold text-destructive">Overdue</span> :
-    u === "today" ? <span className="text-[10px] font-semibold text-amber-600">Today</span> :
-    t.due_date ? <span className="text-[10px] text-muted-foreground">{fmtDate(t.due_date)}</span> :
-    null;
   return (
-    <div className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2 rounded-md bg-amber-500/5 border border-amber-500/40 border-l-4 border-l-amber-500">
+    <div className="card-lift w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-md bg-amber-500/5 border border-amber-500/40 border-l-4 border-l-amber-500">
       <span className="h-2 w-2 rounded-full shrink-0 mt-1.5 bg-amber-500 unclaimed-pulse" />
       <button
         onClick={() => onOpen(t.id)}
-        className="flex-1 min-w-0 text-left"
+        className="flex-1 min-w-0 text-left space-y-1"
       >
         <div className="text-sm font-medium truncate flex items-center gap-1.5">
           <PriorityFlag priority={t.priority} size="xs" />
           <span className="truncate">{t.title}</span>
         </div>
-        <MetaRow t={t} />
+        <ClientContext
+          clientName={t.client_name}
+          clientId={t.client_id}
+          projectTitle={t.project_title}
+          taskTitle={t.title}
+        />
+        <TypePill value={t.request_type} />
       </button>
 
-      {badge && <div className="shrink-0 mt-0.5">{badge}</div>}
+      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} size="md" showEmpty={false} /></div>
       <div className="mt-0.5"><ClaimButton task={t} size="sm" /></div>
     </div>
   );

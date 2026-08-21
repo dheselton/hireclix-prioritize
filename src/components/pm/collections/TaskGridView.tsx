@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { StatusPill } from "@/components/pm/StatusPill";
-import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
@@ -12,7 +11,9 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
-
+import { ClientContext } from "@/components/pm/ClientContext";
+import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
+import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 
 interface Props {
   tasks: PmTask[];
@@ -24,7 +25,7 @@ interface Props {
 export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const subCounts = useSubtaskCounts(tasks.map(t => t.id));
-
+  const clientNames = useClientNamesMap();
 
   function toggle(id: string, checked: boolean) {
     const s = new Set(selected);
@@ -52,6 +53,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                 t.status === "unclaimed"
                   ? "unclaimed-card"
                   : (t.track === "pm" ? "track-border-pm" : "track-border-production"),
+                overdueAccentClass(t.due_date),
               )}
               onClick={() => onOpen(t.id)}
             >
@@ -75,18 +77,24 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                 </div>
 
                 <div className="font-medium leading-tight">{t.title}</div>
-                <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
                   {proj && <WorkTypeBadge workType={(proj as any).work_type ?? "project"} />}
-                  <span className="truncate">{proj?.title ?? "—"}</span>
+                  <ClientContext
+                    clientName={clientNameForProject(proj, clientNames)}
+                    clientId={proj?.client_id}
+                    projectTitle={proj?.title}
+                    taskTitle={t.title}
+                    className="min-w-0"
+                  />
                 </div>
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between pt-1 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" />
                     <StatusPill status={t.status} />
                   </div>
                   {t.status === "unclaimed"
                     ? <ClaimButton task={t} onChanged={onChanged} />
-                    : <span className="text-[11px] text-muted-foreground">{fmtDate(t.due_date)}</span>}
+                    : <DueBadge dueDate={t.due_date} />}
                 </div>
               </CardContent>
             </Card>
