@@ -95,6 +95,9 @@ const TYPE_FILTER: Record<Exclude<TypePill, "all">, string[]> = {
   qa: ["qa"],
 };
 
+/** Project Tasks tab only supports List + Board (not global Grid/Projects defaults). */
+const TASKS_TAB_VIEWS = ["list", "kanban"] as const;
+
 function stripHtml(html?: string | null): string {
   if (!html) return "";
   return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
@@ -114,7 +117,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   supportMode?: boolean;
 }) {
   const navigate = useNavigate();
-  const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list");
+  const [view, setView] = useViewMode(`project.tasks.${projectId}`, "list", { allowed: TASKS_TAB_VIEWS });
   const isMobile = useIsMobile();
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">(() => {
     try { return (localStorage.getItem(`pm.tasks.sort.${projectId}`) as "newest" | "oldest") || "newest"; } catch { return "newest"; }
@@ -217,7 +220,8 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   );
   const [archiveOpen, setArchiveOpen] = useState(false);
 
-  const filtered = useMemo(() => {
+  /** Filters that apply before team scope (used for "X of Y tasks" counts). */
+  const filteredBeforeTeam = useMemo(() => {
     // Safety net: if hiding upcoming would leave nothing visible, override and show all.
     const effectiveShowUpcoming = showUpcoming || (activeSource.length > 0 && activeSource.every(t => hiddenIds.has(t.id)));
     let out = activeSource;
@@ -231,9 +235,27 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     if (isMe && meId) out = out.filter(t => t.assignee_id === meId);
     if (watchingOnly) out = out.filter(t => watchedTaskIds.has(t.id));
     if (taskFilter) out = out.filter(t => matchesTaskFilter(t, taskFilter));
-    out = out.filter(t => team.filterTask(t));
     return out;
-  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, team, watchingOnly, watchedTaskIds, taskFilter]);
+  }, [activeSource, pill, kindFilter, isMe, meId, hiddenIds, showUpcoming, watchingOnly, watchedTaskIds, taskFilter]);
+
+  const filtered = useMemo(
+    () => filteredBeforeTeam.filter(t => team.filterTask(t)),
+    [filteredBeforeTeam, team],
+  );
+
+  const teamScoped = !team.bypass && !team.showAll;
+  const hasOtherFilters =
+    pill !== "all" || isMe || watchingOnly || !!taskFilter || kindFilter !== "all";
+  const filtersHideAll = filtered.length === 0 && activeSource.length > 0;
+
+  const clearViewFilters = useCallback(() => {
+    setPill("all");
+    setKindFilter("all");
+    setWatchingOnly(false);
+    setTaskFilter(null);
+    if (isMe) setMeMode("all");
+    if (teamScoped) team.setShowAll(true);
+  }, [isMe, setMeMode, team, teamScoped]);
 
   const sortedFiltered = useMemo(() => {
     const sorted = [...filtered];
@@ -440,7 +462,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   }, []);
 
   const pills: { id: TypePill | "me"; label: string; teamColor?: string }[] = [
-    { id: "all", label: "All" },
+    { id: "all", label: "All types" },
     { id: "design", label: "Design", teamColor: TEAM_COLORS.design },
     { id: "dev", label: "Dev", teamColor: TEAM_COLORS.dev },
     { id: "qa", label: "QA", teamColor: TEAM_COLORS.qa },
@@ -591,10 +613,57 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         </div>
       </div>
 
+      {teamScoped && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 text-xs text-muted-foreground">
+          <Users className="h-3.5 w-3.5 text-info shrink-0" />
+          <span>
+            Viewing <span className="font-medium text-foreground">{team.label}</span>
+            {" · "}
+            {filtered.length} of {filteredBeforeTeam.length} task{filteredBeforeTeam.length === 1 ? "" : "s"}
+          </span>
+          <button
+            type="button"
+            onClick={() => team.setShowAll(true)}
+            className="font-medium text-info hover:underline underline-offset-2"
+          >
+            Show all project tasks
+          </button>
+        </div>
+      )}
+
       <BulkTaskActions selected={selected} onClear={clearSelection} onChanged={emitTasksChanged} />
 
+      {filtersHideAll && (
+        <Card>
+          <CardContent className="py-8 px-4 flex flex-col items-center text-center gap-2">
+            <p className="text-sm font-medium text-foreground">No tasks in this view</p>
+            <p className="text-xs text-muted-foreground max-w-md">
+              {teamScoped
+                ? "Your team filter (or other filters) is hiding every task on this project."
+                : "Active filters are hiding every task on this project."}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+              {teamScoped && (
+                <Button size="sm" onClick={() => team.setShowAll(true)}>
+                  Show all project tasks
+                </Button>
+              )}
+              {hasOtherFilters && (
+                <Button
+                  size="sm"
+                  variant={teamScoped ? "outline" : "default"}
+                  onClick={clearViewFilters}
+                >
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Pages (grouped) */}
-      {view === "list" && (() => {
+      {!filtersHideAll && view === "list" && (() => {
         const pageMap = new Map<string, { label: string; tasks: PmTask[] }>();
         for (const t of sortedFiltered) {
           if (!t.page_group_key) continue;
@@ -643,7 +712,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
       })()}
 
       {/* List */}
-      {view === "list" && (
+      {!filtersHideAll && view === "list" && (
         <div className="space-y-2">
           {PROJECT_GROUPS.map(g => {
             const list = byGroup[g.id];
@@ -694,7 +763,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
 
       {/* Board — mobile: stacked single-column sections, no drag-and-drop.
           Status changes happen via the status picker on each card. */}
-      {view === "kanban" && isMobile && (
+      {!filtersHideAll && view === "kanban" && isMobile && (
         <DndContext>
           <div className="space-y-4">
             {PROJECT_GROUPS.map(g => {
@@ -733,7 +802,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         </DndContext>
       )}
 
-      {view === "kanban" && !isMobile && (
+      {!filtersHideAll && view === "kanban" && !isMobile && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
