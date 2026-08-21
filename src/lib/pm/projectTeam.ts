@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-/** Returns all project members as a map: project_id -> array of user_ids. */
-export function useProjectTeamsMap() {
-  const { data } = useQuery({
+export function useProjectTeamsQuery() {
+  return useQuery({
     queryKey: ["pm_project_members_map"],
     queryFn: async () => {
       const { data } = await supabase
@@ -19,6 +18,11 @@ export function useProjectTeamsMap() {
     },
     staleTime: 30_000,
   });
+}
+
+/** Returns all project members as a map: project_id -> array of user_ids. */
+export function useProjectTeamsMap() {
+  const { data } = useProjectTeamsQuery();
   return data ?? new Map<string, string[]>();
 }
 

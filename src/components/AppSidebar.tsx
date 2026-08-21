@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate, Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock,
@@ -9,8 +9,6 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { fetchTasks, fetchProjects } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
@@ -19,6 +17,8 @@ import { useInternalProjectIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { projectColorHsl } from "@/lib/pm/projectColor";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
+import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
+import { SidebarWorkSkeleton } from "@/components/pm/WorkLoadingState";
 
 type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
 
@@ -51,16 +51,16 @@ const roadmapItems = [
 function useMyWork() {
   const { user } = useCurrentUser();
   const userId = user?.id ?? null;
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
-  const reload = async () => {
-    const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
-    setTasks(t); setProjects(p);
-  };
-  useEffect(() => { reload(); }, []);
-  useTasksChanged(reload);
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const tasks = tasksQuery.data ?? EMPTY_TASKS;
+  const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   return useMemo(() => {
-    if (!userId) return { myQuickTasks: [] as PmTask[], myProjectsWithCounts: [] as Array<{ project: PmProject; openCount: number }> };
+    if (!userId) return {
+      myQuickTasks: [] as PmTask[],
+      myProjectsWithCounts: [] as Array<{ project: PmProject; openCount: number }>,
+      loading: tasksQuery.isPending || projectsQuery.isPending,
+    };
     const active = (s: PmTask["status"]) => s !== "complete" && s !== "approved";
     const mine = tasks.filter(t => t.assignee_id === userId && active(t.status));
 
@@ -84,17 +84,15 @@ function useMyWork() {
     return {
       myQuickTasks: quickTasks.slice(0, 8),
       myProjectsWithCounts,
+      loading: tasksQuery.isPending || projectsQuery.isPending,
     };
-  }, [tasks, projects, userId]);
+  }, [tasks, projects, userId, tasksQuery.isPending, projectsQuery.isPending]);
 }
 
 function useUnclaimedCount() {
   const { roles } = useCurrentUser();
   const { isMe } = useMeMode();
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const reload = async () => setTasks(await fetchTasks());
-  useEffect(() => { reload(); }, []);
-  useTasksChanged(reload);
+  const { data: tasks = EMPTY_TASKS } = useTasksQuery();
   const isPM = roles.includes("pm");
   const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);
   return useMemo(() => {
@@ -170,7 +168,7 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
   const { roles } = useCurrentUser();
-  const { myQuickTasks, myProjectsWithCounts } = useMyWork();
+  const { myQuickTasks, myProjectsWithCounts, loading: myWorkLoading } = useMyWork();
   const internalIds = useInternalProjectIds();
   const careerSiteIds = useCareerSiteProjects();
 
@@ -233,6 +231,9 @@ export function AppSidebar() {
             <div className="rounded-lg border border-border/40 bg-card/50 p-2">
               <SectionLabel featured>Assigned to me</SectionLabel>
               <SidebarGroupContent>
+                {myWorkLoading ? (
+                  <SidebarWorkSkeleton />
+                ) : (
                 <div className="space-y-3">
                   {/* Quick Tasks */}
                   <div>
@@ -331,6 +332,7 @@ export function AppSidebar() {
                     )}
                   </div>
                 </div>
+                )}
               </SidebarGroupContent>
             </div>
           </SidebarGroup>

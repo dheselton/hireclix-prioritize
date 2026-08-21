@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { fmtDate } from "@/lib/pm/format";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
-import { fetchTasks, fetchProjects } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
-import type { PmTask, PmProject } from "@/types/pm";
 import { GanttChart } from "@/components/pm/GanttChart";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,10 +18,14 @@ import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filter
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
+import { WorkListSkeleton, WorkLoadError } from "@/components/pm/WorkLoadingState";
 
 export default function GlobalTimeline() {
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const tasks = tasksQuery.data ?? EMPTY_TASKS;
+  const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   const [filter, setFilter] = useState<string>("all");
   const drawer = useTaskDrawerLink();
   const [mode, setMode] = useViewMode("globalTimeline", "list");
@@ -32,14 +33,7 @@ export default function GlobalTimeline() {
   const { user } = useCurrentUser();
   const chips = useChipFilters("globalTimeline");
   const { types } = useTypeFilter("globalTimeline");
-  const typesKey = useMemo(() => [...types].sort().join(","), [types]);
-
-  const reload = async () => {
-    const [t, p] = await Promise.all([fetchTasks(undefined, { types: [...types] }), fetchProjects()]);
-    setTasks(t); setProjects(p);
-  };
-  useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
-  useTasksChanged(reload);
+  const reload = () => { void tasksQuery.refetch(); void projectsQuery.refetch(); };
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const workType = useWorkTypeFilter("globalTimeline");
@@ -93,6 +87,12 @@ export default function GlobalTimeline() {
           </Select>
         }
       />
+      {(tasksQuery.isPending || projectsQuery.isPending) ? (
+        <WorkListSkeleton />
+      ) : (tasksQuery.isError || projectsQuery.isError) ? (
+        <WorkLoadError retry={reload} />
+      ) : (
+      <>
       {/* Gantt is unusable on phones — fall back to a compact project list. */}
       {isMobile ? (
         <Card><CardContent className="p-2 space-y-1">
@@ -134,6 +134,8 @@ export default function GlobalTimeline() {
       </div>
 
       <TaskDrawer />
+      </>
+      )}
     </div>
   );
 }

@@ -31,14 +31,14 @@ export function groupMyTask(t: PmTask): MyTaskGroupId {
   return "up_next";
 }
 
-export function useMyTasks(userId: string | null): MyTasksData {
+export function useMyTasks(userId: string | null, enabled = true): MyTasksData {
   const [rows, setRows] = useState<PmTask[]>([]);
   const [doneRows, setDoneRows] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<Map<string, PmProject>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!userId) { setRows([]); setDoneRows([]); setLoading(false); return; }
+    if (!enabled || !userId) { setRows([]); setDoneRows([]); setLoading(false); return; }
     setLoading(true);
     const [openRes, doneRes] = await Promise.all([
       supabase.from("pm_tasks").select("*").eq("assignee_id", userId).order("due_date", { ascending: true }),
@@ -57,7 +57,7 @@ export function useMyTasks(userId: string | null): MyTasksData {
       setProjects(new Map());
     }
     setLoading(false);
-  }, [userId]);
+  }, [userId, enabled]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -99,12 +99,12 @@ const RELATION_RANK: Record<MyProjectRelation, number> = {
  * Every project the current user is attached to — as a team member, a
  * watcher, the requester, or simply because they own a task on it.
  */
-export function useMyProjects(userId: string | null) {
+export function useMyProjects(userId: string | null, enabled = true) {
   const [projects, setProjects] = useState<MyProject[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!userId) { setProjects([]); setLoading(false); return; }
+    if (!enabled || !userId) { setProjects([]); setLoading(false); return; }
     setLoading(true);
 
     const [memberRes, requestedRes, myTaskRes] = await Promise.all([
@@ -191,7 +191,7 @@ export function useMyProjects(userId: string | null) {
 
     setProjects(out);
     setLoading(false);
-  }, [userId]);
+  }, [userId, enabled]);
 
   useEffect(() => { load(); }, [load]);
   return { projects, loading, reload: load };
@@ -234,12 +234,12 @@ function toRequest(row: any): MyRequest {
   };
 }
 
-export function useMyRequests(userId: string | null, email: string | null) {
+export function useMyRequests(userId: string | null, email: string | null, enabled = true) {
   const [requests, setRequests] = useState<MyRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!userId && !email) { setRequests([]); setLoading(false); return; }
+    if (!enabled || (!userId && !email)) { setRequests([]); setLoading(false); return; }
     setLoading(true);
 
     // Projects I requested — catches submissions made on my behalf.
@@ -263,7 +263,7 @@ export function useMyRequests(userId: string | null, email: string | null) {
 
     setRequests([...seen.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     setLoading(false);
-  }, [userId, email]);
+  }, [userId, email, enabled]);
 
   useEffect(() => { load(); }, [load]);
   return { requests, loading, reload: load };
@@ -321,12 +321,12 @@ export function markThreadRead(userId: string, projectId: string) {
   try { localStorage.setItem(portalReadKey(userId, projectId), new Date().toISOString()); } catch { /* ignore */ }
 }
 
-export function useMyMessageThreads(userId: string | null) {
+export function useMyMessageThreads(userId: string | null, enabled = true) {
   const [threads, setThreads] = useState<MessageThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!userId) { setThreads([]); setLoading(false); return; }
+    if (!enabled || !userId) { setThreads([]); setLoading(false); return; }
     setLoading(true);
 
     const [memberRes, requestedRes] = await Promise.all([
@@ -380,7 +380,7 @@ export function useMyMessageThreads(userId: string | null) {
 
     setThreads(summaries);
     setLoading(false);
-  }, [userId]);
+  }, [userId, enabled]);
 
   useEffect(() => { load(); }, [load]);
   return { threads, loading, reload: load };

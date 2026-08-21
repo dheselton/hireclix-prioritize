@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { fetchTasks, fetchProjects } from "@/lib/pm/api";
 import { buildQueueLink, projectFilterLink } from "@/lib/pm/links";
-import { useTasksChanged } from "@/lib/pm/refresh";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask, TEAM_LABEL } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
-import type { PmTask, PmProject } from "@/types/pm";
+import {
+  EMPTY_PROJECTS,
+  EMPTY_TASKS,
+  useProjectsQuery,
+  useProjectTasksQuery,
+  useTasksQuery,
+} from "@/lib/pm/queries";
 
 interface Props {
   /** Limit to a single project (used on ProjectDetail). */
@@ -25,20 +29,14 @@ interface Props {
 export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const { user, roles } = useCurrentUser();
   const { isMe } = useMeMode();
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
+  const allTasksQuery = useTasksQuery();
+  const projectTasksQuery = useProjectTasksQuery(projectId);
+  const projectsQuery = useProjectsQuery();
+  const tasks = projectId
+    ? (projectTasksQuery.data ?? EMPTY_TASKS)
+    : (allTasksQuery.data ?? EMPTY_TASKS);
+  const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   const [dismissedAt, setDismissedAt] = useState<number>(0);
-
-  const reload = async () => {
-    const [t, p] = await Promise.all([
-      fetchTasks(projectId),
-      projectId ? Promise.resolve([] as PmProject[]) : fetchProjects(),
-    ]);
-    setTasks(t);
-    setProjects(p);
-  };
-  useEffect(() => { reload(); }, [projectId]);
-  useTasksChanged(reload);
 
   const isPM = roles.includes("pm");
   const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);

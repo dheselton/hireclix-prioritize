@@ -1,9 +1,16 @@
 // Tiny pub/sub so drawer edits notify list/board/queue pages to refetch.
 import { useEffect, useRef } from "react";
+import { queryClient } from "@/lib/queryClient";
 
 const subs = new Set<() => void>();
 
 export function emitTasksChanged() {
+  // React Query consumers share these requests and refresh once per key.
+  // Keep the legacy subscribers below while remaining screens are migrated.
+  void queryClient.invalidateQueries({ queryKey: ["pm", "tasks"] });
+  void queryClient.invalidateQueries({ queryKey: ["pm", "projects"] });
+  void queryClient.invalidateQueries({ queryKey: ["pm_task_assignees_map"] });
+  void queryClient.invalidateQueries({ queryKey: ["pm_project_members_map"] });
   subs.forEach((fn) => {
     try { fn(); } catch {}
   });

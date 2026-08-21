@@ -4,9 +4,8 @@ import { emitTasksChanged } from "@/lib/pm/refresh";
 
 const KEY = ["pm_task_assignees_map"] as const;
 
-/** Map of task_id -> co-assignee user_ids (excludes the primary owner). */
-export function useTaskAssigneesMap() {
-  const { data } = useQuery({
+export function useTaskAssigneesQuery() {
+  return useQuery({
     queryKey: KEY,
     queryFn: async () => {
       const { data } = await supabase
@@ -22,6 +21,11 @@ export function useTaskAssigneesMap() {
     },
     staleTime: 15_000,
   });
+}
+
+/** Map of task_id -> co-assignee user_ids (excludes the primary owner). */
+export function useTaskAssigneesMap() {
+  const { data } = useTaskAssigneesQuery();
   return data ?? new Map<string, string[]>();
 }
 

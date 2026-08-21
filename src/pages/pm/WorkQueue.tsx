@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap, FolderKanban } from "lucide-react";
@@ -9,17 +9,16 @@ import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { CollapsibleSection } from "@/components/pm/CollapsibleSection";
 import { TaskListByType } from "@/components/pm/workqueue/TaskListByType";
-import { fetchTasks, fetchProjects } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
-import type { PmProject, PmTask } from "@/types/pm";
 
-import { useBriefingData } from "@/lib/pm/briefing";
+import { useCachedBriefingData } from "@/lib/pm/briefingQuery";
 import { DailyBriefingHero } from "@/components/pm/workqueue/DailyBriefingHero";
 import { QuickTasksColumn } from "@/components/pm/workqueue/QuickTasksColumn";
 import { ProjectWorkColumn } from "@/components/pm/workqueue/ProjectWorkColumn";
 import { NotesSection } from "@/components/pm/workqueue/NotesSection";
 import { SupportHandoffCallout } from "@/components/pm/workqueue/SupportHandoffCallout";
 import { ActivityDigest } from "@/components/pm/workqueue/ActivityDigest";
+import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
+import { WorkListSkeleton, WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingState";
 
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
@@ -29,25 +28,20 @@ export default function WorkQueue() {
   // Submitter-only data (preserved from prior version)
   const isSubmitter = role === "submitter";
   const [latestFormSlug, setLatestFormSlug] = useState<string | null>(null);
-  const [mySubmitted, setMySubmitted] = useState<PmTask[]>([]);
-  const [submitterProjects, setSubmitterProjects] = useState<PmProject[]>([]);
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const mySubmitted = useMemo(
+    () => (tasksQuery.data ?? []).filter(task => task.created_by === user?.id),
+    [tasksQuery.data, user?.id],
+  );
+  const submitterProjects = projectsQuery.data ?? [];
   const [phaseNames, setPhaseNames] = useState<Map<string, string>>(new Map());
   const [clientNames, setClientNames] = useState<Map<string, string>>(new Map());
 
-  const reloadSubmitter = async () => {
-    if (!isSubmitter || !user?.id) return;
-    const [t, p] = await Promise.all([fetchTasks(), fetchProjects()]);
-    setMySubmitted((t as PmTask[]).filter((x) => x.created_by === user.id));
-    setSubmitterProjects(p as PmProject[]);
+  const reloadSubmitter = () => {
+    void tasksQuery.refetch();
+    void projectsQuery.refetch();
   };
-
-  useEffect(() => {
-    if (!isSubmitter) return;
-    reloadSubmitter();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSubmitter, user?.id]);
-
-  useTasksChanged(() => { if (isSubmitter) reloadSubmitter(); });
 
   useEffect(() => {
     if (!isSubmitter) return;
@@ -67,7 +61,8 @@ export default function WorkQueue() {
   }, [isSubmitter]);
 
   // --- Briefing data for non-submitters ---
-  const { counts, quickTasks, unclaimedQuickTasks, projects, loading } = useBriefingData(isSubmitter ? null : user?.id);
+  const { counts, quickTasks, unclaimedQuickTasks, projects, loading, error, reload } =
+    useCachedBriefingData(isSubmitter ? null : user?.id);
   const firstName = user?.name?.split(" ")[0] ?? "there";
   const projById = new Map(submitterProjects.map((p) => [p.id, p]));
 
@@ -98,6 +93,9 @@ export default function WorkQueue() {
           count={mySubmitted.length}
           storageKey="pm.wq.mySubmitted"
         >
+          {(tasksQuery.isPending || projectsQuery.isPending) ? (
+            <WorkListSkeleton rows={3} />
+          ) : (
           <TaskListByType
             variant="request"
             tasks={mySubmitted}
@@ -108,12 +106,16 @@ export default function WorkQueue() {
             onChanged={reloadSubmitter}
             emptyHint="You haven't submitted any requests yet."
           />
+          )}
         </CollapsibleSection>
 
         <TaskDrawer />
       </div>
     );
   }
+
+  if (loading) return <WorkPageSkeleton />;
+  if (error) return <div className="page-shell"><WorkLoadError retry={reload} /></div>;
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
@@ -140,10 +142,6 @@ export default function WorkQueue() {
       {user?.id && <ActivityDigest userId={user.id} />}
 
       {user?.id && <NotesSection userId={user.id} />}
-
-      {loading && (
-        <div className="text-xs text-muted-foreground text-center mt-3">Loading…</div>
-      )}
 
       <TaskDrawer />
       <CreateWorkDialog

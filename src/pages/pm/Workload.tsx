@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
-import { fetchTasks, fetchProjects } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
-import type { PmTask, PmProject } from "@/types/pm";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +20,8 @@ import { ChevronDown } from "lucide-react";
 import { ProjectHealthList } from "@/components/pm/workqueue/ProjectHealthList";
 import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
 import type { PmRole } from "@/types/pm";
+import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
+import { WorkGridSkeleton, WorkLoadError } from "@/components/pm/WorkLoadingState";
 
 /** Lead roles that get the project health roll-up on this page. */
 const HEALTH_ROLES: PmRole[] = ["pm", "csm", "ba", "tech_lead"];
@@ -41,21 +40,16 @@ export default function Workload() {
   const { user: me, roles } = useCurrentUser();
   const [healthOpen, setHealthOpen] = useState<boolean>(() => localStorage.getItem(HEALTH_OPEN_KEY) !== "0");
   useEffect(() => { localStorage.setItem(HEALTH_OPEN_KEY, healthOpen ? "1" : "0"); }, [healthOpen]);
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const tasks = tasksQuery.data ?? EMPTY_TASKS;
+  const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   const drawer = useTaskDrawerLink();
   const [mode, setMode] = useViewMode("workload", "list");
   const { isMe } = useMeMode();
   const chips = useChipFilters("workload");
   const { types } = useTypeFilter("workload");
-  const typesKey = useMemo(() => [...types].sort().join(","), [types]);
-
-  const reloadAll = () => {
-    fetchTasks(undefined, { types: [...types] }).then(setTasks);
-    fetchProjects().then(setProjects);
-  };
-  useEffect(() => { reloadAll(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
-  useTasksChanged(reloadAll);
+  const reloadAll = () => { void tasksQuery.refetch(); void projectsQuery.refetch(); };
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const trackedTasks = useMemo(() => applyTaskTypes(tasks, types), [tasks, types]);
   const coMap = useTaskAssigneesMap();
@@ -104,6 +98,12 @@ export default function Workload() {
         chipState={chips}
         typeFilterPage="workload"
       />
+      {(tasksQuery.isPending || projectsQuery.isPending) ? (
+        <WorkGridSkeleton />
+      ) : (tasksQuery.isError || projectsQuery.isError) ? (
+        <WorkLoadError retry={reloadAll} />
+      ) : (
+      <>
       {canSeeHealth && (
         <section className="space-y-2">
           <button
@@ -238,6 +238,8 @@ export default function Workload() {
         })}
       </div>
       <TaskDrawer />
+      </>
+      )}
     </div>
     </TooltipProvider>
   );

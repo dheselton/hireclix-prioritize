@@ -23,6 +23,7 @@ import {
   type MyRequest, type RequestTimelineEntry, type RequestFile, type MyProject,
 } from "@/lib/pm/myPortal";
 import type { PmProject, PmTask } from "@/types/pm";
+import { WorkGridSkeleton, WorkListSkeleton } from "@/components/pm/WorkLoadingState";
 
 type TabId = "tasks" | "projects" | "requests" | "messages";
 const TABS = [
@@ -284,10 +285,10 @@ export default function MyPortal() {
     setParams(next, { replace: true });
   };
 
-  const myTasks = useMyTasks(userId);
-  const { requests, loading: reqLoading } = useMyRequests(userId, user?.email ?? null);
+  const myTasks = useMyTasks(userId, tab === "tasks");
+  const { requests, loading: reqLoading } = useMyRequests(userId, user?.email ?? null, tab === "requests");
   const { threads, loading: msgLoading } = useMyMessageThreads(userId);
-  const { projects: myProjects, loading: projLoading } = useMyProjects(userId);
+  const { projects: myProjects, loading: projLoading } = useMyProjects(userId, tab === "projects");
   const clientNames = useClientNamesMap();
   const [openRequest, setOpenRequest] = useState<MyRequest | null>(null);
   const [openThread, setOpenThread] = useState<{ projectId: string; title: string } | null>(null);
@@ -320,7 +321,7 @@ export default function MyPortal() {
       {tab === "tasks" && (
         <div className="space-y-6">
           {myTasks.loading ? (
-            <p className="text-sm text-muted-foreground">Loading your tasks…</p>
+            <WorkListSkeleton rows={5} />
           ) : (
             <>
               <TaskGroup
@@ -367,7 +368,7 @@ export default function MyPortal() {
       {tab === "projects" && (
         <div className="space-y-2">
           {projLoading ? (
-            <p className="text-sm text-muted-foreground">Loading your projects…</p>
+            <WorkGridSkeleton cards={4} />
           ) : myProjects.length === 0 ? (
             <Card><CardContent className="text-center py-10 space-y-2">
               <FolderKanban className="h-6 w-6 mx-auto text-muted-foreground/60" />
@@ -393,7 +394,7 @@ export default function MyPortal() {
         <Card>
           <CardContent className="p-3 space-y-1.5">
             {reqLoading ? (
-              <p className="text-sm text-muted-foreground p-2">Loading your requests…</p>
+              <WorkListSkeleton rows={4} />
             ) : requests.length === 0 ? (
               <div className="text-center py-10 space-y-2">
                 <FileText className="h-6 w-6 mx-auto text-muted-foreground/60" />
@@ -422,7 +423,7 @@ export default function MyPortal() {
         <Card>
           <CardContent className="p-3 space-y-1.5">
             {msgLoading ? (
-              <p className="text-sm text-muted-foreground p-2">Loading conversations…</p>
+              <WorkListSkeleton rows={3} />
             ) : threads.length === 0 ? (
               <div className="text-center py-10 space-y-2">
                 <MessageSquare className="h-6 w-6 mx-auto text-muted-foreground/60" />

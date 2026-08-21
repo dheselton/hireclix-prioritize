@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Columns3, Plus } from "lucide-react";
-import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
+import { updateTask, logActivity } from "@/lib/pm/api";
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { getTaskKind, isRaidOpen } from "@/lib/pm/taskKind";
-import { useTasksChanged } from "@/lib/pm/refresh";
 import { toast } from "sonner";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
@@ -33,6 +32,8 @@ import { WorkKanban } from "@/components/pm/work/WorkKanban";
 import { useTagFilter, taskMatchesTagFilter } from "@/hooks/useTagFilter";
 import { TagFilterChip } from "@/components/pm/tags/TagFilterChip";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
+import { WorkListSkeleton, WorkLoadError } from "@/components/pm/WorkLoadingState";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -61,8 +62,10 @@ function loadCols(role: PmRole | null | undefined): TaskStatus[] {
 
 export default function Work() {
   const isMobile = useIsMobile();
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const tasks = tasksQuery.data ?? EMPTY_TASKS;
+  const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   const [openCreate, setOpenCreate] = useState<null | "select" | "request" | "project">(null);
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -97,14 +100,7 @@ export default function Work() {
   }, [isMobile, setMode]);
 
   const { types } = useTypeFilter("board");
-  const typesKey = useMemo(() => [...types].sort().join(","), [types]);
-
-  const reload = async () => {
-    setTasks(await fetchTasks(undefined, { types: [...types] }));
-    setProjects(await fetchProjects());
-  };
-  useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [typesKey]);
-  useTasksChanged(reload);
+  const reload = () => Promise.all([tasksQuery.refetch(), projectsQuery.refetch()]);
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
@@ -419,19 +415,17 @@ export default function Work() {
         </div>
       )}
 
-      {mode === "list" && (
+      {(tasksQuery.isPending || projectsQuery.isPending) ? (
+        <WorkListSkeleton />
+      ) : (tasksQuery.isError || projectsQuery.isError) ? (
+        <WorkLoadError retry={reload} />
+      ) : mode === "list" ? (
         <TaskListView tasks={visibleTasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
-      )}
-
-      {mode === "projects" && (
+      ) : mode === "projects" ? (
         <ProjectWorkGrid tasks={visibleTasks} projects={projById} meId={user?.id ?? null} onOpenTask={drawer.open} onChanged={reload} />
-      )}
-
-      {mode === "grid" && (
+      ) : mode === "grid" ? (
         <TaskGridView tasks={visibleTasks} projects={projById} onOpen={drawer.open} onChanged={reload} />
-      )}
-
-      {mode === "kanban" && (
+      ) : (
         <WorkKanban tasks={visibleTasks} columns={cols} projects={projById} onOpen={drawer.open} onMove={moveTo} />
       )}
 

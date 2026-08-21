@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { fmtDate } from "@/lib/pm/format";
 import { useMyNotes, type PmNote } from "@/lib/pm/briefing";
 import { NoteDialog } from "./NoteDialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   userId: string;
@@ -47,7 +48,7 @@ function rank(n: PmNote) {
 }
 
 export function NotesSection({ userId }: Props) {
-  const { notes } = useMyNotes(userId);
+  const { notes, loading } = useMyNotes(userId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PmNote | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -79,7 +80,12 @@ export function NotesSection({ userId }: Props) {
         </Button>
       </div>
 
-      {sorted.length === 0 ? (
+      {loading ? (
+        <div className="flex gap-2" aria-label="Loading notes" aria-busy="true">
+          <Skeleton className="h-7 w-48 rounded-full" />
+          <Skeleton className="h-7 w-36 rounded-full" />
+        </div>
+      ) : sorted.length === 0 ? (
         <div className="text-xs text-muted-foreground py-3">
           No notes yet. Add reminders or follow-ups here.
         </div>

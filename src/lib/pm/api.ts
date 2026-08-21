@@ -38,10 +38,10 @@ export const fetchPhases = async (projectId: string) => {
   return (data || []) as PmPhase[];
 };
 
-export const fetchDependencies = async (projectId: string) => {
-  // get all tasks for project, then deps that touch them
-  const tasks = await fetchTasks(projectId);
-  const ids = tasks.map(t => t.id);
+export const fetchDependencies = async (projectId: string, knownTaskIds?: string[]) => {
+  // ProjectDetail already has the project's tasks; reuse those IDs instead of
+  // downloading the same task rows a second time.
+  const ids = knownTaskIds ?? (await fetchTasks(projectId)).map(t => t.id);
   if (!ids.length) return [];
   const { data, error } = await supabase.from('pm_task_dependencies').select('*').in('task_id', ids);
   if (error) throw error;

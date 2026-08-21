@@ -9,11 +9,10 @@ import { Rocket } from "lucide-react";
 import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  fetchProject, fetchTasks, fetchPhases, fetchDependencies,
   updateProject, updateTask, logActivity,
 } from "@/lib/pm/api";
-import { useTasksChanged, useTaskDateProposed } from "@/lib/pm/refresh";
-import type { PmProject, PmTask, PmPhase, PmDependency } from "@/types/pm";
+import { useTaskDateProposed } from "@/lib/pm/refresh";
+import type { PmProject, PmTask } from "@/types/pm";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { CascadeConfirmModal } from "@/components/pm/CascadeConfirmModal";
 import { recalculateBackwardFromGoLive, recalculateForward, type DateDiff } from "@/lib/pm/scheduler";
@@ -38,6 +37,15 @@ import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBann
 import { QaTab } from "@/components/pm/project/QaTab";
 import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
 import { isInQaMode } from "@/lib/pm/qaMode";
+import {
+  pmQueryKeys,
+  useProjectDependenciesQuery,
+  useProjectPhasesQuery,
+  useProjectQuery,
+  useProjectTasksQuery,
+} from "@/lib/pm/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingState";
 
 /** Why a mode-gated tab isn't reachable on a given project. */
 const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
@@ -76,10 +84,22 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
 
   const { user } = useCurrentUser();
-  const [project, setProject] = useState<PmProject | null>(null);
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [phases, setPhases] = useState<PmPhase[]>([]);
-  const [deps, setDeps] = useState<PmDependency[]>([]);
+  const queryClient = useQueryClient();
+  const projectQuery = useProjectQuery(id);
+  const tasksQuery = useProjectTasksQuery(id);
+  const phasesQuery = useProjectPhasesQuery(id);
+  const tasks = tasksQuery.data ?? [];
+  const depsQuery = useProjectDependenciesQuery(id, tasks.map(task => task.id), !tasksQuery.isPending);
+  const project = projectQuery.data ?? null;
+  const phases = phasesQuery.data ?? [];
+  const deps = depsQuery.data ?? [];
+  const setProject = (next: PmProject) => {
+    if (!id) return;
+    queryClient.setQueryData(pmQueryKeys.project(id), next);
+    queryClient.setQueryData<PmProject[]>(pmQueryKeys.allProjects(), current =>
+      current?.map(item => item.id === next.id ? next : item),
+    );
+  };
   const drawer = useTaskDrawerLink();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -122,13 +142,12 @@ export default function ProjectDetail() {
   const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue" | "qa">("task");
   const [qaBatchOpen, setQaBatchOpen] = useState(false);
 
-  const reload = async () => {
-    if (!id) return;
-    const [p, t, ph, d] = await Promise.all([fetchProject(id), fetchTasks(id), fetchPhases(id), fetchDependencies(id)]);
-    setProject(p); setTasks(t); setPhases(ph); setDeps(d);
+  const reload = () => {
+    void projectQuery.refetch();
+    void tasksQuery.refetch();
+    void phasesQuery.refetch();
+    void depsQuery.refetch();
   };
-  useEffect(() => { reload(); }, [id]);
-  useTasksChanged(reload);
 
   useTaskDateProposed(({ taskId, start, end }) => {
     if (!tasks.find(t => t.id === taskId)) return;
@@ -186,7 +205,11 @@ export default function ProjectDetail() {
     );
   }, [availableTabs, tabChecked, searchParams, setSearchParams]);
 
-  if (!project) return <div className="page-shell">Loading…</div>;
+  const loading = projectQuery.isPending || tasksQuery.isPending || phasesQuery.isPending || depsQuery.isPending;
+  const loadError = projectQuery.isError || tasksQuery.isError || phasesQuery.isError || depsQuery.isError;
+  if (loading) return <WorkPageSkeleton />;
+  if (loadError) return <div className="page-shell"><WorkLoadError retry={reload} /></div>;
+  if (!project) return <div className="page-shell text-sm text-muted-foreground">Project not found.</div>;
   const p: any = project;
   const isRequest = (p.work_type ?? "project") === "request";
   const myRoles = user?.roles ?? (user?.role ? [user.role] : []);

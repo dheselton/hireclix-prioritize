@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { logActivity, updateTask, deleteTask } from "@/lib/pm/api";
 import { recordTaskActivity } from "@/lib/pm/activity";
-import { emitTasksChanged } from "@/lib/pm/refresh";
 import type { PmTask, TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +40,7 @@ import { BlockerBanner } from "@/components/pm/drawer/Banners";
 import { TaskDrawer } from "@/components/pm/TaskDrawer";
 import { pinTask, unpinTask, useIsTaskPinned } from "@/lib/pm/pinnedTasks";
 import { useIsWatchingProject, watchProject, unwatchProject, useIsWatchingTask, watchTask, unwatchTask } from "@/lib/pm/watchers";
+import { WorkPageSkeleton } from "@/components/pm/WorkLoadingState";
 
 const TRACK_COLOR: Record<string, string> = {
   pm: "hsl(var(--track-pm))",
@@ -74,7 +74,6 @@ export default function TaskWorkspace() {
     if (!task) return;
     try {
       await deleteTask(task.id);
-      emitTasksChanged();
       toast.success("Task deleted");
       navigate(`/pm/projects/${task.project_id}`);
     } catch (err: any) {
@@ -118,7 +117,6 @@ export default function TaskWorkspace() {
       const updated = await updateTask(task.id, p);
       setTask(updated as any);
       await logActivity({ task_id: task.id, project_id: task.project_id, user_id: user?.id, action: "task.updated", payload: p });
-      emitTasksChanged();
     } catch (err: any) {
       toast.error(`Save failed: ${err?.message ?? "unknown error"}`);
     }
@@ -128,7 +126,7 @@ export default function TaskWorkspace() {
     setParams(prev => { const p = new URLSearchParams(prev); p.set("task", task!.id); return p; });
   }
 
-  if (loading) return <div className="page-shell text-sm text-muted-foreground">Loading task…</div>;
+  if (loading) return <WorkPageSkeleton />;
   if (!task) return <div className="page-shell">Task not found. <Button variant="link" onClick={() => navigate("/")}>Back to Work Queue</Button></div>;
 
   const dotColor = trackColor(task.track);

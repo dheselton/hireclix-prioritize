@@ -6,12 +6,12 @@
  * "movement" and "last activity". No charts — just counted sets that each
  * screen can open.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchProjects, fetchTasks } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
 import { localDateISO } from "@/lib/pm/format";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
+import { useQuery } from "@tanstack/react-query";
+import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 
 /** Monday 00:00 local of the current week. */
 export function startOfWeek(d = new Date()): Date {
@@ -41,6 +41,8 @@ export const isOverdue = (t: PmTask, today = startOfToday()) =>
 
 export interface ReportData {
   loading: boolean;
+  error: boolean;
+  reload: () => void;
   tasks: PmTask[];
   projects: PmProject[];
   clientNames: Map<string, string>;
@@ -51,43 +53,51 @@ export interface ReportData {
 
 /** One fetch pass for the whole report page. */
 export function useReportData(): ReportData {
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
-  const [clientNames, setClientNames] = useState<Map<string, string>>(new Map());
-  const [lastActivity, setLastActivity] = useState<Map<string, string>>(new Map());
-  const [loading, setLoading] = useState(true);
-
-  const weekStart = useMemo(() => startOfWeek(), []);
-
-  const reload = async () => {
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-    const [t, p, c, a] = await Promise.all([
-      fetchTasks(),
-      fetchProjects(),
-      supabase.from("clients").select("id,name"),
-      supabase
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const clientsQuery = useQuery({
+    queryKey: ["pm", "clients", "names"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id,name");
+      if (error) throw error;
+      return new Map((data ?? []).map(row => [row.id, row.name] as const));
+    },
+  });
+  const activityQuery = useQuery({
+    queryKey: ["pm", "report", "activity", "30d"],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const { data, error } = await supabase
         .from("pm_activity_log")
         .select("project_id,created_at")
         .gte("created_at", since.toISOString())
         .order("created_at", { ascending: false })
-        .limit(4000),
-    ]);
-    setTasks(t);
-    setProjects(p);
-    setClientNames(new Map(((c.data as any[]) || []).map(x => [x.id, x.name])));
-    const map = new Map<string, string>();
-    for (const row of ((a.data as any[]) || [])) {
-      if (row.project_id && !map.has(row.project_id)) map.set(row.project_id, row.created_at);
-    }
-    setLastActivity(map);
-    setLoading(false);
+        .limit(4000);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of data ?? []) {
+        if (row.project_id && !map.has(row.project_id)) map.set(row.project_id, row.created_at);
+      }
+      return map;
+    },
+  });
+  const weekStart = useMemo(() => startOfWeek(), []);
+  return {
+    loading: tasksQuery.isPending || projectsQuery.isPending || clientsQuery.isPending || activityQuery.isPending,
+    error: tasksQuery.isError || projectsQuery.isError || clientsQuery.isError || activityQuery.isError,
+    reload: () => {
+      void tasksQuery.refetch();
+      void projectsQuery.refetch();
+      void clientsQuery.refetch();
+      void activityQuery.refetch();
+    },
+    tasks: tasksQuery.data ?? [],
+    projects: projectsQuery.data ?? [],
+    clientNames: clientsQuery.data ?? new Map<string, string>(),
+    lastActivity: activityQuery.data ?? new Map<string, string>(),
+    weekStart,
   };
-
-  useEffect(() => { reload(); }, []);
-  useTasksChanged(reload);
-
-  return { loading, tasks, projects, clientNames, lastActivity, weekStart };
 }
 
 export interface RiskReason { label: string; }

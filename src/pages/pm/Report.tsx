@@ -11,6 +11,7 @@ import { useMockUsers } from "@/lib/pm/mockUser";
 import { useReportData, computeAtRisk, isOverdue, startOfToday, daysSince } from "@/lib/pm/report";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 import { cn } from "@/lib/utils";
+import { WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingState";
 
 /* ------------------------------------------------------------------ */
 
@@ -88,7 +89,7 @@ function StatTile({
 /* ------------------------------------------------------------------ */
 
 export default function Report() {
-  const { loading, tasks, projects, clientNames, lastActivity, weekStart } = useReportData();
+  const { loading, error, reload, tasks, projects, clientNames, lastActivity, weekStart } = useReportData();
   const users = useMockUsers();
   const [openTile, setOpenTile] = useState<string | null>(null);
 
@@ -150,7 +151,10 @@ export default function Report() {
   const toggle = (id: string) => setOpenTile(prev => (prev === id ? null : id));
 
   if (loading) {
-    return <div className="page-shell text-sm text-muted-foreground">Loading report…</div>;
+    return <WorkPageSkeleton />;
+  }
+  if (error) {
+    return <div className="page-shell"><WorkLoadError retry={reload} /></div>;
   }
 
   return (

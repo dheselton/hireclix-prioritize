@@ -13,8 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink, Search, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchProjects, fetchTasks, updateTask } from "@/lib/pm/api";
-import { useTasksChanged } from "@/lib/pm/refresh";
+import { updateTask } from "@/lib/pm/api";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { ClaimButton } from "@/components/pm/ClaimButton";
@@ -25,6 +24,9 @@ import { TYPE_LABEL } from "@/hooks/useTypeFilter";
 import { PRIORITIES, TASK_STATUSES, type PmProject, type PmTask, type TaskPriority, type TaskStatus, type TaskType } from "@/types/pm";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
+import { WorkListSkeleton, WorkLoadError } from "@/components/pm/WorkLoadingState";
 
 
 type TabId = "all" | "quick" | "projects" | "declined";
@@ -35,6 +37,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "projects", label: "SOW + Projects" },
   { id: "declined", label: "Declined" },
 ];
+const EMPTY_CLIENTS = new Map<string, string>();
 
 interface Row {
   task: PmTask;
@@ -58,10 +61,20 @@ type ProjectGroup = {
 export default function Inbox() {
   const { user } = useCurrentUser();
   const users = useMockUsers();
-  const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [projects, setProjects] = useState<PmProject[]>([]);
-  const [clients, setClients] = useState<Map<string, string>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const clientsQuery = useQuery({
+    queryKey: ["pm", "clients", "names"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id,name");
+      if (error) throw error;
+      return new Map(((data as any[]) || []).map(x => [x.id, x.name] as const));
+    },
+  });
+  const tasks = tasksQuery.data ?? EMPTY_TASKS;
+  const projects = projectsQuery.data ?? EMPTY_PROJECTS;
+  const clients = clientsQuery.data ?? EMPTY_CLIENTS;
+  const loading = tasksQuery.isPending || projectsQuery.isPending || clientsQuery.isPending;
   const [tab, setTab] = useState<TabId>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [declineTarget, setDeclineTarget] = useState<PmTask[] | null>(null);
@@ -101,19 +114,11 @@ export default function Inbox() {
   };
 
 
-  const reload = async () => {
-    const [t, p, c] = await Promise.all([
-      fetchTasks(),
-      fetchProjects(),
-      supabase.from("clients").select("id,name"),
-    ]);
-    setTasks(t);
-    setProjects(p);
-    setClients(new Map(((c.data as any[]) || []).map(x => [x.id, x.name])));
-    setLoading(false);
+  const reload = () => {
+    void tasksQuery.refetch();
+    void projectsQuery.refetch();
+    void clientsQuery.refetch();
   };
-  useEffect(() => { reload(); }, []);
-  useTasksChanged(reload);
 
   const userNames = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
 
@@ -407,7 +412,9 @@ export default function Inbox() {
       )}
 
       {loading ? (
-        <div className="text-sm text-muted-foreground p-6">Loading…</div>
+        <WorkListSkeleton rows={5} />
+      ) : (tasksQuery.isError || projectsQuery.isError || clientsQuery.isError) ? (
+        <WorkLoadError retry={reload} />
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-10 text-center space-y-1">
           <InboxIcon className="h-7 w-7 mx-auto text-muted-foreground/50" />
