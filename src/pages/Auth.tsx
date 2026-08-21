@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,11 @@ export default function Auth() {
   const [params] = useSearchParams();
   const { toast } = useToast();
   const denied = params.get('denied') === '1';
+  const oauthError = params.get('error_description') || params.get('error');
+  const [callbackWaitExpired, setCallbackWaitExpired] = useState(false);
   const nextPath = useMemo(() => {
     const raw = params.get('next');
-    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/pm';
+    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/';
     return raw;
   }, [params]);
 
@@ -22,6 +24,21 @@ export default function Auth() {
       navigate(nextPath, { replace: true });
     }
   }, [access, loading, navigate, nextPath]);
+
+  useEffect(() => {
+    if (!oauthError) return;
+    toast({
+      title: 'Sign in failed',
+      description: oauthError,
+      variant: 'destructive',
+    });
+  }, [oauthError, toast]);
+
+  useEffect(() => {
+    if (!params.has('code') || oauthError) return;
+    const t = window.setTimeout(() => setCallbackWaitExpired(true), 12000);
+    return () => window.clearTimeout(t);
+  }, [params, oauthError]);
 
   const handleGoogleSignIn = async () => {
     const { error } = await signInWithGoogle();
@@ -34,7 +51,11 @@ export default function Auth() {
     }
   };
 
-  if (loading) {
+  // Stay on spinner while PKCE code is exchanged (avoid showing Sign in mid-callback)
+  if (
+    loading ||
+    (params.has('code') && access === 'anonymous' && !oauthError && !callbackWaitExpired)
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -51,7 +72,7 @@ export default function Auth() {
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             {denied || access === 'denied'
-              ? 'Your Google account is signed in, but it is not on the approved HireClix roster.'
+              ? 'HireClix Prioritize is only available with a HireClix Google account.'
               : 'Sign in with your HireClix Google account'}
           </CardDescription>
         </CardHeader>
@@ -60,7 +81,7 @@ export default function Auth() {
             <>
               <p className="text-sm text-muted-foreground text-center">
                 Signed in as <span className="font-medium text-foreground">{user.email}</span>.
-                Ask a PM to add your <code>@hireclix.com</code> email to the team roster, then sign in again.
+                Use your <code>@hireclix.com</code> Google account to continue.
               </p>
               <Button onClick={() => void signOut()} variant="outline" className="w-full h-12">
                 Sign out and try another account
