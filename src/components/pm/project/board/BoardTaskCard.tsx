@@ -105,7 +105,7 @@ function BoardTaskCardInner({
           !isCareerSite && isInternal && "internal-border-l",
           vis.waiting && "task-waiting",
           needsAssignee && !vis.waiting && "task-needs-assignee",
-          selected && "ring-2 ring-info ring-offset-1",
+          selected && "outline outline-2 outline-info -outline-offset-2",
         )}
       >
         {showTeamBar && <TeamColorBar background={vis.teamBarBackground} dim={vis.waiting} />}
@@ -116,7 +116,7 @@ function BoardTaskCardInner({
             onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id, e, groupKey); }}
             className={cn(
               "absolute top-1.5 right-1.5 z-10 rounded bg-background/90 backdrop-blur p-1 border border-border transition-opacity",
-              selected ? "opacity-100" : "opacity-0 group-hover/card:opacity-100 focus-within:opacity-100",
+              selected ? "opacity-100" : "touch-action",
             )}
           >
             <Checkbox checked={!!selected} aria-label="Select task" tabIndex={-1} className="pointer-events-none" />

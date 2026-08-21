@@ -33,12 +33,22 @@ export function buildQueueLink(opts: QueueLinkOpts = {}): string {
  * Project-scoped stat link: lands on the project's Tasks tab with a status
  * filter pre-applied. Used by KPI tiles, Overview callouts and mini-metrics so
  * every number on a project page opens the exact set of tasks it counts.
+ *
+ * Uses `tab=tasks` (ProjectDetail's URL key). Legacy `section=tasks` links are
+ * still accepted as an alias when the page boots.
  */
 export type ProjectTaskFilterId = "overdue" | "blocked" | "open" | "in_review" | "done";
 
 export function projectFilterLink(projectId: string, filter?: ProjectTaskFilterId): string {
-  const base = buildQueueLink({ base: `/pm/projects/${projectId}`, section: "tasks" });
-  return filter ? `${base}&taskFilter=${filter}` : base;
+  const params = new URLSearchParams();
+  params.set("tab", "tasks");
+  if (filter) params.set("taskFilter", filter);
+  return `/pm/projects/${projectId}?${params.toString()}`;
+}
+
+/** Deep link into Timesheet filtered to one project's entries. */
+export function projectTimeLink(projectId: string): string {
+  return `/pm/time?project=${encodeURIComponent(projectId)}`;
 }
 
 /**

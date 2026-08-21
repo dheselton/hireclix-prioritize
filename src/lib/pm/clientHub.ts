@@ -8,6 +8,10 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isDone, type PmTask, type TaskStatus } from "@/types/pm";
 import { todayISO } from "@/lib/pm/format";
+import {
+  normalizeClientName,
+  uniqueViolationMessage,
+} from "@/lib/pm/identity";
 
 export interface ClientRecord {
   id: string;
@@ -294,9 +298,46 @@ export async function deleteClientAsset(asset: ClientAsset) {
 
 // ---------- Client mutations ----------
 
-export async function updateClient(id: string, patch: { name?: string; notes?: string | null; is_internal?: boolean }) {
-  const { error } = await supabase.from("clients").update(patch).eq("id", id);
-  if (error) throw error;
+export async function createClient(input: {
+  name: string;
+  notes?: string | null;
+  is_internal?: boolean;
+}): Promise<{ id: string; name: string }> {
+  const name = normalizeClientName(input.name);
+  if (!name) throw new Error("Client name is required");
+
+  const { data, error } = await supabase
+    .from("clients")
+    .insert({
+      name,
+      notes: input.notes?.trim() || null,
+      is_internal: input.is_internal ?? false,
+    })
+    .select("id,name")
+    .single();
+
+  if (error) {
+    throw new Error(uniqueViolationMessage(error, "Failed to create client"));
+  }
+  return data as { id: string; name: string };
+}
+
+export async function updateClient(
+  id: string,
+  patch: { name?: string; notes?: string | null; is_internal?: boolean },
+) {
+  const next = {
+    ...patch,
+    ...(patch.name !== undefined ? { name: normalizeClientName(patch.name) } : {}),
+  };
+  if (next.name !== undefined && !next.name) {
+    throw new Error("Client name is required");
+  }
+
+  const { error } = await supabase.from("clients").update(next).eq("id", id);
+  if (error) {
+    throw new Error(uniqueViolationMessage(error, "Failed to update client"));
+  }
 }
 
 export async function archiveClient(id: string, archived: boolean) {

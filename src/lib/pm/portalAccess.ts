@@ -8,6 +8,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { drainPortalEmails } from "@/lib/pm/portalNotify";
+import {
+  normalizeEmail,
+  uniqueViolationMessage,
+} from "@/lib/pm/identity";
 
 export interface PortalAccess {
   id: string;
@@ -43,18 +47,53 @@ export async function createPortalAccess(input: {
   label?: string | null;
   createdBy?: string | null;
 }): Promise<PortalAccess> {
+  const email = normalizeEmail(input.email);
+  if (!email) throw new Error("Email is required");
+
+  // Reuse the canonical contact for this client/email instead of minting duplicates.
+  const { data: existing } = await supabase
+    .from("pm_portal_access")
+    .select("*")
+    .eq("client_id", input.clientId)
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existing) {
+    const patch: Partial<PortalAccess> = {
+      is_active: true,
+      email,
+    };
+    if (input.label?.trim()) patch.label = input.label.trim();
+    if (input.createdBy) patch.created_by = input.createdBy;
+
+    const { data: updated, error: updErr } = await supabase
+      .from("pm_portal_access")
+      .update(patch)
+      .eq("id", (existing as PortalAccess).id)
+      .select("*")
+      .single();
+    if (updErr) {
+      throw new Error(uniqueViolationMessage(updErr, "Failed to update portal access"));
+    }
+    const row = updated as PortalAccess;
+    await queueInvite(row);
+    return row;
+  }
+
   const { data, error } = await supabase
     .from("pm_portal_access")
     .insert({
       client_id: input.clientId,
-      email: input.email.trim().toLowerCase(),
+      email,
       label: input.label?.trim() || null,
       created_by: input.createdBy ?? null,
       is_active: true,
     })
     .select("*")
     .single();
-  if (error) throw error;
+  if (error) {
+    throw new Error(uniqueViolationMessage(error, "Failed to create portal access"));
+  }
   const row = data as PortalAccess;
   await queueInvite(row);
   return row;

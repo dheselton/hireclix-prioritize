@@ -103,7 +103,7 @@ export function LinksSection({ taskId }: { taskId: string }) {
               {canDelete && (
                 <button
                   type="button"
-                  className="opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                  className="touch-action text-destructive shrink-0"
                   onClick={e => { e.preventDefault(); e.stopPropagation(); setPendingDelete(l); }}
                   aria-label="Remove link"
                 >

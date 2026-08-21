@@ -14,12 +14,16 @@ site_url = "https://prioritize.hireclix.com"
 additional_redirect_urls = [
   "https://prioritize.hireclix.com",
   "https://prioritize.hireclix.com/**",
+  "https://prioritize.hireclix.com/auth",
   "https://hc-prioritize.netlify.app",
   "https://hc-prioritize.netlify.app/**",
+  "https://hc-prioritize.netlify.app/auth",
   "http://localhost:8080",
   "http://localhost:8080/**",
+  "http://localhost:8080/auth",
   "http://127.0.0.1:8080",
   "http://127.0.0.1:8080/**",
+  "http://127.0.0.1:8080/auth",
 ]
 enable_signup = true
 

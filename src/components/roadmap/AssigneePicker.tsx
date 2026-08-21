@@ -55,13 +55,20 @@ export function AssigneePicker({ value = [], onChange, className }: AssigneePick
   useEffect(() => {
     const fetchTeamMembers = async () => {
       const { data, error } = await supabase
-        .from('team_members')
+        .from('pm_users')
         .select('id, name, email, role')
         .eq('is_active', true)
         .order('name');
 
       if (!error && data) {
-        setTeamMembers(data);
+        setTeamMembers(
+          data.map((row) => ({
+            id: row.id,
+            name: row.name,
+            email: row.email ?? "",
+            role: row.role,
+          })),
+        );
       }
       setLoading(false);
     };
@@ -99,7 +106,7 @@ export function AssigneePicker({ value = [], onChange, className }: AssigneePick
             <span className="text-sm text-foreground">{name.split(' ')[0]}</span>
             <button
               onClick={(e) => removeAssignee(name, e)}
-              className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+              className="ml-0.5 touch-action hover:text-destructive"
             >
               <X className="w-3 h-3" />
             </button>

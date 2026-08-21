@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/pm/clientHub";
 
 interface Props {
   onCreated: (client: { id: string; name: string }) => void;
@@ -23,14 +23,9 @@ export function NewClientPopover({ onCreated, trigger }: Props) {
     if (!n) { toast.error("Client name is required"); return; }
     setBusy(true);
     try {
-      const { data, error } = await supabase
-        .from("clients")
-        .insert({ name: n, notes: notes.trim() || null } as any)
-        .select("id,name")
-        .single();
-      if (error) throw error;
-      toast.success(`Created client "${n}"`);
-      onCreated(data as any);
+      const data = await createClient({ name: n, notes: notes.trim() || null });
+      toast.success(`Created client "${data.name}"`);
+      onCreated(data);
       setName(""); setNotes(""); setOpen(false);
     } catch (e: any) {
       toast.error(e.message || "Failed to create client");

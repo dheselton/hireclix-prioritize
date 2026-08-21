@@ -1,4 +1,5 @@
-import { useRef, useState, KeyboardEvent } from "react";
+import { useRef, useState, KeyboardEvent, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { Textarea } from "@/components/ui/textarea";
 import type { MockUser } from "@/types/pm";
 
@@ -17,6 +18,7 @@ export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsCh
   const ref = useRef<HTMLTextAreaElement>(null);
   const [showSug, setShowSug] = useState(false);
   const [filter, setFilter] = useState("");
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   function updateMentions(text: string) {
     const matches = Array.from(text.matchAll(/@([\w-]+)/g)).map(m => m[1].toLowerCase());
@@ -54,13 +56,30 @@ export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsCh
   }
 
   const suggestions = users.filter(u => u.name.toLowerCase().includes(filter)).slice(0, 6);
+  const open = showSug && suggestions.length > 0;
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) {
+      setMenuPos(null);
+      return;
+    }
+    const rect = ref.current.getBoundingClientRect();
+    setMenuPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: Math.min(rect.width, 320),
+    });
+  }, [open, value, filter]);
 
   return (
     <div className="relative">
       <Textarea ref={ref} rows={rows} value={value} placeholder={placeholder}
         onChange={e => handleChange(e.target.value)} onKeyDown={onKey} />
-      {showSug && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 left-0 right-0 max-w-xs bg-popover border border-border rounded shadow-md overflow-hidden">
+      {open && menuPos && createPortal(
+        <div
+          className="fixed z-[70] max-w-xs bg-popover border border-border rounded shadow-md overflow-hidden"
+          style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+        >
           {suggestions.map(u => (
             <button key={u.id} type="button" onClick={() => pick(u)}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted">
@@ -68,7 +87,8 @@ export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsCh
               <span className="text-xs text-muted-foreground ml-2">{u.role}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

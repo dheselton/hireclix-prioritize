@@ -7,10 +7,10 @@ interface Props {
   className?: string;
 }
 
-const OPTIONS: { id: WorkTypeFilter; label: string; hint: string }[] = [
-  { id: "all", label: "All work", hint: "All work across the team" },
-  { id: "request", label: "Quick requests", hint: "Lightweight, single-task projects" },
-  { id: "project", label: "Full projects", hint: "Multi-task projects with a timeline" },
+const OPTIONS: { id: WorkTypeFilter; label: string; shortLabel: string; hint: string }[] = [
+  { id: "all", label: "All work", shortLabel: "All", hint: "All work across the team" },
+  { id: "request", label: "Quick requests", shortLabel: "Quick", hint: "Lightweight, single-task projects" },
+  { id: "project", label: "Full projects", shortLabel: "Projects", hint: "Multi-task projects with a timeline" },
 ];
 
 export function WorkTypeFilterToggle({ value, onChange, className }: Props) {
@@ -23,13 +23,14 @@ export function WorkTypeFilterToggle({ value, onChange, className }: Props) {
           title={o.hint}
           onClick={() => onChange(o.id)}
           className={cn(
-            "px-2.5 h-7 text-xs rounded transition",
+            "px-2 sm:px-2.5 h-8 sm:h-7 text-xs rounded transition whitespace-nowrap",
             value === o.id
               ? "bg-muted text-foreground font-medium"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {o.label}
+          <span className="sm:hidden">{o.shortLabel}</span>
+          <span className="hidden sm:inline">{o.label}</span>
         </button>
       ))}
     </div>

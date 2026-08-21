@@ -115,7 +115,7 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
 
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
+        <div className="relative flex-1 min-w-0 w-full sm:min-w-[220px] max-w-md">
           <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}

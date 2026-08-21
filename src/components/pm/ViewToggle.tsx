@@ -36,7 +36,7 @@ export function ViewToggle({ value, onChange, modes = ["list", "grid"], classNam
           aria-label={LABELS[m]}
           title={LABELS[m]}
           className={cn(
-            "inline-flex items-center justify-center h-7 w-8 rounded transition-colors",
+            "inline-flex items-center justify-center h-8 w-9 sm:h-7 sm:w-8 rounded transition-colors",
             value === m
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-muted"

@@ -77,7 +77,7 @@ export function DependenciesSection({ taskId }: { taskId: string }) {
           </SelectContent>
         </Select>
       )}
-      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => removeDep(dep.id)}>
+      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive touch-action" onClick={() => removeDep(dep.id)}>
         <Trash2 className="h-3 w-3" />
       </Button>
     </div>

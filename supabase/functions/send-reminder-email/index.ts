@@ -5,7 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 // App URL for generating links to roadmap items
-const APP_URL = Deno.env.get("APP_URL") || "https://hireclix-product-roadmap.lovable.app";
+const APP_URL = Deno.env.get("APP_URL") || "http://localhost:8080";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -323,26 +323,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Processing reminder:", { type, featureTitle, assignees });
 
-    // Get team member emails from the database
+    // Resolve assignee emails from the canonical PM roster (pm_users)
     const { data: teamMembers, error: teamError } = await supabaseClient
-      .from("team_members")
+      .from("pm_users")
       .select("name, email")
+      .eq("is_active", true)
       .in("name", assignees);
 
     if (teamError) {
-      console.error("Error fetching team members:", teamError);
+      console.error("Error fetching roster members:", teamError);
       throw new Error("Failed to fetch team member emails");
     }
 
     if (!teamMembers || teamMembers.length === 0) {
-      console.log("No team members found for assignees:", assignees);
+      console.log("No roster members found for assignees:", assignees);
       return new Response(
         JSON.stringify({ success: false, message: "No team members found" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const emails = teamMembers.map((tm) => tm.email);
+    const emails = teamMembers.map((tm) => tm.email).filter(Boolean);
+    if (emails.length === 0) {
+      console.log("Roster members found but no emails for assignees:", assignees);
+      return new Response(
+        JSON.stringify({ success: false, message: "No team member emails found" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     console.log("Sending emails to:", emails);
 
     let subject = "";

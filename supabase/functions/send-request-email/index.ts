@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const FROM = "HireClix Prioritize <prioritize@hireclix.com>";
-const APP_URL = Deno.env.get("APP_URL") || "https://hireclix-prioritize.lovable.app";
+const APP_URL = Deno.env.get("APP_URL") || "http://localhost:8080";
 
 const BodySchema = z.object({
   kind: z.enum(["received", "completed"]),

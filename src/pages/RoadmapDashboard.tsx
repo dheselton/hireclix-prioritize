@@ -190,7 +190,7 @@ export default function RoadmapDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-[1440px] px-6 py-6 space-y-6">
+      <div className="page-shell mx-auto max-w-[1440px] space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

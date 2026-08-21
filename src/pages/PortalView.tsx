@@ -159,7 +159,7 @@ function Shell({ children, client, email }: { children: React.ReactNode; client?
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-3 sm:px-4 py-3 sm:py-4 safe-top">
           <div className="font-semibold tracking-tight">HireClix Prioritize</div>
           <div className="text-right text-xs text-muted-foreground">
             {client && <div className="font-medium text-foreground">{client}</div>}
@@ -167,7 +167,7 @@ function Shell({ children, client, email }: { children: React.ReactNode; client?
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-3xl px-3 sm:px-4 py-4 sm:py-8 safe-bottom">{children}</main>
     </div>
   );
 }

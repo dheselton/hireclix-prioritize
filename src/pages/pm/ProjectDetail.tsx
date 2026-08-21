@@ -41,11 +41,11 @@ import { isInQaMode } from "@/lib/pm/qaMode";
 
 /** Why a mode-gated tab isn't reachable on a given project. */
 const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
-  qa: "QA mode is not active on this project — showing Tasks instead.",
-  pages: "This project doesn't have a Pages tab — showing Tasks instead.",
-  documentation: "This project isn't in Support mode — showing Tasks instead.",
-  snippets: "Snippets are only available to design and dev roles — showing Tasks instead.",
-  timeline: "Requests don't have a Project Timeline — showing Tasks instead.",
+  qa: "QA mode is not active on this project — showing Overview instead.",
+  pages: "This project doesn't have a Pages tab — showing Overview instead.",
+  documentation: "This project isn't in Support mode — showing Overview instead.",
+  snippets: "Snippets are only available to design and dev roles — showing Overview instead.",
+  timeline: "Requests don't have a Project Timeline — showing Overview instead.",
 };
 
 /** The tabs a given project + viewer can actually render. Mirrors the tab strip. */
@@ -84,10 +84,11 @@ export default function ProjectDetail() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<ProjectTabId>(() => {
-    const t = searchParams.get("tab");
+    // Prefer ?tab=; accept legacy ?section= from older deep links.
+    const t = searchParams.get("tab") ?? searchParams.get("section");
     const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation", "client"];
     if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
-    return "tasks";
+    return "overview";
   });
   // A requested ?tab= is only honored once we know the project — several tabs
   // are mode-gated (QA mode, support mode, career-site template, role). The
@@ -98,8 +99,18 @@ export default function ProjectDetail() {
     setTab(newTab);
     const next = new URLSearchParams(searchParams);
     next.set("tab", newTab);
+    next.delete("section");
     setSearchParams(next, { replace: true });
   };
+
+  // Keep local tab state in sync when deep links change ?tab= (e.g. Overview metrics).
+  useEffect(() => {
+    const t = searchParams.get("tab") ?? searchParams.get("section");
+    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation", "client"];
+    if (t && (valid as string[]).includes(t) && t !== tab) {
+      setTab(t as ProjectTabId);
+    }
+  }, [searchParams, tab]);
 
 
   const [pendingDiffs, setPendingDiffs] = useState<DateDiff[]>([]);
@@ -158,23 +169,24 @@ export default function ProjectDetail() {
   );
 
   // A ?tab= pointing at a gated tab used to be accepted silently and render
-  // nothing. Fall back to Tasks and say why.
+  // nothing. Fall back to Overview and say why.
   useEffect(() => {
     if (!availableTabs || tabChecked) return;
     setTabChecked(true);
-    const requested = searchParams.get("tab") as ProjectTabId | null;
+    const requested = (searchParams.get("tab") ?? searchParams.get("section")) as ProjectTabId | null;
     if (!requested || availableTabs.includes(requested)) return;
-    setTab("tasks");
+    setTab("overview");
     const next = new URLSearchParams(searchParams);
-    next.set("tab", "tasks");
+    next.set("tab", "overview");
+    next.delete("section");
     setSearchParams(next, { replace: true });
     toast.info(
       UNAVAILABLE_TAB_REASON[requested] ??
-        "That tab isn't available on this project — showing Tasks instead.",
+        "That tab isn't available on this project — showing Overview instead.",
     );
   }, [availableTabs, tabChecked, searchParams, setSearchParams]);
 
-  if (!project) return <div className="p-6">Loading…</div>;
+  if (!project) return <div className="page-shell">Loading…</div>;
   const p: any = project;
   const isRequest = (p.work_type ?? "project") === "request";
   const myRoles = user?.roles ?? (user?.role ? [user.role] : []);
@@ -205,7 +217,7 @@ export default function ProjectDetail() {
 
 
   return (
-    <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
+    <div className="page-shell max-w-[1400px] mx-auto space-y-4">
       <UnclaimedBanner projectId={project.id} />
 
       <ProjectHeader

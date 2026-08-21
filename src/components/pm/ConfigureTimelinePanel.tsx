@@ -146,7 +146,7 @@ export function ConfigureTimelinePanel({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto safe-bottom">
           <SheetHeader><SheetTitle>Configure Timeline</SheetTitle></SheetHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-3">
@@ -161,7 +161,7 @@ export function ConfigureTimelinePanel({
             </div>
 
             <div className="border border-border rounded">
-              <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <div className="hidden md:grid grid-cols-12 gap-2 px-3 py-2 bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
                 <div className="col-span-6">Task</div>
                 <div className="col-span-2">Days</div>
                 <div className="col-span-2">Min</div>
@@ -172,14 +172,14 @@ export function ConfigureTimelinePanel({
                   {phaseTasks.map(t => {
                     const deps = incomingDeps.get(t.id) || [];
                     return (
-                    <div key={t.id} className="grid grid-cols-12 gap-2 px-3 py-2 items-start border-t border-border">
-                      <div className="col-span-6 flex flex-col gap-1 text-sm">
-                        <div className="flex items-center gap-1.5">
-                          {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                    <div key={t.id} className="flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-2 px-3 py-2 md:items-start border-t border-border">
+                      <div className="md:col-span-6 flex flex-col gap-1 text-sm min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {t.locked && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
                           <span className="truncate">{t.title}</span>
                         </div>
                         {deps.map(dep => (
-                          <div key={dep.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground pl-4">
+                          <div key={dep.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground pl-4 flex-wrap">
                             <span>← {taskTitle(dep.depends_on_task_id)}</span>
                             <span>+</span>
                             <Input type="number" min={0} className="h-5 w-12 text-[11px] px-1.5 py-0"
@@ -190,19 +190,28 @@ export function ConfigureTimelinePanel({
                           </div>
                         ))}
                       </div>
-                      <Input type="number" className="col-span-2 h-8" value={t.duration_days}
-                        disabled={t.locked}
-                        onChange={e => patchLocal(t.id, { duration_days: Number(e.target.value) })}
-                        onBlur={e => persistTask(t.id, { duration_days: Number(e.target.value) })} />
-                      <div className="col-span-2 text-xs text-muted-foreground">{t.min_duration_days ?? "—"}</div>
-                      <div className="col-span-2 flex justify-center">
-                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => {
-                          if (t.locked && !confirm("Unlock this task? Its minimum duration will no longer be enforced.")) return;
-                          patchLocal(t.id, { locked: !t.locked });
-                          persistTask(t.id, { locked: !t.locked });
-                        }}>
-                          {t.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3 text-muted-foreground" />}
-                        </Button>
+                      <div className="grid grid-cols-3 gap-2 md:contents">
+                        <div className="md:col-span-2 space-y-1">
+                          <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Days</Label>
+                          <Input type="number" className="h-8" value={t.duration_days}
+                            disabled={t.locked}
+                            onChange={e => patchLocal(t.id, { duration_days: Number(e.target.value) })}
+                            onBlur={e => persistTask(t.id, { duration_days: Number(e.target.value) })} />
+                        </div>
+                        <div className="md:col-span-2 space-y-1">
+                          <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Min</Label>
+                          <div className="text-xs text-muted-foreground h-8 flex items-center">{t.min_duration_days ?? "—"}</div>
+                        </div>
+                        <div className="md:col-span-2 flex md:justify-center items-end md:items-start">
+                          <Label className="text-[10px] uppercase text-muted-foreground md:hidden sr-only">Lock</Label>
+                          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => {
+                            if (t.locked && !confirm("Unlock this task? Its minimum duration will no longer be enforced.")) return;
+                            patchLocal(t.id, { locked: !t.locked });
+                            persistTask(t.id, { locked: !t.locked });
+                          }}>
+                            {t.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3 text-muted-foreground" />}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     );

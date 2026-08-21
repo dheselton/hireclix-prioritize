@@ -51,10 +51,10 @@ export default function FormBuilder() {
     reload();
   }
 
-  if (!form) return <div className="p-6">Loading…</div>;
+  if (!form) return <div className="page-shell">Loading…</div>;
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
+    <div className="page-shell max-w-7xl mx-auto space-y-4">
       <Link to="/pm/forms" className="text-sm text-muted-foreground inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Forms</Link>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Palette */}
@@ -92,11 +92,11 @@ export default function FormBuilder() {
               const firstRule = rules[0];
               return (
                 <div key={f.id} className="border border-border rounded p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">{f.type}</Badge>
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="text-[10px] shrink-0">{f.type}</Badge>
                     <Input value={f.label} onChange={e => setFields(fields.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
-                      onBlur={e => patchField(f.id, { label: e.target.value })} className="flex-1" disabled={isLocked} />
-                    <div className="flex items-center gap-1">
+                      onBlur={e => patchField(f.id, { label: e.target.value })} className="flex-1 min-w-[140px]" disabled={isLocked} />
+                    <div className="flex items-center gap-1 shrink-0">
                       <Switch checked={f.required} onCheckedChange={v => patchField(f.id, { required: v })} disabled={isLocked} />
                       <span className="text-xs">required</span>
                     </div>
@@ -114,7 +114,7 @@ export default function FormBuilder() {
                       disabled={isLocked} />
                   )}
                   {!isLocked && (
-                    <div className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] gap-2 items-start sm:items-center text-xs">
                       <span className="text-muted-foreground">Show only when</span>
                       <Input
                         placeholder="field slug (e.g. request_type)"

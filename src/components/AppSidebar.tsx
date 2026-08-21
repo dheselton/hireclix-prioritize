@@ -23,10 +23,10 @@ import type { PmTask, PmProject } from "@/types/pm";
 type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
 
 const primaryNav: NavItem[] = [
+  { title: "Daily Briefing", url: "/", icon: Inbox, end: true, key: "queue" },
   { title: "My Work", url: "/pm/my-work", icon: UserCircle, key: "myWork" },
-  { title: "Daily Briefing", url: "/pm", icon: Inbox, end: true, key: "queue" },
+  { title: "All Work", url: "/pm/work", icon: LayoutGrid, key: "work" },
   { title: "Triage Inbox", url: "/pm/inbox", icon: InboxIcon, key: "inbox" },
-  { title: "Work", url: "/pm/work", icon: LayoutGrid, key: "work" },
   { title: "Team Workload", url: "/pm/workload", icon: Users, key: "workload" },
   { title: "Global Timeline", url: "/pm/timeline", icon: Calendar, key: "timeline" },
   { title: "Time", url: "/pm/time", icon: Clock, key: "time" },

@@ -273,7 +273,7 @@ export default function PublicForm() {
   if (!form) return <div ref={rootRef} className="p-3 md:p-6 max-w-xl mx-auto">Form not found.</div>;
 
   if (submitted) return (
-    <div ref={rootRef} className={embed ? "p-4" : "p-6 max-w-xl mx-auto"}>
+    <div ref={rootRef} className={embed ? "p-4" : "p-4 md:p-6 max-w-xl mx-auto"}>
       <SubmissionSuccess
         projectId={submitted.projectId}
         watcherIds={submitted.watcherIds}
@@ -284,9 +284,9 @@ export default function PublicForm() {
   );
 
   return (
-    <div ref={rootRef} className={embed ? "bg-transparent" : "min-h-screen bg-muted/20 py-10"}>
-      <div className={embed ? "px-2" : "max-w-2xl mx-auto px-4"}>
-        <Card><CardContent className="p-6 space-y-4">
+    <div ref={rootRef} className={embed ? "bg-transparent" : "min-h-screen bg-muted/20 py-6 md:py-10"}>
+      <div className={embed ? "px-2" : "max-w-2xl mx-auto px-3 sm:px-4"}>
+        <Card><CardContent className="p-4 md:p-6 space-y-4">
           {!embed && (
             <div>
               <h1 className="text-xl font-bold font-unbounded">{form.name}</h1>
@@ -296,7 +296,7 @@ export default function PublicForm() {
           {embed && <h2 className="text-lg font-semibold">{form.name}</h2>}
 
           {/* Contact */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label>Your name</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
             <div><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
           </div>
@@ -306,13 +306,13 @@ export default function PublicForm() {
             <div>
               <Label>Client *</Label>
               {clientLocked && selectedClient ? (
-                <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
                   <Badge variant="outline" className={cn(isInternal && "ring-1 ring-[hsl(var(--internal)/0.5)]")}>
                     {selectedClient.name}
                   </Badge>
                   {isInternal && <span className="internal-pill">Internal</span>}
-                  <span className="text-xs text-muted-foreground">Requesting on behalf of this client</span>
-                  <Button type="button" variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setClientLocked(false)}>
+                  <span className="text-xs text-muted-foreground hidden sm:inline truncate min-w-0">Requesting on behalf of this client</span>
+                  <Button type="button" variant="ghost" size="sm" className="ml-auto text-xs shrink-0" onClick={() => setClientLocked(false)}>
                     Change
                   </Button>
                 </div>

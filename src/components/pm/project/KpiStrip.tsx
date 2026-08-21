@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { GitBranch, AlertTriangle } from "lucide-react";
-import { fmtDate, todayISO } from "@/lib/pm/format";
+import { todayISO } from "@/lib/pm/format";
 import { projectFilterLink } from "@/lib/pm/links";
 import { getTaskKind, isRaidOpen } from "@/lib/pm/taskKind";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -33,7 +33,6 @@ export function KpiStrip({ project, tasks }: { project: PmProject; tasks: PmTask
 
   return (
     <div className="flex items-center gap-x-6 gap-y-2 flex-wrap text-foreground">
-      <Item label="Go-live" value={fmtDate(project.go_live_date) || "—"} />
       <Item label="Progress" value={`${pct}%`} />
       <LinkItem to={projectFilterLink(project.id, "overdue")} label="Overdue" value={overdue} className="text-destructive" />
       <LinkItem to={projectFilterLink(project.id, "blocked")} label="Blocked" value={blocked} className="text-warning" />

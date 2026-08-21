@@ -16,15 +16,21 @@ export function ProjectTabs({ value, onChange, tabs }: {
     { id: "files" as const, label: "Files" },
   ];
   return (
-    <div className="border-b border-border">
-      <div className="flex items-center gap-1">
+    <div className="border-b border-border -mx-3 px-3 md:mx-0 md:px-0">
+      <div className="tab-strip" role="tablist">
         {items.map(t => {
           const active = t.id === value;
           return (
-            <button key={t.id} type="button" onClick={() => onChange(t.id)}
-              className={`px-3 h-9 text-sm font-medium -mb-px border-b-2 transition flex items-center gap-1.5 ${
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(t.id)}
+              className={`shrink-0 px-3 h-10 min-h-10 text-sm font-medium -mb-px border-b-2 transition flex items-center gap-1.5 whitespace-nowrap ${
                 active ? "border-info text-info" : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}>
+              }`}
+            >
               {t.label}
               {t.badge}
             </button>
@@ -34,4 +40,3 @@ export function ProjectTabs({ value, onChange, tabs }: {
     </div>
   );
 }
-

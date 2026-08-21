@@ -60,7 +60,7 @@ export function QuickChecklist({ taskId }: { taskId: string }) {
             >{s.label}</button>
             <button
               type="button"
-              className="opacity-0 group-hover:opacity-100 text-destructive"
+              className="touch-action text-destructive"
               onClick={() => remove(s.id)}
             >
               <Trash2 className="h-3 w-3" />

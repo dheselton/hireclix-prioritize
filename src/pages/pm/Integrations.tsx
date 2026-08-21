@@ -40,19 +40,21 @@ export default function Integrations() {
   async function delHook(id: string) { await supabase.from("pm_webhooks").delete().eq("id", id); reload(); }
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-4">
+    <div className="page-shell max-w-6xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold font-unbounded">Integrations</h1>
       <Tabs defaultValue="outbound">
-        <TabsList>
-          <TabsTrigger value="outbound">Outbound Webhooks</TabsTrigger>
-          <TabsTrigger value="deliveries">Delivery Log</TabsTrigger>
-        </TabsList>
+        <div className="tab-strip">
+          <TabsList className="inline-flex w-max">
+            <TabsTrigger value="outbound">Outbound Webhooks</TabsTrigger>
+            <TabsTrigger value="deliveries">Delivery Log</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="outbound" className="space-y-4">
-          <Card><CardContent className="p-4 flex gap-2 items-end">
-            <div className="flex-1"><Label>Name</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
-            <div className="flex-[2]"><Label>Target URL</Label><Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." /></div>
-            <Button onClick={createHook}><Plus className="h-4 w-4 mr-1" /> Add</Button>
+          <Card><CardContent className="p-4 flex flex-col sm:flex-row gap-2 sm:items-end">
+            <div className="flex-1 min-w-0"><Label>Name</Label><Input value={name} onChange={e => setName(e.target.value)} /></div>
+            <div className="flex-[2] min-w-0"><Label>Target URL</Label><Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." /></div>
+            <Button onClick={createHook} className="shrink-0"><Plus className="h-4 w-4 mr-1" /> Add</Button>
           </CardContent></Card>
           {hooks.map(h => (
             <Card key={h.id}><CardContent className="p-4 space-y-2">
@@ -79,21 +81,23 @@ export default function Integrations() {
 
         <TabsContent value="deliveries">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40"><tr className="text-left">
-                <th className="p-2">When</th><th className="p-2">Event</th><th className="p-2">Status</th>
-              </tr></thead>
-              <tbody>
-                {deliveries.map(d => (
-                  <tr key={d.id} className="border-t border-border">
-                    <td className="p-2 text-xs">{new Date(d.attempted_at).toLocaleString()}</td>
-                    <td className="p-2"><Badge variant="outline">{d.event}</Badge></td>
-                    <td className="p-2 text-xs">{d.response_status ?? "—"}</td>
-                  </tr>
-                ))}
-                {!deliveries.length && <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">No deliveries yet.</td></tr>}
-              </tbody>
-            </table>
+            <div className="touch-scroll-x">
+              <table className="w-full text-sm min-w-[480px]">
+                <thead className="bg-muted/40"><tr className="text-left">
+                  <th className="p-2">When</th><th className="p-2">Event</th><th className="p-2">Status</th>
+                </tr></thead>
+                <tbody>
+                  {deliveries.map(d => (
+                    <tr key={d.id} className="border-t border-border">
+                      <td className="p-2 text-xs whitespace-nowrap">{new Date(d.attempted_at).toLocaleString()}</td>
+                      <td className="p-2"><Badge variant="outline">{d.event}</Badge></td>
+                      <td className="p-2 text-xs">{d.response_status ?? "—"}</td>
+                    </tr>
+                  ))}
+                  {!deliveries.length && <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">No deliveries yet.</td></tr>}
+                </tbody>
+              </table>
+            </div>
           </CardContent></Card>
         </TabsContent>
       </Tabs>

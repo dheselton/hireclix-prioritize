@@ -659,7 +659,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
                 <CardContent className="p-2">
                   <div className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40">
                     {ids.length > 0 && (
-                      <span onClick={(e) => e.stopPropagation()} className={selectedCount > 0 ? "" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}>
+                      <span onClick={(e) => e.stopPropagation()} className={selectedCount > 0 ? "" : "touch-action"}>
                         <Checkbox
                           checked={allSelected ? true : someSelected ? "indeterminate" : false}
                           onCheckedChange={(v) => setGroupSelected(ids, !!v)}
@@ -746,7 +746,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
             setActiveId(null);
           }}
         >
-          <div className="flex md:grid md:grid-cols-4 gap-3 touch-scroll-x md:!overflow-visible no-scrollbar snap-x snap-mandatory md:snap-none -mx-3 px-3 md:mx-0 md:px-0 [&>*]:w-[85vw] [&>*]:flex-shrink-0 [&>*]:snap-center md:[&>*]:w-auto">
+          <div className="flex md:grid md:grid-cols-4 gap-3 touch-scroll-x md:!overflow-visible no-scrollbar snap-x snap-mandatory md:snap-none -mx-3 px-3 py-2 -my-2 md:mx-0 md:px-0 md:py-0 md:my-0 [&>*]:w-[85vw] [&>*]:flex-shrink-0 [&>*]:snap-center md:[&>*]:w-auto">
             {PROJECT_GROUPS.map(g => (
               <BoardColumn key={g.id} group={g} tasks={boardByGroup[g.id]} isDragActive={activeId !== null}>
                 {(() => {
@@ -880,7 +880,7 @@ const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onO
       {onToggleSelect && (
         <span
           onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id, e, groupKey); }}
-          className={`pl-2 ${selected ? "" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
+          className={`pl-2 ${selected ? "" : "touch-action"} transition-opacity`}
         >
           <Checkbox checked={!!selected} aria-label="Select task" tabIndex={-1} />
         </span>
@@ -910,7 +910,7 @@ const TaskRow = memo(function TaskRow({ task, groupKey, groupColorBg, count, onO
       </span>
       <span className="text-[11px] text-muted-foreground w-16 text-right">{fmtDate(task.due_date)}</span>
       <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} title={task.priority} />
-      <span onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-opacity">
+      <span onClick={(e) => e.stopPropagation()} className="touch-action">
         <TaskTriagePopover task={task} hideClaimed />
       </span>
     </div>

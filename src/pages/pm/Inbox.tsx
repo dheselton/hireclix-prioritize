@@ -290,7 +290,7 @@ export default function Inbox() {
 
       {/* Filter tabs */}
       <div className="border-b border-border">
-        <div className="flex items-center gap-1 overflow-x-auto">
+        <div className="tab-strip">
           {TABS.map(t => (
             <button
               key={t.id}
@@ -374,13 +374,13 @@ export default function Inbox() {
             trigger={<span className="inline-flex items-center h-8 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent">Assign owner</span>}
           />
           <Select onValueChange={(v) => bulkPriority(v as TaskPriority)}>
-            <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Set priority" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-full sm:w-[150px] min-w-[8rem] flex-1 sm:flex-none"><SelectValue placeholder="Set priority" /></SelectTrigger>
             <SelectContent>
               {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select onValueChange={(v) => bulkStatus(v as TaskStatus)}>
-            <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Change status" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-full sm:w-[150px] min-w-[8rem] flex-1 sm:flex-none"><SelectValue placeholder="Change status" /></SelectTrigger>
             <SelectContent>
               {TASK_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
             </SelectContent>
@@ -590,7 +590,7 @@ export default function Inbox() {
                                               }
                                             />
                                             <Select value={task.priority} onValueChange={(v) => setPriority(task, v as TaskPriority)}>
-                                              <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                                              <SelectTrigger className="h-8 w-full min-w-[7rem] sm:w-[110px] text-xs"><SelectValue /></SelectTrigger>
                                               <SelectContent>
                                                 {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                                               </SelectContent>

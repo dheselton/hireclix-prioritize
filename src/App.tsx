@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -69,6 +69,25 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** OAuth callbacks must stay on /auth so ?code= is not stripped by ProtectedRoute. */
+function RootRoute() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const isAuthCallback =
+    params.has("code") ||
+    params.has("error") ||
+    location.hash.includes("access_token") ||
+    location.hash.includes("error");
+  if (isAuthCallback) {
+    return <Navigate to={`/auth${location.search}${location.hash}`} replace />;
+  }
+  return (
+    <AppLayout>
+      <WorkQueue />
+    </AppLayout>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -86,10 +105,9 @@ function App() {
                 <Route path="/request" element={<Navigate to="/f/quick-request" replace />} />
                 <Route path="/pm/request" element={<Navigate to="/f/quick-request" replace />} />
 
-                <Route path="/" element={<Navigate to="/pm" replace />} />
+                <Route path="/" element={<RootRoute />} />
 
-
-                <Route path="/pm" element={<AppLayout><WorkQueue /></AppLayout>} />
+                <Route path="/pm" element={<Navigate to="/" replace />} />
                 <Route path="/pm/my-work" element={<AppLayout><MyPortal /></AppLayout>} />
                 <Route path="/pm/inbox" element={<AppLayout><Inbox /></AppLayout>} />
                 <Route path="/pm/clients" element={<AppLayout><Clients /></AppLayout>} />

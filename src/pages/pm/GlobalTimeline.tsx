@@ -75,7 +75,7 @@ export default function GlobalTimeline() {
 
 
   return (
-    <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
+    <div className="page-shell max-w-[1400px] mx-auto space-y-4">
       <CollectionToolbar
         title="Global Timeline"
         mode={mode}
@@ -85,7 +85,7 @@ export default function GlobalTimeline() {
         actions={<WorkTypeFilterToggle value={workType.value} onChange={workType.set} />}
         extraControls={
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-64 h-8"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-64 h-8"><SelectValue /></SelectTrigger>
             <SelectContent className="z-50 bg-popover">
               <SelectItem value="all">All projects</SelectItem>
               {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}

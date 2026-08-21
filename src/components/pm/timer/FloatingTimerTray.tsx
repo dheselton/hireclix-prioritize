@@ -48,7 +48,7 @@ export function FloatingTimerTray() {
           onAdjust={async (mins) => { await stopWithMinutes(mins, note); setNote(""); }}
         />
       )}
-      <div className="shadow-lg border border-border bg-card rounded-lg px-3 py-2 flex items-center gap-3">
+      <div className="shadow-lg border border-border bg-card rounded-lg px-3 py-2 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
         <button
           onClick={() => navigate(href)}
           className="flex items-center gap-2 min-w-0 text-left hover:opacity-80"
@@ -69,7 +69,7 @@ export function FloatingTimerTray() {
             value={note}
             onChange={e => setNote(e.target.value)}
             placeholder="What are you working on?"
-            className="h-8 flex-1 min-w-[140px] text-xs"
+            className="h-8 flex-1 min-w-0 text-xs"
           />
         )}
         <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={handleStop}>

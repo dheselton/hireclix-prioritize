@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy, RotateCcw, Headphones, Bug, ListPlus } from "lucide-react";
+import {
+  Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy,
+  RotateCcw, Headphones, Bug, ListPlus, Building2, Calendar,
+} from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { ProjectAssignmentsBar } from "./ProjectAssignmentsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
 import { useInternalClientIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { deleteProject } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useEnterSupportMode } from "@/lib/pm/supportMode";
 import { isInQaMode, useEnterQaMode, useExitQaMode } from "@/lib/pm/qaMode";
+import { fmtDate } from "@/lib/pm/format";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,7 +43,6 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   onLogQaBatch?: () => void;
 }) {
   const [clientName, setClientName] = useState<string>("");
-  const [memberIds, setMemberIds] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -55,12 +57,15 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   const supportModeAt = (project.custom_fields as any)?.support_mode_at as string | undefined;
   const inSupport = !!supportModeAt;
   const inQa = isInQaMode(project);
-  const { user, roles } = useCurrentUser();
+  const { roles } = useCurrentUser();
   const isPM = roles.includes("pm");
   const navigate = useNavigate();
   const { enter: enterSupport, busy: enteringSupport } = useEnterSupportMode(project);
   const { enter: enterQa, busy: enteringQa } = useEnterQaMode(project);
   const { exit: exitQa, busy: exitingQa } = useExitQaMode(project);
+
+  const contactName = (project as any).client_contact_name as string | null | undefined;
+  const contactEmail = (project as any).client_contact_email as string | null | undefined;
 
   useEffect(() => {
     (async () => {
@@ -68,77 +73,111 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
         const { data } = await supabase.from("clients").select("name").eq("id", project.client_id).maybeSingle();
         setClientName((data as any)?.name ?? "");
       } else setClientName("");
-      const { data: m } = await supabase.from("pm_project_members").select("user_id").eq("project_id", project.id);
-      setMemberIds(((m as any[]) ?? []).map(r => r.user_id));
     })();
   }, [project.id, project.client_id]);
 
   const canManagePortal = roles.some(r => r === "pm" || r === "ba" || r === "tech_lead");
 
-
   return (
-    <header className="space-y-2">
+    <header className="space-y-3">
       <nav className="text-xs text-muted-foreground">
-        <Link to="/pm/projects" className="hover:text-foreground">Projects</Link>
-        {clientName && <> <span className="mx-1">/</span><span>{clientName}</span></>}
+        <Link to="/pm/work" className="hover:text-foreground">Projects</Link>
+        {clientName && (
+          <>
+            <span className="mx-1">/</span>
+            {project.client_id ? (
+              <Link to={`/pm/clients/${project.client_id}`} className="hover:text-foreground">
+                {clientName}
+              </Link>
+            ) : (
+              <span>{clientName}</span>
+            )}
+          </>
+        )}
       </nav>
-      <div className={`flex items-start justify-between gap-4 ${isInternal ? "internal-border-l pl-3 -ml-3" : ""}`}>
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          {isPM ? (
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="text-[20px] font-medium leading-tight truncate text-left hover:text-primary transition-colors"
-              title="Click to edit project"
-            >
-              {project.title}
-            </button>
-          ) : (
-            <h1 className="text-[20px] font-medium leading-tight truncate">{project.title}</h1>
-          )}
-          {isInternal && <span className="internal-pill">Internal · HireClix</span>}
-          {inQa ? (
-            <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
-              <Bug className="h-3 w-3" /> QA / Go-live testing
+
+      <div className={`flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between ${isInternal ? "internal-border-l pl-3 -ml-3" : ""}`}>
+        <div className="min-w-0 space-y-2 flex-1">
+          {/* Client — primary context, not buried in breadcrumb */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {project.client_id && clientName ? (
+              <Link
+                to={`/pm/clients/${project.client_id}`}
+                className="inline-flex items-center gap-1.5 text-base sm:text-lg font-semibold text-foreground hover:text-primary transition-colors"
+              >
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+                <span className="truncate">{clientName}</span>
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-base sm:text-lg font-semibold text-muted-foreground">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                No client
+              </span>
+            )}
+            {isInternal && <span className="internal-pill">Internal · HireClix</span>}
+            {(contactName || contactEmail) && (
+              <span className="text-sm text-muted-foreground truncate">
+                {contactName || contactEmail}
+                {contactName && contactEmail ? ` · ${contactEmail}` : ""}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            {isPM ? (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="text-xl sm:text-2xl font-semibold leading-tight truncate text-left hover:text-primary transition-colors max-w-full"
+                title="Click to edit project"
+              >
+                {project.title}
+              </button>
+            ) : (
+              <h1 className="text-xl sm:text-2xl font-semibold leading-tight truncate max-w-full">{project.title}</h1>
+            )}
+            {inQa ? (
+              <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
+                <Bug className="h-3 w-3" /> QA / Go-live testing
+              </Badge>
+            ) : inSupport ? (
+              <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
+                <Headphones className="h-3 w-3" /> Support mode
+              </Badge>
+            ) : (
+              <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
+                {project.status.replace(/_/g, " ")}
+              </Badge>
+            )}
+            <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
+              {(project.work_type ?? "project")}
             </Badge>
-          ) : inSupport ? (
-            <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
-              <Headphones className="h-3 w-3" /> Support mode
-            </Badge>
-          ) : (
-            <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
-              {project.status.replace(/_/g, " ")}
-            </Badge>
-          )}
-          <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
-            {(project.work_type ?? "project")}
-          </Badge>
-          <RequesterBadge requestedBy={(project as any).requested_by ?? null} />
+            <RequesterBadge requestedBy={(project as any).requested_by ?? null} />
+          </div>
+
+          {/* Key dates — always visible, large enough to scan */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+            <MetaDate label="Kickoff" value={project.kickoff_date} />
+            <MetaDate label="Client review" value={project.start_date} />
+            <MetaDate label="Go-live" value={project.go_live_date} emphasize />
+          </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {memberIds.length > 0 && (
-            <div className="flex items-center">
-              {memberIds.slice(0, 3).map((uid, i) => (
-                <div key={uid} className="ring-2 ring-background rounded-full" style={{ marginLeft: i === 0 ? 0 : -6 }}>
-                  <UserAvatar userId={uid} size="sm" />
-                </div>
-              ))}
-            </div>
-          )}
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap justify-end">
           {inSupport && onLogSupportRequest && (
-            <Button size="sm" onClick={onLogSupportRequest}>
-              <LifeBuoy className="h-4 w-4 mr-1" /> Log support request
+            <Button size="sm" onClick={onLogSupportRequest} className="flex-1 sm:flex-none">
+              <LifeBuoy className="h-4 w-4 mr-1" /> <span className="truncate">Log support request</span>
             </Button>
           )}
           {inQa && onLogQaBatch && (
-            <Button size="sm" onClick={onLogQaBatch}>
-              <ListPlus className="h-4 w-4 mr-1" /> Log QA batch
+            <Button size="sm" onClick={onLogQaBatch} className="flex-1 sm:flex-none">
+              <ListPlus className="h-4 w-4 mr-1" /> <span className="truncate">Log QA batch</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={onAddTask}>
+          <Button variant="outline" size="sm" onClick={onAddTask} className="flex-1 sm:flex-none">
             <Plus className="h-4 w-4 mr-1" /> Add Task
           </Button>
-          <Button size="sm" variant={inSupport ? "outline" : "default"} onClick={() => setShareOpen(true)}>
+          <Button size="sm" variant={inSupport ? "outline" : "default"} onClick={() => setShareOpen(true)} className="flex-1 sm:flex-none">
             <Share2 className="h-4 w-4 mr-1" /> Share
           </Button>
           {isPM && (
@@ -278,6 +317,18 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
         <EditProjectDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
       )}
     </header>
+  );
+}
+
+function MetaDate({ label, value, emphasize }: { label: string; value: string | null; emphasize?: boolean }) {
+  return (
+    <div className="inline-flex items-center gap-1.5 min-w-0">
+      <Calendar className={`h-3.5 w-3.5 shrink-0 ${emphasize ? "text-primary" : "text-muted-foreground"}`} />
+      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={`font-semibold tabular-nums ${emphasize ? "text-foreground" : "text-foreground/90"}`}>
+        {fmtDate(value)}
+      </span>
+    </div>
   );
 }
 

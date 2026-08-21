@@ -136,7 +136,7 @@ export function AssigneePopover({
                       type="button"
                       onClick={() => makePrimary(u.id)}
                       title="Make primary owner"
-                      className="text-[10px] uppercase text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded border border-border opacity-0 group-hover:opacity-100 transition"
+                      className="text-[10px] uppercase text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded border border-border touch-action"
                     >
                       Primary
                     </button>

@@ -90,11 +90,11 @@ export function GlobalSearchPanel({ open, onClose }: { open: boolean; onClose: (
   let runningIdx = 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4"
+    <div className="fixed inset-0 z-[100] flex items-stretch sm:items-start justify-center sm:pt-[10vh] p-0 sm:px-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+      <div className="relative w-full h-full sm:h-auto sm:max-h-[min(80vh,720px)] max-w-2xl sm:rounded-xl rounded-none border-0 sm:border border-border bg-popover shadow-2xl overflow-hidden flex flex-col safe-bottom">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border shrink-0">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input
             ref={inputRef}
@@ -102,7 +102,7 @@ export function GlobalSearchPanel({ open, onClose }: { open: boolean; onClose: (
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Search clients, projects, tasks, snippets…  try c:  p:  t:  #tag  @user"
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-base"
+            className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-base min-w-0"
           />
           {q && (
             <button className="p-1 text-muted-foreground hover:text-foreground" onClick={() => setQ("")} aria-label="Clear">
@@ -112,7 +112,7 @@ export function GlobalSearchPanel({ open, onClose }: { open: boolean; onClose: (
           <kbd className="hidden sm:inline-flex text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">esc</kbd>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="flex-1 min-h-0 max-h-none sm:max-h-[60vh] overflow-y-auto touch-scroll-y">
           {loading && (
             <div className="p-4 space-y-2">
               {[0,1,2].map(i => <div key={i} className="h-9 rounded bg-muted animate-pulse" />)}
@@ -163,7 +163,7 @@ export function GlobalSearchPanel({ open, onClose }: { open: boolean; onClose: (
           )}
         </div>
 
-        <div className="border-t border-border px-3 py-2 flex items-center gap-3 text-[10px] text-muted-foreground">
+        <div className="border-t border-border px-3 py-2 flex items-center gap-3 text-[10px] text-muted-foreground shrink-0 overflow-x-auto">
           <span className="inline-flex items-center gap-1"><kbd className="border border-border rounded px-1">↑↓</kbd> navigate</span>
           <span className="inline-flex items-center gap-1"><kbd className="border border-border rounded px-1"><CornerDownLeft className="h-2.5 w-2.5" /></kbd> open</span>
           <span className="inline-flex items-center gap-1"><kbd className="border border-border rounded px-1">esc</kbd> close</span>

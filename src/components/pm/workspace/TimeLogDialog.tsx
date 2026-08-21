@@ -191,7 +191,7 @@ function EntryRow({
       <span className="text-muted-foreground whitespace-nowrap">{fmtDate(entry.logged_at.slice(0, 10))}</span>
       <span className="tabular-nums w-12 text-right font-medium">{fmtDur(entry.minutes)}</span>
       {canEdit && (
-        <div className="flex opacity-0 group-hover:opacity-100 transition">
+        <div className="flex touch-action">
           <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditing(true)}>
             <Pencil className="h-3 w-3" />
           </Button>

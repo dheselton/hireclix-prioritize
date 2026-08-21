@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -179,11 +179,11 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
             {fmtSize(f.file_size)}{f.file_size ? " · " : ""}{u?.name ?? "—"} · {fmtDate(f.created_at?.slice(0, 10))}
           </div>
         </div>
-        <a href={f.url} target="_blank" rel="noopener noreferrer" download={f.name} className="opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+        <a href={f.url} target="_blank" rel="noopener noreferrer" download={f.name} className="touch-action" onClick={e => e.stopPropagation()}>
           <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
         </a>
         {canDelete && (
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={onRemove}>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive touch-action" onClick={onRemove}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -206,14 +206,14 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
           ))}
         </div>
         <Select value={uploader} onValueChange={setUploader}>
-          <SelectTrigger className="h-8 w-44"><SelectValue placeholder="Uploaded by" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-full sm:w-44"><SelectValue placeholder="Uploaded by" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Anyone</SelectItem>
             {users.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <DatePicker size="sm" value={dateFrom} onChange={v => setDateFrom(v ?? "")} placeholder="From" className="w-36" />
-        <DatePicker size="sm" value={dateTo} onChange={v => setDateTo(v ?? "")} placeholder="To" className="w-36" />
+        <DatePicker size="sm" value={dateFrom} onChange={v => setDateFrom(v ?? "")} placeholder="From" className="w-full sm:w-36" />
+        <DatePicker size="sm" value={dateTo} onChange={v => setDateTo(v ?? "")} placeholder="To" className="w-full sm:w-36" />
         {(type !== "all" || uploader !== "all" || dateFrom || dateTo) && (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setType("all"); setUploader("all"); setDateFrom(""); setDateTo(""); }}>
             <X className="h-3 w-3 mr-1" /> Clear

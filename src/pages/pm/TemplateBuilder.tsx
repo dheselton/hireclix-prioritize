@@ -71,24 +71,24 @@ export default function TemplateBuilder() {
   async function patchPreset(pid: string, p: any) { await supabase.from("pm_template_page_presets").update(p).eq("id", pid); reload(); }
   async function delPreset(pid: string) { await supabase.from("pm_template_page_presets").delete().eq("id", pid); reload(); }
 
-  if (!tpl) return <div className="p-6">Loading…</div>;
+  if (!tpl) return <div className="page-shell">Loading…</div>;
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="page-shell max-w-5xl mx-auto space-y-4">
       <Link to="/pm/templates" className="text-sm text-muted-foreground inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Templates</Link>
       <Card><CardContent className="p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex-1 min-w-0">
             <Label>Name</Label>
             <Input value={tpl.name} onChange={e => setTpl({ ...tpl, name: e.target.value })} onBlur={e => patchTpl({ name: e.target.value })} />
           </div>
-          <div>
+          <div className="w-full sm:w-auto">
             <Label>Go-live offset (days)</Label>
-            <Input type="number" className="w-32" value={tpl.default_go_live_offset_days ?? 30}
+            <Input type="number" className="w-full sm:w-32" value={tpl.default_go_live_offset_days ?? 30}
               onChange={e => setTpl({ ...tpl, default_go_live_offset_days: Number(e.target.value) })}
               onBlur={e => patchTpl({ default_go_live_offset_days: Number(e.target.value) })} />
           </div>
-          <Button onClick={() => setWizardOpen(true)}><Rocket className="h-4 w-4 mr-1" /> Create Project</Button>
+          <Button className="w-full sm:w-auto" onClick={() => setWizardOpen(true)}><Rocket className="h-4 w-4 mr-1" /> Create Project</Button>
         </div>
       </CardContent></Card>
 
@@ -120,7 +120,7 @@ export default function TemplateBuilder() {
           <div className="text-xs uppercase text-muted-foreground">Tasks</div>
           <Button size="sm" variant="outline" onClick={addTask}><Plus className="h-3 w-3 mr-1" /> Add</Button>
         </div>
-        <div className="grid grid-cols-12 gap-2 px-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <div className="hidden md:grid grid-cols-12 gap-2 px-2 text-[11px] uppercase tracking-wide text-muted-foreground">
           <div className="col-span-3">Title</div>
           <div className="col-span-2">Type</div>
           <div className="col-span-2">Phase</div>
@@ -131,34 +131,52 @@ export default function TemplateBuilder() {
         </div>
         {tasks.map(t => (
           <div key={t.id} className="border border-border rounded p-2 space-y-1">
-            <div className="grid grid-cols-12 gap-2 items-center">
-              <Input className="col-span-3" value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
-              <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
-                <SelectTrigger className="col-span-2"><SelectValue /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
-              </Select>
-              <Input className="col-span-2" placeholder="Phase name" value={t.phase_name ?? ""} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, phase_name: e.target.value } : x))} onBlur={e => patchTask(t.id, { phase_name: e.target.value })} />
-              <Select value={t.page_group_id ?? "__none__"} onValueChange={v => patchTask(t.id, { page_group_id: v === "__none__" ? null : v })}>
-                <SelectTrigger className="col-span-2"><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  <SelectItem value="__none__">— (one-off)</SelectItem>
-                  {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input type="number" className="col-span-1" value={t.duration_days}
-                onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
-                onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
-              <div className="col-span-1 flex justify-center items-center gap-1">
-                <Checkbox checked={!!t.locked} onCheckedChange={(v) => patchTask(t.id, { locked: !!v })} />
-                {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+            <div className="flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-2 md:items-center">
+              <div className="md:col-span-3 space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Title</Label>
+                <Input value={t.title} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, title: e.target.value } : x))} onBlur={e => patchTask(t.id, { title: e.target.value })} />
               </div>
-              <div className="col-span-1 flex items-center gap-1">
-                {isSnippetEligibleType(t.type) ? (
-                  <TemplateTaskSnippetCell templateTaskId={t.id} onChange={bumpSnippets} />
-                ) : (
-                  <span className="text-[11px] text-muted-foreground/60">—</span>
-                )}
-                <Button size="icon" variant="ghost" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
+              <div className="md:col-span-2 space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Type</Label>
+                <Select value={t.type} onValueChange={v => patchTask(t.id, { type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="z-50 bg-popover">{TASK_TYPES.map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Phase</Label>
+                <Input placeholder="Phase name" value={t.phase_name ?? ""} onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, phase_name: e.target.value } : x))} onBlur={e => patchTask(t.id, { phase_name: e.target.value })} />
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Page Group</Label>
+                <Select value={t.page_group_id ?? "__none__"} onValueChange={v => patchTask(t.id, { page_group_id: v === "__none__" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent className="z-50 bg-popover">
+                    <SelectItem value="__none__">— (one-off)</SelectItem>
+                    {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-2 md:contents">
+                <div className="md:col-span-1 space-y-1">
+                  <Label className="text-[10px] uppercase text-muted-foreground md:hidden">Days</Label>
+                  <Input type="number" value={t.duration_days}
+                    onChange={e => setTasks(tasks.map(x => x.id === t.id ? { ...x, duration_days: Number(e.target.value) } : x))}
+                    onBlur={e => patchTask(t.id, { duration_days: Number(e.target.value) })} />
+                </div>
+                <div className="md:col-span-1 flex justify-start md:justify-center items-center gap-1">
+                  <Label className="text-[10px] uppercase text-muted-foreground md:hidden mr-1">Lock</Label>
+                  <Checkbox checked={!!t.locked} onCheckedChange={(v) => patchTask(t.id, { locked: !!v })} />
+                  {t.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                </div>
+                <div className="md:col-span-1 flex items-center gap-1 justify-end md:justify-start">
+                  {isSnippetEligibleType(t.type) ? (
+                    <TemplateTaskSnippetCell templateTaskId={t.id} onChange={bumpSnippets} />
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground/60">—</span>
+                  )}
+                  <Button size="icon" variant="ghost" onClick={() => delTask(t.id)}><Trash2 className="h-3 w-3" /></Button>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 pl-1">
@@ -212,7 +230,7 @@ function PageGroupCard({ group, presets, slotTasks, onPatch, onDelete, onAddPres
         <Button size="icon" variant="ghost" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 pt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
         <div>
           <Label className="text-[11px] uppercase text-muted-foreground">Expected pages</Label>
           <Input type="number" min={1} value={expected}

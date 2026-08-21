@@ -46,19 +46,19 @@ function StatTile({
 }) {
   const empty = count === 0;
   return (
-    <div className={cn("rounded-lg border border-border", open && "bg-muted/30")}>
+    <div className={cn("rounded-lg border border-border min-w-0 overflow-hidden", open && "bg-muted/30")}>
       <button
         type="button"
         onClick={onToggle}
         disabled={empty}
         className={cn(
-          "w-full text-left p-3 flex items-center justify-between gap-2 rounded-lg",
+          "w-full text-left p-3 flex items-center justify-between gap-2 rounded-lg min-w-0",
           empty ? "opacity-60 cursor-default" : "hover:bg-accent/60",
         )}
       >
         <span className="min-w-0">
           <span className="block text-2xl font-semibold tabular-nums">{count}</span>
-          <span className="block text-xs text-muted-foreground">{label}</span>
+          <span className="block text-xs text-muted-foreground truncate">{label}</span>
         </span>
         {!empty && (open
           ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -150,14 +150,14 @@ export default function Report() {
   const toggle = (id: string) => setOpenTile(prev => (prev === id ? null : id));
 
   if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading report…</div>;
+    return <div className="page-shell text-sm text-muted-foreground">Loading report…</div>;
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-[1200px] mx-auto space-y-4">
-      <header className="space-y-1">
+    <div className="page-shell max-w-[1200px] mx-auto space-y-4">
+      <header className="space-y-1 min-w-0">
         <h1 className="text-xl font-semibold flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-primary" /> Team Report
+          <BarChart3 className="h-5 w-5 text-primary shrink-0" /> Team Report
         </h1>
         <p className="text-sm text-muted-foreground">
           Week of {fmtDate(weekStart.toISOString())} — every number opens the work behind it.
@@ -166,7 +166,7 @@ export default function Report() {
 
       {/* 1 — This week */}
       <PanelShell title="This week" icon={Activity} hint="Since Monday. Click a number to see the items.">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 min-w-0">
           <StatTile
             label="Tasks completed" count={thisWeek.completed.length}
             open={openTile === "completed"} onToggle={() => toggle("completed")}

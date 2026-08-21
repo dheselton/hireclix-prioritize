@@ -42,7 +42,7 @@ export function EditClientDialog({ open, onOpenChange, client, onSaved }: Props)
       onOpenChange(false);
       toast.success("Client updated");
     } catch (e: any) {
-      toast.error(`Couldn't update client: ${e.message ?? e}`);
+      toast.error(e?.message ?? "Couldn't update client");
     }
     setSaving(false);
   }

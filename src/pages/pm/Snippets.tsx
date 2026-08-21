@@ -66,7 +66,7 @@ export default function Snippets() {
       .then(({ data }) => setProjects((data ?? []) as any));
   }, [allowed]);
 
-  if (!allowed) return <Navigate to="/pm" replace />;
+  if (!allowed) return <Navigate to="/" replace />;
 
   const categoryById = useMemo(
     () => new Map(categories.map(c => [c.id, c])),
@@ -119,9 +119,9 @@ export default function Snippets() {
     setActiveTags(a => (a.includes(t) ? a.filter(x => x !== t) : [...a, t]));
 
   return (
-    <div className="p-3 md:p-6 max-w-[1600px] mx-auto">
-      <div className="flex items-start justify-between mb-6">
-        <div>
+    <div className="page-shell max-w-[1600px] mx-auto">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+        <div className="min-w-0">
           <h1 className="text-[20px] font-medium flex items-center gap-2">
             <Code className="h-5 w-5 text-info" /> Snippets
           </h1>
@@ -134,7 +134,7 @@ export default function Snippets() {
             setEditing(null);
             setEditorOpen(true);
           }}
-          className="gap-1"
+          className="gap-1 shrink-0"
         >
           <Plus className="h-4 w-4" /> New Snippet
         </Button>
@@ -247,13 +247,13 @@ export default function Snippets() {
 
         {/* Main */}
         <main className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-[13px] text-muted-foreground">
               Showing {filtered.length} snippet{filtered.length === 1 ? "" : "s"}
             </span>
             <div className="flex items-center gap-2">
               <Select value={sort} onValueChange={v => setSort(v as SortKey)}>
-                <SelectTrigger className="h-8 w-32 text-xs">
+                <SelectTrigger className="h-8 w-full sm:w-32 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,7 +292,7 @@ export default function Snippets() {
               No snippets match your filters.
             </div>
           ) : view === "grid" ? (
-            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
               {filtered.map(s => (
                 <SnippetCard
                   key={s.id}

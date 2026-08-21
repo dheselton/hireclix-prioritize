@@ -101,10 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySession]);
 
   const signInWithGoogle = async () => {
+    // Land on /auth (outside ProtectedRoute). Redirecting to `/` used to
+    // immediately Navigate → /pm and strip ?code= before the PKCE exchange.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/auth`,
         queryParams: { hd: 'hireclix.com' },
       },
     });

@@ -118,7 +118,7 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
                     <button
                       type="button"
                       onClick={() => setPendingDelete(c.id)}
-                      className="opacity-0 group-hover:opacity-100 text-destructive"
+                      className="touch-action text-destructive"
                       aria-label="Delete comment"
                     >
                       <Trash2 className="h-3 w-3" />

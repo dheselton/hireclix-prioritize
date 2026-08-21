@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,20 +8,16 @@ import { Columns3, Plus } from "lucide-react";
 import { fetchTasks, fetchProjects, updateTask, logActivity } from "@/lib/pm/api";
 import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
-import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
-import { PriorityFlag } from "@/components/pm/PriorityFlag";
-import { StatusPill } from "@/components/pm/StatusPill";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
-import { fmtDateShort } from "@/lib/pm/format";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { getTaskKind, isRaidOpen } from "@/lib/pm/taskKind";
 import { useTasksChanged } from "@/lib/pm/refresh";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
 import { TaskGridView } from "@/components/pm/collections/TaskGridView";
 import { ProjectWorkGrid } from "@/components/pm/collections/ProjectWorkGrid";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
+import { WorkFiltersSheet } from "@/components/pm/WorkFiltersSheet";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes, isWorkStateFilter, matchesWorkState, WORK_STATE_LABEL, type WorkStateFilter } from "@/lib/pm/filters";
@@ -37,6 +32,7 @@ import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
 import { WorkKanban } from "@/components/pm/work/WorkKanban";
 import { useTagFilter, taskMatchesTagFilter } from "@/hooks/useTagFilter";
 import { TagFilterChip } from "@/components/pm/tags/TagFilterChip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -50,6 +46,8 @@ const DEFAULT_COLUMNS_BY_ROLE: Record<string, TaskStatus[]> = {
   submitter: [...TASK_STATUSES],
 };
 
+const MOBILE_GRID_MIGRATION_KEY = "pm.viewMode.work.mobileGridMigrated";
+
 function loadCols(role: PmRole | null | undefined): TaskStatus[] {
   const key = `pm.boardColumns.${role ?? "anon"}`;
   if (typeof window === "undefined") return DEFAULT_COLUMNS_BY_ROLE[role ?? "pm"];
@@ -62,12 +60,14 @@ function loadCols(role: PmRole | null | undefined): TaskStatus[] {
 }
 
 export default function Work() {
+  const isMobile = useIsMobile();
   const [tasks, setTasks] = useState<PmTask[]>([]);
   const [projects, setProjects] = useState<PmProject[]>([]);
   const [openCreate, setOpenCreate] = useState<null | "select" | "request" | "project">(null);
+  const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { user, roles } = useCurrentUser();
   const drawer = useTaskDrawerLink();
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const { isMe } = useMeMode();
   // Reuse the "board" viewKey so existing deep links and saved chip state stay intact.
   const chips = useChipFilters("board");
@@ -82,8 +82,19 @@ export default function Work() {
     try { localStorage.setItem(`pm.boardColumns.${role ?? "anon"}`, JSON.stringify(next)); } catch {}
   };
 
-  // Default to the flat task list — the "see everything" view.
-  const [mode, setMode] = useViewMode("work", "list");
+  // Phones default to card grid; desktop keeps the flat list as the "see everything" view.
+  const [mode, setMode] = useViewMode("work", isMobile ? "grid" : "list");
+
+  // One-time: migrate phones still on the old list default to grid (won't re-force after user picks list).
+  useEffect(() => {
+    if (!isMobile) return;
+    try {
+      if (localStorage.getItem(MOBILE_GRID_MIGRATION_KEY)) return;
+      const saved = localStorage.getItem("pm.viewMode.work");
+      if (!saved || saved === "list") setMode("grid");
+      localStorage.setItem(MOBILE_GRID_MIGRATION_KEY, "1");
+    } catch { /* ignore */ }
+  }, [isMobile, setMode]);
 
   const { types } = useTypeFilter("board");
   const typesKey = useMemo(() => [...types].sort().join(","), [types]);
@@ -154,7 +165,7 @@ export default function Work() {
   useEffect(() => {
     if (!clientId) { setClientName(null); return; }
     supabase.from("clients").select("name").eq("id", clientId).maybeSingle()
-      .then(({ data }) => setClientName((data as any)?.name ?? null));
+      .then(({ data }) => setClientName((data as { name?: string } | null)?.name ?? null));
   }, [clientId]);
 
   const visibleTasks = useMemo(() => {
@@ -163,7 +174,7 @@ export default function Work() {
     v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds);
     if (workType.value !== "all") {
       v = v.filter(t => {
-        const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
+        const wt = (projById.get(t.project_id) as PmProject & { work_type?: string })?.work_type ?? "project";
         return wt === workType.value;
       });
     }
@@ -183,8 +194,26 @@ export default function Work() {
       });
     }
     if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
+    const q = search.trim().toLowerCase();
+    if (q) {
+      v = v.filter(t => {
+        const proj = projById.get(t.project_id);
+        const haystack = [
+          t.title,
+          t.type,
+          t.status?.replace(/_/g, " "),
+          t.priority,
+          proj?.title,
+          ...(t.tags ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
+    }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap, search]);
 
   // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
   const clientTagsInUse = useMemo(() => {
@@ -192,6 +221,25 @@ export default function Work() {
     for (const t of tasks) for (const tag of (t.tags ?? [])) if (tag.startsWith("client:")) s.add(tag);
     return [...s];
   }, [tasks]);
+
+  const mobileFilterCount =
+    chips.active.size +
+    tagFilter.tags.length +
+    (workType.value !== "all" ? 1 : 0) +
+    (personId ? 1 : 0) +
+    (clientId ? 1 : 0) +
+    (stateFilter ? 1 : 0) +
+    (raidOnly ? 1 : 0);
+
+  const clearMobileFilters = () => {
+    chips.clear();
+    tagFilter.clear();
+    workType.set("all");
+    setPersonId(null);
+    setClientId(null);
+    setStateFilter(null);
+    setRaidOnly(false);
+  };
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visibleTasks.filter(t => t.status === s).length }));
@@ -211,26 +259,53 @@ export default function Work() {
     mode === "projects" ? "All projects with active work. Quick requests show as compact cards." :
     "Tasks across all statuses.";
 
+  const canCreate = !(roles.length === 1 && roles[0] === "submitter");
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="page-shell space-y-4">
       <UnclaimedBanner />
       <CollectionToolbar
         title="Work"
         subtitle={subtitle}
         mode={mode}
-        onModeChange={(m) => setMode(m as any)}
+        onModeChange={(m) => setMode(m as typeof mode)}
         modes={["list", "projects", "kanban", "grid"]}
         chipState={chips}
+        hideChips={isMobile}
         typeFilterPage="board"
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search title, project, status, tags…"
+        searchTrailing={
+          isMobile ? (
+            <WorkFiltersSheet
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              activeCount={mobileFilterCount}
+              workType={workType.value}
+              onWorkTypeChange={workType.set}
+              chipState={chips}
+              tagValue={tagFilter.tags}
+              onTagToggle={tagFilter.toggle}
+              onTagClear={tagFilter.clear}
+              extraTags={clientTagsInUse}
+              onClearAll={clearMobileFilters}
+            />
+          ) : undefined
+        }
         actions={
           <div className="flex items-center gap-2">
-            <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
-            <TagFilterChip
-              value={tagFilter.tags}
-              onToggle={tagFilter.toggle}
-              onClear={tagFilter.clear}
-              extraTags={clientTagsInUse}
-            />
+            {!isMobile && (
+              <>
+                <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+                <TagFilterChip
+                  value={tagFilter.tags}
+                  onToggle={tagFilter.toggle}
+                  onClear={tagFilter.clear}
+                  extraTags={clientTagsInUse}
+                />
+              </>
+            )}
             {personId && (
               <button
                 type="button"
@@ -271,13 +346,16 @@ export default function Work() {
                 RAID only ✕
               </button>
             )}
-            {!(roles.length === 1 && roles[0] === "submitter") && (
+            {canCreate && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
-                  <Plus className="h-4 w-4 mr-1" /> Quick Request
+                <Button size="sm" variant="outline" className="h-8" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
+                  <Plus className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Quick Request</span>
+                  <span className="sm:hidden">Quick</span>
                 </Button>
-                <Button size="sm" onClick={() => setOpenCreate("project")} title="Multi-phase project with timeline">
-                  <Plus className="h-4 w-4 mr-1" /> Project
+                <Button size="sm" className="h-8" onClick={() => setOpenCreate("project")} title="Multi-phase project with timeline">
+                  <Plus className="h-4 w-4 sm:mr-1" />
+                  Project
                 </Button>
               </>
             )}
@@ -316,6 +394,13 @@ export default function Work() {
           </div>
         }
       />
+
+      {(search.trim() || mobileFilterCount > 0) && (
+        <div className="text-xs text-muted-foreground">
+          Showing {visibleTasks.length} task{visibleTasks.length === 1 ? "" : "s"}
+          {search.trim() ? ` matching “${search.trim()}”` : ""}
+        </div>
+      )}
 
       {mode === "kanban" && hiddenCounts.some(h => h.n > 0) && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">

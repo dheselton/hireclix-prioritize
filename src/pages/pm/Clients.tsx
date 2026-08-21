@@ -105,7 +105,7 @@ export default function Clients() {
   }, [rows, q, sort, scope]);
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 max-w-5xl">
+    <div className="page-shell space-y-4 max-w-5xl">
       <header className="space-y-1">
         <h1 className="text-[20px] font-medium leading-tight">Clients</h1>
         <p className="text-sm text-muted-foreground">
@@ -119,7 +119,7 @@ export default function Clients() {
           <Input className="pl-8" placeholder="Search clients…" value={q} onChange={e => setQ(e.target.value)} />
         </div>
         <Select value={scope} onValueChange={v => setScope(v as ScopeId)}>
-          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All active</SelectItem>
             <SelectItem value="clients">Clients only</SelectItem>
@@ -128,7 +128,7 @@ export default function Clients() {
           </SelectContent>
         </Select>
         <Select value={sort} onValueChange={v => setSort(v as SortId)}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Most active</SelectItem>
             <SelectItem value="name">Name (A–Z)</SelectItem>

@@ -84,7 +84,7 @@ export function SummaryHeader({
 
           <div className="flex flex-wrap gap-2 items-center">
             <Select value={filters.category || undefined} onValueChange={(v) => onFilterChange('category', v)}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -95,7 +95,7 @@ export function SummaryHeader({
             </Select>
 
             <Select value={filters.featureLevel || undefined} onValueChange={(v) => onFilterChange('featureLevel', v)}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="Level" />
               </SelectTrigger>
               <SelectContent>
@@ -106,7 +106,7 @@ export function SummaryHeader({
             </Select>
 
             <Select value={filters.featureType || undefined} onValueChange={(v) => onFilterChange('featureType', v)}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -119,7 +119,7 @@ export function SummaryHeader({
             </Select>
 
             <Select value={filters.status || undefined} onValueChange={(v) => onFilterChange('status', v)}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>

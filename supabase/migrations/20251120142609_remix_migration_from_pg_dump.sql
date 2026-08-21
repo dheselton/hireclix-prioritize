@@ -25,25 +25,6 @@ SET row_security = off;
 
 
 --
--- Name: get_job_api_stats(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_job_api_stats() RETURNS TABLE(total_pushes bigint, successful_pushes bigint, failed_pushes bigint, total_jobs_processed bigint, total_errors bigint, avg_execution_time numeric)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-  SELECT 
-    COUNT(*)::bigint as total_pushes,
-    COUNT(*) FILTER (WHERE push_status = 'SUCCESS')::bigint as successful_pushes,
-    COUNT(*) FILTER (WHERE push_status != 'SUCCESS')::bigint as failed_pushes,
-    COALESCE(SUM(total_jobs_processed), 0)::bigint as total_jobs_processed,
-    COALESCE(SUM(total_errors), 0)::bigint as total_errors,
-    COALESCE(AVG(execution_time_seconds), 0)::numeric as avg_execution_time
-  FROM public.job_api_logs;
-$$;
-
-
---
 -- Name: update_loom_videos_timestamp(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -185,6 +166,25 @@ CREATE TABLE public.job_api_logs (
     record_type text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
+
+
+--
+-- Name: get_job_api_stats(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_job_api_stats() RETURNS TABLE(total_pushes bigint, successful_pushes bigint, failed_pushes bigint, total_jobs_processed bigint, total_errors bigint, avg_execution_time numeric)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT 
+    COUNT(*)::bigint as total_pushes,
+    COUNT(*) FILTER (WHERE push_status = 'SUCCESS')::bigint as successful_pushes,
+    COUNT(*) FILTER (WHERE push_status != 'SUCCESS')::bigint as failed_pushes,
+    COALESCE(SUM(total_jobs_processed), 0)::bigint as total_jobs_processed,
+    COALESCE(SUM(total_errors), 0)::bigint as total_errors,
+    COALESCE(AVG(execution_time_seconds), 0)::numeric as avg_execution_time
+  FROM public.job_api_logs;
+$$;
 
 
 --

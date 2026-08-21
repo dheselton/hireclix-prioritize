@@ -33,7 +33,7 @@ describe("permissions mobile role matrix", () => {
       "/pm/clients",
       "/pm/report",
     ]));
-    expect(fallbackPath("designer")).toBe("/pm/work");
+    expect(fallbackPath("designer")).toBe("/");
   });
 
   it("tech_lead is blocked from inbox/report/clients/authoring", () => {

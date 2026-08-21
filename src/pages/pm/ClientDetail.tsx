@@ -68,7 +68,7 @@ export default function ClientDetail() {
   const archived = !!client?.archived_at;
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 max-w-4xl">
+    <div className="page-shell space-y-4 max-w-4xl">
       <nav className="text-xs text-muted-foreground">
         <Link to="/pm/clients" className="hover:text-foreground">Clients</Link>
         <span className="mx-1">/</span><span>{client?.name ?? "Client"}</span>
@@ -115,13 +115,15 @@ export default function ClientDetail() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="projects">Projects ({projects.length})</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="assets">Assets</TabsTrigger>
-          <TabsTrigger value="portal">Portal</TabsTrigger>
-        </TabsList>
+        <div className="tab-strip">
+          <TabsList className="inline-flex w-max h-auto flex-nowrap justify-start">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="projects">Projects ({projects.length})</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
+            <TabsTrigger value="assets">Assets</TabsTrigger>
+            <TabsTrigger value="portal">Portal</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="pt-3">
           <ClientOverviewTab

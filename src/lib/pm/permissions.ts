@@ -103,7 +103,7 @@ export function fallbackPath(role: RoleOrRoles): string {
   const roles = toRoles(role);
   const isSubmitterOnly = roles.every(r => r === "submitter");
   if (isSubmitterOnly) return "/pm/my-work";
-  return canSee(role, "work") ? "/pm/work" : "/pm";
+  return "/";
 }
 
 /** Only PM/BA (and tech leads) may publish comments to the client portal. */

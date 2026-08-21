@@ -167,7 +167,7 @@ function RequestDetail({ request, onClose }: { request: MyRequest | null; onClos
 
   return (
     <Sheet open={!!request} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-4 md:p-6 safe-bottom">
         {request && (
           <>
             <SheetHeader>
@@ -427,7 +427,7 @@ export default function MyPortal() {
       <RequestDetail request={openRequest} onClose={() => setOpenRequest(null)} />
 
       <Sheet open={!!openThread} onOpenChange={(o) => { if (!o) setOpenThread(null); }}>
-        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-4 md:p-6 safe-bottom">
           {openThread && (
             <>
               <SheetHeader>

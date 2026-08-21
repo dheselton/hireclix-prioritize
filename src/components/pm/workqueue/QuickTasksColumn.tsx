@@ -104,7 +104,7 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
       </button>
 
       <div className="shrink-0 mt-0.5">{badge}</div>
-      <div className="mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="mt-0.5 touch-action">
         <TaskTriagePopover task={t} />
       </div>
     </div>
@@ -152,7 +152,7 @@ export function QuickTasksColumn({ tasks, totalCount, unclaimed }: Props) {
       </div>
       <p className="text-[11px] text-muted-foreground mb-3">Single-task work from quick requests.</p>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto lift-gutter space-y-3">
         {unclaimed.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-1.5 px-0.5">

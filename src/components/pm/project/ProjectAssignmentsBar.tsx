@@ -72,14 +72,14 @@ export function ProjectAssignmentsBar({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Assignments</span>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-secondary/60 px-3 py-2.5">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Team</span>
       {SLOTS.map(slot => {
         const member = rows.find(r => r.role === slot.role);
         const u = member ? users.find(x => x.id === member.user_id) : undefined;
         return (
           <div key={slot.role} className="flex items-center gap-2 min-w-0">
-            <span className="text-[11px] text-muted-foreground">{slot.label}</span>
+            <span className="text-xs text-muted-foreground shrink-0">{slot.label}</span>
             <SlotPicker
               disabled={!canEdit}
               current={member?.user_id ?? null}
@@ -88,16 +88,16 @@ export function ProjectAssignmentsBar({ projectId }: { projectId: string }) {
               <button
                 type="button"
                 disabled={!canEdit}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-muted disabled:cursor-default"
+                className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-sm hover:bg-muted disabled:cursor-default"
               >
                 {member ? (
                   <>
                     <UserAvatar userId={member.user_id} size="sm" />
-                    <span className="truncate max-w-[110px]">{u?.name ?? "Unknown"}</span>
+                    <span className="truncate max-w-[140px] font-medium">{u?.name ?? "Unknown"}</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus className="h-3 w-3 text-muted-foreground" />
+                    <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-muted-foreground">Unassigned</span>
                   </>
                 )}

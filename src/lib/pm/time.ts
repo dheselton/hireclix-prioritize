@@ -72,23 +72,23 @@ export async function fetchEnrichedEntries(opts: {
   userIds?: string[];
   taskId?: string;
   activityId?: string;
+  /** When set, only entries whose task belongs to this project (excludes overhead). */
+  projectId?: string;
   from?: string; // ISO date inclusive
   to?: string;   // ISO date inclusive
 }): Promise<EnrichedEntry[]> {
-  let q = supabase
-    .from("pm_time_entries")
-    .select(
-      "id, task_id, activity_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name))), pm_activities(name, color, icon, default_client_id, clients(name))"
-    );
-  if (opts.userId) q = q.eq("user_id", opts.userId);
-  if (opts.userIds?.length) q = q.in("user_id", opts.userIds);
-  if (opts.taskId) q = q.eq("task_id", opts.taskId);
-  if (opts.activityId) q = q.eq("activity_id", opts.activityId);
-  if (opts.from) q = q.gte("logged_at", `${opts.from}T00:00:00`);
-  if (opts.to) q = q.lte("logged_at", `${opts.to}T23:59:59.999`);
-  const { data, error } = await q.order("logged_at", { ascending: false });
-  if (error) throw error;
-  return (data || []).map((r: any): EnrichedEntry => {
+  let taskIdsForProject: string[] | null = null;
+  if (opts.projectId) {
+    const { data: tasks, error: taskErr } = await supabase
+      .from("pm_tasks")
+      .select("id")
+      .eq("project_id", opts.projectId);
+    if (taskErr) throw taskErr;
+    taskIdsForProject = ((tasks as { id: string }[]) ?? []).map((t) => t.id);
+    if (!taskIdsForProject.length) return [];
+  }
+
+  const mapRow = (r: any): EnrichedEntry => {
     const isActivity = !!r.activity_id;
     return {
       id: r.id,
@@ -111,7 +111,37 @@ export async function fetchEnrichedEntries(opts: {
       activity_icon: r.pm_activities?.icon ?? null,
       is_activity: isActivity,
     };
-  });
+  };
+
+  const selectCols =
+    "id, task_id, activity_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name))), pm_activities(name, color, icon, default_client_id, clients(name))";
+
+  async function runQuery(extra?: { taskIds?: string[] }) {
+    let q = supabase.from("pm_time_entries").select(selectCols);
+    if (opts.userId) q = q.eq("user_id", opts.userId);
+    if (opts.userIds?.length) q = q.in("user_id", opts.userIds);
+    if (opts.taskId) q = q.eq("task_id", opts.taskId);
+    if (opts.activityId) q = q.eq("activity_id", opts.activityId);
+    if (extra?.taskIds) q = q.in("task_id", extra.taskIds);
+    if (opts.from) q = q.gte("logged_at", `${opts.from}T00:00:00`);
+    if (opts.to) q = q.lte("logged_at", `${opts.to}T23:59:59.999`);
+    const { data, error } = await q.order("logged_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapRow);
+  }
+
+  if (taskIdsForProject) {
+    const CHUNK = 200;
+    const out: EnrichedEntry[] = [];
+    for (let i = 0; i < taskIdsForProject.length; i += CHUNK) {
+      const slice = taskIdsForProject.slice(i, i + CHUNK);
+      out.push(...(await runQuery({ taskIds: slice })));
+    }
+    out.sort((a, b) => b.logged_at.localeCompare(a.logged_at));
+    return out;
+  }
+
+  return runQuery();
 }
 
 export async function addTimeEntry(input: {

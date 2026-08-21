@@ -26,6 +26,7 @@ import { DesignTab } from "./feature-detail/DesignTab";
 import { TechnicalTab } from "./feature-detail/TechnicalTab";
 import { QATab } from "./feature-detail/QATab";
 import { RolloutTab } from "./feature-detail/RolloutTab";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FeatureDetailDrawerProps {
   feature: Feature | null;
@@ -149,6 +150,7 @@ export function FeatureDetailDrawer({
   onUpdate,
 }: FeatureDetailDrawerProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [formData, setFormData] = useState<Partial<Feature>>({});
   const [overviewData, setOverviewData] = useState<OverviewData>(defaultOverviewData);
   const [requirementsData, setRequirementsData] = useState<RequirementsData>(defaultRequirementsData);
@@ -328,15 +330,21 @@ export function FeatureDetailDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+      <SheetContent
+        side={isMobile ? "bottom" : "right"}
+        className={isMobile
+          ? "h-[92dvh] w-full sm:max-w-none rounded-t-2xl p-4 overflow-y-auto safe-bottom"
+          : "w-full sm:max-w-4xl overflow-y-auto"}
+      >
         <SheetHeader>
-          <SheetTitle className="flex items-center justify-between">
+          <SheetTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pr-8">
             <span>Feature Details</span>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="flex-1 sm:flex-none"
                 onClick={handleSendReminder}
                 disabled={isSendingReminder || !formData.assignees?.length}
               >
@@ -347,6 +355,7 @@ export function FeatureDetailDrawer({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="flex-1 sm:flex-none"
                 onClick={handleSendAssignmentNotification}
                 disabled={isSendingReminder || !formData.assignees?.length}
               >
@@ -358,13 +367,13 @@ export function FeatureDetailDrawer({
         </SheetHeader>
 
         <Tabs defaultValue="overview" className="mt-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="requirements">Requirements</TabsTrigger>
-            <TabsTrigger value="design">Design</TabsTrigger>
-            <TabsTrigger value="technical">Technical</TabsTrigger>
-            <TabsTrigger value="qa">QA</TabsTrigger>
-            <TabsTrigger value="rollout">Rollout</TabsTrigger>
+          <TabsList className="w-full h-auto flex flex-nowrap justify-start gap-1 overflow-x-auto touch-scroll-x no-scrollbar bg-muted p-1">
+            <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
+            <TabsTrigger value="requirements" className="shrink-0">Requirements</TabsTrigger>
+            <TabsTrigger value="design" className="shrink-0">Design</TabsTrigger>
+            <TabsTrigger value="technical" className="shrink-0">Technical</TabsTrigger>
+            <TabsTrigger value="qa" className="shrink-0">QA</TabsTrigger>
+            <TabsTrigger value="rollout" className="shrink-0">Rollout</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
@@ -414,7 +423,7 @@ export function FeatureDetailDrawer({
           </TabsContent>
         </Tabs>
 
-        <div className="flex gap-3 mt-6 sticky bottom-0 bg-background py-4 border-t">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 mt-6 sticky bottom-0 bg-background py-4 border-t safe-bottom">
           <Button onClick={handleSave} className="flex-1">
             Save Changes
           </Button>

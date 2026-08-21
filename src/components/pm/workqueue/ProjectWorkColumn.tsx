@@ -29,7 +29,7 @@ export function ProjectWorkColumn({ projects }: Props) {
           No active projects right now.
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto lift-gutter space-y-3">
           {projects.map((p) => (
             <ProjectBriefingCard key={p.id} project={p} />
           ))}

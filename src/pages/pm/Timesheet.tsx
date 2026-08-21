@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
-import { addDays, fmtDur, localDateISO, startOfWeek, useEnrichedEntries, weekDays } from "@/lib/pm/time";
+import { addDays, fmtDur, localDateISO, startOfWeek, useEnrichedEntries } from "@/lib/pm/time";
 import { WeekPaginator } from "@/components/pm/time/WeekPaginator";
 import { TimesheetGrid } from "@/components/pm/time/TimesheetGrid";
 import { TimeEntriesList } from "@/components/pm/time/TimeEntriesList";
@@ -29,7 +29,9 @@ export default function Timesheet() {
   const [view, setView] = useState<"timesheet" | "entries">("timesheet");
   const [selectedUserId, setSelectedUserId] = useState<string>(me?.id ?? "");
   const [clientFilter, setClientFilter] = useState<string>("");
+  const [projectFilterLocal, setProjectFilterLocal] = useState<string>("");
   const taskFilter = params.get("task");
+  const projectFilter = params.get("project") ?? projectFilterLocal;
 
   useEffect(() => {
     if (!selectedUserId && me?.id) setSelectedUserId(me.id);
@@ -42,17 +44,28 @@ export default function Timesheet() {
   const userId = isManager && selectedUserId !== ALL_USERS ? selectedUserId : (isManager ? undefined : me?.id);
 
   const { entries, reload } = useEnrichedEntries(
-    { userId, userIds, from, to, taskId: taskFilter ?? undefined },
-    [userId, userIds?.join(","), from, to, taskFilter]
+    {
+      userId,
+      userIds,
+      from,
+      to,
+      taskId: taskFilter ?? undefined,
+      projectId: projectFilter || undefined,
+    },
+    [userId, userIds?.join(","), from, to, taskFilter, projectFilter]
   );
 
-  // Filtered for entries-view by client
+  // Filtered for entries-view by client / local project chip (when not already URL-filtered)
   const visibleEntries = useMemo(() => {
-    if (!clientFilter) return entries;
-    return entries.filter(e => e.client_id === clientFilter);
-  }, [entries, clientFilter]);
+    let list = entries;
+    if (clientFilter) list = list.filter(e => e.client_id === clientFilter);
+    if (projectFilterLocal && !params.get("project")) {
+      list = list.filter(e => e.project_id === projectFilterLocal);
+    }
+    return list;
+  }, [entries, clientFilter, projectFilterLocal, params]);
 
-  // Client summary tiles
+  // Client summary tiles (from unfiltered-by-chip week entries still scoped by URL project/task)
   const byClient = useMemo(() => {
     const map = new Map<string, { id: string | null; name: string; mins: number }>();
     for (const e of entries) {
@@ -60,6 +73,21 @@ export default function Timesheet() {
       const existing = map.get(key) ?? { id: e.client_id, name: e.client_name ?? "No client", mins: 0 };
       existing.mins += e.minutes;
       map.set(key, existing);
+    }
+    return Array.from(map.values()).sort((a, b) => b.mins - a.mins);
+  }, [entries]);
+
+  const byProject = useMemo(() => {
+    const map = new Map<string, { id: string; title: string; mins: number }>();
+    for (const e of entries) {
+      if (!e.project_id) continue;
+      const existing = map.get(e.project_id) ?? {
+        id: e.project_id,
+        title: e.project_title || "Untitled project",
+        mins: 0,
+      };
+      existing.mins += e.minutes;
+      map.set(e.project_id, existing);
     }
     return Array.from(map.values()).sort((a, b) => b.mins - a.mins);
   }, [entries]);
@@ -86,20 +114,49 @@ export default function Timesheet() {
   const nonBillableWarn = (totalMins - billableMins) > WEEK_WARN_MIN;
   const avgWarn = avgDayMins > DAY_WARN_MIN;
 
+  const activeProjectId = params.get("project") || projectFilterLocal;
+  const activeProjectTitle =
+    byProject.find((p) => p.id === activeProjectId)?.title ??
+    entries.find((e) => e.project_id === activeProjectId)?.project_title ??
+    null;
+
+  function clearProjectFilter() {
+    setProjectFilterLocal("");
+    if (params.has("project")) {
+      const next = new URLSearchParams(params);
+      next.delete("project");
+      setParams(next, { replace: true });
+    }
+  }
+
+  function selectProject(id: string) {
+    const active = activeProjectId === id;
+    if (active) {
+      clearProjectFilter();
+      return;
+    }
+    setProjectFilterLocal(id);
+    setClientFilter("");
+    setView("entries");
+    const next = new URLSearchParams(params);
+    next.set("project", id);
+    setParams(next, { replace: true });
+  }
+
   return (
-    <div className="p-3 md:p-6 max-w-[1400px] mx-auto space-y-4">
+    <div className="page-shell max-w-[1400px] mx-auto space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold">Time</h1>
         </div>
 
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
+        <div className="ml-auto flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <WeekPaginator weekStart={weekStart} onChange={setWeekStart} />
 
           {isManager && (
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-full sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="z-50 bg-popover">
@@ -113,7 +170,7 @@ export default function Timesheet() {
             </Select>
           )}
 
-          <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+          <Tabs value={view} onValueChange={(v) => setView(v as "timesheet" | "entries")}>
             <TabsList className="h-9">
               <TabsTrigger value="timesheet" className="text-xs">Timesheet</TabsTrigger>
               <TabsTrigger value="entries" className="text-xs">Time entries</TabsTrigger>
@@ -126,6 +183,19 @@ export default function Timesheet() {
         <div className="flex items-center gap-2 text-xs px-3 py-2 bg-primary/10 rounded-md">
           <span>Showing entries for one task only.</span>
           <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { params.delete("task"); setParams(params, { replace: true }); }}>
+            Clear filter
+          </Button>
+        </div>
+      )}
+
+      {params.get("project") && (
+        <div className="flex items-center gap-2 text-xs px-3 py-2 bg-primary/10 rounded-md flex-wrap">
+          <span>
+            Showing this week&apos;s entries for project
+            {activeProjectTitle ? <> <strong>{activeProjectTitle}</strong></> : null}.
+            {" "}Overview shows all-time; this view is date-scoped.
+          </span>
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={clearProjectFilter}>
             Clear filter
           </Button>
         </div>
@@ -167,6 +237,35 @@ export default function Timesheet() {
             })}
             {clientFilter && (
               <button onClick={() => setClientFilter("")} className="text-xs text-muted-foreground hover:underline ml-1">
+                Clear
+              </button>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* By project */}
+      {byProject.length > 0 && !params.get("project") && (
+        <Card className="px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground font-medium uppercase tracking-wide mr-1">By project</span>
+            {byProject.map(p => {
+              const active = activeProjectId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => selectProject(p.id)}
+                  className={
+                    "px-2 py-1 rounded-full border text-xs transition " +
+                    (active ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")
+                  }
+                >
+                  {p.title} <span className="font-mono tabular-nums ml-1 opacity-80">{fmtDur(p.mins)}</span>
+                </button>
+              );
+            })}
+            {projectFilterLocal && (
+              <button onClick={clearProjectFilter} className="text-xs text-muted-foreground hover:underline ml-1">
                 Clear
               </button>
             )}

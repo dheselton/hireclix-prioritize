@@ -1,0 +1,57 @@
+---
+description: Prevent hover/animation clipping — portal overlays, lift gutters, outline for state
+globs: src/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Hover, overlays, and clipping
+
+Floating UI and hover-lift effects must never be clipped by ancestor overflow.
+
+## Floating overlays — always portal
+
+Tooltips, hover cards, popovers, menus, and hand-rolled suggestion menus must render via a Portal (Radix `*.Portal` or `createPortal(..., document.body)`).
+
+```tsx
+// ❌ BAD — clipped by overflow-y-auto ancestors
+<TooltipPrimitive.Content>...</TooltipPrimitive.Content>
+
+// ✅ GOOD
+<TooltipPrimitive.Portal>
+  <TooltipPrimitive.Content collisionPadding={8} className="z-[70]">...</TooltipPrimitive.Content>
+</TooltipPrimitive.Portal>
+```
+
+Use `z-[70]` for tip/hover-card content so it sits above `z-50` dialogs/sheets when both are open.
+
+## Hover lift — reserve a gutter
+
+`.card-lift` paints outside its box (`translateY(-1px)` + outer ring). Any scroll/clip ancestor that holds lift cards must use `.lift-gutter` (or equivalent padding + negative margin):
+
+```tsx
+// ❌ BAD
+<div className="overflow-y-auto pr-1 space-y-2">{/* card-lift rows */}</div>
+
+// ✅ GOOD
+<div className="overflow-y-auto lift-gutter space-y-2">{/* card-lift rows */}</div>
+```
+
+Do not put `.lift-gutter` on the same element as a visible border unless you wrap an inner scroller — negative margin fights the border box.
+
+## Persistent state — use outline, not ring/box-shadow
+
+`.card-lift:hover` sets `box-shadow`. That overrides Tailwind `ring-*` and other `box-shadow` state styles. Use `outline` with a negative offset for selection / needs-assignee / unclaimed edges:
+
+```tsx
+// ❌ BAD — hover wipe
+selected && "ring-2 ring-info ring-offset-1"
+
+// ✅ GOOD
+selected && "outline outline-2 outline-info -outline-offset-2"
+```
+
+## Checklist before shipping card UI
+
+1. Overlay content is portaled.
+2. Nearest `overflow-*` ancestor of `.card-lift` has `.lift-gutter` (or vertical equivalent).
+3. Selection / urgency indicators use `outline`, not competing `box-shadow`/`ring`.

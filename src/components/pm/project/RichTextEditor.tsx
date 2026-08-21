@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bold, Italic, List, ListOrdered, Link as LinkIcon } from "lucide-react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -73,13 +74,13 @@ export function RichTextEditor({ value, onChange, onBlur, placeholder, users }: 
                 .filter(u => u.name.toLowerCase().includes(query.toLowerCase()))
                 .slice(0, 6),
             render: () => {
+              // Viewport coords + portal so the menu isn't clipped by scrollable drawers.
               const place = (props: any) => {
                 const rect = props.clientRect?.();
-                const host = hostRef.current?.getBoundingClientRect();
-                if (!rect || !host) return;
+                if (!rect) return;
                 setMention({
-                  top: rect.bottom - host.top + 4,
-                  left: rect.left - host.left,
+                  top: rect.bottom + 4,
+                  left: rect.left,
                   items: props.items,
                   command: props.command,
                 });
@@ -168,10 +169,10 @@ export function RichTextEditor({ value, onChange, onBlur, placeholder, users }: 
         editor={editor}
         className="[&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.is-editor-empty:first-child::before]:text-muted-foreground [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:pointer-events-none"
       />
-      {mention && mention.items.length > 0 && (
+      {mention && mention.items.length > 0 && createPortal(
         <div
-          className="absolute z-50 bg-popover border border-border rounded shadow-md overflow-hidden min-w-[180px]"
-          style={{ top: mention.top + 40, left: mention.left + 12 }}
+          className="fixed z-[70] bg-popover border border-border rounded shadow-md overflow-hidden min-w-[180px]"
+          style={{ top: mention.top, left: mention.left }}
         >
           {mention.items.map(u => (
             <button
@@ -188,7 +189,8 @@ export function RichTextEditor({ value, onChange, onBlur, placeholder, users }: 
               <span className="text-xs text-muted-foreground ml-2">{u.role}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

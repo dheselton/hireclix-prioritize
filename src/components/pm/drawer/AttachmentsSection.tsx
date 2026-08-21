@@ -146,12 +146,12 @@ export function AttachmentsSection({ taskId, projectId }: { taskId: string; proj
                 </div>
               </div>
               {a.type !== "link" && (
-                <a href={a.url} target="_blank" rel="noopener noreferrer" download={a.name} className="opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+                <a href={a.url} target="_blank" rel="noopener noreferrer" download={a.name} className="touch-action" onClick={e => e.stopPropagation()}>
                   <Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button>
                 </a>
               )}
               {ownMine && (
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => remove(a)}>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive touch-action" onClick={() => remove(a)}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               )}

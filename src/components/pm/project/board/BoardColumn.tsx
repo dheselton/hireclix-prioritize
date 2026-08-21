@@ -23,7 +23,7 @@ export function BoardColumn({
       </div>
       <div
         ref={setNodeRef}
-        className={`space-y-2 min-h-[120px] rounded-md p-1 border border-dashed transition-colors ${
+        className={`space-y-2 min-h-[120px] rounded-md p-2 border border-dashed transition-colors ${
           isDragActive && isOver
             ? "bg-info/5 border-info"
             : "border-transparent"

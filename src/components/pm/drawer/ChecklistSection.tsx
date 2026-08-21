@@ -87,7 +87,7 @@ export function ChecklistSection({ taskId }: { taskId: string }) {
                 onClick={() => { setEditingId(s.id); setEditValue(s.label); }}
               >{s.label}</button>
             )}
-            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
+            <div className="touch-action flex items-center gap-0.5">
               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(i, -1)} disabled={i === 0}><ArrowUp className="h-3 w-3" /></Button>
               <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(i, 1)} disabled={i === items.length - 1}><ArrowDown className="h-3 w-3" /></Button>
               <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => remove(s.id)}><Trash2 className="h-3 w-3" /></Button>

@@ -128,8 +128,8 @@ export default function TaskWorkspace() {
     setParams(prev => { const p = new URLSearchParams(prev); p.set("task", task!.id); return p; });
   }
 
-  if (loading) return <div className="p-8 text-sm text-muted-foreground">Loading task…</div>;
-  if (!task) return <div className="p-8">Task not found. <Button variant="link" onClick={() => navigate("/pm")}>Back to Work Queue</Button></div>;
+  if (loading) return <div className="page-shell text-sm text-muted-foreground">Loading task…</div>;
+  if (!task) return <div className="page-shell">Task not found. <Button variant="link" onClick={() => navigate("/")}>Back to Work Queue</Button></div>;
 
   const dotColor = trackColor(task.track);
 
@@ -137,12 +137,12 @@ export default function TaskWorkspace() {
     <div className="min-h-full bg-muted/10">
       {/* HEADER */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-[1400px] mx-auto px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
+        <div className="max-w-[1400px] mx-auto px-3 md:px-4 py-3">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap sm:flex-nowrap">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2 shrink-0 touch-target">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
-            <div className="text-xs text-muted-foreground truncate">
+            <div className="hidden sm:block text-xs text-muted-foreground truncate min-w-0 flex-1">
               <button className="hover:underline" onClick={() => navigate("/pm/projects")}>Projects</button>
               <span className="mx-1.5">/</span>
               {crumbs.projectTitle && (
@@ -159,7 +159,7 @@ export default function TaskWorkspace() {
                 </>
               )}
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 shrink-0">
               <TimerPill taskId={task.id} taskTitle={task.title} />
               <div className="hidden md:flex items-center gap-2">
                 <PinTaskButton taskId={task.id} userId={user?.id ?? null} />
@@ -186,7 +186,7 @@ export default function TaskWorkspace() {
             </div>
           </div>
 
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2 min-w-0">
             <span
               aria-hidden
               className="h-2.5 w-2.5 rounded-full shrink-0"
@@ -194,11 +194,10 @@ export default function TaskWorkspace() {
             />
             <PriorityFlag priority={task.priority} size="md" />
             <Input
-
               value={task.title}
               onChange={e => setTask({ ...task, title: e.target.value })}
               onBlur={e => patch({ title: e.target.value })}
-              className="text-xl font-bold border-0 px-0 h-auto py-0.5 focus-visible:ring-0 shadow-none bg-transparent"
+              className="text-lg md:text-xl font-bold border-0 px-0 h-auto py-0.5 focus-visible:ring-0 shadow-none bg-transparent min-w-0 flex-1"
             />
           </div>
         </div>

@@ -42,6 +42,7 @@ export function TaskKanban({ tasks, projects, onOpen, onChanged, columns = TASK_
     onChanged?.();
   }
 
+  // Mobile: horizontal snap columns at 85vw (no stacked fallback — matches project board pattern).
   return (
     <div className="flex gap-3 touch-scroll-x no-scrollbar snap-x snap-mandatory md:snap-none pb-3 -mx-3 px-3 md:mx-0 md:px-0">
       {columns.map(s => {

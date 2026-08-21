@@ -14,6 +14,7 @@ import { emitTasksChanged } from "@/lib/pm/refresh";
 import { TASK_STATUSES, type PmTask, type TaskStatus } from "@/types/pm";
 import { toast } from "sonner";
 import { Maximize2, Send, Trash2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
  * Drawer is now Quick Edit only.
@@ -77,7 +78,7 @@ export function TaskDrawer() {
     navigate(`/pm/tasks/${task.id}`);
   }
 
-  const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+  const isMobile = useIsMobile();
   return (
     <Sheet open={!!taskId} onOpenChange={(v) => { if (!v) close(); }}>
       <SheetContent

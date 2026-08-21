@@ -94,8 +94,8 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
         />
       )}
 
-      <div className="border border-border rounded-md overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border border-border rounded-md overflow-x-auto touch-scroll-x">
+        <table className="w-full text-sm min-w-[520px]">
           <thead className="bg-muted/40 border-b border-border text-left">
             <tr>
               {enableBulk && (

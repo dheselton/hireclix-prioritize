@@ -101,7 +101,7 @@ export function AssetHub({ taskId, projectId }: { taskId: string; projectId: str
                 item={{ id: a.id, name: a.name, url: a.url, type: a.type }}
                 onClick={() => openPreview(previewItems, i)}
               />
-              <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition">
+              <div className="absolute top-1 right-1 flex gap-0.5 touch-action">
                 <a
                   href={a.url} target="_blank" rel="noopener noreferrer" download={a.name}
                   onClick={e => e.stopPropagation()}

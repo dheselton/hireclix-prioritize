@@ -28,7 +28,7 @@ export function TimesheetGrid({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/40 text-xs text-muted-foreground">
-              <th className="text-left font-medium px-2 md:px-3 py-2 sticky left-0 bg-muted/40 z-10 min-w-[200px] md:min-w-[280px]">Task / Activity</th>
+              <th className="text-left font-medium px-2 md:px-3 py-2 sticky left-0 bg-muted/40 z-10 min-w-[140px] md:min-w-[280px]">Task / Activity</th>
               {days.map((d, i) => {
                 const dt = parseISO(d);
                 const isToday = d === today;
@@ -56,8 +56,8 @@ export function TimesheetGrid({
             )}
             {rows.map(row => (
               <tr key={row.rowKey} className="border-t border-border hover:bg-muted/20">
-                <td className="px-3 py-2 sticky left-0 bg-card z-10">
-                  <div className="flex items-center gap-2">
+                <td className="px-2 md:px-3 py-2 sticky left-0 bg-card z-10 min-w-[140px] md:min-w-[280px]">
+                  <div className="flex items-center gap-2 min-w-0">
                     <Button
                       size="sm"
                       variant="ghost"
