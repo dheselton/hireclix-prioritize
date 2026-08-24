@@ -16,6 +16,7 @@ interface Props {
 /** Detects `@token` strings and emits matching user IDs on submit / change. */
 export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsChange, placeholder, rows = 3 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const caretRef = useRef<number | null>(null);
   const [showSug, setShowSug] = useState(false);
   const [filter, setFilter] = useState("");
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -39,13 +40,14 @@ export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsCh
 
   function pick(u: MockUser) {
     const caret = ref.current?.selectionStart ?? value.length;
-    const before = value.slice(0, caret).replace(/@([\w-]*)$/, `@${u.name.split(" ")[0]} `);
     const after = value.slice(caret);
-    const next = before + after;
+    const token = `@${u.name.split(" ")[0]}`;
+    const head = value.slice(0, caret).replace(/@([\w-]*)$/, after.startsWith(" ") ? token : `${token} `);
+    const next = head + after;
     onChange(next);
     setShowSug(false);
     updateMentions(next);
-    requestAnimationFrame(() => ref.current?.focus());
+    caretRef.current = head.length;
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -57,6 +59,14 @@ export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsCh
 
   const suggestions = users.filter(u => u.name.toLowerCase().includes(filter)).slice(0, 6);
   const open = showSug && suggestions.length > 0;
+
+  useLayoutEffect(() => {
+    const pos = caretRef.current;
+    if (pos == null || !ref.current) return;
+    caretRef.current = null;
+    ref.current.focus();
+    ref.current.setSelectionRange(pos, pos);
+  }, [value]);
 
   useLayoutEffect(() => {
     if (!open || !ref.current) {
@@ -81,7 +91,7 @@ export function MentionTextarea({ value, onChange, onSubmit, users, onMentionsCh
           style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
         >
           {suggestions.map(u => (
-            <button key={u.id} type="button" onClick={() => pick(u)}
+            <button key={u.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => pick(u)}
               className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted">
               <span className="font-medium">{u.name}</span>
               <span className="text-xs text-muted-foreground ml-2">{u.role}</span>
