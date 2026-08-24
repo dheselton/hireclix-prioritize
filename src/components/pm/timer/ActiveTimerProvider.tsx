@@ -96,12 +96,18 @@ export function ActiveTimerProvider({ children }: { children: ReactNode }) {
 
   async function stopInternal(userId: string, t: ActiveTimer, note?: string, minutesOverride?: number): Promise<number> {
     const minutes = minutesOverride ?? Math.max(1, Math.round((Date.now() - t.startedAt) / 60000));
+    const endedAt = new Date();
+    const startedAt = minutesOverride != null
+      ? new Date(endedAt.getTime() - minutes * 60_000)
+      : new Date(t.startedAt);
     await supabase.from("pm_time_entries").insert({
       task_id: t.taskId,
       activity_id: t.activityId,
       user_id: userId,
       minutes,
       note: note ?? "",
+      started_at: startedAt.toISOString(),
+      ended_at: endedAt.toISOString(),
     } as any);
     await supabase.from("pm_active_timers").delete().eq("user_id", userId);
     emitTimeChanged();

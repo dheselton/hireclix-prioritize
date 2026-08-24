@@ -2386,30 +2386,36 @@ export type Database = {
         Row: {
           activity_id: string | null
           billable: boolean
+          ended_at: string | null
           id: string
           logged_at: string
           minutes: number
           note: string | null
+          started_at: string | null
           task_id: string | null
           user_id: string
         }
         Insert: {
           activity_id?: string | null
           billable?: boolean
+          ended_at?: string | null
           id?: string
           logged_at?: string
           minutes: number
           note?: string | null
+          started_at?: string | null
           task_id?: string | null
           user_id: string
         }
         Update: {
           activity_id?: string | null
           billable?: boolean
+          ended_at?: string | null
           id?: string
           logged_at?: string
           minutes?: number
           note?: string | null
+          started_at?: string | null
           task_id?: string | null
           user_id?: string
         }

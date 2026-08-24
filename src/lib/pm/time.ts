@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { format, isSameDay, isYesterday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { localDateISO } from "@/lib/pm/format";
 
@@ -13,6 +14,8 @@ export interface TimeEntry {
   note: string | null;
   logged_at: string;
   billable: boolean;
+  started_at: string | null;
+  ended_at: string | null;
 }
 
 export interface EnrichedEntry extends TimeEntry {
@@ -37,6 +40,74 @@ export function fmtDur(mins: number): string {
   if (h && m) return `${h}h ${m}m`;
   if (h) return `${h}h`;
   return `${m}m`;
+}
+
+/** Manual date-picker logs are stored at noon with no real clock range. */
+function isDateOnlyLoggedAt(iso: string): boolean {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return true;
+  const localNoon = d.getHours() === 12 && d.getMinutes() === 0 && d.getSeconds() === 0;
+  const utcNoon = d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
+  return localNoon || utcNoon;
+}
+
+export function entryInterval(e: Pick<TimeEntry, "minutes" | "logged_at" | "started_at" | "ended_at">): { start: Date; end: Date } | null {
+  if (e.started_at && e.ended_at) {
+    const start = new Date(e.started_at);
+    const end = new Date(e.ended_at);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) return { start, end };
+  }
+  if (isDateOnlyLoggedAt(e.logged_at)) return null;
+  const end = new Date(e.logged_at);
+  if (Number.isNaN(end.getTime())) return null;
+  return { start: new Date(end.getTime() - e.minutes * 60_000), end };
+}
+
+export function fmtEntryRange(e: Pick<TimeEntry, "minutes" | "logged_at" | "started_at" | "ended_at">): string {
+  const range = entryInterval(e);
+  const dur = fmtDur(e.minutes);
+  if (!range) {
+    try {
+      return `${format(new Date(e.logged_at), "EEE, MMM d")} · ${dur}`;
+    } catch {
+      return dur;
+    }
+  }
+  const { start, end } = range;
+  if (isSameDay(start, end)) {
+    return `${format(start, "EEE, MMM d")} · ${format(start, "h:mm a")} – ${format(end, "h:mm a")} · ${dur}`;
+  }
+  return `${format(start, "EEE, MMM d, h:mm a")} – ${format(end, "EEE, MMM d, h:mm a")} · ${dur}`;
+}
+
+export function fmtEntryWhen(e: Pick<TimeEntry, "minutes" | "logged_at" | "started_at" | "ended_at">): string {
+  const range = entryInterval(e);
+  if (!range) {
+    try {
+      return format(new Date(e.logged_at), "EEE, MMM d");
+    } catch {
+      return "";
+    }
+  }
+  const { start, end } = range;
+  if (isSameDay(start, end)) {
+    return `${format(start, "EEE, MMM d")}, ${format(start, "h:mm a")} – ${format(end, "h:mm a")}`;
+  }
+  return `${format(start, "EEE, MMM d, h:mm a")} – ${format(end, "EEE, MMM d, h:mm a")}`;
+}
+
+export function fmtLastTracked(end: Date): string {
+  const time = format(end, "h:mm a");
+  if (isSameDay(end, new Date())) return `Today at ${time}`;
+  if (isYesterday(end)) return `Yesterday at ${time}`;
+  return `${format(end, "EEE, MMM d")} at ${time}`;
+}
+
+export function entryEndTime(e: Pick<TimeEntry, "logged_at" | "started_at" | "ended_at" | "minutes">): Date | null {
+  const range = entryInterval(e);
+  if (range) return range.end;
+  const d = new Date(e.logged_at);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** Sunday-start week containing `d`. Returns ISO yyyy-mm-dd for each of 7 days. */
@@ -98,6 +169,8 @@ export async function fetchEnrichedEntries(opts: {
       minutes: r.minutes,
       note: r.note,
       logged_at: r.logged_at,
+      started_at: r.started_at ?? null,
+      ended_at: r.ended_at ?? null,
       billable: r.billable ?? true,
       task_title: isActivity ? (r.pm_activities?.name ?? "Activity") : (r.pm_tasks?.title ?? "Untitled task"),
       task_type: r.pm_tasks?.type ?? null,
@@ -114,7 +187,7 @@ export async function fetchEnrichedEntries(opts: {
   };
 
   const selectCols =
-    "id, task_id, activity_id, user_id, minutes, note, logged_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name))), pm_activities(name, color, icon, default_client_id, clients(name))";
+    "id, task_id, activity_id, user_id, minutes, note, logged_at, started_at, ended_at, billable, pm_tasks(title, type, track, project_id, pm_projects(title, client_id, clients(name))), pm_activities(name, color, icon, default_client_id, clients(name))";
 
   async function runQuery(extra?: { taskIds?: string[] }) {
     let q = supabase.from("pm_time_entries").select(selectCols);

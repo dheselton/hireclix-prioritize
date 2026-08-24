@@ -11,11 +11,12 @@ import {
   deleteTimeEntry,
   updateTimeEntry,
   fmtDur,
+  fmtEntryWhen,
+  fmtLastTracked,
   localDateISO,
   useEnrichedEntries,
   type EnrichedEntry,
 } from "@/lib/pm/time";
-import { fmtDate } from "@/lib/pm/format";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X, ExternalLink } from "lucide-react";
 
@@ -23,10 +24,12 @@ export function TimeLogDialog({
   taskId,
   open,
   onOpenChange,
+  lastTracked,
 }: {
   taskId: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  lastTracked?: Date | null;
 }) {
   const { user, roles } = useCurrentUser();
   const users = useMockUsers();
@@ -64,40 +67,48 @@ export function TimeLogDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 gap-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
-          <DialogTitle className="text-base">Time</DialogTitle>
-          <div className="text-xs text-muted-foreground">
-            Today <span className="font-medium text-foreground">{fmtDur(todayTotal)}</span>
-            <span className="mx-1.5">·</span>
-            Total <span className="font-medium text-foreground">{fmtDur(taskTotal)}</span>
+          <div className="flex items-start justify-between gap-3 pr-6">
+            <div className="min-w-0">
+              <DialogTitle className="text-base">Time on this task</DialogTitle>
+              {lastTracked && (
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Last tracked: {fmtLastTracked(lastTracked)}
+                </div>
+              )}
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-sm font-semibold tabular-nums">{fmtDur(taskTotal)}</div>
+              <div className="text-[11px] text-muted-foreground">Today {fmtDur(todayTotal)}</div>
+            </div>
           </div>
         </DialogHeader>
 
-        {/* Log time */}
-        <div className="px-5 py-4 space-y-2 border-b border-border">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Log time</div>
-          <div className="flex gap-1.5">
-            <Input type="number" min={0} placeholder="h" value={h} onChange={e => setH(e.target.value)} className="h-9 w-16" />
-            <Input type="number" min={0} max={59} placeholder="m" value={m} onChange={e => setM(e.target.value)} className="h-9 w-16" />
-            <div className="flex-1 min-w-0">
-              <DatePicker value={date} onChange={(v) => setDate(v ?? today)} />
+        <div className="px-5 py-3 border-b border-border">
+          <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Log time</div>
+            <div className="flex gap-1.5">
+              <Input type="number" min={0} placeholder="h" value={h} onChange={e => setH(e.target.value)} className="h-9 w-16" />
+              <Input type="number" min={0} max={59} placeholder="m" value={m} onChange={e => setM(e.target.value)} className="h-9 w-16" />
+              <div className="flex-1 min-w-0">
+                <DatePicker value={date} onChange={(v) => setDate(v ?? today)} />
+              </div>
             </div>
-          </div>
-          <Input placeholder="Note (optional)" value={note} onChange={e => setNote(e.target.value)} className="h-9" />
-          <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" onClick={() => quick(15)}>+15m</Button>
-            <Button size="sm" variant="outline" onClick={() => quick(30)}>+30m</Button>
-            <Button size="sm" variant="outline" onClick={() => quick(60)}>+1h</Button>
-            <Button size="sm" className="ml-auto" onClick={logManual}>
-              <Plus className="h-3 w-3 mr-1" /> Save
-            </Button>
+            <Input placeholder="Note (optional)" value={note} onChange={e => setNote(e.target.value)} className="h-9" />
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => quick(15)}>+15m</Button>
+              <Button size="sm" variant="outline" onClick={() => quick(30)}>+30m</Button>
+              <Button size="sm" variant="outline" onClick={() => quick(60)}>+1h</Button>
+              <Button size="sm" className="ml-auto" onClick={logManual}>
+                <Plus className="h-3 w-3 mr-1" /> Save
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Entries */}
         <div className="px-5 py-3 max-h-[280px] overflow-auto">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Entries ({entries.length})
+              History ({entries.length})
             </div>
             <Link
               to={`/pm/time?task=${taskId}`}
@@ -109,7 +120,7 @@ export function TimeLogDialog({
           {entries.length === 0 && (
             <div className="text-xs text-muted-foreground italic py-4 text-center">No time logged yet.</div>
           )}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {entries.map(e => (
               <EntryRow
                 key={e.id}
@@ -182,16 +193,18 @@ function EntryRow({
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs px-1.5 py-1.5 rounded hover:bg-muted/40 group">
+    <div className="flex items-start gap-2 text-xs px-2 py-2 rounded-md border border-transparent hover:border-border hover:bg-muted/30 group">
       <UserAvatar userId={entry.user_id} size="xs" />
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{userName ?? "—"}</div>
-        {entry.note && <div className="text-muted-foreground truncate">{entry.note}</div>}
+        <div className="text-foreground leading-snug">{fmtEntryWhen(entry)}</div>
+        <div className="text-muted-foreground truncate">
+          {userName ?? "—"}
+          {entry.note ? ` · ${entry.note}` : ""}
+        </div>
       </div>
-      <span className="text-muted-foreground whitespace-nowrap">{fmtDate(entry.logged_at.slice(0, 10))}</span>
-      <span className="tabular-nums w-12 text-right font-medium">{fmtDur(entry.minutes)}</span>
+      <span className="tabular-nums font-medium shrink-0 pt-0.5">{fmtDur(entry.minutes)}</span>
       {canEdit && (
-        <div className="flex touch-action">
+        <div className="flex shrink-0">
           <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditing(true)}>
             <Pencil className="h-3 w-3" />
           </Button>

@@ -5,7 +5,7 @@ import { Trash2, Download } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { fmtDate } from "@/lib/pm/format";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
-import { deleteTimeEntry, fmtDur, type EnrichedEntry } from "@/lib/pm/time";
+import { deleteTimeEntry, fmtDur, fmtEntryRange, type EnrichedEntry } from "@/lib/pm/time";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -78,7 +78,7 @@ export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[
               const canDelete = role === "pm" || e.user_id === user?.id;
               return (
                 <tr key={e.id} className="border-t border-border hover:bg-muted/20">
-                  <td className="px-3 py-2 whitespace-nowrap">{fmtDate(e.logged_at.slice(0, 10))}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs leading-snug">{fmtEntryRange(e)}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5">
                       <UserAvatar userId={e.user_id} size="xs" />
