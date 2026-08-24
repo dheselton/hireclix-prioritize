@@ -8,7 +8,7 @@ import {
 } from '@/lib/pm/pmIdentity';
 import { loadPmRoster } from '@/lib/pm/pmRoster';
 
-type AccessState = 'loading' | 'anonymous' | 'approved' | 'denied';
+type AccessState = 'loading' | 'anonymous' | 'approved' | 'pending' | 'denied';
 
 interface AuthContextType {
   user: User | null;
@@ -32,7 +32,9 @@ function rolesFromMember(member: PmUser | null): PmRole[] {
   return list.length ? list : [member.role];
 }
 
-async function resolvePmMember(authUser: User): Promise<PmUser | null> {
+type ResolveResult = { member: PmUser | null; pending: boolean };
+
+async function resolvePmMember(authUser: User): Promise<ResolveResult> {
   const { error: claimError } = await supabase.rpc('claim_pm_user');
   if (claimError) {
     console.warn('claim_pm_user failed', claimError.message);
@@ -42,15 +44,17 @@ async function resolvePmMember(authUser: User): Promise<PmUser | null> {
     .from('pm_users')
     .select('*')
     .eq('auth_user_id', authUser.id)
-    .eq('is_active', true)
     .maybeSingle();
 
   if (error) {
     console.warn('pm_users lookup failed', error.message);
-    return null;
+    return { member: null, pending: false };
   }
 
-  return (data as PmUser | null) ?? null;
+  const row = (data as PmUser | null) ?? null;
+  if (row?.is_active) return { member: row, pending: false };
+  if (row) return { member: null, pending: true };
+  return { member: null, pending: false };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -73,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true);
-    const member = await resolvePmMember(next.user);
+    const { member, pending } = await resolvePmMember(next.user);
     if (member) {
       setPmUser(member);
       setCurrentPmUserCache(member);
@@ -82,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setPmUser(null);
       clearCurrentPmUserCache();
-      setAccess('denied');
+      setAccess(pending ? 'pending' : 'denied');
     }
     setLoading(false);
   }, []);
@@ -122,14 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshPmUser = useCallback(async () => {
     if (!user) return;
-    const member = await resolvePmMember(user);
+    const { member, pending } = await resolvePmMember(user);
     setPmUser(member);
     if (member) {
       setCurrentPmUserCache(member);
       setAccess('approved');
     } else {
       clearCurrentPmUserCache();
-      setAccess('denied');
+      setAccess(pending ? 'pending' : 'denied');
     }
   }, [user]);
 

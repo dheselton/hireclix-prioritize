@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
 import { slugifyLabel } from "@/components/pm/forms/useInternalRequestForm";
@@ -15,15 +14,12 @@ import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
 import { ClientSearchCombobox, type ClientOption } from "@/components/pm/intake/ClientSearchCombobox";
 import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
-import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { aliasFor } from "@/lib/pm/requestAliases";
-import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
-import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { REQUEST_TYPE_LABELS, requestTypeLabel, type RequestType } from "@/lib/pm/requestTypes";
 import { refreshCareerSiteProjects, useInternalClientIds } from "@/lib/pm/clients";
+import { fileToBase64, publicFormBootstrap, publicFormSubmit } from "@/lib/pm/publicFormClient";
 import { Sparkle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { todayISO } from "@/lib/pm/format";
 
 const REQUEST_TYPE_SLUG = "request_type";
 const TITLE_SLUG = "title";
@@ -36,6 +32,7 @@ export default function PublicForm() {
   const embed = params.get("embed") === "1";
 
   const [form, setForm] = useState<any>(null);
+  const [formReady, setFormReady] = useState(false);
   const [fields, setFields] = useState<FormFieldRow[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [values, setValues] = useState<Record<string, any>>({});
@@ -51,6 +48,7 @@ export default function PublicForm() {
     watcherIds: string[];
     alias: string;
     requestTypeLabel: string | null;
+    emailSent: boolean;
   }>(null);
   const [busy, setBusy] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -70,18 +68,20 @@ export default function PublicForm() {
     return () => { ro.disconnect(); window.removeEventListener("load", post); };
   }, [embed, slug, fields.length, submitted]);
 
-  // Load form + fields + clients
+  // Load form + fields + clients via service-role function (no anon table grants).
   useEffect(() => {
     (async () => {
-      const { data: f } = await supabase.from("pm_forms").select("*").eq("shareable_slug", slug).maybeSingle();
-      if (!f) return;
-      setForm(f);
-      const [{ data: ff }, { data: c }] = await Promise.all([
-        supabase.from("pm_form_fields").select("*").eq("form_id", f.id).order("sort_order"),
-        supabase.from("clients").select("id,name,is_internal").order("name"),
-      ]);
-      setFields((ff || []) as any);
-      setClients((c || []) as any);
+      if (!slug) return;
+      try {
+        const data = await publicFormBootstrap(slug);
+        setForm(data.form);
+        setFields((data.fields || []) as FormFieldRow[]);
+        setClients((data.clients || []) as ClientOption[]);
+      } catch {
+        setForm(null);
+      } finally {
+        setFormReady(true);
+      }
     })();
   }, [slug]);
 
@@ -98,7 +98,7 @@ export default function PublicForm() {
     if (bySlug) { setClientId(bySlug.id); setClientLocked(true); }
   }, [clientParam, clients, clientId]);
 
-  const isQuickRequest = form?.submit_action?.creates === "quick_request";
+  const isQuickRequest = true;
   const requestTypeField = useMemo(() => fields.find(f => slugifyLabel(f.label) === REQUEST_TYPE_SLUG), [fields]);
   const titleField        = useMemo(() => fields.find(f => slugifyLabel(f.label) === TITLE_SLUG), [fields]);
   const shipByField       = useMemo(() => fields.find(f => slugifyLabel(f.label) === SHIP_BY_SLUG), [fields]);
@@ -125,10 +125,10 @@ export default function PublicForm() {
   const isInternal = !!selectedClient && (selectedClient.is_internal || internalIds.has(selectedClient.id));
 
   async function submit() {
-    if (!form) return;
+    if (!form || !slug) return;
 
     // Basic validation
-    if (isQuickRequest && !clientId) { toast.error("Client is required"); return; }
+    if (!clientId) { toast.error("Client is required"); return; }
     if (requestTypeField?.required && !requestType) { toast.error("Request type is required"); return; }
     if (titleField?.required && !values[titleField.id]) { toast.error("Title is required"); return; }
     const missing = visibleDynamicFields.filter(f => {
@@ -155,112 +155,43 @@ export default function PublicForm() {
         customFields[slugifyLabel(f.label)] = { label: f.label, type: f.type, value: v };
       }
 
-      let createdProjectId: string | null = null;
-      let createdTaskId: string | null = null;
+      const filePayload = await Promise.all(files.map(async f => ({
+        name: f.name,
+        type: f.type,
+        dataBase64: await fileToBase64(f),
+      })));
 
-      if (isQuickRequest) {
-        // Quick Request pipeline: project + unclaimed task, matching CreateWorkDialog exactly.
-        const projectTitle = titleValue || REQUEST_TYPE_LABELS[requestType as RequestType] || form.name;
-        const proj = await createProject({
-          title: projectTitle,
-          type: "quick_request",
-          work_type: "request",
-          status: "active",
-          client_id: clientId,
-          description: descriptionValue || null,
-          start_date: todayISO(),
-          go_live_date: shipBy || null,
-          created_by: requestedBy ?? null,
-          requested_by: requestedBy ?? null,
-          custom_fields: customFields,
-        } as any);
-        createdProjectId = proj.id;
-
-        // Auto-create one unclaimed task carrying the description
-        const { data: task } = await supabase.from("pm_tasks").insert({
-          project_id: proj.id,
-          title: projectTitle,
-          type: "design",
-          status: "unclaimed",
-          priority: "medium",
-          duration_days: 1,
-          due_date: shipBy || null,
-          assignee_id: null,
-          description: descriptionValue || null,
-        } as any).select().single();
-        createdTaskId = (task as any)?.id ?? null;
-
-        if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
-          refreshCareerSiteProjects().catch(() => {});
-        }
-      } else {
-        // Legacy path: attach to any project if action=task, else create project.
-        const action = form.submit_action?.creates ?? "task";
-        if (action === "project") {
-          const { data } = await supabase.from("pm_projects").insert({
-            title: titleValue || form.name,
-            type: "quick_request",
-            status: "active",
-            description: descriptionValue || JSON.stringify(values, null, 2),
-            requested_by: requestedBy,
-            client_id: clientId || null,
-          } as any).select().single();
-          createdProjectId = (data as any)?.id ?? null;
-        } else {
-          const { data: anyProj } = await supabase.from("pm_projects").select("id").limit(1).maybeSingle();
-          if (anyProj) {
-            createdProjectId = (anyProj as any).id;
-            const { data } = await supabase.from("pm_tasks").insert({
-              project_id: (anyProj as any).id,
-              title: titleValue || form.name,
-              type: "design",
-              status: "unclaimed",
-              priority: "medium",
-              duration_days: 1,
-              description: descriptionValue || JSON.stringify(values, null, 2),
-              assignee_id: null,
-            } as any).select().single();
-            createdTaskId = (data as any)?.id ?? null;
-          }
-        }
-      }
-
-      // Attach staged files/links at project level so all tasks see them.
-      if ((files.length || links.length) && createdProjectId) {
-        await persistIntakeAttachments({
-          projectId: createdProjectId,
-          taskId: null,
-          files, links,
-          userId: requestedBy,
-        });
-      }
-
-      await supabase.from("pm_form_submissions").insert({
-        form_id: form.id,
-        payload: { request_type: requestType ?? null, title: titleValue, description: descriptionValue, ship_by: shipBy, client_id: clientId || null, ...values },
-        submitter_name: name || null,
-        submitter_email: email || null,
-        created_project_id: createdProjectId,
-        created_task_id: createdTaskId,
-      } as any);
-
-      // Submit confirmation to the requester (never blocks submission).
-      void sendRequestReceivedEmail({
-        to: email,
-        title: titleValue || form.name,
+      const result = await publicFormSubmit({
+        slug,
+        clientId,
+        requestedBy,
+        submitterName: name,
+        submitterEmail: email,
+        title: titleValue,
+        description: descriptionValue,
+        shipBy,
+        requestType: requestType ?? null,
         requestTypeLabel: requestTypeLabel(requestType ?? null),
-        projectId: createdProjectId,
+        customFields,
+        payload: { request_type: requestType ?? null, title: titleValue, description: descriptionValue, ship_by: shipBy, client_id: clientId, ...values },
+        files: filePayload,
+        links,
       });
 
-      const watcherIds = createdProjectId
-        ? await applyClientWatchers(createdProjectId, clientId || null, requestType ?? null).catch(() => [])
-        : [];
+      if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
+        refreshCareerSiteProjects().catch(() => {});
+      }
+
+      if (email && !result.emailSent) {
+        toast.warning("Request saved, but the confirmation email could not be sent.");
+      }
 
       setSubmitted({
-        projectId: createdProjectId,
-        watcherIds,
-        alias: aliasFor(requestType ?? null),
-        requestTypeLabel: requestTypeLabel(requestType ?? null),
+        projectId: result.projectId,
+        watcherIds: result.watcherIds,
+        alias: result.alias || aliasFor(requestType ?? null),
+        requestTypeLabel: result.requestTypeLabel ?? requestTypeLabel(requestType ?? null),
+        emailSent: result.emailSent,
       });
       toast.success("Submitted!");
     } catch (e: any) {
@@ -270,6 +201,7 @@ export default function PublicForm() {
     }
   }
 
+  if (!formReady) return <div ref={rootRef} className="p-3 md:p-6 max-w-xl mx-auto text-sm text-muted-foreground">Loading…</div>;
   if (!form) return <div ref={rootRef} className="p-3 md:p-6 max-w-xl mx-auto">Form not found.</div>;
 
   if (submitted) return (
@@ -279,6 +211,7 @@ export default function PublicForm() {
         watcherIds={submitted.watcherIds}
         confirmationAlias={submitted.alias}
         requestTypeLabel={submitted.requestTypeLabel}
+        emailSent={submitted.emailSent}
       />
     </div>
   );

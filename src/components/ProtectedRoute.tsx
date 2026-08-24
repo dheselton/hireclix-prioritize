@@ -27,5 +27,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth?denied=1" replace />;
   }
 
+  if (access === 'pending') {
+    return <Navigate to="/auth?pending=1" replace />;
+  }
+
   return <>{children}</>;
 }

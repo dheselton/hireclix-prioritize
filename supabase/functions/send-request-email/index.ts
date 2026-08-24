@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
@@ -6,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FROM = "HireClix Prioritize <prioritize@hireclix.com>";
-const APP_URL = Deno.env.get("APP_URL") || "http://localhost:8080";
+/** Must be on the verified Resend domain (product.hireclix.com). */
+const FROM = "HireClix Prioritize <prioritize@product.hireclix.com>";
 
 const BodySchema = z.object({
   kind: z.enum(["received", "completed"]),
@@ -17,6 +18,8 @@ const BodySchema = z.object({
   requestType: z.string().max(120).optional(),
   clientName: z.string().max(200).optional(),
   projectId: z.string().max(64).optional(),
+  /** Per-type inbox so replies land with the right team. */
+  replyTo: z.string().email().optional(),
 });
 
 const colors = {
@@ -39,14 +42,14 @@ function row(label: string, value?: string | null) {
   </td></tr>`;
 }
 
-function renderEmail(b: z.infer<typeof BodySchema>) {
+function renderEmail(b: z.infer<typeof BodySchema>, appUrl: string) {
   const done = b.kind === "completed";
   const heading = done ? "Your request is complete" : "We've got your request";
   const intro = done
     ? `Your request <strong>${esc(b.title || "")}</strong> has been completed. If anything still looks off, just reply to this email and we'll pick it back up.`
     : `Thanks for submitting your request. Our team has it in the queue and will follow up with next steps. Keep the reference number below handy.`;
   const accent = done ? colors.success : colors.primary;
-  const link = b.projectId ? `${APP_URL}/pm/projects/${b.projectId}` : `${APP_URL}/pm`;
+  const link = b.projectId ? `${appUrl}/pm/projects/${b.projectId}` : `${appUrl}/pm`;
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(heading)}</title></head>
 <body style="margin:0;padding:24px;background:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
@@ -76,17 +79,40 @@ function renderEmail(b: z.infer<typeof BodySchema>) {
 </body></html>`;
 }
 
+/**
+ * Prefer Deno.env (dashboard edge secrets). Fall back to vault via service-role RPC
+ * when the Management API secrets endpoint is unavailable to the deploying account.
+ */
+async function resolveSecret(name: string): Promise<string | null> {
+  const fromEnv = Deno.env.get(name);
+  if (fromEnv) return fromEnv;
+
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) return null;
+
+  const admin = createClient(url, serviceKey);
+  const { data, error } = await admin.rpc("get_edge_secret", { secret_name: name });
+  if (error) {
+    console.error(`get_edge_secret(${name}) failed:`, error.message);
+    return null;
+  }
+  return typeof data === "string" && data.length > 0 ? data : null;
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("RESEND_API_KEY");
+    const apiKey = await resolveSecret("RESEND_API_KEY");
     if (!apiKey) {
       console.error("RESEND_API_KEY is not configured");
       return new Response(JSON.stringify({ error: "Email service not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const appUrl = (await resolveSecret("APP_URL")) || "https://prioritize.hireclix.com";
 
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -100,10 +126,18 @@ serve(async (req: Request): Promise<Response> => {
       ? `Your request ${body.title ? `"${body.title}" ` : ""}has been completed`
       : `We received your request${body.refId ? ` (${body.refId})` : ""}`;
 
+    const payload: Record<string, unknown> = {
+      from: FROM,
+      to: [body.to],
+      subject,
+      html: renderEmail(body, appUrl),
+    };
+    if (body.replyTo) payload.reply_to = body.replyTo;
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ from: FROM, to: [body.to], subject, html: renderEmail(body) }),
+      body: JSON.stringify(payload),
     });
 
     const text = await res.text();

@@ -35,11 +35,14 @@ const PortalView = lazy(() => import("./pages/PortalView"));
 const Templates = lazy(() => import("./pages/pm/Templates"));
 const TemplateBuilder = lazy(() => import("./pages/pm/TemplateBuilder"));
 const Integrations = lazy(() => import("./pages/pm/Integrations"));
+const Team = lazy(() => import("./pages/pm/Team"));
 const TaskWorkspace = lazy(() => import("./pages/pm/TaskWorkspace"));
 const Snippets = lazy(() => import("./pages/pm/Snippets"));
 const Help = lazy(() => import("./pages/pm/Help"));
 const Timesheet = lazy(() => import("./pages/pm/Timesheet"));
 const NotificationsSettings = lazy(() => import("./pages/pm/NotificationsSettings"));
+const ProfileSettings = lazy(() => import("./pages/pm/ProfileSettings"));
+const SettingsHub = lazy(() => import("./pages/pm/SettingsHub"));
 const ProductRoadmap = lazy(() => import("./pages/ProductRoadmap"));
 const RoadmapDashboard = lazy(() => import("./pages/RoadmapDashboard"));
 
@@ -125,9 +128,12 @@ function App() {
                 <Route path="/pm/templates" element={<AppLayout><Templates /></AppLayout>} />
                 <Route path="/pm/templates/:id/edit" element={<AppLayout><TemplateBuilder /></AppLayout>} />
                 <Route path="/pm/integrations" element={<AppLayout><Integrations /></AppLayout>} />
+                <Route path="/pm/team" element={<AppLayout><Team /></AppLayout>} />
                 <Route path="/snippets" element={<AppLayout><Snippets /></AppLayout>} />
                 <Route path="/pm/help" element={<AppLayout><Help /></AppLayout>} />
                 <Route path="/pm/time" element={<AppLayout><Timesheet /></AppLayout>} />
+                <Route path="/pm/settings" element={<AppLayout><SettingsHub /></AppLayout>} />
+                <Route path="/pm/settings/profile" element={<AppLayout><ProfileSettings /></AppLayout>} />
                 <Route path="/pm/settings/notifications" element={<AppLayout><NotificationsSettings /></AppLayout>} />
 
                 {/* Legacy roadmap */}

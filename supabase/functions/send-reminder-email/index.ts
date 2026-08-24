@@ -2,16 +2,26 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-// App URL for generating links to roadmap items
-const APP_URL = Deno.env.get("APP_URL") || "http://localhost:8080";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+async function resolveSecret(name: string): Promise<string | null> {
+  const fromEnv = Deno.env.get(name);
+  if (fromEnv) return fromEnv;
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) return null;
+  const admin = createClient(url, serviceKey);
+  const { data, error } = await admin.rpc("get_edge_secret", { secret_name: name });
+  if (error) {
+    console.error(`get_edge_secret(${name}) failed:`, error.message);
+    return null;
+  }
+  return typeof data === "string" && data.length > 0 ? data : null;
+}
 
 interface ReminderRequest {
   type: 'due_date' | 'overdue' | 'status_change' | 'assignment' | 'stakeholder_assignment';
@@ -189,9 +199,10 @@ const generateEmailHtml = (
   featureId: string,
   featureTitle: string,
   content: { heading: string; message: string; details?: string },
-  metadata: { status?: string; dueDate?: string; summary?: string; category?: string; releaseVersion?: string }
+  metadata: { status?: string; dueDate?: string; summary?: string; category?: string; releaseVersion?: string },
+  appUrl: string,
 ): string => {
-  const featureUrl = `${APP_URL}/?feature=${featureId}`;
+  const featureUrl = `${appUrl}/?feature=${featureId}`;
   const headerBg = getHeaderGradient(type);
   const icon = getIcon(type);
   const statusColor = getStatusColor(metadata.status || '');
@@ -296,7 +307,7 @@ const generateEmailHtml = (
         You're receiving this because you're assigned to or a stakeholder of this feature.
       </p>
       <p style="${styles.footerText}; margin-top: 12px;">
-        <a href="${APP_URL}/" style="color: ${colors.primary}; text-decoration: none;">View All Features</a>
+        <a href="${appUrl}/" style="color: ${colors.primary}; text-decoration: none;">View All Features</a>
       </p>
     </div>
   </div>
@@ -314,6 +325,15 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const apiKey = await resolveSecret("RESEND_API_KEY");
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "Email service not configured" }), {
+        status: 500, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    const resend = new Resend(apiKey);
+    const appUrl = (await resolveSecret("APP_URL")) || "https://prioritize.hireclix.com";
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -369,7 +389,8 @@ const handler = async (req: Request): Promise<Response> => {
             message: `This feature is approaching its due date. Please ensure all tasks are on track for timely completion.`,
             details: "Review the feature progress and update the status if needed."
           },
-          metadata
+          metadata,
+          appUrl
         );
         break;
 
@@ -384,7 +405,8 @@ const handler = async (req: Request): Promise<Response> => {
             message: `This feature has passed its due date and requires immediate attention.`,
             details: "Please review the blockers and update stakeholders on the revised timeline."
           },
-          metadata
+          metadata,
+          appUrl
         );
         break;
 
@@ -399,7 +421,8 @@ const handler = async (req: Request): Promise<Response> => {
             message: `The status of this feature has been updated. Review the changes and take any necessary follow-up actions.`,
             details: message
           },
-          metadata
+          metadata,
+          appUrl
         );
         break;
 
@@ -413,7 +436,8 @@ const handler = async (req: Request): Promise<Response> => {
             heading: "New Assignment",
             message: `You have been assigned to work on this feature. Please review the requirements and reach out to your team if you have questions.`,
           },
-          metadata
+          metadata,
+          appUrl
         );
         break;
 
@@ -427,7 +451,8 @@ const handler = async (req: Request): Promise<Response> => {
             heading: "Added as Stakeholder",
             message: `You have been added as a stakeholder for this feature. You'll receive updates on its progress and can provide feedback as needed.`,
           },
-          metadata
+          metadata,
+          appUrl
         );
         break;
 
@@ -441,7 +466,8 @@ const handler = async (req: Request): Promise<Response> => {
             heading: "Feature Update",
             message: message || `There's an update on this feature that may require your attention.`,
           },
-          metadata
+          metadata,
+          appUrl
         );
     }
 

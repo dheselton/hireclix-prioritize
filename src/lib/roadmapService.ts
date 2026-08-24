@@ -96,8 +96,6 @@ export const createFeature = async (feature: Omit<Feature, "id" | "created_at" |
 };
 
 export const updateFeature = async (id: string, updates: Partial<Feature>): Promise<Feature> => {
-  console.log('roadmapService.updateFeature called with:', { id, updates });
-  
   const { data, error } = await supabase
     .from('features')
     .update(updates)
@@ -118,8 +116,6 @@ export const updateFeature = async (id: string, updates: Partial<Feature>): Prom
     console.error('Feature not found after update');
     throw notFoundError;
   }
-  
-  console.log('Feature updated successfully:', data);
   
   return {
     ...data,

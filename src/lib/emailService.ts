@@ -15,8 +15,6 @@ interface SendReminderParams {
 
 export async function sendReminder(params: SendReminderParams): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log("Sending reminder:", params);
-    
     const { data, error } = await supabase.functions.invoke('send-reminder-email', {
       body: params,
     });
@@ -26,7 +24,7 @@ export async function sendReminder(params: SendReminderParams): Promise<{ succes
       return { success: false, error: error.message };
     }
 
-    console.log("Reminder sent successfully:", data);
+    void data;
     return { success: true };
   } catch (err: any) {
     console.error("Exception sending reminder:", err);

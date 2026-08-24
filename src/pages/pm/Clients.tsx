@@ -33,6 +33,7 @@ const INACTIVE = new Set(["complete", "archived", "cancelled"]);
 export default function Clients() {
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortId>("active");
   const [scope, setScope] = useState<ScopeId>("all");
@@ -42,12 +43,15 @@ export default function Clients() {
     let cancelled = false;
     (async () => {
       const today = todayISO();
-      const [{ data: clients }, { data: projects }, { data: tasks }] = await Promise.all([
-        supabase.from("clients").select("id,name,is_internal,archived_at").order("name"),
-        supabase.from("pm_projects").select("id,client_id,status,go_live_date"),
-        supabase.from("pm_tasks").select("project_id,status,due_date").lt("due_date", today),
-      ]);
-      if (cancelled) return;
+      try {
+        const [{ data: clients, error: cErr }, { data: projects, error: pErr }, { data: tasks, error: tErr }] = await Promise.all([
+          supabase.from("clients").select("id,name,is_internal,archived_at").order("name"),
+          supabase.from("pm_projects").select("id,client_id,status,go_live_date"),
+          supabase.from("pm_tasks").select("project_id,status,due_date").lt("due_date", today),
+        ]);
+        if (cancelled) return;
+        const firstErr = cErr || pErr || tErr;
+        if (firstErr) throw firstErr;
 
       const projs = (projects ?? []) as { id: string; client_id: string | null; status: string; go_live_date: string | null }[];
       const clientOfProject = new Map(projs.map(p => [p.id, p.client_id]));
@@ -84,7 +88,11 @@ export default function Clients() {
         overdueCount: overdue.get(c.id) ?? 0,
         nextGoLive: counts.get(c.id)?.nextGoLive ?? null,
       })));
-      setLoading(false);
+      } catch (e: any) {
+        if (!cancelled) setError(String(e?.message ?? e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -138,7 +146,8 @@ export default function Clients() {
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Loading clients…</p>}
-      {!loading && filtered.length === 0 && (
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      {!loading && !error && filtered.length === 0 && (
         <p className="text-sm text-muted-foreground">No clients match that search.</p>
       )}
 

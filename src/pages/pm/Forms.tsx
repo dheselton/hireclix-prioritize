@@ -34,7 +34,11 @@ export default function Forms() {
   async function create() {
     if (!name.trim()) return;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + Math.random().toString(36).slice(2, 6);
-    const { data, error } = await supabase.from("pm_forms").insert({ name, shareable_slug: slug } as any).select().single();
+    const { data, error } = await supabase.from("pm_forms").insert({
+      name,
+      shareable_slug: slug,
+      submit_action: { creates: "quick_request" },
+    } as any).select().single();
     if (error) return toast.error(error.message);
     setOpen(false); setName("");
     navigate(`/pm/forms/${data.id}/edit`);

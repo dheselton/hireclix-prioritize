@@ -17,8 +17,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FROM = "HireClix Prioritize <prioritize@hireclix.com>";
-const APP_URL = Deno.env.get("APP_URL") || "http://localhost:8080";
+const FROM = "HireClix Prioritize <prioritize@product.hireclix.com>";
 
 const BodySchema = z.object({
   notificationId: z.string().uuid().optional(),
@@ -30,6 +29,17 @@ const admin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   { auth: { persistSession: false } },
 );
+
+async function resolveSecret(name: string): Promise<string | null> {
+  const fromEnv = Deno.env.get(name);
+  if (fromEnv) return fromEnv;
+  const { data, error } = await admin.rpc("get_edge_secret", { secret_name: name });
+  if (error) {
+    console.error(`get_edge_secret(${name}) failed:`, error.message);
+    return null;
+  }
+  return typeof data === "string" && data.length > 0 ? data : null;
+}
 
 const colors = {
   primary: "#0f4c75",
@@ -78,9 +88,9 @@ function renderEmail(opts: {
 </body></html>`;
 }
 
-async function sendOne(n: any, apiKey: string): Promise<boolean> {
+async function sendOne(n: any, apiKey: string, appUrl: string): Promise<boolean> {
   let to: string | null = null;
-  let ctaUrl = `${APP_URL}/pm`;
+  let ctaUrl = `${appUrl}/pm`;
   let ctaLabel = "Open project";
 
   if (n.portal_access_id) {
@@ -91,7 +101,7 @@ async function sendOne(n: any, apiKey: string): Promise<boolean> {
       .maybeSingle();
     if (!access || !access.is_active) return false;
     to = access.email;
-    ctaUrl = `${APP_URL}/portal/${access.token}`;
+    ctaUrl = `${appUrl}/portal/${access.token}`;
     ctaLabel = n.kind === "portal_invite" ? "Open your portal" : "View the thread";
   } else if (n.user_id) {
     const { data: user } = await admin
@@ -100,7 +110,7 @@ async function sendOne(n: any, apiKey: string): Promise<boolean> {
       .eq("id", n.user_id)
       .maybeSingle();
     to = user?.email ?? null;
-    ctaUrl = n.project_id ? `${APP_URL}/pm/projects/${n.project_id}?tab=client` : `${APP_URL}/pm`;
+    ctaUrl = n.project_id ? `${appUrl}/pm/projects/${n.project_id}?tab=client` : `${appUrl}/pm`;
     ctaLabel = "Open in Prioritize";
   }
 
@@ -141,12 +151,13 @@ serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("RESEND_API_KEY");
+    const apiKey = await resolveSecret("RESEND_API_KEY");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "Email service not configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const appUrl = (await resolveSecret("APP_URL")) || "https://prioritize.hireclix.com";
 
     const raw = await req.json().catch(() => ({}));
     const parsed = BodySchema.safeParse(raw ?? {});
@@ -170,7 +181,7 @@ serve(async (req: Request): Promise<Response> => {
     let sent = 0;
     let skipped = 0;
     for (const n of pending ?? []) {
-      const ok = await sendOne(n, apiKey).catch(e => {
+      const ok = await sendOne(n, apiKey, appUrl).catch(e => {
         console.error("portal email failed", n.id, e);
         return false;
       });

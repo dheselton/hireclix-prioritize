@@ -970,6 +970,8 @@ export type Database = {
           form_id: string
           id: string
           payload: Json
+          received_email_error: string | null
+          received_emailed_at: string | null
           status: string
           submitter_email: string | null
           submitter_name: string | null
@@ -982,6 +984,8 @@ export type Database = {
           form_id: string
           id?: string
           payload: Json
+          received_email_error?: string | null
+          received_emailed_at?: string | null
           status?: string
           submitter_email?: string | null
           submitter_name?: string | null
@@ -994,6 +998,8 @@ export type Database = {
           form_id?: string
           id?: string
           payload?: Json
+          received_email_error?: string | null
+          received_emailed_at?: string | null
           status?: string
           submitter_email?: string | null
           submitter_name?: string | null

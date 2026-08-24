@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -159,14 +158,8 @@ export default function FormBuilder() {
         <Card className="lg:col-span-3"><CardContent className="p-4 space-y-3">
           <div className="text-xs uppercase text-muted-foreground">Settings</div>
           <div>
-            <Label>On submit creates</Label>
-            <Select value={form.submit_action?.creates ?? "task"} onValueChange={v => saveForm({ submit_action: { ...form.submit_action, creates: v } })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="z-50 bg-popover">
-                <SelectItem value="task">Task</SelectItem>
-                <SelectItem value="project">Project</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>On submit</Label>
+            <p className="text-sm text-muted-foreground">Creates a request project and one unclaimed task.</p>
           </div>
           <div>
             <Label>Public URL</Label>

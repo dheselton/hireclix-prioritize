@@ -329,7 +329,7 @@ export const deleteLoomVideo = async (id: string): Promise<void> => {
 // Admin / Sync functions (stubs)
 export const syncFromClickUp = async (config: { baseUrl: string; token: string }) => {
   await new Promise(resolve => setTimeout(resolve, 1000));
-  console.log("Sync from ClickUp:", config);
+  void config;
   // Stub: would fetch from ClickUp API and update database
   return { success: true, message: "Sync completed (stub)" };
 };

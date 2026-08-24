@@ -10,8 +10,10 @@ interface Props {
   /** Created project id — last 6 chars are shown as a friendly ref. */
   projectId?: string | null;
   watcherIds?: string[];
-  /** Sender alias the future confirmation email will come from. */
+  /** Reply-To alias for the confirmation email (e.g. careersite@hireclix.com). */
   confirmationAlias: string;
+  /** Whether the confirmation email was handed off successfully. null hides the email note. */
+  emailSent?: boolean | null;
   children?: React.ReactNode;
 }
 
@@ -26,6 +28,7 @@ export function SubmissionSuccess({
   projectId,
   watcherIds = [],
   confirmationAlias,
+  emailSent = true,
   children,
 }: Props) {
   const ref = projectId ? `REQ-${projectId.slice(-6).toUpperCase()}` : null;
@@ -61,13 +64,24 @@ export function SubmissionSuccess({
           )}
         </div>
 
-        <div className="flex items-start gap-2 text-xs text-muted-foreground italic">
-          <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-          <span>
-            A confirmation email will be sent from{" "}
-            <span className="font-mono not-italic">{confirmationAlias}</span> once enabled.
-          </span>
-        </div>
+        {emailSent !== null && (
+          <div className="flex items-start gap-2 text-xs text-muted-foreground italic">
+            <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              {emailSent ? (
+                <>
+                  A confirmation email was sent to you. Replies go to{" "}
+                  <span className="font-mono not-italic">{confirmationAlias}</span>.
+                </>
+              ) : (
+                <>
+                  We couldn&apos;t send the confirmation email right now. Questions? Reach us at{" "}
+                  <span className="font-mono not-italic">{confirmationAlias}</span>.
+                </>
+              )}
+            </span>
+          </div>
+        )}
 
         {children && <div className="flex flex-wrap gap-2 pt-1">{children}</div>}
       </CardContent>

@@ -2,8 +2,8 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
 import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
-  LayoutTemplate, Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock,
-  Zap, Folder, ChevronRight, UserCircle, Building2,
+  LayoutTemplate,   Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock, Settings,
+  Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -38,10 +38,12 @@ const configureNav: NavItem[] = [
   { title: "Forms", url: "/pm/forms", icon: FileText, key: "forms" },
   { title: "Templates", url: "/pm/templates", icon: LayoutTemplate, key: "templates" },
   { title: "Integrations", url: "/pm/integrations", icon: Plug, key: "integrations" },
+  { title: "Team", url: "/pm/team", icon: UsersRound, key: "team" },
 ];
 
 const snippetsItem: NavItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" };
 const helpItem: NavItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" };
+const settingsItem: NavItem = { title: "Settings", url: "/pm/settings", icon: Settings, key: "settings" };
 
 const roadmapItems = [
   { title: "Roadmap Dashboard", url: "/roadmap/dashboard", icon: BarChart3 },
@@ -182,7 +184,9 @@ export function AppSidebar() {
   const visibleConfigure = submitterOnly ? [] : configureNav.filter(i => canSee(roles, i.key));
   const canSeeSnippets = !submitterOnly && canSee(roles, "snippets");
   const canSeeHelp = canSee(roles, helpItem.key);
+  const canSeeSettings = canSee(roles, settingsItem.key);
   const canSeeMyWork = !submitterOnly && canSee(roles, "work");
+  const canSeeRoadmap = canSee(roles, "roadmap");
 
   const PROJ_LIMIT = 6;
   const QUICK_LIMIT = 5;
@@ -355,12 +359,12 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {visibleConfigure.length > 0 && (canSeeSnippets || canSeeHelp) && (
+        {visibleConfigure.length > 0 && (canSeeSnippets || canSeeHelp || canSeeSettings) && (
           <Separator className="mx-3 w-auto bg-border/50" />
         )}
 
         {/* RESOURCES */}
-        {(canSeeSnippets || canSeeHelp) && (
+        {(canSeeSnippets || canSeeHelp || canSeeSettings) && (
           <SidebarGroup>
             <SectionLabel>Resources</SectionLabel>
             <SidebarGroupContent>
@@ -371,14 +375,18 @@ export function AppSidebar() {
                 {canSeeHelp && (
                   <NavRow item={helpItem} active={pathname.startsWith(helpItem.url)} />
                 )}
+                {canSeeSettings && (
+                  <NavRow item={settingsItem} active={pathname.startsWith(settingsItem.url)} />
+                )}
               </nav>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
+        {canSeeRoadmap && (
+          <>
         <Separator className="mx-3 w-auto bg-border/50" />
 
-        {/* ROADMAP (LEGACY) */}
         <SidebarGroup>
           <SectionLabel>Roadmap (Legacy)</SectionLabel>
           <SidebarGroupContent>
@@ -404,6 +412,8 @@ export function AppSidebar() {
             </nav>
           </SidebarGroupContent>
         </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
     </Sidebar>
   );

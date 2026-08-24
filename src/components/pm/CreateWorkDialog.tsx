@@ -77,6 +77,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     requestTypeLabel: string | null;
     watcherIds: string[];
     alias: string;
+    emailSent: boolean | null;
   }>(null);
 
   useEffect(() => {
@@ -190,6 +191,20 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         });
       }
 
+      // Submit confirmation first so we can audit the outcome on the insert row.
+      const selectedClient = clients.find(c => c.id === reqForm.client_id);
+      const emailResult = await sendRequestReceivedEmail({
+        to: user?.email ?? null,
+        title: reqForm.title,
+        requestTypeLabel: REQUEST_TYPE_LABELS[requestType] ?? null,
+        clientName: selectedClient?.name ?? null,
+        projectId: proj.id,
+        replyTo: aliasFor(requestType),
+      });
+      if (user?.email && !emailResult.ok) {
+        toast.warning("Request saved, but the confirmation email could not be sent.");
+      }
+
       // Audit submission
       if (internalFormId) {
         await supabase.from("pm_form_submissions").insert({
@@ -198,15 +213,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           submitter_name: user?.name ?? null,
           submitter_email: user?.email ?? null,
           created_project_id: proj.id,
+          received_emailed_at: emailResult.ok ? new Date().toISOString() : null,
+          received_email_error: emailResult.ok ? null : (emailResult.error ?? "unknown error").slice(0, 500),
         } as any);
       }
-      // Submit confirmation to the requester (never blocks submission).
-      void sendRequestReceivedEmail({
-        to: user?.email ?? null,
-        title: reqForm.title,
-        requestTypeLabel: REQUEST_TYPE_LABELS[requestType] ?? null,
-        projectId: proj.id,
-      });
       // Refresh the Career Site project cache so the new request gets its teal treatment immediately.
       if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
         refreshCareerSiteProjects().catch(() => {});
@@ -220,6 +230,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         requestTypeLabel: REQUEST_TYPE_LABELS[requestType] ?? null,
         watcherIds,
         alias: aliasFor(requestType),
+        emailSent: !!user?.email && emailResult.ok,
       });
       onCreated?.();
     } catch (e: any) {
@@ -262,6 +273,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         requestTypeLabel: null,
         watcherIds,
         alias: aliasFor(null),
+        emailSent: null,
       });
       onCreated?.();
     } catch (e: any) {
@@ -301,6 +313,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
             projectId={success.projectId}
             watcherIds={success.watcherIds}
             confirmationAlias={success.alias}
+            emailSent={success.emailSent}
           >
             <Button
               onClick={() => {

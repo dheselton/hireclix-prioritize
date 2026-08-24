@@ -33,3 +33,9 @@ enabled = true
 client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
 skip_nonce_check = false
+
+[functions.portal-api]
+verify_jwt = false
+
+[functions.public-form-api]
+verify_jwt = false

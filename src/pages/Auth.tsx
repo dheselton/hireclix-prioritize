@@ -11,6 +11,9 @@ export default function Auth() {
   const [params] = useSearchParams();
   const { toast } = useToast();
   const denied = params.get('denied') === '1';
+  const pendingParam = params.get('pending') === '1';
+  const isPending = pendingParam || access === 'pending';
+  const isDenied = denied || access === 'denied';
   const oauthError = params.get('error_description') || params.get('error');
   const [callbackWaitExpired, setCallbackWaitExpired] = useState(false);
   const nextPath = useMemo(() => {
@@ -71,17 +74,21 @@ export default function Auth() {
             HireClix Prioritize
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            {denied || access === 'denied'
-              ? 'HireClix Prioritize is only available with a HireClix Google account.'
-              : 'Sign in with your HireClix Google account'}
+            {isPending
+              ? 'Your account is waiting for a PM to approve access.'
+              : isDenied
+                ? 'HireClix Prioritize is only available with a HireClix Google account.'
+                : 'Sign in with your HireClix Google account'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {(denied || access === 'denied') && user ? (
+          {(isPending || isDenied) && user ? (
             <>
               <p className="text-sm text-muted-foreground text-center">
                 Signed in as <span className="font-medium text-foreground">{user.email}</span>.
-                Use your <code>@hireclix.com</code> Google account to continue.
+                {isPending
+                  ? ' A PM or BA needs to activate your account on the Team page before you can use Prioritize.'
+                  : <> Use your <code>@hireclix.com</code> Google account to continue.</>}
               </p>
               <Button onClick={() => void signOut()} variant="outline" className="w-full h-12">
                 Sign out and try another account

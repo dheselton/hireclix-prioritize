@@ -83,13 +83,10 @@ export default function JobApiMonitor() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase.functions.invoke('sync-job-api-data');
+      const { error } = await supabase.functions.invoke('sync-job-api-data');
       
       if (error) throw error;
       
-      console.log('Sync response:', data);
-      
-      // Reload data after sync
       await loadData();
     } catch (error) {
       console.error('Error during manual sync:', error);
@@ -101,7 +98,7 @@ export default function JobApiMonitor() {
       setTestingIngest(true);
       
       // Call the test-ingest edge function which securely handles the API key
-      const { data, error } = await supabase.functions.invoke('test-ingest');
+      const { error } = await supabase.functions.invoke('test-ingest');
       
       if (error) throw error;
       
@@ -110,9 +107,6 @@ export default function JobApiMonitor() {
         description: "Sample data successfully pushed to ingest endpoint",
       });
 
-      console.log('Test ingest response:', data);
-      
-      // Reload data to show the new test entry
       await loadData();
     } catch (error) {
       console.error('Error testing ingest:', error);

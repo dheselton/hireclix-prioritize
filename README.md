@@ -364,3 +364,18 @@ npm run build
 # Netlify uses netlify.toml (publish=dist, SPA fallback to index.html)
 # Set site env vars: VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_PROJECT_ID
 ```
+
+### Edge function secrets (Supabase)
+
+Required for request confirmation / completion / portal / reminder emails (Resend).
+
+**Preferred:** set in Dashboard → Edge Functions → Secrets (project `naazebxkoyuxbcmcwytc`):
+
+```sh
+supabase secrets set RESEND_API_KEY=re_xxx APP_URL=https://prioritize.hireclix.com --project-ref naazebxkoyuxbcmcwytc
+```
+
+**Fallback used in production today:** the same values live in Supabase Vault (`RESEND_API_KEY`, `APP_URL`) and are resolved at runtime via `public.get_edge_secret` (service_role only) when Deno env secrets are unset.
+
+- Sender for request emails: `prioritize@product.hireclix.com` (verified Resend domain)
+- Per-type Reply-To aliases (e.g. `careersite@hireclix.com`) are set by the app / completion trigger

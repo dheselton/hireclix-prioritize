@@ -105,7 +105,9 @@ export async function createNotification(params: {
     .eq("event_type", params.event_type)
     .maybeSingle();
   const inApp = pref?.in_app ?? true;
-  if (!inApp) return;
+  const email = pref?.email ?? true;
+  // Insert when either channel is on so the email queue can claim the row.
+  if (!inApp && !email) return;
   await supabase.from("pm_notifications").insert({
     user_id: params.user_id,
     type: params.event_type,
@@ -113,7 +115,7 @@ export async function createNotification(params: {
     body: params.body ?? null,
     link: params.link ?? null,
   });
-  emitNotificationsChanged();
+  if (inApp) emitNotificationsChanged();
 }
 
 // ---- data hooks ----

@@ -11,6 +11,7 @@ import { fmtDate } from "@/lib/pm/format";
 import { uploadFilesToStorage, type UploadedFileRef } from "@/lib/pm/uploads";
 import { AttachmentThumb } from "@/components/pm/attachments/AttachmentThumb";
 import { usePreview } from "@/components/pm/attachments/PreviewProvider";
+import { createNotification } from "@/lib/pm/notifications";
 
 interface Comment {
   id: string; task_id: string; project_id: string | null;
@@ -66,15 +67,14 @@ export function CollabHub({ taskId, projectId, taskTitle }: { taskId: string; pr
         body, mentions, pinned: false, attachments: attachments as any,
       } as any);
       if (error) throw error;
-      if (mentions.length) {
-        const notifs = mentions.filter(id => id !== user.id).map(uid => ({
-          user_id: uid, type: "mention",
+      for (const uid of mentions.filter(id => id !== user.id)) {
+        await createNotification({
+          user_id: uid,
+          event_type: "mention",
           title: `${user.name} mentioned you in ${taskTitle}`,
           body: body.slice(0, 200),
           link: `/pm/tasks/${taskId}`,
-          read: false,
-        }));
-        if (notifs.length) await supabase.from("pm_notifications").insert(notifs as any);
+        });
       }
       setDraft(""); setMentions([]); setPendingFiles([]);
       await load();

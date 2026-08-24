@@ -109,6 +109,8 @@ export const CORE_ROUTES = [
   "/pm/integrations",
   "/snippets",
   "/pm/help",
+  "/pm/settings",
+  "/pm/settings/profile",
   "/pm/settings/notifications",
   "/roadmap",
   "/roadmap/dashboard",

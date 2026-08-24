@@ -16,11 +16,16 @@ describe("permissions mobile role matrix", () => {
       "/pm/templates",
       "/pm/integrations",
       "/pm/work",
+      "/pm/team",
+      "/roadmap",
     ]));
     expect(fallbackPath("submitter")).toBe("/pm/my-work");
     expect(canSee("submitter", "myWork")).toBe(true);
     expect(canSee("submitter", "taskWorkspace")).toBe(true);
     expect(canSee("submitter", "projectDetail")).toBe(true);
+    expect(canSee("submitter", "profile")).toBe(true);
+    expect(canSee("submitter", "notifications")).toBe(true);
+    expect(canSee("submitter", "settings")).toBe(true);
   });
 
   it("designer can see work/snippets but not inbox/clients", () => {
@@ -32,6 +37,8 @@ describe("permissions mobile role matrix", () => {
       "/pm/inbox",
       "/pm/clients",
       "/pm/report",
+      "/pm/team",
+      "/roadmap",
     ]));
     expect(fallbackPath("designer")).toBe("/");
   });

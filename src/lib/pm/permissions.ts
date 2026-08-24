@@ -32,14 +32,19 @@ export type Surface =
   | "formBuilder"
   | "templates"
   | "integrations"
+  | "team"
+  | "roadmap"
   | "snippets"
   | "help"
   | "projectDetail"
-  | "taskWorkspace";
+  | "taskWorkspace"
+  | "settings"
+  | "profile"
+  | "notifications";
 
 function canSeeSingle(r: PmRole, surface: Surface): boolean {
-  // Everyone has a personal "My Work" portal.
-  if (surface === "myWork") return true;
+  // Everyone has a personal "My Work" portal and can edit their own settings.
+  if (surface === "myWork" || surface === "settings" || surface === "profile" || surface === "notifications") return true;
   if (r === "submitter") {
     return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
@@ -54,6 +59,8 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
       case "formBuilder":
       case "integrations":
       case "clients":
+      case "team":
+      case "roadmap":
         return false;
       default:
         return true;
@@ -66,6 +73,8 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
     case "templates":
     case "formBuilder":
     case "integrations":
+    case "team":
+    case "roadmap":
       return false;
     case "snippets":
       return r === "developer" || r === "designer";
@@ -88,6 +97,8 @@ export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
   if (!canSee(role, "templates")) out.push("/pm/templates");
   if (!canSee(role, "formBuilder")) out.push("/pm/forms/");
   if (!canSee(role, "integrations")) out.push("/pm/integrations");
+  if (!canSee(role, "team")) out.push("/pm/team");
+  if (!canSee(role, "roadmap")) out.push("/roadmap");
   if (!canSee(role, "workload")) out.push("/pm/workload");
   if (!canSee(role, "timeline")) out.push("/pm/timeline");
   if (!canSee(role, "time")) out.push("/pm/time");

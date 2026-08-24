@@ -2,7 +2,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { usePrefs, ALL_EVENT_TYPES, EVENT_META } from "@/lib/pm/notifications";
-import { AlertCircle } from "lucide-react";
+import { SettingsSubnav } from "@/components/pm/SettingsSubnav";
 
 export default function NotificationsSettings() {
   const { prefs, save } = usePrefs();
@@ -12,19 +12,11 @@ export default function NotificationsSettings() {
       <div>
         <h1 className="text-2xl font-bold">Notification preferences</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Choose which events send you an in-app notification and which also email you. Urgent events (assigned, @mentions, overdue) are sent immediately when email is on; other events roll up into a daily digest.
+          Choose which events send you an in-app notification and which also email you. Mentions and assignments usually arrive within a minute; other events are batched about every five minutes.
         </p>
       </div>
 
-      <Card className="p-4 border-amber-400/40 bg-amber-50/40 dark:bg-amber-950/20 flex gap-3">
-        <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm min-w-0">
-          <div className="font-medium text-amber-900 dark:text-amber-200">Email delivery pending domain setup</div>
-          <div className="text-amber-800/80 dark:text-amber-200/80 mt-0.5">
-            In-app notifications work now. Email sending activates once an email sender domain is configured. Your email toggles below will be respected as soon as it's live.
-          </div>
-        </div>
-      </Card>
+      <SettingsSubnav current="notifications" />
 
       <Card className="overflow-hidden">
         <div className="hidden sm:grid grid-cols-[1fr_100px_100px] gap-4 px-4 py-3 border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground">

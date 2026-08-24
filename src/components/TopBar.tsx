@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { List, LayoutGrid, Columns, Eye, MoreVertical, Search as SearchIcon, LogOut, ChevronDown } from "lucide-react";
+import { List, LayoutGrid, Columns, Eye, MoreVertical, Search as SearchIcon, LogOut, ChevronDown, User, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -37,6 +38,7 @@ function AccountPanel({
   showViewMode?: boolean;
 }) {
   const { user, roles } = useCurrentUser();
+  const nav = useNavigate();
   const initials = user?.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "?";
   const roleLabels = roles.map(r => ROLE_BADGE_LABEL[r] ?? r).join(" · ");
 
@@ -46,7 +48,7 @@ function AccountPanel({
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Avatar className="h-9 w-9">
             <AvatarImage src={user.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xs bg-primary text-primary-foreground">{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs bg-primary text-primary-foreground" style={user.avatar_color ? { backgroundColor: user.avatar_color } : undefined}>{initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
             <div className="text-sm font-medium truncate">{user.name}</div>
@@ -65,6 +67,12 @@ function AccountPanel({
           <MeModeToggle />
         </div>
       )}
+      <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => nav("/pm/settings/profile")}>
+        <User className="h-4 w-4" /> Profile
+      </Button>
+      <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => nav("/pm/settings/notifications")}>
+        <Bell className="h-4 w-4" /> Notifications
+      </Button>
       <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={onSignOut}>
         <LogOut className="h-4 w-4" /> Sign out
       </Button>
@@ -151,7 +159,7 @@ export function TopBar() {
             >
               <Avatar className="h-10 w-10">
                 <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.name} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm" style={user?.avatar_color ? { backgroundColor: user.avatar_color } : undefined}>{initials}</AvatarFallback>
               </Avatar>
               <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-card border border-border flex items-center justify-center">
                 <MoreVertical className="h-2.5 w-2.5" />
@@ -172,7 +180,7 @@ export function TopBar() {
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.name} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs" style={user?.avatar_color ? { backgroundColor: user.avatar_color } : undefined}>{initials}</AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium truncate">{firstName}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
