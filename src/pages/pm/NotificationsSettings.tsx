@@ -1,18 +1,20 @@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { usePrefs, ALL_EVENT_TYPES, EVENT_META } from "@/lib/pm/notifications";
+import { usePrefs, useRequestGroupSubs, ALL_EVENT_TYPES, EVENT_META } from "@/lib/pm/notifications";
+import { REQUEST_TYPE_GROUPS } from "@/lib/pm/requestTypes";
 import { SettingsSubnav } from "@/components/pm/SettingsSubnav";
 
 export default function NotificationsSettings() {
   const { prefs, save } = usePrefs();
+  const { keys, setGroup } = useRequestGroupSubs();
 
   return (
     <div className="max-w-3xl mx-auto page-shell space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Notification preferences</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Choose which events send you an in-app notification and which also email you. Mentions and assignments usually arrive within a minute; other events are batched about every five minutes.
+          Choose which events send you an in-app notification and which also email you. Mentions, assignments, and removals usually arrive within a minute; other events are batched about every five minutes.
         </p>
       </div>
 
@@ -28,25 +30,42 @@ export default function NotificationsSettings() {
           const meta = EVENT_META[et];
           const p = prefs?.[et] ?? { in_app: true, email: true };
           return (
-            <div
-              key={et}
-              className="flex flex-col gap-3 sm:grid sm:grid-cols-[1fr_100px_100px] sm:gap-4 px-3 sm:px-4 py-4 border-b border-border last:border-b-0 sm:items-center"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-medium flex flex-wrap items-center gap-2">
-                  {meta.label}
-                  {meta.urgent && <Badge variant="secondary" className="text-[10px]">Urgent</Badge>}
+            <div key={et}>
+              <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[1fr_100px_100px] sm:gap-4 px-3 sm:px-4 py-4 border-b border-border sm:items-center">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    {meta.label}
+                    {meta.urgent && <Badge variant="secondary" className="text-[10px]">Urgent</Badge>}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{meta.desc}</div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">{meta.desc}</div>
+                <div className="flex items-center justify-between sm:justify-center gap-3">
+                  <span className="text-xs text-muted-foreground sm:hidden">In-app</span>
+                  <Switch checked={p.in_app} onCheckedChange={(v) => save(et, { in_app: v })} />
+                </div>
+                <div className="flex items-center justify-between sm:justify-center gap-3">
+                  <span className="text-xs text-muted-foreground sm:hidden">Email</span>
+                  <Switch checked={p.email} onCheckedChange={(v) => save(et, { email: v })} />
+                </div>
               </div>
-              <div className="flex items-center justify-between sm:justify-center gap-3">
-                <span className="text-xs text-muted-foreground sm:hidden">In-app</span>
-                <Switch checked={p.in_app} onCheckedChange={(v) => save(et, { in_app: v })} />
-              </div>
-              <div className="flex items-center justify-between sm:justify-center gap-3">
-                <span className="text-xs text-muted-foreground sm:hidden">Email</span>
-                <Switch checked={p.email} onCheckedChange={(v) => save(et, { email: v })} />
-              </div>
+              {et === "new_request" && p.email && (
+                <div className="px-3 sm:px-4 pb-4 space-y-2 border-b border-border bg-muted/20">
+                  <p className="text-xs text-muted-foreground">Email me for these request categories:</p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {REQUEST_TYPE_GROUPS.map(g => (
+                      <label key={g.key} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="rounded border-border"
+                          checked={keys.has(g.key)}
+                          onChange={e => setGroup(g.key, e.target.checked)}
+                        />
+                        {g.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

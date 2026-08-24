@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { emitTasksChanged } from "@/lib/pm/refresh";
+import { notifyTaskAssigneeChange } from "@/lib/pm/notifications";
 
 const KEY = ["pm_task_assignees_map"] as const;
 
@@ -69,15 +70,16 @@ export async function addAssignee(taskId: string, userId: string) {
   if (!primary) {
     // No primary yet → promote this user to primary
     await supabase.from("pm_tasks").update({ assignee_id: userId }).eq("id", taskId);
-    // Make sure they aren't also in the co table
     await supabase.from("pm_task_assignees").delete().match({ task_id: taskId, user_id: userId });
     emitTasksChanged();
+    await notifyTaskAssigneeChange({ user_id: userId, event_type: "assigned", taskId });
     return;
   }
   await supabase
     .from("pm_task_assignees")
     .upsert({ task_id: taskId, user_id: userId }, { onConflict: "task_id,user_id" });
   emitTasksChanged();
+  await notifyTaskAssigneeChange({ user_id: userId, event_type: "assigned", taskId });
 }
 
 /** Remove an assignee. If removing the primary, promote oldest co-assignee. */
@@ -94,6 +96,7 @@ export async function removeAssignee(taskId: string, userId: string) {
     await supabase.from("pm_task_assignees").delete().match({ task_id: taskId, user_id: userId });
   }
   emitTasksChanged();
+  await notifyTaskAssigneeChange({ user_id: userId, event_type: "unassigned", taskId });
 }
 
 /** Make `userId` the primary owner; demote previous primary into co-assignees. */

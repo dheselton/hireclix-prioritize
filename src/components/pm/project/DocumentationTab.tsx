@@ -7,6 +7,7 @@ import { sanitizeHtml } from "@/lib/pm/sanitizeHtml";
 import { supabase } from "@/integrations/supabase/client";
 import type { PmProject } from "@/types/pm";
 import { toast } from "sonner";
+import { notifyNewMentions } from "@/lib/pm/notifications";
 import { BookOpen, Save } from "lucide-react";
 
 interface Props {
@@ -45,6 +46,12 @@ export function DocumentationTab({ project, canEdit, onProjectChange }: Props) {
         .select()
         .single();
       if (error) throw error;
+      notifyNewMentions({
+        prevHtml: initial,
+        nextHtml: html,
+        title: `mentioned you in documentation for ${project.title}`,
+        link: `/pm/projects/${project.id}`,
+      }).catch(() => {});
       toast.success("Documentation saved");
       setDirty(false);
       if (data) onProjectChange?.(data as unknown as PmProject);

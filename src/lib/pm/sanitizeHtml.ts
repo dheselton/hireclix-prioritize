@@ -9,6 +9,7 @@ export function sanitizeHtml(html: string | null | undefined): string {
   if (!html) return "";
   return DOMPurify.sanitize(html, {
     FORBID_ATTR: ["onerror", "onload"],
+    ADD_ATTR: ["data-mention-id"],
     ALLOWED_URI_REGEXP: /^(?!javascript:)/i,
   });
 }

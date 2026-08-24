@@ -80,6 +80,15 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
         link,
       });
     }
+    if (oldAssignee && oldAssignee !== newAssignee && oldAssignee !== actor) {
+      await createNotification({
+        user_id: oldAssignee,
+        event_type: 'unassigned',
+        title: `Removed: ${(data as any).title}`,
+        body: 'You were removed from a task',
+        link,
+      });
+    }
     const newStatus = (data as any).status as string;
     const oldStatus = (prev as any)?.status as string | undefined;
     if (newStatus && oldStatus && newStatus !== oldStatus && newAssignee && newAssignee !== actor) {

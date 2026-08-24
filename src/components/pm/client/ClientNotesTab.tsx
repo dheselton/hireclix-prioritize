@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyNewMentions } from "@/lib/pm/notifications";
 import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { sanitizeHtml } from "@/lib/pm/sanitizeHtml";
@@ -36,6 +37,12 @@ export function ClientNotesTab({ clientId }: { clientId: string }) {
     setSaving(true);
     try {
       await createClientNote(clientId, sanitizeHtml(draft), user?.id ?? null);
+      notifyNewMentions({
+        prevHtml: "",
+        nextHtml: draft,
+        title: "mentioned you in a client note",
+        link: `/pm/clients/${clientId}`,
+      }).catch(() => {});
       setDraft(""); setDrafting(false);
       await reload();
       toast.success("Note added");
@@ -49,6 +56,13 @@ export function ClientNotesTab({ clientId }: { clientId: string }) {
     setSaving(true);
     try {
       await updateClientNote(id, sanitizeHtml(editBody));
+      const prev = notes.find(n => n.id === id)?.body ?? "";
+      notifyNewMentions({
+        prevHtml: prev,
+        nextHtml: editBody,
+        title: "mentioned you in a client note",
+        link: `/pm/clients/${clientId}`,
+      }).catch(() => {});
       setEditingId(null);
       await reload();
       toast.success("Note updated");

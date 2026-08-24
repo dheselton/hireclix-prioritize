@@ -25,6 +25,7 @@ import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
+import { fanoutNewRequestNotifications } from "@/lib/pm/newRequestNotify";
 import { aliasFor } from "@/lib/pm/requestAliases";
 import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
 import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
@@ -223,6 +224,13 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       }
       // Auto-add watchers configured for this client + request type.
       const watcherIds = await applyClientWatchers(proj.id, reqForm.client_id, requestType).catch(() => []);
+      await fanoutNewRequestNotifications({
+        projectId: proj.id,
+        title: reqForm.title.trim(),
+        requestType,
+        clientId: reqForm.client_id,
+        actorId: user?.id ?? null,
+      }).catch(() => {});
       toast.success("Request submitted");
       setSuccess({
         projectId: proj.id,

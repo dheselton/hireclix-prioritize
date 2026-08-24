@@ -6,6 +6,7 @@ import { isDone, type TaskStatus } from "@/types/pm";
 
 export type NotifEventType =
   | "assigned"
+  | "unassigned"
   | "mention"
   | "status_change"
   | "due_soon"
@@ -15,11 +16,12 @@ export type NotifEventType =
 
 export const EVENT_META: Record<NotifEventType, { label: string; desc: string; urgent: boolean }> = {
   assigned:       { label: "Assigned to a task",       desc: "You were made the owner or co-assignee of a task", urgent: true },
-  mention:        { label: "@Mentions",                desc: "Someone mentioned you in a comment", urgent: true },
+  unassigned:     { label: "Removed from a task",      desc: "You were removed as an assignee on a task", urgent: true },
+  mention:        { label: "@Mentions",                desc: "Someone mentioned you in a comment or notes", urgent: true },
   status_change:  { label: "Status changes",           desc: "Status changed on a task you own", urgent: false },
   due_soon:       { label: "Due soon",                 desc: "A task you own is due within 24 hours", urgent: false },
   overdue:        { label: "Overdue",                  desc: "A task you own is past its due date", urgent: true },
-  new_request:    { label: "New request submitted",    desc: "A new intake request has been created (PM/CSM)", urgent: false },
+  new_request:    { label: "New request submitted",    desc: "A new quick request in a category you follow", urgent: false },
   unclaimed_team: { label: "Unclaimed work in my team", desc: "A new unclaimed task appeared in your team's queue", urgent: false },
 };
 
@@ -88,6 +90,38 @@ export function usePrefs() {
   return { prefs, save, reload };
 }
 
+export function useRequestGroupSubs() {
+  const userId = getCurrentUserId();
+  const [keys, setKeys] = useState<Set<string>>(new Set());
+  const reload = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from("pm_new_request_subs" as any)
+      .select("group_key")
+      .eq("user_id", userId);
+    setKeys(new Set(((data ?? []) as { group_key: string }[]).map(r => r.group_key)));
+  }, [userId]);
+  useEffect(() => { reload(); }, [reload]);
+  const setGroup = useCallback(async (group_key: string, on: boolean) => {
+    if (!userId) return;
+    setKeys(prev => {
+      const next = new Set(prev);
+      if (on) next.add(group_key); else next.delete(group_key);
+      return next;
+    });
+    if (on) {
+      await supabase.from("pm_new_request_subs" as any).upsert(
+        { user_id: userId, group_key },
+        { onConflict: "user_id,group_key" },
+      );
+    } else {
+      await supabase.from("pm_new_request_subs" as any).delete()
+        .eq("user_id", userId).eq("group_key", group_key);
+    }
+  }, [userId]);
+  return { keys, setGroup, reload };
+}
+
 /** Insert a notification for a user, respecting their prefs. */
 export async function createNotification(params: {
   user_id: string;
@@ -116,6 +150,59 @@ export async function createNotification(params: {
     link: params.link ?? null,
   });
   if (inApp) emitNotificationsChanged();
+}
+
+export function extractMentionIds(html: string | null | undefined): string[] {
+  if (!html) return [];
+  const ids = new Set<string>();
+  const re = /data-mention-id=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) ids.add(m[1]);
+  return [...ids];
+}
+
+/** Notify people newly @mentioned in rich text. Best-effort. */
+export async function notifyNewMentions(params: {
+  prevHtml?: string | null;
+  nextHtml: string;
+  title: string;
+  body?: string;
+  link: string;
+}) {
+  const actor = getCurrentUserId();
+  const prev = new Set(extractMentionIds(params.prevHtml));
+  const next = extractMentionIds(params.nextHtml).filter(id => id !== actor && !prev.has(id));
+  for (const uid of next) {
+    await createNotification({
+      user_id: uid,
+      event_type: "mention",
+      title: params.title,
+      body: params.body,
+      link: params.link,
+    });
+  }
+}
+
+export async function notifyTaskAssigneeChange(params: {
+  user_id: string;
+  event_type: "assigned" | "unassigned";
+  taskId: string;
+  taskTitle?: string;
+}) {
+  const actor = getCurrentUserId();
+  if (!params.user_id || params.user_id === actor) return;
+  let title = params.taskTitle;
+  if (!title) {
+    const { data } = await supabase.from("pm_tasks").select("title").eq("id", params.taskId).maybeSingle();
+    title = (data as any)?.title ?? "a task";
+  }
+  await createNotification({
+    user_id: params.user_id,
+    event_type: params.event_type,
+    title: params.event_type === "assigned" ? `Assigned: ${title}` : `Removed: ${title}`,
+    body: params.event_type === "assigned" ? "You were assigned to a task" : "You were removed from a task",
+    link: `/pm/tasks/${params.taskId}`,
+  });
 }
 
 // ---- data hooks ----

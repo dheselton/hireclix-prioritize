@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +14,8 @@ import { TASK_STATUSES, type PmTask, type TaskStatus } from "@/types/pm";
 import { toast } from "sonner";
 import { Maximize2, Send, Trash2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MentionTextarea } from "@/components/pm/drawer/MentionTextarea";
+import { createNotification } from "@/lib/pm/notifications";
 
 /**
  * Drawer is now Quick Edit only.
@@ -38,6 +39,7 @@ export function TaskDrawer() {
   const [task, setTask] = useState<PmTask | null>(null);
   const [loading, setLoading] = useState(false);
   const [comment, setComment] = useState("");
+  const [mentions, setMentions] = useState<string[]>([]);
   const users = useMockUsers();
   const { user } = useCurrentUser();
 
@@ -66,9 +68,19 @@ export function TaskDrawer() {
     if (!task || !comment.trim() || !user) return;
     await supabase.from("pm_comments").insert({
       task_id: task.id, project_id: task.project_id, user_id: user.id,
-      body: comment.trim(), mentions: [], pinned: false,
+      body: comment.trim(), mentions, pinned: false,
     } as any);
+    for (const uid of mentions.filter(id => id !== user.id)) {
+      await createNotification({
+        user_id: uid,
+        event_type: "mention",
+        title: `${user.name} mentioned you in ${task.title}`,
+        body: comment.trim().slice(0, 200),
+        link: `/pm/tasks/${task.id}`,
+      });
+    }
     setComment("");
+    setMentions([]);
     toast.success("Comment added");
   }
 
@@ -131,11 +143,14 @@ export function TaskDrawer() {
 
             <div className="border-t border-border pt-4">
               <Label className="text-xs">Quick comment</Label>
-              <Textarea
+              <MentionTextarea
                 value={comment}
-                onChange={e => setComment(e.target.value)}
+                onChange={setComment}
+                onMentionsChange={setMentions}
+                users={users}
                 placeholder="Add a comment…"
                 rows={3}
+                onSubmit={postComment}
               />
               <Button size="sm" className="mt-2" onClick={postComment} disabled={!comment.trim()}>
                 <Send className="h-3 w-3 mr-1" /> Post

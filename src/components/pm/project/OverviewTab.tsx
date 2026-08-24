@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { fmtDate, fmtDateShort, todayISO } from "@/lib/pm/format";
 import { projectFilterLink, projectTimeLink } from "@/lib/pm/links";
 import { updateProject } from "@/lib/pm/api";
+import { notifyNewMentions } from "@/lib/pm/notifications";
 import { fmtDur } from "@/lib/pm/time";
 import { canSeeProjectTimeTotal, useProjectTimeTotal } from "@/lib/pm/projectTime";
 import { useProjectAttachments } from "@/lib/pm/projectAttachments";
@@ -62,6 +64,7 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange: _
   const { files } = useProjectAttachments(project.id);
   const { events } = useProjectActivity(project.id, 6);
   const users = useMockUsers();
+  const savedDescRef = useRef(project.description ?? "");
   const taskTitle = (id: string | null) =>
     id ? (tasks.find((t) => t.id === id)?.title ?? null) : null;
 
@@ -182,8 +185,20 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange: _
               <RichTextEditor
                 value={project.description ?? ""}
                 onChange={(html) => onProjectChange({ ...project, description: html })}
-                onBlur={() => updateProject(project.id, { description: project.description ?? "" })}
+                onBlur={() => {
+                  const next = project.description ?? "";
+                  const prev = savedDescRef.current;
+                  updateProject(project.id, { description: next });
+                  notifyNewMentions({
+                    prevHtml: prev,
+                    nextHtml: next,
+                    title: `mentioned you in ${project.title}`,
+                    link: `/pm/projects/${project.id}`,
+                  }).catch(() => {});
+                  savedDescRef.current = next;
+                }}
                 placeholder="Project brief…"
+                users={users}
               />
             </CardContent>
           </Card>

@@ -15,7 +15,7 @@ export function GroupedRequestTypeSelect({ value, onChange, placeholder = "Selec
       <SelectTrigger className={className}><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent className="z-50 bg-popover max-h-[60vh]">
         {REQUEST_TYPE_GROUPS.map(g => (
-          <SelectGroup key={g.label}>
+          <SelectGroup key={g.key}>
             <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{g.label}</SelectLabel>
             {g.types.map(t => (
               <SelectItem key={t} value={t}>{REQUEST_TYPE_LABELS[t]}</SelectItem>

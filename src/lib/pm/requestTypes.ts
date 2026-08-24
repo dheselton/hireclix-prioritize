@@ -29,16 +29,24 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   general: "General",
 };
 
-export const REQUEST_TYPE_GROUPS: { label: string; types: RequestType[] }[] = [
-  { label: "Career Site Support", types: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support"] },
-  { label: "Web",                types: ["web_edit", "landing_page", "careersite_update"] },
-  { label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
-  { label: "Content",            types: ["copywriting", "job_description", "infographic"] },
-  { label: "Print & Collateral", types: ["recruiter_collateral", "event_collateral", "print_collateral", "swag_apparel"] },
-  { label: "Media",              types: ["video_edit", "photo_retouch", "presentation"] },
-  { label: "Brand",              types: ["brand_assets"] },
-  { label: "Other",              types: ["general"] },
+export const REQUEST_TYPE_GROUPS: { key: string; label: string; types: RequestType[] }[] = [
+  { key: "career_site", label: "Career Site Support", types: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support"] },
+  { key: "web",                label: "Web",                types: ["web_edit", "landing_page", "careersite_update"] },
+  { key: "ads",                label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
+  { key: "content",            label: "Content",            types: ["copywriting", "job_description", "infographic"] },
+  { key: "print",              label: "Print & Collateral", types: ["recruiter_collateral", "event_collateral", "print_collateral", "swag_apparel"] },
+  { key: "media",              label: "Media",              types: ["video_edit", "photo_retouch", "presentation"] },
+  { key: "brand",              label: "Brand",              types: ["brand_assets"] },
+  { key: "other",              label: "Other",              types: ["general"] },
 ];
+
+export const REQUEST_TYPE_GROUP_KEYS = REQUEST_TYPE_GROUPS.map(g => g.key);
+
+export function groupKeyForRequestType(slug: string | null | undefined): string {
+  if (!slug) return "other";
+  const hit = REQUEST_TYPE_GROUPS.find(g => (g.types as string[]).includes(slug));
+  return hit?.key ?? "other";
+}
 
 export function requestTypeLabel(slug: string | null | undefined): string | null {
   if (!slug) return null;

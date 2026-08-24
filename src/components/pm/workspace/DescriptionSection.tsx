@@ -3,6 +3,7 @@ import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { sanitizeHtml } from "@/lib/pm/sanitizeHtml";
 import type { PmTask } from "@/types/pm";
+import { notifyNewMentions } from "@/lib/pm/notifications";
 
 interface Props {
   task: PmTask;
@@ -27,8 +28,16 @@ export function DescriptionSection({ task, patch }: Props) {
   async function handleBlur() {
     setEditing(false);
     if (value !== initialRef.current) {
+      const prev = initialRef.current;
       await patch({ description: value });
       initialRef.current = value;
+      notifyNewMentions({
+        prevHtml: prev,
+        nextHtml: value,
+        title: `mentioned you in ${task.title}`,
+        body: value.replace(/<[^>]*>/g, " ").slice(0, 200),
+        link: `/pm/tasks/${task.id}`,
+      }).catch(() => {});
     }
   }
 

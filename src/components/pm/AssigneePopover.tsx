@@ -52,13 +52,13 @@ export function AssigneePopover({
       return;
     }
     if (mode === "single") {
-      const { error } = await (await import("@/integrations/supabase/client")).supabase
-        .from("pm_tasks").update({ assignee_id: userId }).eq("id", taskId);
-      if (error) { toast.error("Couldn't reassign"); return; }
-      toast.success(userId ? "Reassigned" : "Unassigned");
-      const { emitTasksChanged } = await import("@/lib/pm/refresh");
-      emitTasksChanged();
-      onChanged?.();
+      try {
+        await updateTask(taskId, { assignee_id: userId });
+        toast.success(userId ? "Reassigned" : "Unassigned");
+        onChanged?.();
+      } catch {
+        toast.error("Couldn't reassign");
+      }
     }
   }
 

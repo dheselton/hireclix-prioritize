@@ -99,6 +99,25 @@ function clientTag(name: string | null | undefined) {
   return slug ? `client:${slug}` : null;
 }
 
+const GROUP_TYPES: Record<string, string[]> = {
+  career_site: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support"],
+  web: ["web_edit", "landing_page", "careersite_update"],
+  ads: ["banner_ads", "social", "email"],
+  content: ["copywriting", "job_description", "infographic"],
+  print: ["recruiter_collateral", "event_collateral", "print_collateral", "swag_apparel"],
+  media: ["video_edit", "photo_retouch", "presentation"],
+  brand: ["brand_assets"],
+  other: ["general"],
+};
+
+function groupKeyFor(slug: string | null | undefined): string {
+  if (!slug) return "other";
+  for (const [key, types] of Object.entries(GROUP_TYPES)) {
+    if (types.includes(slug)) return key;
+  }
+  return "other";
+}
+
 function aliasFor(requestType: string | null | undefined) {
   if (!requestType) return "requests@hireclix.com";
   return ALIASES[requestType] ?? "requests@hireclix.com";
@@ -300,6 +319,15 @@ serve(async (req: Request): Promise<Response> => {
         { onConflict: "project_id,user_id", ignoreDuplicates: true },
       );
     }
+
+    await admin.rpc("fanout_new_request_notifications", {
+      p_project_id: proj.id,
+      p_title: title,
+      p_group_key: groupKeyFor(input.requestType),
+      p_client_id: input.clientId,
+      p_request_type: input.requestType ?? null,
+      p_actor_id: requestedBy ?? null,
+    });
 
     const replyTo = aliasFor(input.requestType);
     let emailSent = false;

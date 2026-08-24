@@ -67,7 +67,7 @@ DECLARE
   fn_url text;
   auth_key text;
 BEGIN
-  IF NEW.type NOT IN ('mention', 'assigned') THEN
+  IF NEW.type NOT IN ('mention', 'assigned', 'unassigned') THEN
     RETURN NEW;
   END IF;
 

@@ -12,6 +12,7 @@ import {
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { TASK_STATUSES, type TaskStatus } from "@/types/pm";
 import { supabase } from "@/integrations/supabase/client";
+import { updateTask } from "@/lib/pm/api";
 import { toast } from "sonner";
 import { Trash2, X, CalendarClock } from "lucide-react";
 import { format, addDays, parse, isValid } from "date-fns";
@@ -49,7 +50,10 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
     run("Updated", async () => await supabase.from("pm_tasks").update({ status }).in("id", ids));
 
   const bulkAssign = (userId: string | null) =>
-    run("Reassigned", async () => await supabase.from("pm_tasks").update({ assignee_id: userId }).in("id", ids));
+    run("Reassigned", async () => {
+      for (const id of ids) await updateTask(id, { assignee_id: userId });
+      return { error: null };
+    });
 
   const bulkDelete = () =>
     run("Deleted", async () => await supabase.from("pm_tasks").delete().in("id", ids));
