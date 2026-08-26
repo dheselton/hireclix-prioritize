@@ -217,6 +217,34 @@ export async function fetchEnrichedEntries(opts: {
   return runQuery();
 }
 
+/** Resolve logged_at / started_at / ended_at for a new manual time entry. */
+export function resolveTimeEntryTimestamps(
+  minutes: number,
+  logged_atInput?: string,
+  now = new Date(),
+): { logged_at: string; started_at: string | null; ended_at: string | null } {
+  const today = localDateISO(now);
+  const isDateOnly = logged_atInput?.length === 10;
+  const isToday = isDateOnly && logged_atInput === today;
+
+  if (!logged_atInput || isToday) {
+    const end = now;
+    return {
+      logged_at: end.toISOString(),
+      started_at: new Date(end.getTime() - minutes * 60_000).toISOString(),
+      ended_at: end.toISOString(),
+    };
+  }
+  if (isDateOnly) {
+    return {
+      logged_at: `${logged_atInput}T12:00:00`,
+      started_at: null,
+      ended_at: null,
+    };
+  }
+  return { logged_at: logged_atInput, started_at: null, ended_at: null };
+}
+
 export async function addTimeEntry(input: {
   task_id?: string | null;
   activity_id?: string | null;
@@ -228,9 +256,9 @@ export async function addTimeEntry(input: {
 }) {
   if (!input.task_id && !input.activity_id) throw new Error("task_id or activity_id required");
   if (input.task_id && input.activity_id) throw new Error("Provide either task_id OR activity_id, not both");
-  const logged_at = input.logged_at
-    ? (input.logged_at.length === 10 ? `${input.logged_at}T12:00:00` : input.logged_at)
-    : new Date().toISOString();
+
+  const { logged_at, started_at, ended_at } = resolveTimeEntryTimestamps(input.minutes, input.logged_at);
+
   const { data, error } = await supabase
     .from("pm_time_entries")
     .insert({
@@ -240,6 +268,8 @@ export async function addTimeEntry(input: {
       minutes: input.minutes,
       note: input.note ?? "",
       logged_at,
+      started_at,
+      ended_at,
       billable: input.billable ?? true,
     } as any)
     .select()

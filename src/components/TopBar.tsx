@@ -47,7 +47,7 @@ function AccountPanel({
       {user ? (
         <div className="flex items-center gap-2 pb-2 border-b border-border">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user.avatar_url ?? undefined} />
+            <AvatarImage src={user.avatar_url?.trim() || undefined} />
             <AvatarFallback className="text-xs bg-primary text-primary-foreground" style={user.avatar_color ? { backgroundColor: user.avatar_color } : undefined}>{initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
@@ -158,7 +158,7 @@ export function TopBar() {
               aria-label="Account and options"
             >
               <Avatar className="h-10 w-10">
-                <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.name} />
+                <AvatarImage src={user?.avatar_url?.trim() || undefined} alt={user?.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm" style={user?.avatar_color ? { backgroundColor: user.avatar_color } : undefined}>{initials}</AvatarFallback>
               </Avatar>
               <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-card border border-border flex items-center justify-center">
@@ -179,7 +179,7 @@ export function TopBar() {
               aria-label="Account menu"
             >
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.name} />
+                <AvatarImage src={user?.avatar_url?.trim() || undefined} alt={user?.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs" style={user?.avatar_color ? { backgroundColor: user.avatar_color } : undefined}>{initials}</AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium truncate">{firstName}</span>

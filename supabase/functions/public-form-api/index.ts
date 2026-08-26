@@ -56,6 +56,11 @@ const LinkSchema = z.object({
   label: z.string().max(300).optional().default(""),
 });
 
+const submitterEmailSchema = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim() : v),
+  z.union([z.string().email(), z.literal("")]).optional().default(""),
+);
+
 const BodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("bootstrap"), slug: z.string().min(1).max(120) }),
   z.object({
@@ -64,7 +69,7 @@ const BodySchema = z.discriminatedUnion("action", [
     clientId: z.string().uuid(),
     requestedBy: z.string().uuid().nullable().optional(),
     submitterName: z.string().max(200).optional().default(""),
-    submitterEmail: z.union([z.string().email(), z.literal("")]).optional(),
+    submitterEmail: submitterEmailSchema,
     title: z.string().max(300).optional().default(""),
     description: z.string().max(20000).optional().default(""),
     shipBy: z.string().max(32).nullable().optional(),
@@ -137,6 +142,20 @@ function clientIp(req: Request) {
   return fwd.split(",")[0]?.trim() || req.headers.get("cf-connecting-ip") || "unknown";
 }
 
+function formatZodError(err: z.ZodError): string {
+  const flat = err.flatten();
+  const parts: string[] = [...flat.formErrors];
+  for (const [field, msgs] of Object.entries(flat.fieldErrors)) {
+    for (const m of msgs) parts.push(`${field}: ${m}`);
+  }
+  return parts.join("; ") || "invalid_request";
+}
+
+function safeFileName(name: string) {
+  const base = name.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "") || "file";
+  return base.slice(0, 200);
+}
+
 async function hitRateLimit(key: string, max: number) {
   const now = Date.now();
   const { data } = await admin.from("public_form_rate_limits").select("*").eq("key", key).maybeSingle();
@@ -176,19 +195,20 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const parsed = BodySchema.safeParse(await req.json());
-    if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
+    if (!parsed.success) return json({ error: formatZodError(parsed.error) }, 400);
     const input = parsed.data;
 
     if (input.action === "bootstrap") {
       const form = await loadForm(input.slug);
       if (!form) return json({ error: "form_not_found" }, 404);
 
-      const [{ data: fields }, { data: clients }] = await Promise.all([
+      const [{ data: fields }, { data: clients }, { data: users }] = await Promise.all([
         admin.from("pm_form_fields").select("*").eq("form_id", form.id).order("sort_order"),
         admin.from("clients").select("id,name,is_internal").is("archived_at", null).order("name"),
+        admin.from("pm_users").select("id,name,role").eq("is_active", true).order("name"),
       ]);
 
-      return json({ form, fields: fields ?? [], clients: clients ?? [] });
+      return json({ form, fields: fields ?? [], clients: clients ?? [], users: users ?? [] });
     }
 
     const ip = clientIp(req);
@@ -208,7 +228,7 @@ serve(async (req: Request): Promise<Response> => {
       .select("id,name,is_internal,archived_at")
       .eq("id", input.clientId)
       .maybeSingle();
-    if (!clientRow || clientRow.archived_at) return json({ error: "invalid_client" }, 400);
+    if (!clientRow || clientRow.archived_at) return json({ error: "Please choose a valid client" }, 400);
 
     const title = (input.title || "").trim() || input.requestTypeLabel || form.name;
     const description = (input.description || "").trim() || null;
@@ -266,7 +286,7 @@ serve(async (req: Request): Promise<Response> => {
         failedFiles.push(f.name);
         continue;
       }
-      const path = `project/${proj.id}/${crypto.randomUUID()}-${f.name}`;
+      const path = `project/${proj.id}/${crypto.randomUUID()}-${safeFileName(f.name)}`;
       const { error: upErr } = await admin.storage.from(BUCKET).upload(path, bytes, {
         contentType: f.type || "application/octet-stream",
       });
@@ -289,7 +309,7 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
     if (failedFiles.length) {
-      return json({ error: `upload_failed: ${failedFiles.join(", ")}` }, 400);
+      console.warn("public-form-api partial upload failure:", failedFiles.join(", "));
     }
 
     if (input.links.length) {
@@ -301,7 +321,7 @@ serve(async (req: Request): Promise<Response> => {
           created_by: requestedBy,
         })),
       );
-      if (linkErr) return json({ error: "link_insert_failed" }, 400);
+      if (linkErr) return json({ error: "Could not save reference links" }, 400);
     }
 
     const { data: watchers } = await admin
@@ -389,6 +409,7 @@ serve(async (req: Request): Promise<Response> => {
       alias: replyTo,
       requestTypeLabel: input.requestTypeLabel ?? null,
       emailSent: emailSent && !!emailKey,
+      ...(failedFiles.length ? { failedFiles } : {}),
     });
   } catch (e) {
     console.error("public-form-api error:", e);

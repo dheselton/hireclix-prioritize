@@ -21,6 +21,19 @@ const ROLE_LABEL: Record<string, string> = {
   qa: "QA", strategist: "Strategist", analyst: "Analyst", csm: "CSM", support: "Support",
 };
 
+function storagePathFromAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const pathname = new URL(url).pathname;
+    const marker = "/storage/v1/object/public/avatars/";
+    const idx = pathname.indexOf(marker);
+    if (idx < 0) return null;
+    return decodeURIComponent(pathname.slice(idx + marker.length));
+  } catch {
+    return null;
+  }
+}
+
 export default function ProfileSettings() {
   const { user: authUser, refreshPmUser } = useAuth();
   const { user, roles } = useCurrentUser();
@@ -28,6 +41,7 @@ export default function ProfileSettings() {
   const [name, setName] = useState(user?.name ?? "");
   const [color, setColor] = useState(user?.avatar_color ?? PRESET_COLORS[0]);
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? null);
+  const [avatarPath, setAvatarPath] = useState<string | null>(() => storagePathFromAvatarUrl(user?.avatar_url));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -35,19 +49,28 @@ export default function ProfileSettings() {
     setName(user.name);
     setColor(user.avatar_color ?? PRESET_COLORS[0]);
     setAvatarUrl(user.avatar_url ?? null);
+    setAvatarPath(storagePathFromAvatarUrl(user.avatar_url));
   }, [user?.id, user?.name, user?.avatar_color, user?.avatar_url]);
 
   if (!user) return null;
   const userId = user.id;
 
+  async function updatePmUser(patch: { name?: string; avatar_color?: string | null; avatar_url?: string | null }) {
+    const { data, error } = await supabase
+      .from("pm_users")
+      .update(patch)
+      .eq("id", userId)
+      .select("id, avatar_url")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("Could not update profile — no matching row");
+    return data as { id: string; avatar_url: string | null };
+  }
+
   async function persist(patch: { name?: string; avatar_color?: string | null; avatar_url?: string | null }) {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("pm_users")
-        .update(patch)
-        .eq("id", userId);
-      if (error) throw error;
+      await updatePmUser(patch);
       await loadPmRoster();
       await refreshPmUser();
       toast.success("Profile updated");
@@ -83,16 +106,20 @@ export default function ProfileSettings() {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
       const path = `${authUser.id}/avatar.${ext}`;
       const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
+      if (upErr) {
+        console.error("Avatar upload failed", upErr);
+        throw new Error(upErr.message || "Could not upload photo");
+      }
       const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
       const url = `${pub.publicUrl}?t=${Date.now()}`;
+      await updatePmUser({ avatar_url: url });
       setAvatarUrl(url);
-      const { error } = await supabase.from("pm_users").update({ avatar_url: url }).eq("id", userId);
-      if (error) throw error;
+      setAvatarPath(path);
       await loadPmRoster();
       await refreshPmUser();
       toast.success("Photo updated");
     } catch (e: any) {
+      console.error("Avatar upload error", e);
       toast.error(e?.message ?? "Could not upload photo");
     } finally {
       setSaving(false);
@@ -103,20 +130,28 @@ export default function ProfileSettings() {
     if (!authUser) return;
     setSaving(true);
     try {
-      await supabase.storage.from("avatars").remove([
-        `${authUser.id}/avatar.jpg`,
-        `${authUser.id}/avatar.jpeg`,
-        `${authUser.id}/avatar.png`,
-        `${authUser.id}/avatar.webp`,
-        `${authUser.id}/avatar.gif`,
-      ]);
+      const paths = avatarPath
+        ? [avatarPath]
+        : [
+            `${authUser.id}/avatar.jpg`,
+            `${authUser.id}/avatar.jpeg`,
+            `${authUser.id}/avatar.png`,
+            `${authUser.id}/avatar.webp`,
+            `${authUser.id}/avatar.gif`,
+          ];
+      const { error: rmErr } = await supabase.storage.from("avatars").remove(paths);
+      if (rmErr) {
+        console.error("Avatar remove failed", rmErr);
+        // Continue clearing the DB URL even if the object is already gone.
+      }
+      await updatePmUser({ avatar_url: null });
       setAvatarUrl(null);
-      const { error } = await supabase.from("pm_users").update({ avatar_url: null }).eq("id", userId);
-      if (error) throw error;
+      setAvatarPath(null);
       await loadPmRoster();
       await refreshPmUser();
       toast.success("Photo removed");
     } catch (e: any) {
+      console.error("Avatar remove error", e);
       toast.error(e?.message ?? "Could not remove photo");
     } finally {
       setSaving(false);

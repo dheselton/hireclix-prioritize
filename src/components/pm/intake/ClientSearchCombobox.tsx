@@ -16,10 +16,12 @@ interface Props {
   onClientsChanged: (next: ClientOption[], created?: ClientOption) => void;
   placeholder?: string;
   disabled?: boolean;
+  /** When false, hide inline client creation (public forms). */
+  allowCreate?: boolean;
 }
 
 /** Searchable client picker with inline "New client" affordance. */
-export function ClientSearchCombobox({ value, onChange, clients, onClientsChanged, placeholder = "Search clients…", disabled }: Props) {
+export function ClientSearchCombobox({ value, onChange, clients, onClientsChanged, placeholder = "Search clients…", disabled, allowCreate = true }: Props) {
   const [open, setOpen] = useState(false);
   const internalIds = useInternalClientIds();
   const isInternal = (id: string) => internalIds.has(id) || !!clients.find(c => c.id === id)?.is_internal;
@@ -75,13 +77,15 @@ export function ClientSearchCombobox({ value, onChange, clients, onClientsChange
           </PopoverContent>
         </Popover>
       </div>
-      <NewClientPopover
-        onCreated={(c) => {
-          const next = [...clients, c].sort((a, b) => a.name.localeCompare(b.name));
-          onClientsChanged(next, c);
-          onChange(c.id);
-        }}
-      />
+      {allowCreate && (
+        <NewClientPopover
+          onCreated={(c) => {
+            const next = [...clients, c].sort((a, b) => a.name.localeCompare(b.name));
+            onClientsChanged(next, c);
+            onChange(c.id);
+          }}
+        />
+      )}
     </div>
   );
 }

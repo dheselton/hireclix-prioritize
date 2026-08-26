@@ -11,9 +11,10 @@ export function UserAvatar({ userId, size = "sm", className }: { userId?: string
   }
   const initials = user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0,2);
   const bg = user.avatar_color ?? undefined;
+  const src = user.avatar_url?.trim() || undefined;
   return (
     <Avatar className={cn(sz, className)} title={user.name}>
-      <AvatarImage src={user.avatar_url ?? undefined} />
+      <AvatarImage src={src} />
       <AvatarFallback
         className="font-medium text-white"
         style={bg ? { backgroundColor: bg } : undefined}

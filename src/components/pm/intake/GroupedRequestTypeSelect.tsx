@@ -11,7 +11,7 @@ interface Props {
 /** Grouped request-type dropdown reused by CreateWorkDialog and the public Quick Request form. */
 export function GroupedRequestTypeSelect({ value, onChange, placeholder = "Select a request type", className }: Props) {
   return (
-    <Select value={value || undefined} onValueChange={(v) => onChange(v as RequestType)}>
+    <Select value={value ?? ""} onValueChange={(v) => onChange(v as RequestType)}>
       <SelectTrigger className={className}><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent className="z-50 bg-popover max-h-[60vh]">
         {REQUEST_TYPE_GROUPS.map(g => (

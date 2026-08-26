@@ -35,6 +35,7 @@ export default function PublicForm() {
   const [formReady, setFormReady] = useState(false);
   const [fields, setFields] = useState<FormFieldRow[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
+  const [rosterUsers, setRosterUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const [values, setValues] = useState<Record<string, any>>({});
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -77,6 +78,7 @@ export default function PublicForm() {
         setForm(data.form);
         setFields((data.fields || []) as FormFieldRow[]);
         setClients((data.clients || []) as ClientOption[]);
+        setRosterUsers((data.users || []) as { id: string; name: string; role: string }[]);
       } catch {
         setForm(null);
       } finally {
@@ -139,6 +141,12 @@ export default function PublicForm() {
     });
     if (missing.length) { toast.error(`Missing required: ${missing.map(m => m.label).join(", ")}`); return; }
 
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Enter a valid email address or leave the field blank");
+      return;
+    }
+
     setBusy(true);
     try {
       const titleValue = titleField ? String(values[titleField.id] ?? "").trim() : "";
@@ -165,8 +173,8 @@ export default function PublicForm() {
         slug,
         clientId,
         requestedBy,
-        submitterName: name,
-        submitterEmail: email,
+        submitterName: name.trim(),
+        submitterEmail: trimmedEmail,
         title: titleValue,
         description: descriptionValue,
         shipBy,
@@ -184,6 +192,9 @@ export default function PublicForm() {
 
       if (email && !result.emailSent) {
         toast.warning("Request saved, but the confirmation email could not be sent.");
+      }
+      if (result.failedFiles?.length) {
+        toast.warning(`Request saved, but some files could not be uploaded: ${result.failedFiles.join(", ")}`);
       }
 
       setSubmitted({
@@ -255,6 +266,7 @@ export default function PublicForm() {
                   onChange={setClientId}
                   clients={clients}
                   onClientsChanged={(next) => setClients(next)}
+                  allowCreate={false}
                 />
               )}
               {isInternal && !clientLocked && (
@@ -265,10 +277,11 @@ export default function PublicForm() {
             </div>
           )}
 
-          {isQuickRequest && (
+          {isQuickRequest && rosterUsers.length > 0 && (
             <RequesterPicker
               value={requestedBy}
               onChange={setRequestedBy}
+              users={rosterUsers}
               label="Requested by"
               helpText="Pick the person tracking this request. They'll get updates as the work moves."
             />
