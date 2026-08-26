@@ -91,14 +91,24 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
     }
     const newStatus = (data as any).status as string;
     const oldStatus = (prev as any)?.status as string | undefined;
-    if (newStatus && oldStatus && newStatus !== oldStatus && newAssignee && newAssignee !== actor) {
-      await createNotification({
-        user_id: newAssignee,
-        event_type: 'status_change',
-        title: `Status: ${(data as any).title}`,
-        body: `Moved to ${newStatus.replace(/_/g, ' ')}`,
-        link,
-      });
+    if (newStatus && oldStatus && newStatus !== oldStatus) {
+      const { data: coRows } = await supabase
+        .from("pm_task_assignees")
+        .select("user_id")
+        .eq("task_id", id);
+      const recipients = new Set<string>();
+      if (newAssignee) recipients.add(newAssignee);
+      for (const r of (coRows ?? []) as { user_id: string }[]) recipients.add(r.user_id);
+      for (const uid of recipients) {
+        if (uid === actor) continue;
+        await createNotification({
+          user_id: uid,
+          event_type: 'status_change',
+          title: `Status: ${(data as any).title}`,
+          body: `Moved to ${newStatus.replace(/_/g, ' ')}`,
+          link,
+        });
+      }
     }
   } catch {}
   return data as unknown as PmTask;
@@ -145,64 +155,6 @@ export const createTask = async (task: Partial<PmTask>) => {
         link,
       });
     }
-    // Notify PM/CSM on new unclaimed request-type tasks
-    if ((data as any).status === 'unclaimed') {
-      // Multi-role aware: notify anyone holding pm/csm in any of their roles.
-      const { data: allUsers } = await supabase.from('pm_users').select('id, role, secondary_role, roles');
-      const pms = ((allUsers ?? []) as any[]).filter(u => {
-        const r: string[] = Array.isArray(u.roles) && u.roles.length
-          ? u.roles
-          : [u.role, u.secondary_role].filter(Boolean);
-        return r.includes('pm') || r.includes('csm');
-      });
-      const notified = new Set<string>();
-      for (const u of (pms ?? []) as any[]) {
-        if (u.id === uid) continue;
-        notified.add(u.id);
-        await createNotification({
-          user_id: u.id,
-          event_type: 'new_request',
-          title: `New request: ${(data as any).title}`,
-          link,
-        });
-      }
-
-      // Notify the task's team(s) that unclaimed work landed in their queue.
-      const {
-        teamsFromTask, DEFAULT_TEAMS_FOR_TYPE, ROLE_TO_TEAM, TEAM_PEERS,
-        peerTeamsForRoles, TEAM_LABEL,
-      } = await import('./teams');
-      let taskTeams = teamsFromTask(data as any);
-      if (!taskTeams.length) {
-        taskTeams = DEFAULT_TEAMS_FOR_TYPE[(data as any).type as keyof typeof DEFAULT_TEAMS_FOR_TYPE] ?? [];
-      }
-      if (taskTeams.length) {
-        const wanted = new Set(taskTeams);
-        for (const u of ((allUsers ?? []) as any[])) {
-          if (u.id === uid || u.id === assignee || notified.has(u.id)) continue;
-          const roles: string[] = Array.isArray(u.roles) && u.roles.length
-            ? u.roles
-            : [u.role, u.secondary_role].filter(Boolean);
-          const mine = new Set<string>();
-          for (const r of roles) {
-            const t = ROLE_TO_TEAM[r as keyof typeof ROLE_TO_TEAM];
-            if (!t) continue;
-            mine.add(t);
-            for (const p of TEAM_PEERS[t] ?? []) mine.add(p);
-          }
-          for (const p of peerTeamsForRoles(roles)?.peers ?? []) mine.add(p);
-          const hit = taskTeams.find(t => mine.has(t)) ?? [...mine].find(t => wanted.has(t as any));
-          if (!hit) continue;
-          notified.add(u.id);
-          await createNotification({
-            user_id: u.id,
-            event_type: 'unclaimed_team',
-            title: `Unclaimed ${TEAM_LABEL[hit as keyof typeof TEAM_LABEL]} task: ${(data as any).title}`,
-            link,
-          });
-        }
-      }
-    }
   } catch {}
   return data as unknown as PmTask;
 };
@@ -219,12 +171,66 @@ export const updateProject = async (id: string, patch: Partial<PmProject>) => {
   return data as unknown as PmProject;
 };
 
+/** Keep pm_project_members requester row aligned with pm_projects.requested_by. */
+export async function syncProjectRequesterMembership(
+  projectId: string,
+  requestedBy: string | null,
+  previousRequestedBy?: string | null,
+) {
+  const prev = previousRequestedBy ?? null;
+  if (prev && prev !== requestedBy) {
+    await supabase.from('pm_project_members').delete()
+      .eq('project_id', projectId)
+      .eq('user_id', prev)
+      .eq('role', 'requester');
+  }
+  if (requestedBy && requestedBy !== prev) {
+    const { data: existing } = await supabase.from('pm_project_members')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('user_id', requestedBy)
+      .maybeSingle();
+    if (existing) {
+      await supabase.from('pm_project_members')
+        .update({ role: 'requester' } as any)
+        .eq('project_id', projectId)
+        .eq('user_id', requestedBy);
+    } else {
+      await supabase.from('pm_project_members').insert({
+        project_id: projectId,
+        user_id: requestedBy,
+        role: 'requester',
+      } as any);
+    }
+  }
+}
+
+/** Update the internal requester/submitter on a project and sync membership. */
+export async function setProjectRequester(projectId: string, requestedBy: string | null) {
+  const { data: prev } = await supabase.from('pm_projects')
+    .select('requested_by')
+    .eq('id', projectId)
+    .maybeSingle();
+  const previousRequestedBy = (prev as any)?.requested_by as string | null | undefined;
+
+  const { data, error } = await supabase.from('pm_projects')
+    .update({ requested_by: requestedBy } as any)
+    .eq('id', projectId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  await syncProjectRequesterMembership(projectId, requestedBy, previousRequestedBy ?? null);
+  return data as unknown as PmProject;
+}
+
 export const deleteProject = async (id: string) => {
   const sb: any = supabase;
   // pm_tasks and most related tables cascade on project_id; clear siblings that may not.
   await sb.from('pm_project_attachments').delete().eq('project_id', id);
   await sb.from('pm_project_links').delete().eq('project_id', id);
   await sb.from('pm_notes').delete().eq('project_id', id);
+  await sb.from('pm_form_submissions').delete().eq('created_project_id', id);
   const { error } = await sb.from('pm_projects').delete().eq('id', id);
   if (error) throw error;
   emitTasksChanged();

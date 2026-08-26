@@ -18,14 +18,21 @@ export const EVENT_META: Record<NotifEventType, { label: string; desc: string; u
   assigned:       { label: "Assigned to a task",       desc: "You were made the owner or co-assignee of a task", urgent: true },
   unassigned:     { label: "Removed from a task",      desc: "You were removed as an assignee on a task", urgent: true },
   mention:        { label: "@Mentions",                desc: "Someone mentioned you in a comment or notes", urgent: true },
-  status_change:  { label: "Status changes",           desc: "Status changed on a task you own", urgent: false },
-  due_soon:       { label: "Due soon",                 desc: "A task you own is due within 24 hours", urgent: false },
-  overdue:        { label: "Overdue",                  desc: "A task you own is past its due date", urgent: true },
-  new_request:    { label: "New request submitted",    desc: "A new quick request in a category you follow", urgent: false },
-  unclaimed_team: { label: "Unclaimed work in my team", desc: "A new unclaimed task appeared in your team's queue", urgent: false },
+  status_change:  { label: "Status changes",           desc: "Status changed on a task you're assigned to", urgent: false },
+  due_soon:       { label: "Due soon",                 desc: "A task you're assigned to is due within 24 hours", urgent: false },
+  overdue:        { label: "Overdue",                  desc: "A task you're assigned to is past its due date", urgent: true },
+  new_request:    { label: "New request submitted",    desc: "Creative/production quick requests (web, career site, design, dev). Other requests appear on the Daily Briefing dashboard only.", urgent: false },
+  unclaimed_team: { label: "Unclaimed work in my team", desc: "Legacy — no longer broadcast. Unclaimed requests appear on the Daily Briefing dashboard.", urgent: false },
 };
 
 export const ALL_EVENT_TYPES = Object.keys(EVENT_META) as NotifEventType[];
+
+const OFF_BY_DEFAULT: NotifEventType[] = ["new_request", "unclaimed_team"];
+
+export function defaultPrefFor(event_type: NotifEventType): NotifPref {
+  const on = !OFF_BY_DEFAULT.includes(event_type);
+  return { event_type, in_app: on, email: on };
+}
 
 // ---- pub/sub for in-app refresh ----
 const subs = new Set<() => void>();
@@ -55,7 +62,7 @@ async function loadPrefs(userId: string): Promise<Record<NotifEventType, NotifPr
     .eq("user_id", userId);
   const map = {} as Record<NotifEventType, NotifPref>;
   for (const et of ALL_EVENT_TYPES) {
-    map[et] = { event_type: et, in_app: true, email: true };
+    map[et] = defaultPrefFor(et);
   }
   (data ?? []).forEach((row: any) => {
     if (ALL_EVENT_TYPES.includes(row.event_type)) {
@@ -79,7 +86,7 @@ export function usePrefs() {
   useEffect(() => { reload(); }, [reload]);
   const save = useCallback(async (event_type: NotifEventType, patch: Partial<Omit<NotifPref, "event_type">>) => {
     if (!userId) return;
-    const curr = prefs?.[event_type] ?? { event_type, in_app: true, email: true };
+    const curr = prefs?.[event_type] ?? defaultPrefFor(event_type);
     const next = { ...curr, ...patch };
     setPrefs(p => p ? { ...p, [event_type]: next } : p);
     await supabase.from("pm_notification_prefs").upsert(
@@ -138,8 +145,9 @@ export async function createNotification(params: {
     .eq("user_id", params.user_id)
     .eq("event_type", params.event_type)
     .maybeSingle();
-  const inApp = pref?.in_app ?? true;
-  const email = pref?.email ?? true;
+  const defaults = defaultPrefFor(params.event_type);
+  const inApp = pref?.in_app ?? defaults.in_app;
+  const email = pref?.email ?? defaults.email;
   // Insert when either channel is on so the email queue can claim the row.
   if (!inApp && !email) return;
   await supabase.from("pm_notifications").insert({
@@ -244,18 +252,39 @@ export async function markAllRead() {
   emitNotificationsChanged();
 }
 
-/** Scan the current user's tasks and create due_soon / overdue notifications (dedup per day). */
+async function fetchAssignedTasks(userId: string) {
+  const [{ data: primary }, { data: coRows }] = await Promise.all([
+    supabase
+      .from("pm_tasks")
+      .select("id, title, due_date, status, assignee_id")
+      .eq("assignee_id", userId)
+      .not("due_date", "is", null),
+    supabase.from("pm_task_assignees").select("task_id").eq("user_id", userId),
+  ]);
+  const coIds = ((coRows ?? []) as { task_id: string }[]).map(r => r.task_id);
+  let coTasks: any[] = [];
+  if (coIds.length) {
+    const { data } = await supabase
+      .from("pm_tasks")
+      .select("id, title, due_date, status, assignee_id")
+      .in("id", coIds)
+      .not("due_date", "is", null);
+    coTasks = (data ?? []) as any[];
+  }
+  const byId = new Map<string, any>();
+  for (const t of (primary ?? []) as any[]) byId.set(t.id, t);
+  for (const t of coTasks) byId.set(t.id, t);
+  return [...byId.values()];
+}
+
+/** Scan tasks assigned to the current user and create due_soon / overdue notifications (dedup per day). */
 export async function scanDueDateNotifications() {
   const userId = getCurrentUserId();
   if (!userId) return;
   const now = new Date();
   const in24 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const { data: tasks } = await supabase
-    .from("pm_tasks")
-    .select("id, title, due_date, status, assignee_id")
-    .eq("assignee_id", userId)
-    .not("due_date", "is", null);
-  if (!tasks) return;
+  const tasks = await fetchAssignedTasks(userId);
+  if (!tasks.length) return;
   const today = localDateISO(now);
   // Fetch today's existing notifs to dedup
   const { data: existing } = await supabase
