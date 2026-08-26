@@ -1,7 +1,12 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { ClientOption } from "@/components/pm/intake/ClientSearchCombobox";
 import type { FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
 import type { PmUser } from "@/types/pm";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/public-form-api`;
+const REQUEST_TIMEOUT_MS = 60_000;
+const ERROR_BODY_TIMEOUT_MS = 5_000;
 
 function formatApiError(err: unknown): string {
   if (typeof err === "string") return err;
@@ -23,31 +28,66 @@ function formatApiError(err: unknown): string {
   return String(err ?? "Request failed");
 }
 
-async function readInvokeError(error: { message: string; context?: Response }, data: unknown): Promise<string> {
-  if (data && typeof data === "object" && "error" in (data as object)) {
-    return formatApiError((data as { error: unknown }).error);
-  }
-  try {
-    if (error.context && typeof error.context.json === "function") {
-      const body = await error.context.json();
-      if (body && typeof body === "object" && "error" in body) {
-        return formatApiError((body as { error: unknown }).error);
-      }
-      return formatApiError(body);
-    }
-  } catch {
-    // fall through to generic message
-  }
-  return error.message;
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }
 
+/** Anonymous intake bypasses supabase.functions.invoke to avoid auth lock stalls. */
 async function call<T>(payload: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("public-form-api", { body: payload });
-  if (error) throw new Error(await readInvokeError(error, data));
-  if (data && typeof data === "object" && "error" in (data as object)) {
-    throw new Error(formatApiError((data as { error: unknown }).error));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    let data: unknown;
+    try {
+      data = await withTimeout(res.json(), ERROR_BODY_TIMEOUT_MS, "Request failed");
+    } catch {
+      throw new Error(`Request failed (${res.status})`);
+    }
+
+    if (!res.ok) {
+      if (data && typeof data === "object" && "error" in (data as object)) {
+        throw new Error(formatApiError((data as { error: unknown }).error));
+      }
+      throw new Error(`Request failed (${res.status})`);
+    }
+
+    if (data && typeof data === "object" && "error" in (data as object)) {
+      throw new Error(formatApiError((data as { error: unknown }).error));
+    }
+
+    return data as T;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Request timed out — check your connection and try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return data as T;
 }
 
 export function publicFormBootstrap(slug: string) {
@@ -67,6 +107,7 @@ export async function publicFormSubmit(payload: Record<string, unknown>) {
     alias: string;
     requestTypeLabel: string | null;
     emailSent: boolean;
+    emailPending?: boolean;
     failedFiles?: string[];
   }>({ action: "submit", ...payload });
 }

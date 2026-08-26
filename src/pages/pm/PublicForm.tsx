@@ -52,6 +52,7 @@ export default function PublicForm() {
     emailSent: boolean;
   }>(null);
   const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const internalIds = useInternalClientIds();
 
@@ -148,6 +149,7 @@ export default function PublicForm() {
     }
 
     setBusy(true);
+    setPreparing(files.length > 0);
     try {
       const titleValue = titleField ? String(values[titleField.id] ?? "").trim() : "";
       const descriptionValue = descriptionField ? String(values[descriptionField.id] ?? "").trim() : "";
@@ -168,6 +170,8 @@ export default function PublicForm() {
         type: f.type,
         dataBase64: await fileToBase64(f),
       })));
+
+      setPreparing(false);
 
       const result = await publicFormSubmit({
         slug,
@@ -190,7 +194,7 @@ export default function PublicForm() {
         refreshCareerSiteProjects().catch(() => {});
       }
 
-      if (email && !result.emailSent) {
+      if (email && !result.emailSent && !result.emailPending) {
         toast.warning("Request saved, but the confirmation email could not be sent.");
       }
       if (result.failedFiles?.length) {
@@ -209,6 +213,7 @@ export default function PublicForm() {
       toast.error(e.message || "Failed to submit");
     } finally {
       setBusy(false);
+      setPreparing(false);
     }
   }
 
@@ -353,7 +358,7 @@ export default function PublicForm() {
             links={links} onLinksChange={setLinks}
           />
           <Button className="w-full" onClick={submit} disabled={busy}>
-            {busy ? "Submitting…" : isQuickRequest ? "Submit request" : "Submit"}
+            {preparing ? "Preparing…" : busy ? "Submitting…" : isQuickRequest ? "Submit request" : "Submit"}
           </Button>
         </CardContent></Card>
       </div>

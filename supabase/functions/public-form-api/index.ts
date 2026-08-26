@@ -156,6 +156,13 @@ function safeFileName(name: string) {
   return base.slice(0, 200);
 }
 
+function decodeBase64(data: string): Uint8Array {
+  const binary = atob(data);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
 async function hitRateLimit(key: string, max: number) {
   const now = Date.now();
   const { data } = await admin.from("public_form_rate_limits").select("*").eq("key", key).maybeSingle();
@@ -277,7 +284,7 @@ serve(async (req: Request): Promise<Response> => {
     for (const f of input.files) {
       let bytes: Uint8Array;
       try {
-        bytes = Uint8Array.from(atob(f.dataBase64), c => c.charCodeAt(0));
+        bytes = decodeBase64(f.dataBase64);
       } catch {
         failedFiles.push(f.name);
         continue;
@@ -350,9 +357,32 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     const replyTo = aliasFor(input.requestType);
-    let emailSent = false;
-    let emailError: string | null = null;
-    if (emailKey) {
+
+    const { data: submission, error: submissionErr } = await admin.from("pm_form_submissions").insert({
+      form_id: form.id,
+      payload: {
+        request_type: input.requestType ?? null,
+        title,
+        description,
+        ship_by: shipBy,
+        client_id: input.clientId,
+        ...(input.payload ?? {}),
+      },
+      submitter_name: input.submitterName || null,
+      submitter_email: emailKey || null,
+      created_project_id: proj.id,
+      created_task_id: task?.id ?? null,
+      received_emailed_at: null,
+      received_email_error: emailKey ? "pending" : "No recipient email",
+    }).select("id").single();
+    if (submissionErr) {
+      console.error("pm_form_submissions insert failed:", submissionErr.message);
+    }
+
+    const sendReceivedEmail = async () => {
+      if (!emailKey || !submission?.id) return;
+      let emailSent = false;
+      let emailError: string | null = null;
       try {
         const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-request-email`, {
           method: "POST",
@@ -380,27 +410,22 @@ serve(async (req: Request): Promise<Response> => {
       } catch (e) {
         emailError = String((e as Error)?.message ?? e);
       }
-    } else {
-      emailError = "No recipient email";
-    }
 
-    await admin.from("pm_form_submissions").insert({
-      form_id: form.id,
-      payload: {
-        request_type: input.requestType ?? null,
-        title,
-        description,
-        ship_by: shipBy,
-        client_id: input.clientId,
-        ...(input.payload ?? {}),
-      },
-      submitter_name: input.submitterName || null,
-      submitter_email: emailKey || null,
-      created_project_id: proj.id,
-      created_task_id: task?.id ?? null,
-      received_emailed_at: emailSent ? new Date().toISOString() : null,
-      received_email_error: emailSent ? null : (emailError ?? "unknown error").slice(0, 500),
+      await admin.from("pm_form_submissions").update({
+        received_emailed_at: emailSent ? new Date().toISOString() : null,
+        received_email_error: emailSent ? null : (emailError ?? "unknown error").slice(0, 500),
+      }).eq("id", submission.id);
+    };
+
+    const emailPromise = sendReceivedEmail().catch((e) => {
+      console.error("public-form-api background email failed:", e);
     });
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(emailPromise);
+    } else {
+      void emailPromise;
+    }
 
     return json({
       projectId: proj.id,
@@ -408,7 +433,8 @@ serve(async (req: Request): Promise<Response> => {
       watcherIds,
       alias: replyTo,
       requestTypeLabel: input.requestTypeLabel ?? null,
-      emailSent: emailSent && !!emailKey,
+      emailSent: false,
+      emailPending: !!emailKey,
       ...(failedFiles.length ? { failedFiles } : {}),
     });
   } catch (e) {
