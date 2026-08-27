@@ -7,6 +7,7 @@ import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { ClientContext } from "@/components/pm/ClientContext";
 import { DueBadge, dueUrgency, overdueAccentClass } from "@/components/pm/DueBadge";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 import { buildQueueLink } from "@/lib/pm/links";
 import { cn } from "@/lib/utils";
 import type { EnrichedQuickTask } from "@/lib/pm/briefing";
@@ -78,6 +79,12 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
           projectTitle={t.project_title}
           taskTitle={t.title}
         />
+        <AttributionChip
+          created_by={t.created_by}
+          creation_source={t.creation_source}
+          creation_context={t.creation_context}
+          className="max-w-full"
+        />
         <div className="flex items-center gap-1.5 flex-wrap">
           <TypePill value={t.request_type} />
         </div>
@@ -108,6 +115,12 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
           clientId={t.client_id}
           projectTitle={t.project_title}
           taskTitle={t.title}
+        />
+        <AttributionChip
+          created_by={t.created_by}
+          creation_source={t.creation_source}
+          creation_context={t.creation_context}
+          className="max-w-full"
         />
         <TypePill value={t.request_type} />
       </button>

@@ -1,26 +1,32 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, ListPlus } from "lucide-react";
+import { Trash2, ListPlus, Download, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { emitTasksChanged } from "@/lib/pm/refresh";
-import { QA_SEVERITIES, assertTaskKind, type QaSeverity } from "@/lib/pm/taskKind";
-
-/** Validated at module load so a typo fails loudly, not silently. */
-const QA_KIND = assertTaskKind("qa");
+import { QA_SEVERITIES, type QaSeverity } from "@/lib/pm/taskKind";
+import {
+  downloadQaCsvTemplate,
+  looksLikeCsvHeader,
+  parseQaCsv,
+  QA_KIND,
+  severityToPriority,
+} from "@/lib/pm/csvImport";
 import { toast } from "sonner";
-import type { PmProject, TaskPriority } from "@/types/pm";
+import type { PmProject } from "@/types/pm";
 
 interface Row {
   title: string;
   severity: QaSeverity;
   environment: string;
   reporter: string;
+  description: string;
+  warning?: string;
 }
 
 interface Props {
@@ -35,9 +41,7 @@ interface Props {
 function parsePaste(raw: string, defaultSeverity: QaSeverity, defaultEnv: string): Row[] {
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   return lines.map(line => {
-    // strip leading list markers: "1.", "1)", "-", "*", "•"
     const cleaned = line.replace(/^(\d+[.)]|[-*•])\s+/, "").trim();
-    // Try TSV / CSV: Title[TAB|,] Severity [TAB|,] Environment
     const parts = cleaned.split(/\t|,(?=\s*(?:blocker|major|minor|cosmetic|http|www)\b)/i);
     let title = parts[0]?.trim() ?? cleaned;
     let severity = defaultSeverity;
@@ -52,16 +56,9 @@ function parsePaste(raw: string, defaultSeverity: QaSeverity, defaultEnv: string
       }
     }
     if (!title) title = cleaned;
-    return { title, severity, environment, reporter: "" };
+    return { title, severity, environment, reporter: "", description: "" };
   });
 }
-
-const SEVERITY_TO_PRIORITY: Record<QaSeverity, TaskPriority> = {
-  blocker: "urgent",
-  major: "high",
-  minor: "medium",
-  cosmetic: "low",
-};
 
 export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: Props) {
   const [step, setStep] = useState<"paste" | "review">("paste");
@@ -71,16 +68,38 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
   const [defaultReporter, setDefaultReporter] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const preview = useMemo(() => parsePaste(raw, defaultSeverity, defaultEnv), [raw, defaultSeverity, defaultEnv]);
+  const preview = useMemo(() => {
+    if (!raw.trim()) return [] as Row[];
+    if (looksLikeCsvHeader(raw)) {
+      return parseQaCsv(raw, {
+        defaultSeverity,
+        defaultEnvironment: defaultEnv,
+        defaultReporter,
+      }).map(r => ({
+        title: r.title,
+        severity: r.severity,
+        environment: r.environment,
+        reporter: r.reporter,
+        description: r.description,
+        warning: r.warning,
+      }));
+    }
+    return parsePaste(raw, defaultSeverity, defaultEnv).map(r => ({
+      ...r,
+      reporter: defaultReporter,
+    }));
+  }, [raw, defaultSeverity, defaultEnv, defaultReporter]);
 
   function reset() {
     setStep("paste"); setRaw(""); setRows([]); setSaving(false);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   function goReview() {
-    if (preview.length === 0) { toast.error("Paste at least one line"); return; }
-    setRows(preview.map(r => ({ ...r, reporter: defaultReporter })));
+    if (preview.length === 0) { toast.error("Paste or upload at least one ticket"); return; }
+    setRows(preview);
     setStep("review");
   }
 
@@ -92,6 +111,38 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
     setRows(prev => prev.filter((_, idx) => idx !== i));
   }
 
+  async function onFile(file: File | null) {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      if (!text.trim()) { toast.error("CSV is empty"); return; }
+      setRaw(text);
+      const parsed = looksLikeCsvHeader(text)
+        ? parseQaCsv(text, {
+            defaultSeverity,
+            defaultEnvironment: defaultEnv,
+            defaultReporter,
+          }).map(r => ({
+            title: r.title,
+            severity: r.severity,
+            environment: r.environment,
+            reporter: r.reporter || defaultReporter,
+            description: r.description,
+            warning: r.warning,
+          }))
+        : parsePaste(text, defaultSeverity, defaultEnv).map(r => ({
+            ...r,
+            reporter: defaultReporter,
+          }));
+      if (parsed.length === 0) { toast.error("No tickets found in that file"); return; }
+      setRows(parsed);
+      setStep("review");
+      toast.success(`Loaded ${parsed.length} ticket${parsed.length === 1 ? "" : "s"} from CSV`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not read CSV");
+    }
+  }
+
   async function submit() {
     if (rows.length === 0) return;
     setSaving(true);
@@ -100,11 +151,17 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
       const payload = rows.map(r => ({
         project_id: project.id,
         title: r.title.slice(0, 500),
+        description: r.description?.trim() || null,
         type: "qa" as const,
         status: "unclaimed" as const,
-        priority: SEVERITY_TO_PRIORITY[r.severity],
+        priority: severityToPriority(r.severity),
         assignee_id: null,
         created_by: uid ?? null,
+        creation_source: "qa_batch",
+        creation_context: {
+          reported_by_name: r.reporter || null,
+          severity: r.severity,
+        },
         tags: ["qa"],
         custom_fields: {
           kind: QA_KIND,
@@ -137,12 +194,31 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
             <ListPlus className="h-5 w-5" /> Log QA batch
           </DialogTitle>
           <DialogDescription>
-            Paste a list of client-reported issues (one per line). Each becomes a QA ticket you can triage.
+            Paste a list, or upload a CSV. Download the template if you want to format tickets in a spreadsheet first.
           </DialogDescription>
         </DialogHeader>
 
         {step === "paste" && (
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => downloadQaCsvTemplate()}>
+                <Download className="h-3.5 w-3.5 mr-1.5" /> Download CSV template
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload CSV
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv,text/plain"
+                className="hidden"
+                onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+              />
+              <span className="text-xs text-muted-foreground">
+                Headers like Title / Severity / Environment / Reporter work; common aliases are accepted.
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label>Default severity</Label>
@@ -163,7 +239,7 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Paste tickets — one per line</Label>
+              <Label>Paste tickets — one per line, or paste CSV</Label>
               <Textarea
                 rows={10}
                 value={raw}
@@ -186,13 +262,21 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
         {step === "review" && (
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
             <div className="text-xs text-muted-foreground">Review and edit before creating. All tickets start as <span className="font-medium">New</span> (unclaimed).</div>
+            {rows.some(r => r.warning) && (
+              <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2">
+                Some rows had unknown values and used defaults — check severity before creating.
+              </div>
+            )}
             <div className="border border-border rounded-md divide-y divide-border">
               <div className="grid grid-cols-[1fr_140px_180px_160px_32px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground bg-muted/40">
                 <div>Title</div><div>Severity</div><div>Environment</div><div>Reporter</div><div></div>
               </div>
               {rows.map((r, i) => (
                 <div key={i} className="grid grid-cols-[1fr_140px_180px_160px_32px] gap-2 px-3 py-2 items-center">
-                  <Input value={r.title} onChange={(e) => updateRow(i, { title: e.target.value })} className="h-8 text-sm" />
+                  <div className="min-w-0">
+                    <Input value={r.title} onChange={(e) => updateRow(i, { title: e.target.value })} className="h-8 text-sm" />
+                    {r.warning && <p className="text-[10px] text-amber-700 dark:text-amber-300 mt-0.5 truncate">{r.warning}</p>}
+                  </div>
                   <Select value={r.severity} onValueChange={(v) => updateRow(i, { severity: v as QaSeverity })}>
                     <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>

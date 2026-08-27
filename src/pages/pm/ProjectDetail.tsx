@@ -36,6 +36,7 @@ import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
 import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBanner";
 import { QaTab } from "@/components/pm/project/QaTab";
 import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
+import { TasksCsvImportDialog } from "@/components/pm/project/TasksCsvImportDialog";
 import { isInQaMode } from "@/lib/pm/qaMode";
 import {
   pmQueryKeys,
@@ -141,6 +142,7 @@ export default function ProjectDetail() {
   const [newTaskSupport, setNewTaskSupport] = useState(false);
   const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue" | "qa">("task");
   const [qaBatchOpen, setQaBatchOpen] = useState(false);
+  const [tasksCsvOpen, setTasksCsvOpen] = useState(false);
 
   const reload = () => {
     void projectQuery.refetch();
@@ -317,6 +319,7 @@ export default function ProjectDetail() {
             meId={user?.id ?? null}
             templateId={project.template_id}
             onAddTask={() => { setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+            onImportCsv={() => setTasksCsvOpen(true)}
             onAddRaid={(k) => { setNewTaskSupport(false); setNewTaskKind(k); setNewTaskOpen(true); }}
             supportMode={inSupport}
           />
@@ -393,6 +396,7 @@ export default function ProjectDetail() {
       />
       <ConvertToProjectModal open={convertOpen} onOpenChange={setConvertOpen} projectId={project.id} userId={user?.id ?? null} onConverted={reload} />
       <QaBatchPasteDialog open={qaBatchOpen} onOpenChange={setQaBatchOpen} project={project} onCreated={reload} />
+      <TasksCsvImportDialog open={tasksCsvOpen} onOpenChange={setTasksCsvOpen} project={project} phases={phases} onCreated={reload} />
     </div>
   );
 }

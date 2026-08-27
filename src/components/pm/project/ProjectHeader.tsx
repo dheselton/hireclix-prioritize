@@ -3,13 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Share2, Plus, UserCheck, MoreHorizontal, Trash2, Pencil, LifeBuoy,
+  Share2, Plus, MoreHorizontal, Trash2, Pencil, LifeBuoy,
   RotateCcw, Headphones, Bug, ListPlus, Building2, Calendar,
 } from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { ProjectAssignmentsBar } from "./ProjectAssignmentsBar";
 import { supabase } from "@/integrations/supabase/client";
-import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
+import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useInternalClientIds, useCareerSiteProjects } from "@/lib/pm/clients";
 import { deleteProject } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { SharePortalDialog } from "@/components/pm/portal/SharePortalDialog";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 import { toast } from "sonner";
 import type { PmProject, ProjectStatus } from "@/types/pm";
 
@@ -152,7 +153,14 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
             <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
               {(project.work_type ?? "project")}
             </Badge>
-            <RequesterBadge requestedBy={(project as any).requested_by ?? null} />
+            <AttributionChip
+              created_by={project.created_by}
+              creation_source={project.creation_source}
+              creation_context={project.creation_context}
+              requested_by={project.requested_by}
+              variant="badge"
+              hideManualSource={false}
+            />
           </div>
 
           {/* Key dates — always visible, large enough to scan */}
@@ -329,17 +337,5 @@ function MetaDate({ label, value, emphasize }: { label: string; value: string | 
         {fmtDate(value)}
       </span>
     </div>
-  );
-}
-
-function RequesterBadge({ requestedBy }: { requestedBy: string | null }) {
-  const users = useMockUsers();
-  if (!requestedBy) return null;
-  const u = users.find(x => x.id === requestedBy);
-  if (!u) return null;
-  return (
-    <Badge variant="outline" className="bg-info/10 text-info border-info/30 gap-1">
-      <UserCheck className="h-3 w-3" /> Requested by {u.name}
-    </Badge>
   );
 }

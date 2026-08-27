@@ -350,7 +350,7 @@ You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#in
 ```sh
 git clone <this-repository-url>
 cd <repository-name>
-cp .env.example .env   # fill VITE_SUPABASE_* from Supabase dashboard
+cp .env.example .env   # add anon/publishable key from Supabase dashboard (project naazebxkoyuxbcmcwytc)
 npm i
 npm run dev
 ```
@@ -362,7 +362,10 @@ Site: https://prioritize.hireclix.com (Netlify team: `dheselton`, also `hc-prior
 ```sh
 npm run build
 # Netlify uses netlify.toml (publish=dist, SPA fallback to index.html)
-# Set site env vars: VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_PROJECT_ID
+# Set site env vars (project naazebxkoyuxbcmcwytc):
+#   VITE_SUPABASE_PROJECT_ID=naazebxkoyuxbcmcwytc
+#   VITE_SUPABASE_URL=https://naazebxkoyuxbcmcwytc.supabase.co
+#   VITE_SUPABASE_PUBLISHABLE_KEY=<anon or publishable key from dashboard>
 ```
 
 ### Edge function secrets (Supabase)

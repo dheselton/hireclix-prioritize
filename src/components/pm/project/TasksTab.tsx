@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Plus, Trash2, FileText, ArrowUpDown, X } from "lucide-react";
+import { ChevronRight, Plus, Trash2, FileText, ArrowUpDown, X, Upload } from "lucide-react";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
@@ -110,9 +110,10 @@ function isSupportTask(t: PmTask): boolean {
   return !!(cf && cf.is_support);
 }
 
-export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask, onAddRaid, supportMode }: {
+export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddTask, onImportCsv, onAddRaid, supportMode }: {
   tasks: PmTask[]; deps?: PmDependency[]; projectId: string; meId: string | null; templateId?: string | null;
   onAddTask?: () => void;
+  onImportCsv?: () => void;
   onAddRaid?: (kind: Extract<TaskKind, "decision" | "issue">) => void;
   supportMode?: boolean;
 }) {
@@ -564,6 +565,11 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
         {onAddTask && (
           <Button size="sm" onClick={onAddTask} className="h-7">
             <Plus className="h-3 w-3 mr-1" /> New task
+          </Button>
+        )}
+        {onImportCsv && (
+          <Button size="sm" variant="outline" onClick={onImportCsv} className="h-7">
+            <Upload className="h-3 w-3 mr-1" /> Import CSV
           </Button>
         )}
         {templateId && (

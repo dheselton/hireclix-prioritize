@@ -14,6 +14,7 @@ import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { ClientContext } from "@/components/pm/ClientContext";
 import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 
 interface Props {
   tasks: PmTask[];
@@ -96,6 +97,13 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                     ? <ClaimButton task={t} onChanged={onChanged} />
                     : <DueBadge dueDate={t.due_date} />}
                 </div>
+                <AttributionChip
+                  created_by={t.created_by}
+                  creation_source={t.creation_source}
+                  creation_context={t.creation_context}
+                  requested_by={proj?.requested_by}
+                  className="max-w-full"
+                />
               </CardContent>
             </Card>
           );

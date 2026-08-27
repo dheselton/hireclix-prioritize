@@ -160,6 +160,8 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         created_by: user?.id ?? null,
         requested_by: reqRequestedBy ?? user?.id ?? null,
         custom_fields: { request_type: requestType, ...requestCustomFields },
+        creation_source: "intake",
+        creation_context: { request_type: requestType },
       } as any);
       let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
       if (!titles.length) titles = [reqForm.title.trim()];
@@ -178,6 +180,8 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         created_by: user?.id ?? null,
         assignee_id: null,
         description: taskDescription,
+        creation_source: "intake",
+        creation_context: { request_type: requestType },
       })) as any);
 
       // Always attach staged files/links at the PROJECT level so every task in the
@@ -263,6 +267,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         go_live_date: projForm.go_live_date || null,
         created_by: user?.id ?? null,
         requested_by: projRequestedBy ?? user?.id ?? null,
+        creation_source: "manual",
       } as any);
       if (projFiles.length || projLinks.length) {
         await persistIntakeAttachments({

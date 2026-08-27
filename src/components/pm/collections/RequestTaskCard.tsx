@@ -16,6 +16,7 @@ import { teamBarBackground } from "@/lib/pm/taskVisualState";
 import type { PmTask } from "@/types/pm";
 import { TagPillList } from "@/components/pm/tags/TagPill";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 
 
 interface Props {
@@ -85,6 +86,12 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
           )}
           <TimeTotalBadge taskId={task.id} size="sm" />
           <TagPillList tags={task.tags ?? []} max={2} />
+          <AttributionChip
+            created_by={task.created_by}
+            creation_source={task.creation_source}
+            creation_context={task.creation_context}
+            className="ml-auto shrink-0 max-w-[140px]"
+          />
         </div>
       </div>
       <StatusPill status={task.status} />

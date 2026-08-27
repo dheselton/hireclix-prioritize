@@ -1,5 +1,4 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { NewClientPopover } from "./NewClientPopover";
 import { useInternalClientIds } from "@/lib/pm/clients";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +25,7 @@ export function ClientSelect({ value, onChange, clients, onClientsChanged, place
           </SelectTrigger>
           <SelectContent className="z-50 bg-popover">
             {clients.length === 0 && (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground italic">No clients yet — create one →</div>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground italic">No clients available</div>
             )}
             {clients.map(c => (
               <SelectItem key={c.id} value={c.id}>
@@ -39,13 +38,6 @@ export function ClientSelect({ value, onChange, clients, onClientsChanged, place
           </SelectContent>
         </Select>
       </div>
-      <NewClientPopover
-        onCreated={(c) => {
-          const next = [...clients, c].sort((a, b) => a.name.localeCompare(b.name));
-          onClientsChanged(next, c);
-          onChange(c.id);
-        }}
-      />
     </div>
   );
 }

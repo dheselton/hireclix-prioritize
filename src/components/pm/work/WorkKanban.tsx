@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClientContext } from "@/components/pm/ClientContext";
 import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -190,6 +191,13 @@ function KCard({ task, project, onOpen, overlay }: {
             projectTitle={project?.title}
             taskTitle={task.title}
           />
+          <AttributionChip
+            created_by={task.created_by}
+            creation_source={task.creation_source}
+            creation_context={task.creation_context}
+            requested_by={project?.requested_by}
+            className="max-w-full"
+          />
           <div className="flex items-center gap-1.5 flex-wrap">
             <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
             <Badge variant="outline" className="text-[10px]">{task.type}</Badge>
@@ -230,6 +238,13 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
           clientId={project?.client_id}
           projectTitle={project?.title}
           taskTitle={task.title}
+        />
+        <AttributionChip
+          created_by={task.created_by}
+          creation_source={task.creation_source}
+          creation_context={task.creation_context}
+          requested_by={project?.requested_by}
+          className="max-w-full"
         />
         {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
         <div className="flex items-center gap-2">

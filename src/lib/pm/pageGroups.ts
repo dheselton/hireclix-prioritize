@@ -279,6 +279,9 @@ export const addPageToProject = async (params: {
       page_label: pageLabel,
       page_group_key: pageKey,
       teams: Array.isArray(s.teams) && s.teams.length ? s.teams : undefined,
+      creation_source: 'page_generator',
+      creation_context: { page_label: pageLabel, page_group_key: pageKey, page_group_id: pageGroupId },
+      created_by: null,
     } as any).select().single();
     if (inserted) tempToReal.set(s.temp_id, (inserted as any).id);
   }

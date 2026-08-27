@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { NewClientPopover } from "@/components/pm/NewClientPopover";
 import { useInternalClientIds } from "@/lib/pm/clients";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -16,12 +15,12 @@ interface Props {
   onClientsChanged: (next: ClientOption[], created?: ClientOption) => void;
   placeholder?: string;
   disabled?: boolean;
-  /** When false, hide inline client creation (public forms). */
+  /** When false, hide inline client creation (public forms). Default false — client creation is disabled. */
   allowCreate?: boolean;
 }
 
-/** Searchable client picker with inline "New client" affordance. */
-export function ClientSearchCombobox({ value, onChange, clients, onClientsChanged, placeholder = "Search clients…", disabled, allowCreate = true }: Props) {
+/** Searchable client picker. Client creation is disabled app-wide; use allowCreate only for legacy callers. */
+export function ClientSearchCombobox({ value, onChange, clients, onClientsChanged, placeholder = "Search clients…", disabled, allowCreate = false }: Props) {
   const [open, setOpen] = useState(false);
   const internalIds = useInternalClientIds();
   const isInternal = (id: string) => internalIds.has(id) || !!clients.find(c => c.id === id)?.is_internal;
@@ -77,15 +76,6 @@ export function ClientSearchCombobox({ value, onChange, clients, onClientsChange
           </PopoverContent>
         </Popover>
       </div>
-      {allowCreate && (
-        <NewClientPopover
-          onCreated={(c) => {
-            const next = [...clients, c].sort((a, b) => a.name.localeCompare(b.name));
-            onClientsChanged(next, c);
-            onChange(c.id);
-          }}
-        />
-      )}
     </div>
   );
 }

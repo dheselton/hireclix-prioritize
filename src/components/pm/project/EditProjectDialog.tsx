@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClientSelect } from "@/components/pm/ClientSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { supabase } from "@/integrations/supabase/client";
-import { updateProject } from "@/lib/pm/api";
+import { updateProject, setProjectRequester } from "@/lib/pm/api";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { TagPicker } from "@/components/pm/tags/TagPicker";
 import { clientTag } from "@/lib/pm/tags";
@@ -89,13 +89,15 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
         status,
         work_type: workType,
         client_id: nextClient,
-        requested_by: requestedBy,
         go_live_date: goLive || null,
         kickoff_date: kickoff || null,
         start_date: startDate || null,
         description: description.trim() || null,
         tags: nextTags,
       } as any);
+      if ((project as any).requested_by !== requestedBy) {
+        await setProjectRequester(project.id, requestedBy);
+      }
       if (clientChanged && nextClient) {
         await applyClientWatchers(project.id, nextClient, null);
       }
@@ -158,7 +160,11 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
             />
           </div>
 
-          <RequesterPicker value={requestedBy} onChange={setRequestedBy} />
+          <RequesterPicker
+            value={requestedBy}
+            onChange={setRequestedBy}
+            label={workType === "request" ? "Submitter" : "Requested by"}
+          />
 
           <div className="grid grid-cols-3 gap-3">
             <div>

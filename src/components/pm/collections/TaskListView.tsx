@@ -19,8 +19,9 @@ import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 import { ClientContext } from "@/components/pm/ClientContext";
 import { DueBadge } from "@/components/pm/DueBadge";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 
-type SortKey = "title" | "client" | "type" | "status" | "assignee" | "due_date" | "priority";
+type SortKey = "title" | "client" | "type" | "status" | "assignee" | "creator" | "due_date" | "priority";
 
 const PRIORITY_RANK: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
 
@@ -56,6 +57,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
         case "type": av = a.type; bv = b.type; break;
         case "status": av = a.status; bv = b.status; break;
         case "assignee": av = users.find(u => u.id === a.assignee_id)?.name ?? ""; bv = users.find(u => u.id === b.assignee_id)?.name ?? ""; break;
+        case "creator": av = users.find(u => u.id === a.created_by)?.name ?? a.creation_source ?? ""; bv = users.find(u => u.id === b.created_by)?.name ?? b.creation_source ?? ""; break;
         case "due_date": av = a.due_date ?? "9999"; bv = b.due_date ?? "9999"; break;
         case "priority": av = PRIORITY_RANK[a.priority] ?? 0; bv = PRIORITY_RANK[b.priority] ?? 0; break;
       }
@@ -117,6 +119,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
               <SortHead k="type" className="hidden sm:table-cell">Type</SortHead>
               <SortHead k="status">Status</SortHead>
               <SortHead k="assignee" className="hidden md:table-cell">Assignee</SortHead>
+              <SortHead k="creator" className="hidden lg:table-cell">Created by</SortHead>
               <SortHead k="due_date">Due</SortHead>
               <SortHead k="priority" className="w-10 text-center">!</SortHead>
             </tr>
@@ -175,6 +178,15 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                   <td className="p-2 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                     <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={onChanged} />
                   </td>
+                  <td className="p-2 hidden lg:table-cell">
+                    <AttributionChip
+                      created_by={t.created_by}
+                      creation_source={t.creation_source}
+                      creation_context={t.creation_context}
+                      requested_by={proj?.requested_by}
+                      className="max-w-[160px]"
+                    />
+                  </td>
                   <td className="p-2 whitespace-nowrap"><DueBadge dueDate={t.due_date} /></td>
                   <td className="p-2 text-center">
                     <div className="flex items-center justify-end gap-1">
@@ -188,7 +200,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
               );
             })}
             {!sorted.length && (
-              <tr><td colSpan={enableBulk ? 8 : 7} className="p-6 text-center text-muted-foreground italic">No work here yet.</td></tr>
+              <tr><td colSpan={enableBulk ? 9 : 8} className="p-6 text-center text-muted-foreground italic">No work here yet.</td></tr>
             )}
           </tbody>
         </table>

@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { SidebarWorkSkeleton } from "@/components/pm/WorkLoadingState";
+import { UserAvatar } from "@/components/pm/UserAvatar";
+import { CreationSourcePill } from "@/components/pm/AttributionChip";
 
 type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
 
@@ -268,6 +270,8 @@ export function AppSidebar() {
                               isCareerSite={careerSiteIds.has(t.project_id)}
                             />
                             <span className="truncate flex-1">{t.title}</span>
+                            <UserAvatar userId={t.created_by} size="xs" className="opacity-80 shrink-0" />
+                            <CreationSourcePill source={t.creation_source} />
                           </NavLink>
                         ))}
                         {myQuickTasks.length > QUICK_LIMIT && (
@@ -318,6 +322,8 @@ export function AppSidebar() {
                                 aria-hidden
                               />
                               <span className="truncate flex-1">{project.title}</span>
+                              <UserAvatar userId={project.created_by} size="xs" className="opacity-80 shrink-0" />
+                              <CreationSourcePill source={project.creation_source} />
                               <CountBadge count={openCount} active={isActive} />
                             </NavLink>
                           );

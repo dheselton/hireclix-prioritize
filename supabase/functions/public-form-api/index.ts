@@ -258,6 +258,12 @@ serve(async (req: Request): Promise<Response> => {
       requested_by: requestedBy,
       custom_fields: input.customFields ?? {},
       tags,
+      creation_source: "public_form",
+      creation_context: {
+        form_id: form.id,
+        submitter_name: input.submitterName ?? null,
+        submitter_email: input.submitterEmail ?? null,
+      },
     }).select("id").single();
     if (pe || !proj) return json({ error: pe?.message || "project_insert_failed" }, 400);
 
@@ -277,6 +283,13 @@ serve(async (req: Request): Promise<Response> => {
       due_date: shipBy,
       assignee_id: null,
       description,
+      created_by: requestedBy,
+      creation_source: "public_form",
+      creation_context: {
+        form_id: form.id,
+        submitter_name: input.submitterName ?? null,
+        submitter_email: input.submitterEmail ?? null,
+      },
     }).select("id").single();
     if (te) return json({ error: te.message || "task_insert_failed" }, 400);
 

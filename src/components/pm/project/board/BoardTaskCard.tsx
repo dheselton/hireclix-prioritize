@@ -25,6 +25,7 @@ import { TagPillList } from "@/components/pm/tags/TagPill";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 import { getTaskKind, getKindGroupLabel } from "@/lib/pm/taskKind";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 
 
 function stripHtml(html?: string | null): string {
@@ -169,6 +170,12 @@ function BoardTaskCardInner({
                   <TimeTotalBadge taskId={task.id} />
                 </div>
                 <TagPillList tags={task.tags ?? []} max={3} />
+                <AttributionChip
+                  created_by={task.created_by}
+                  creation_source={task.creation_source}
+                  creation_context={task.creation_context}
+                  className="max-w-full"
+                />
                 <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
                   <StatusPickerPopover
                     currentGroup={group.id}

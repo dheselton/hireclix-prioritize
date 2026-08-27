@@ -6,6 +6,7 @@ import { isDone } from '@/types/pm';
 import { localDateISO } from '@/lib/pm/format';
 import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
 import { RESERVED_PREFIX, definedPageCount } from '@/lib/pm/pageGroups';
+import { attributionPayload, type CreationSource } from '@/lib/pm/attribution';
 
 
 export const fetchProjects = async () => {
@@ -114,7 +115,7 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
   return data as unknown as PmTask;
 };
 
-export const createTask = async (task: Partial<PmTask>) => {
+export const createTask = async (task: Partial<PmTask> & { creation_source?: CreationSource }) => {
   const uid = getCurrentUserId();
   const payload: any = { ...task };
   if (uid) {
@@ -124,6 +125,11 @@ export const createTask = async (task: Partial<PmTask>) => {
       payload.assignee_id = uid;
       if (!payload.status || payload.status === 'unclaimed') payload.status = 'claimed';
     }
+  }
+  if (payload.creation_source === undefined) {
+    Object.assign(payload, attributionPayload('manual'));
+  } else if (payload.creation_context === undefined) {
+    payload.creation_context = {};
   }
   // Inherit client:/type: tags from the parent project so tasks are searchable by
   // client and project shape without manual entry.
@@ -236,10 +242,15 @@ export const deleteProject = async (id: string) => {
   emitTasksChanged();
 };
 
-export const createProject = async (p: Partial<PmProject> & { requested_by?: string | null }) => {
+export const createProject = async (p: Partial<PmProject> & { requested_by?: string | null; creation_source?: CreationSource }) => {
   const uid = getCurrentUserId();
   const payload: any = { ...p };
   if (uid && payload.created_by === undefined) payload.created_by = uid;
+  if (payload.creation_source === undefined) {
+    Object.assign(payload, attributionPayload('manual'));
+  } else if (payload.creation_context === undefined) {
+    payload.creation_context = {};
+  }
   // Auto-apply client:<slug> tag from the linked client so filtering by client works everywhere.
   if (payload.client_id) {
     try {
@@ -428,6 +439,10 @@ const instantiateTemplateIntoProject = async (params: {
       page_label: pt.page_label ?? null,
       page_group_key: pt.page_group_key ?? null,
       teams: Array.isArray(pt.teams) && pt.teams.length ? pt.teams : undefined,
+      ...attributionPayload('template', {
+        created_by: null,
+        context: { template_task_temp_id: pt.temp_id },
+      }),
     };
   });
   const { data: insertedTasks, error: te } = await supabase.from('pm_tasks').insert(taskRows as any).select();
@@ -509,6 +524,9 @@ export const createProjectFromTemplate = async (params: {
     start_date: kickoff,
     go_live_date: goLive,
     created_by: uid ?? null,
+    ...attributionPayload('template', {
+      context: { template_id: template.id },
+    }),
   } as any).select().single();
   if (pe || !proj) throw pe;
 
@@ -662,6 +680,10 @@ export async function createDefinePagesTask(params: {
     sort_order: (maxSort?.[0]?.sort_order ?? 0) + 5,
     teams: ['pm'],
     custom_fields: { define_pages: true, page_group_ids: groupIds },
+    ...attributionPayload('template', {
+      created_by: null,
+      context: { define_pages: true, template_id: templateId },
+    }),
   } as any).select().single();
   if (error || !inserted) return null;
   const defineId = (inserted as any).id as string;

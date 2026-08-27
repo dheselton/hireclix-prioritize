@@ -21,6 +21,7 @@ import { syncTypeTags, typesFromTask } from "@/lib/pm/taskTypes";
 import { getKindStatusLabel, getTaskKind } from "@/lib/pm/taskKind";
 import type { TaskType } from "@/types/pm";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 import { toast } from "sonner";
 
 function statusClass(s: TaskStatus) {
@@ -118,6 +119,20 @@ export function ControlPanel({
       {/* Assignees */}
       <Row label="Assignees">
         <AssigneeChips taskId={task.id} primaryId={task.assignee_id} onChanged={refetchAssignee} />
+      </Row>
+
+      {/* Created by */}
+      <Row label="Created by">
+        <div className="flex justify-end max-w-[220px]">
+          <AttributionChip
+            created_by={task.created_by}
+            creation_source={task.creation_source}
+            creation_context={task.creation_context}
+            variant="detail"
+            hideManualSource={false}
+            className="items-end text-right"
+          />
+        </div>
       </Row>
 
       {/* Teams */}

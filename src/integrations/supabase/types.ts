@@ -1522,6 +1522,8 @@ export type Database = {
           client_id: string | null
           created_at: string
           created_by: string | null
+          creation_context: Json
+          creation_source: Database["public"]["Enums"]["pm_creation_source"]
           custom_fields: Json | null
           description: string | null
           go_live_date: string | null
@@ -1545,6 +1547,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          creation_context?: Json
+          creation_source?: Database["public"]["Enums"]["pm_creation_source"]
           custom_fields?: Json | null
           description?: string | null
           go_live_date?: string | null
@@ -1568,6 +1572,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          creation_context?: Json
+          creation_source?: Database["public"]["Enums"]["pm_creation_source"]
           custom_fields?: Json | null
           description?: string | null
           go_live_date?: string | null
@@ -2020,6 +2026,8 @@ export type Database = {
           assignee_id: string | null
           created_at: string
           created_by: string | null
+          creation_context: Json
+          creation_source: Database["public"]["Enums"]["pm_creation_source"]
           custom_fields: Json | null
           description: string | null
           design_approval: string | null
@@ -2056,6 +2064,8 @@ export type Database = {
           assignee_id?: string | null
           created_at?: string
           created_by?: string | null
+          creation_context?: Json
+          creation_source?: Database["public"]["Enums"]["pm_creation_source"]
           custom_fields?: Json | null
           description?: string | null
           design_approval?: string | null
@@ -2092,6 +2102,8 @@ export type Database = {
           assignee_id?: string | null
           created_at?: string
           created_by?: string | null
+          creation_context?: Json
+          creation_source?: Database["public"]["Enums"]["pm_creation_source"]
           custom_fields?: Json | null
           description?: string | null
           design_approval?: string | null
@@ -2730,6 +2742,16 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      pm_creation_source:
+        | "manual"
+        | "intake"
+        | "public_form"
+        | "csv_import"
+        | "qa_batch"
+        | "template"
+        | "page_generator"
+        | "automation"
+        | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2858,6 +2880,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      pm_creation_source: [
+        "manual",
+        "intake",
+        "public_form",
+        "csv_import",
+        "qa_batch",
+        "template",
+        "page_generator",
+        "automation",
+        "unknown",
+      ],
     },
   },
 } as const

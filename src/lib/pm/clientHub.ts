@@ -298,28 +298,12 @@ export async function deleteClientAsset(asset: ClientAsset) {
 
 // ---------- Client mutations ----------
 
-export async function createClient(input: {
+export async function createClient(_input: {
   name: string;
   notes?: string | null;
   is_internal?: boolean;
 }): Promise<{ id: string; name: string }> {
-  const name = normalizeClientName(input.name);
-  if (!name) throw new Error("Client name is required");
-
-  const { data, error } = await supabase
-    .from("clients")
-    .insert({
-      name,
-      notes: input.notes?.trim() || null,
-      is_internal: input.is_internal ?? false,
-    })
-    .select("id,name")
-    .single();
-
-  if (error) {
-    throw new Error(uniqueViolationMessage(error, "Failed to create client"));
-  }
-  return data as { id: string; name: string };
+  throw new Error("Creating new clients is disabled. Choose an existing client or ask a PM to add one.");
 }
 
 export async function updateClient(

@@ -31,6 +31,8 @@ export type Track = 'pm' | 'production' | 'strategy' | 'analytics';
 export type WorkType = 'request' | 'project';
 export const WORK_TYPES: WorkType[] = ['request', 'project'];
 
+export type { CreationSource, CreationContext } from '@/lib/pm/attribution';
+
 export interface PmProject {
   id: string;
   title: string;
@@ -45,6 +47,9 @@ export interface PmProject {
   tags: string[];
   template_id: string | null;
   created_by: string | null;
+  requested_by?: string | null;
+  creation_source?: import('@/lib/pm/attribution').CreationSource | null;
+  creation_context?: import('@/lib/pm/attribution').CreationContext | null;
   custom_fields: Record<string, any>;
   created_at: string;
   updated_at: string;
@@ -67,6 +72,8 @@ export interface PmTask {
   status: TaskStatus;
   assignee_id: string | null;
   created_by: string | null;
+  creation_source?: import('@/lib/pm/attribution').CreationSource | null;
+  creation_context?: import('@/lib/pm/attribution').CreationContext | null;
   start_date: string | null;
   due_date: string | null;
   duration_days: number;

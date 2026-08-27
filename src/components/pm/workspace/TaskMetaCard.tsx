@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, FolderKanban, Tag, Layers, UserCheck } from "lucide-react";
+import { Building2, FolderKanban, Tag, Layers, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
-import { UserAvatar } from "@/components/pm/UserAvatar";
-import { useMockUsers } from "@/lib/pm/mockUser";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 import { useInternalClientIds, isCareerSiteRequest } from "@/lib/pm/clients";
 import { clientTag } from "@/lib/pm/tags";
 
@@ -19,6 +18,9 @@ interface Meta {
   custom_fields: any;
   client_id: string | null;
   requested_by: string | null;
+  created_by: string | null;
+  creation_source: string | null;
+  creation_context: Record<string, unknown> | null;
   client_name: string | null;
 }
 
@@ -45,7 +47,6 @@ function Row({
 
 export function TaskMetaCard({ projectId, phaseName }: Props) {
   const [meta, setMeta] = useState<Meta | null>(null);
-  const users = useMockUsers();
   const internalClients = useInternalClientIds();
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
     (async () => {
       const { data } = await supabase
         .from("pm_projects")
-        .select("title, work_type, custom_fields, client_id, requested_by, clients(name)")
+        .select("title, work_type, custom_fields, client_id, requested_by, created_by, creation_source, creation_context, clients(name)")
         .eq("id", projectId)
         .maybeSingle();
       if (cancelled || !data) return;
@@ -64,6 +65,9 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
         custom_fields: d.custom_fields ?? {},
         client_id: d.client_id ?? null,
         requested_by: d.requested_by ?? null,
+        created_by: d.created_by ?? null,
+        creation_source: d.creation_source ?? null,
+        creation_context: d.creation_context ?? null,
         client_name: d.clients?.name ?? null,
       });
     })();
@@ -76,7 +80,6 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
     ? prettyType(meta.custom_fields?.request_type)
     : null;
   const isInternal = !!meta.client_id && internalClients.has(meta.client_id);
-  const requester = users.find((u) => u.id === meta.requested_by);
 
   return (
     <div className="rounded-lg border border-border bg-card p-3">
@@ -127,14 +130,16 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
             <span>{phaseName}</span>
           </Row>
         )}
-        {requester && (
-          <Row icon={UserCheck} label="Requested by">
-            <div className="flex items-center gap-2">
-              <UserAvatar userId={requester.id} size="xs" />
-              <span className="truncate">{requester.name}</span>
-            </div>
-          </Row>
-        )}
+        <Row icon={UserPlus} label="Created by">
+          <AttributionChip
+            created_by={meta.created_by}
+            creation_source={meta.creation_source}
+            creation_context={meta.creation_context}
+            requested_by={meta.requested_by}
+            variant="detail"
+            hideManualSource={false}
+          />
+        </Row>
       </div>
     </div>
   );

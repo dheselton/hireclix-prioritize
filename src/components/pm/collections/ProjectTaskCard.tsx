@@ -21,6 +21,7 @@ import { TagPillList } from "@/components/pm/tags/TagPill";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
 import { getTaskKind } from "@/lib/pm/taskKind";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 
 interface Props {
   task: PmTask;
@@ -114,6 +115,13 @@ export function ProjectTaskCard({
               </span>
             )}
             <TimeTotalBadge taskId={task.id} size="sm" />
+            <AttributionChip
+              created_by={task.created_by}
+              creation_source={task.creation_source}
+              creation_context={task.creation_context}
+              requested_by={project?.requested_by}
+              className="max-w-[160px]"
+            />
           </div>
           <div className="flex items-center gap-2">
             {unclaimed ? (

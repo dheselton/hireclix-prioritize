@@ -8,16 +8,23 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink, Search, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
+import { Inbox as InboxIcon, Rocket, Ban, RotateCcw, ExternalLink, Search, CheckCircle2, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateTask } from "@/lib/pm/api";
+import { updateTask, deleteProject, setProjectRequester } from "@/lib/pm/api";
+import { requestProjectsFromInboxRows } from "@/lib/pm/requestAdmin";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { AssigneePopover } from "@/components/pm/AssigneePopover";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
+import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 import { fmtDate } from "@/lib/pm/format";
 import { declineTask, restoreTask, isDeclined, declineInfo, snippet } from "@/lib/pm/inbox";
 import { TYPE_LABEL } from "@/hooks/useTypeFilter";
@@ -80,6 +87,8 @@ export default function Inbox() {
   const [declineTarget, setDeclineTarget] = useState<PmTask[] | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [convertProjectId, setConvertProjectId] = useState<string | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<{ projectId: string; title?: string | null }[] | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<Set<TaskType>>(new Set());
 
@@ -223,7 +232,12 @@ export default function Inbox() {
   useEffect(() => { setSelected(new Set()); }, [tab]);
   const visibleIds = filtered.map(r => r.task.id);
   const allSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
-  const selectedTasks = filtered.filter(r => selected.has(r.task.id)).map(r => r.task);
+  const selectedRows = filtered.filter(r => selected.has(r.task.id));
+  const selectedTasks = selectedRows.map(r => r.task);
+  const selectedRequestProjects = useMemo(
+    () => requestProjectsFromInboxRows(selectedRows),
+    [selectedRows],
+  );
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -261,6 +275,37 @@ export default function Inbox() {
     else toast.success(`${n} task${n === 1 ? "" : "s"} moved to ${status.replace(/_/g, " ")}`);
     setSelected(new Set());
     reload();
+  }
+
+  async function confirmBulkDelete() {
+    if (!deleteTargets?.length) return;
+    setDeleting(true);
+    let failed = 0;
+    for (const target of deleteTargets) {
+      try {
+        await deleteProject(target.projectId);
+      } catch {
+        failed++;
+      }
+    }
+    const n = deleteTargets.length;
+    if (failed === n) toast.error("Couldn't delete requests");
+    else if (failed) toast.warning(`${n - failed} deleted, ${failed} failed`);
+    else toast.success(`${n} request${n === 1 ? "" : "s"} deleted`);
+    setDeleteTargets(null);
+    setSelected(new Set());
+    setDeleting(false);
+    reload();
+  }
+
+  async function setRequester(projectId: string, userId: string | null) {
+    try {
+      await setProjectRequester(projectId, userId);
+      toast.success("Submitter updated");
+      reload();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not update submitter");
+    }
   }
 
 
@@ -407,6 +452,20 @@ export default function Inbox() {
           >
             <Ban className="h-3.5 w-3.5 mr-1" /> Decline
           </Button>
+          {selectedRequestProjects.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-destructive"
+              onClick={() => setDeleteTargets(selectedRequestProjects.map(p => ({
+                projectId: p.projectId,
+                title: p.title,
+              })))}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Delete {selectedRequestProjects.length} request{selectedRequestProjects.length === 1 ? "" : "s"}
+            </Button>
+          )}
           <Button size="sm" variant="ghost" className="h-8" onClick={() => setSelected(new Set())}>Clear</Button>
         </div>
       )}
@@ -513,6 +572,15 @@ export default function Inbox() {
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted uppercase">
                             {(reqType || wt).replace(/_/g, " ")}
                           </span>
+                          {wt === "request" && projectGroup.project && (
+                            <div className="w-full sm:w-auto sm:min-w-[220px]" onClick={(e) => e.stopPropagation()}>
+                              <RequesterPicker
+                                value={(projectGroup.project as any).requested_by ?? null}
+                                onChange={(id) => setRequester(projectGroup.project!.id, id)}
+                                label="Submitter"
+                              />
+                            </div>
+                          )}
                           <span className="text-xs text-muted-foreground ml-auto">
                             {projectGroup.tasks.length} task{projectGroup.tasks.length === 1 ? "" : "s"}
                           </span>
@@ -555,9 +623,15 @@ export default function Inbox() {
                                         )}
                                       </div>
 
-                                      <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                                      <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 items-center">
                                         {clientName && <span>{clientName}</span>}
-                                        {requesterName && <span>Requested by {requesterName}</span>}
+                                        <AttributionChip
+                                          created_by={task.created_by}
+                                          creation_source={task.creation_source}
+                                          creation_context={task.creation_context}
+                                          requested_by={project?.requested_by}
+                                          className="max-w-[220px]"
+                                        />
                                         <span>Submitted {fmtDate(task.created_at)}</span>
                                         {project && (
                                           <Link to={`/pm/projects/${project.id}`} className="hover:underline inline-flex items-center gap-1">
@@ -669,6 +743,37 @@ export default function Inbox() {
           onConverted={() => { setConvertProjectId(null); reload(); }}
         />
       )}
+
+      <AlertDialog open={!!deleteTargets?.length} onOpenChange={(o) => { if (!o && !deleting) setDeleteTargets(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleteTargets?.length ?? 0} request{(deleteTargets?.length ?? 0) === 1 ? "" : "s"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Each selected request and all of its tasks, intake records, attachments, and activity will be permanently removed. This cannot be undone.
+              {deleteTargets && deleteTargets.length <= 5 && (
+                <span className="block mt-2 text-foreground/90">
+                  {deleteTargets.map(t => t.title || "Untitled request").join(" · ")}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmBulkDelete();
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete requests"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
