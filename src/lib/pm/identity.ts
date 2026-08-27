@@ -8,6 +8,17 @@ export function normalizeClientName(name: string): string {
   return name.trim().replace(/\s+/g, " ");
 }
 
+/** Match key used by clients_name_normalized_unique (case-insensitive). */
+export function clientNameKey(name: string): string {
+  return normalizeClientName(name).toLowerCase();
+}
+
+export function namesMatchClient(a: string, b: string): boolean {
+  const ka = clientNameKey(a);
+  const kb = clientNameKey(b);
+  return !!ka && !!kb && ka === kb;
+}
+
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }

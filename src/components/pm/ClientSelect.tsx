@@ -1,8 +1,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NewClientPopover } from "./NewClientPopover";
 import { useInternalClientIds } from "@/lib/pm/clients";
 import { cn } from "@/lib/utils";
 
-interface Client { id: string; name: string; is_internal?: boolean }
+interface Client { id: string; name: string; is_internal?: boolean; archived_at?: string | null }
 
 interface Props {
   value: string;
@@ -11,9 +12,18 @@ interface Props {
   onClientsChanged: (next: Client[], created?: Client) => void;
   placeholder?: string;
   required?: boolean;
+  /** Staff pickers default to allowing create; keep false on public surfaces. */
+  allowCreate?: boolean;
 }
 
-export function ClientSelect({ value, onChange, clients, onClientsChanged, placeholder = "Select client" }: Props) {
+export function ClientSelect({
+  value,
+  onChange,
+  clients,
+  onClientsChanged,
+  placeholder = "Select client",
+  allowCreate = true,
+}: Props) {
   const internalIds = useInternalClientIds();
   const isInternal = (id: string) => internalIds.has(id) || !!clients.find(c => c.id === id)?.is_internal;
   return (
@@ -25,7 +35,9 @@ export function ClientSelect({ value, onChange, clients, onClientsChanged, place
           </SelectTrigger>
           <SelectContent className="z-50 bg-popover">
             {clients.length === 0 && (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground italic">No clients available</div>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                {allowCreate ? "No clients yet — create one →" : "No clients available"}
+              </div>
             )}
             {clients.map(c => (
               <SelectItem key={c.id} value={c.id}>
@@ -38,6 +50,18 @@ export function ClientSelect({ value, onChange, clients, onClientsChanged, place
           </SelectContent>
         </Select>
       </div>
+      {allowCreate && (
+        <NewClientPopover
+          existingClients={clients}
+          onCreated={(c) => {
+            const next = clients.some((x) => x.id === c.id)
+              ? clients
+              : [...clients, c].sort((a, b) => a.name.localeCompare(b.name));
+            onClientsChanged(next, c);
+            onChange(c.id);
+          }}
+        />
+      )}
     </div>
   );
 }

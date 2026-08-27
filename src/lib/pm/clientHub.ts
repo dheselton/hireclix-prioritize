@@ -10,8 +10,11 @@ import { isDone, type PmTask, type TaskStatus } from "@/types/pm";
 import { todayISO } from "@/lib/pm/format";
 import {
   normalizeClientName,
+  clientNameKey,
+  isUniqueViolation,
   uniqueViolationMessage,
 } from "@/lib/pm/identity";
+import { refreshClientNames, refreshInternalClients } from "@/lib/pm/clients";
 
 export interface ClientRecord {
   id: string;
@@ -298,12 +301,94 @@ export async function deleteClientAsset(asset: ClientAsset) {
 
 // ---------- Client mutations ----------
 
-export async function createClient(_input: {
+export type CreatedClient = {
+  id: string;
+  name: string;
+  /** True when an existing row was reused instead of inserting a duplicate. */
+  existed: boolean;
+  /** True when an archived client was restored as part of reuse. */
+  restored: boolean;
+};
+
+/** Find a client by the same normalized key as the DB unique index. */
+export async function findClientByNormalizedName(
+  name: string,
+): Promise<{ id: string; name: string; archived_at: string | null } | null> {
+  const key = clientNameKey(name);
+  if (!key) return null;
+
+  // Client roster is small; load names and match the unique-index key exactly
+  // (trim + collapse whitespace + case-insensitive).
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id,name,archived_at");
+  if (error) throw error;
+
+  const hit = ((data ?? []) as { id: string; name: string; archived_at: string | null }[])
+    .find((c) => clientNameKey(c.name) === key);
+  return hit ?? null;
+}
+
+/**
+ * Create a client, or return the existing one when the normalized name already exists.
+ * Race-safe: unique index is the source of truth; on conflict we re-fetch.
+ * Archived matches are restored so the client is usable again.
+ */
+export async function createClient(input: {
   name: string;
   notes?: string | null;
   is_internal?: boolean;
-}): Promise<{ id: string; name: string }> {
-  throw new Error("Creating new clients is disabled. Choose an existing client or ask a PM to add one.");
+}): Promise<CreatedClient> {
+  const name = normalizeClientName(input.name);
+  if (!name) throw new Error("Client name is required");
+
+  const existing = await findClientByNormalizedName(name);
+  if (existing) {
+    let restored = false;
+    if (existing.archived_at) {
+      await archiveClient(existing.id, false);
+      restored = true;
+    }
+    refreshClientNames();
+    refreshInternalClients();
+    return { id: existing.id, name: existing.name, existed: true, restored };
+  }
+
+  const { data, error } = await supabase
+    .from("clients")
+    .insert({
+      name,
+      notes: input.notes?.trim() || null,
+      is_internal: input.is_internal ?? false,
+    })
+    .select("id,name")
+    .single();
+
+  if (error) {
+    if (isUniqueViolation(error)) {
+      const again = await findClientByNormalizedName(name);
+      if (again) {
+        let restored = false;
+        if (again.archived_at) {
+          await archiveClient(again.id, false);
+          restored = true;
+        }
+        refreshClientNames();
+        refreshInternalClients();
+        return { id: again.id, name: again.name, existed: true, restored };
+      }
+    }
+    throw new Error(uniqueViolationMessage(error, "Failed to create client"));
+  }
+
+  refreshClientNames();
+  refreshInternalClients();
+  return {
+    id: (data as { id: string; name: string }).id,
+    name: (data as { id: string; name: string }).name,
+    existed: false,
+    restored: false,
+  };
 }
 
 export async function updateClient(

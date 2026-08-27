@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, CalendarClock, Search, Users, Link2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, Search, Users, Link2, Plus } from "lucide-react";
 import { useClientsWithPortal } from "@/lib/pm/portalAccess";
 import { clientWorkLink } from "@/lib/pm/links";
 import { fmtDate, todayISO } from "@/lib/pm/format";
 import { isDone, type TaskStatus } from "@/types/pm";
+import { NewClientPopover } from "@/components/pm/NewClientPopover";
 
 interface ClientRow {
   id: string;
@@ -31,6 +32,7 @@ type ScopeId = "all" | "clients" | "internal" | "archived";
 const INACTIVE = new Set(["complete", "archived", "cancelled"]);
 
 export default function Clients() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,9 +41,10 @@ export default function Clients() {
   const [scope, setScope] = useState<ScopeId>("all");
   const withPortal = useClientsWithPortal();
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  function reloadClients() {
+    setLoading(true);
+    setError(null);
+    void (async () => {
       const today = todayISO();
       try {
         const [{ data: clients, error: cErr }, { data: projects, error: pErr }, { data: tasks, error: tErr }] = await Promise.all([
@@ -49,52 +52,54 @@ export default function Clients() {
           supabase.from("pm_projects").select("id,client_id,status,go_live_date"),
           supabase.from("pm_tasks").select("project_id,status,due_date").lt("due_date", today),
         ]);
-        if (cancelled) return;
         const firstErr = cErr || pErr || tErr;
         if (firstErr) throw firstErr;
 
-      const projs = (projects ?? []) as { id: string; client_id: string | null; status: string; go_live_date: string | null }[];
-      const clientOfProject = new Map(projs.map(p => [p.id, p.client_id]));
+        const projs = (projects ?? []) as { id: string; client_id: string | null; status: string; go_live_date: string | null }[];
+        const clientOfProject = new Map(projs.map(p => [p.id, p.client_id]));
 
-      const overdue = new Map<string, number>();
-      for (const t of ((tasks ?? []) as { project_id: string; status: string; due_date: string | null }[])) {
-        if (isDone(t.status as TaskStatus)) continue;
-        const cid = clientOfProject.get(t.project_id);
-        if (!cid) continue;
-        overdue.set(cid, (overdue.get(cid) ?? 0) + 1);
-      }
-
-      const counts = new Map<string, { total: number; active: number; nextGoLive: string | null }>();
-      for (const p of projs) {
-        if (!p.client_id) continue;
-        const c = counts.get(p.client_id) ?? { total: 0, active: 0, nextGoLive: null };
-        c.total += 1;
-        if (!INACTIVE.has(p.status)) {
-          c.active += 1;
-          if (p.go_live_date && p.go_live_date >= today && (!c.nextGoLive || p.go_live_date < c.nextGoLive)) {
-            c.nextGoLive = p.go_live_date;
-          }
+        const overdue = new Map<string, number>();
+        for (const t of ((tasks ?? []) as { project_id: string; status: string; due_date: string | null }[])) {
+          if (isDone(t.status as TaskStatus)) continue;
+          const cid = clientOfProject.get(t.project_id);
+          if (!cid) continue;
+          overdue.set(cid, (overdue.get(cid) ?? 0) + 1);
         }
-        counts.set(p.client_id, c);
-      }
 
-      setRows(((clients ?? []) as any[]).map(c => ({
-        id: c.id,
-        name: c.name,
-        is_internal: !!c.is_internal,
-        archived_at: c.archived_at ?? null,
-        projectCount: counts.get(c.id)?.total ?? 0,
-        activeCount: counts.get(c.id)?.active ?? 0,
-        overdueCount: overdue.get(c.id) ?? 0,
-        nextGoLive: counts.get(c.id)?.nextGoLive ?? null,
-      })));
+        const counts = new Map<string, { total: number; active: number; nextGoLive: string | null }>();
+        for (const p of projs) {
+          if (!p.client_id) continue;
+          const c = counts.get(p.client_id) ?? { total: 0, active: 0, nextGoLive: null };
+          c.total += 1;
+          if (!INACTIVE.has(p.status)) {
+            c.active += 1;
+            if (p.go_live_date && p.go_live_date >= today && (!c.nextGoLive || p.go_live_date < c.nextGoLive)) {
+              c.nextGoLive = p.go_live_date;
+            }
+          }
+          counts.set(p.client_id, c);
+        }
+
+        setRows(((clients ?? []) as any[]).map(c => ({
+          id: c.id,
+          name: c.name,
+          is_internal: !!c.is_internal,
+          archived_at: c.archived_at ?? null,
+          projectCount: counts.get(c.id)?.total ?? 0,
+          activeCount: counts.get(c.id)?.active ?? 0,
+          overdueCount: overdue.get(c.id) ?? 0,
+          nextGoLive: counts.get(c.id)?.nextGoLive ?? null,
+        })));
       } catch (e: any) {
-        if (!cancelled) setError(String(e?.message ?? e));
+        setError(String(e?.message ?? e));
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+  }
+
+  useEffect(() => {
+    reloadClients();
   }, []);
 
   const filtered = useMemo(() => {
@@ -114,11 +119,25 @@ export default function Clients() {
 
   return (
     <div className="page-shell space-y-4 max-w-5xl">
-      <header className="space-y-1">
-        <h1 className="text-[20px] font-medium leading-tight">Clients</h1>
-        <p className="text-sm text-muted-foreground">
-          Every client, their active work, and who has access to their portal.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1 min-w-0">
+          <h1 className="text-[20px] font-medium leading-tight">Clients</h1>
+          <p className="text-sm text-muted-foreground">
+            Every client, their active work, and who has access to their portal.
+          </p>
+        </div>
+        <NewClientPopover
+          existingClients={rows}
+          trigger={
+            <Button size="sm">
+              <Plus className="h-3.5 w-3.5 mr-1" /> New client
+            </Button>
+          }
+          onCreated={(c) => {
+            reloadClients();
+            navigate(`/pm/clients/${c.id}`);
+          }}
+        />
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
