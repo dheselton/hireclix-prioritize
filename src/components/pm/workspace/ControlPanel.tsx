@@ -16,7 +16,10 @@ import { combineAssignees, removeAssignee, useInvalidateAssignees, useTaskCoAssi
 import { TeamsMultiSelect } from "@/components/pm/TeamsMultiSelect";
 import { teamsFromTask, type Team } from "@/lib/pm/teams";
 import { TagPicker } from "@/components/pm/tags/TagPicker";
+import { TaskTypePicker } from "@/components/pm/tasks/TaskTypePicker";
+import { syncTypeTags, typesFromTask } from "@/lib/pm/taskTypes";
 import { getKindStatusLabel, getTaskKind } from "@/lib/pm/taskKind";
+import type { TaskType } from "@/types/pm";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 
@@ -61,6 +64,14 @@ export function ControlPanel({
   }
   const showEnv = task.type === "dev" || !!task.dev_environment;
 
+  function handleTypesChange(types: TaskType[]) {
+    const primaryType = types[0];
+    patch({
+      type: primaryType,
+      tags: syncTypeTags(task.tags, types),
+    });
+  }
+
   return (
     <div className="rounded-lg border border-border bg-card p-3">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
@@ -95,6 +106,15 @@ export function ControlPanel({
         </Select>
       </Row>
 
+      {/* Type */}
+      <Row label="Type">
+        <TaskTypePicker
+          value={typesFromTask(task)}
+          onChange={handleTypesChange}
+          compact
+        />
+      </Row>
+
       {/* Assignees */}
       <Row label="Assignees">
         <AssigneeChips taskId={task.id} primaryId={task.assignee_id} onChanged={refetchAssignee} />
@@ -124,7 +144,7 @@ export function ControlPanel({
             value={task.tags ?? []}
             onChange={(next) => patch({ tags: next })}
             readOnlyInherited
-            editableNamespaces={["feature", "type"]}
+            editableNamespaces={["feature"]}
             placeholder="Tag"
           />
         </div>

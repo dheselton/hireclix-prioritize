@@ -29,8 +29,10 @@ import {
   TASK_TYPES, TASK_STATUSES, PRIORITIES,
   type PmProject, type PmPhase, type PmRole, type TaskType, type TaskStatus, type TaskPriority, type RevealMode,
 } from "@/types/pm";
-import { TYPE_COLORS, STATUS_COLORS } from "@/types/pm";
+import { STATUS_COLORS } from "@/types/pm";
 import { KIND_META, TASK_KINDS, assertTaskKind, type TaskKind } from "@/lib/pm/taskKind";
+import { TaskTypePicker } from "@/components/pm/tasks/TaskTypePicker";
+import { syncTypeTags } from "@/lib/pm/taskTypes";
 
 const MORE_OPEN_KEY = "pm:newTaskDialog:moreOpen";
 interface DepPick { id: string; title: string; status: string; project_title?: string }
@@ -47,11 +49,6 @@ const ROLE_DEFAULT_TYPE: Record<PmRole, TaskType> = {
   submitter: "review",
   ba: "review",
   tech_lead: "dev",
-};
-
-const TYPE_LABEL: Record<TaskType, string> = {
-  design: "Design", dev: "Dev", review: "Review", approval: "Approval", content: "Content",
-  qa: "QA", strategy: "Strategy", research: "Research", analytics: "Analytics", reporting: "Reporting",
 };
 
 interface Props {
@@ -160,20 +157,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   }, [types, teamsDirty]);
 
   const primaryType = types[0];
-  const remainingTypes = useMemo(() => TASK_TYPES.filter(t => !types.includes(t)), [types]);
-
-  function addType(t: TaskType) {
-    if (types.includes(t)) return;
-    setTypes([...types, t]);
-  }
-  function removeType(t: TaskType) {
-    if (types.length <= 1) return;
-    setTypes(types.filter(x => x !== t));
-  }
-  function promoteType(t: TaskType) {
-    if (!types.includes(t) || types[0] === t) return;
-    setTypes([t, ...types.filter(x => x !== t)]);
-  }
 
   function addAssigneeId(uid: string | null) {
     if (!uid || assigneeIds.includes(uid)) return;
@@ -230,7 +213,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     if (!title.trim() || saving) return;
     setSaving(true);
     try {
-      const extraTypeTags = types.slice(1).map(t => `type:${t}`);
+      const extraTypeTags = syncTypeTags(tags, types).filter(t => t.startsWith("type:"));
       const supportFlag = initialSupport ? ['support'] : [];
       const allTags = Array.from(new Set([...tags, ...extraTypeTags, ...supportFlag]));
       const dur = Math.max(1, parseInt(duration, 10) || 1);
@@ -426,58 +409,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Type {types.length > 1 && <span className="text-xs text-muted-foreground font-normal">(first = primary)</span>}</Label>
-              <div className="flex flex-wrap items-center gap-1.5 min-h-9 rounded-md border border-input bg-background px-2 py-1.5">
-                {types.map((t, i) => {
-                  const isPrimary = i === 0;
-                  return (
-                    <span
-                      key={t}
-                      className={cn(
-                        "inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-full border text-xs",
-                        isPrimary ? "border-amber-500/50 bg-amber-500/10" : "border-border bg-muted/40 cursor-pointer hover:bg-muted",
-                      )}
-                      onClick={() => !isPrimary && promoteType(t)}
-                      title={isPrimary ? `${TYPE_LABEL[t]} (primary)` : `Click to make ${TYPE_LABEL[t]} primary`}
-                    >
-                      <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[t] }} />
-                      <span className="font-medium">{TYPE_LABEL[t]}</span>
-                      {isPrimary && <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />}
-                      {types.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeType(t); }}
-                          aria-label={`Remove ${TYPE_LABEL[t]}`}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </span>
-                  );
-                })}
-                {remainingTypes.length > 0 && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs">
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-44 p-1 z-50 bg-popover">
-                      {remainingTypes.map(t => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => addType(t)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted"
-                        >
-                          <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[t] }} />
-                          {TYPE_LABEL[t]}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
+              <TaskTypePicker value={types} onChange={setTypes} />
             </div>
 
             <div className="space-y-1.5">
