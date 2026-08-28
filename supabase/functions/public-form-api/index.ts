@@ -75,6 +75,7 @@ const BodySchema = z.discriminatedUnion("action", [
     shipBy: z.string().max(32).nullable().optional(),
     requestType: z.string().max(80).nullable().optional(),
     requestTypeLabel: z.string().max(120).nullable().optional(),
+    parentProjectId: z.string().uuid().nullable().optional(),
     customFields: z.record(z.any()).optional().default({}),
     payload: z.record(z.any()).optional().default({}),
     files: z.array(FileSchema).max(MAX_FILES).optional().default([]),
@@ -209,13 +210,35 @@ serve(async (req: Request): Promise<Response> => {
       const form = await loadForm(input.slug);
       if (!form) return json({ error: "form_not_found" }, 404);
 
-      const [{ data: fields }, { data: clients }, { data: users }] = await Promise.all([
+      const [{ data: fields }, { data: clients }, { data: users }, { data: projects }] = await Promise.all([
         admin.from("pm_form_fields").select("*").eq("form_id", form.id).order("sort_order"),
         admin.from("clients").select("id,name,is_internal").is("archived_at", null).order("name"),
         admin.from("pm_users").select("id,name,role").eq("is_active", true).order("name"),
+        admin.from("pm_projects")
+          .select("id,title,client_id,go_live_date,status,work_type,custom_fields")
+          .eq("work_type", "project")
+          .not("status", "in", '("complete","archived")')
+          .order("title"),
       ]);
 
-      return json({ form, fields: fields ?? [], clients: clients ?? [], users: users ?? [] });
+      const liveSites = ((projects ?? []) as Array<{
+        id: string;
+        title: string;
+        client_id: string | null;
+        go_live_date: string | null;
+        status: string;
+        work_type: string;
+        custom_fields: Record<string, unknown> | null;
+      }>)
+        .filter((p) => p.client_id && !!(p.custom_fields as { support_mode_at?: string } | null)?.support_mode_at)
+        .map((p) => ({
+          id: p.id,
+          title: p.title,
+          client_id: p.client_id as string,
+          go_live_date: p.go_live_date,
+        }));
+
+      return json({ form, fields: fields ?? [], clients: clients ?? [], users: users ?? [], liveSites });
     }
 
     const ip = clientIp(req);
@@ -245,12 +268,37 @@ serve(async (req: Request): Promise<Response> => {
     const ct = clientTag(clientRow.name);
     if (ct) tags.push(ct);
 
+    let parentProjectId: string | null = input.parentProjectId ?? null;
+    const isCareerSiteRequest = typeof input.requestType === "string" && input.requestType.startsWith("careersite_");
+    if (isCareerSiteRequest) {
+      const { data: sites } = await admin
+        .from("pm_projects")
+        .select("id,custom_fields,status,work_type,client_id")
+        .eq("client_id", input.clientId)
+        .eq("work_type", "project")
+        .not("status", "in", '("complete","archived")');
+      const live = ((sites ?? []) as Array<{ id: string; custom_fields: Record<string, unknown> | null }>)
+        .filter((p) => !!(p.custom_fields as { support_mode_at?: string } | null)?.support_mode_at);
+      if (live.length === 1) {
+        parentProjectId = live[0].id;
+      } else if (live.length > 1) {
+        if (!parentProjectId || !live.some((s) => s.id === parentProjectId)) {
+          return json({ error: "Select which live career site this request belongs to" }, 400);
+        }
+      } else {
+        parentProjectId = null;
+      }
+    } else {
+      parentProjectId = null;
+    }
+
     const { data: proj, error: pe } = await admin.from("pm_projects").insert({
       title,
       type: "quick_request",
       work_type: "request",
       status: "active",
       client_id: input.clientId,
+      parent_project_id: parentProjectId,
       description,
       start_date: todayISO(),
       go_live_date: shipBy,

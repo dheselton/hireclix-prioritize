@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate,   Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock, Settings,
-  Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound,
+  Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound, Headphones,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -35,6 +35,7 @@ type SidebarQuickTask = {
   task: PmTask;
   clientName: string | null;
   dueDate: string | null;
+  parentSiteName: string | null;
 };
 
 type SidebarProjectRow = {
@@ -54,6 +55,7 @@ const primaryNav: NavItem[] = [
   { title: "Time", url: "/pm/time", icon: Clock, key: "time" },
   { title: "Team Report", url: "/pm/report", icon: BarChart3, key: "report" },
   { title: "Clients", url: "/pm/clients", icon: Building2, key: "clients" },
+  { title: "Live Career Sites", url: "/pm/live-sites", icon: Headphones, key: "clients" },
 ];
 
 const configureNav: NavItem[] = [
@@ -149,10 +151,12 @@ function useMyWork() {
       .filter(t => projMap.get(t.project_id)?.work_type === "request")
       .map((t): SidebarQuickTask => {
         const proj = projMap.get(t.project_id);
+        const parent = proj?.parent_project_id ? projMap.get(proj.parent_project_id) : null;
         return {
           task: t,
           clientName: clientNameForProject(proj, clientNames),
           dueDate: t.due_date,
+          parentSiteName: parent?.title ?? null,
         };
       })
       .sort((a, b) => compareByDueThenTitle(
@@ -288,11 +292,20 @@ function SectionLabel({ children, featured }: { children: React.ReactNode; featu
   );
 }
 
-function MetaLine({ clientName, dueDate }: { clientName: string | null; dueDate: string | null }) {
+function MetaLine({
+  clientName,
+  dueDate,
+  parentSiteName,
+}: {
+  clientName: string | null;
+  dueDate: string | null;
+  parentSiteName?: string | null;
+}) {
   const due = sidebarDueMeta(dueDate);
   return (
     <span className="block truncate text-[10px] text-muted-foreground">
       {clientName ?? "No client"}
+      {parentSiteName && <> · Site: {parentSiteName}</>}
       {due && (
         <>
           {" · "}
@@ -389,7 +402,7 @@ export function AppSidebar() {
                       <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
                     ) : (
                       <div className="space-y-px">
-                        {visibleQuick.map(({ task: t, clientName, dueDate }) => (
+                        {visibleQuick.map(({ task: t, clientName, dueDate, parentSiteName }) => (
                           <NavLink
                             key={t.id}
                             to={`/pm/tasks/${t.id}`}
@@ -406,7 +419,7 @@ export function AppSidebar() {
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[12px] font-medium">{t.title}</span>
-                              <MetaLine clientName={clientName} dueDate={dueDate} />
+                              <MetaLine clientName={clientName} dueDate={dueDate} parentSiteName={parentSiteName} />
                             </span>
                           </NavLink>
                         ))}

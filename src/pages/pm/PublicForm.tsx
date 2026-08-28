@@ -20,11 +20,15 @@ import { refreshCareerSiteProjects, useInternalClientIds } from "@/lib/pm/client
 import { fileToBase64, publicFormBootstrap, publicFormSubmit } from "@/lib/pm/publicFormClient";
 import { Sparkle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fmtDate } from "@/lib/pm/format";
 
 const REQUEST_TYPE_SLUG = "request_type";
 const TITLE_SLUG = "title";
 const SHIP_BY_SLUG = "ship_by_date";
 const DESCRIPTION_SLUG = "description";
+
+type LiveSiteOption = { id: string; title: string; client_id: string; go_live_date: string | null };
 
 export default function PublicForm() {
   const { slug } = useParams<{ slug: string }>();
@@ -35,6 +39,8 @@ export default function PublicForm() {
   const [formReady, setFormReady] = useState(false);
   const [fields, setFields] = useState<FormFieldRow[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
+  const [liveSitesAll, setLiveSitesAll] = useState<LiveSiteOption[]>([]);
+  const [parentProjectId, setParentProjectId] = useState<string | null>(null);
   const [rosterUsers, setRosterUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const [values, setValues] = useState<Record<string, any>>({});
   const [name, setName] = useState("");
@@ -79,6 +85,7 @@ export default function PublicForm() {
         setForm(data.form);
         setFields((data.fields || []) as FormFieldRow[]);
         setClients((data.clients || []) as ClientOption[]);
+        setLiveSitesAll((data.liveSites || []) as LiveSiteOption[]);
         setRosterUsers((data.users || []) as { id: string; name: string; role: string }[]);
       } catch {
         setForm(null);
@@ -111,6 +118,21 @@ export default function PublicForm() {
   ), [requestTypeField, titleField, shipByField, descriptionField]);
 
   const requestType = requestTypeField ? (values[requestTypeField.id] as RequestType | undefined) : undefined;
+  const isCareerSiteRequestType = typeof requestType === "string" && requestType.startsWith("careersite_");
+  const liveSitesForClient = useMemo(
+    () => (clientId ? liveSitesAll.filter((s) => s.client_id === clientId) : []),
+    [liveSitesAll, clientId],
+  );
+
+  useEffect(() => {
+    if (!isCareerSiteRequestType) {
+      setParentProjectId(null);
+      return;
+    }
+    if (liveSitesForClient.length === 1) setParentProjectId(liveSitesForClient[0].id);
+    else if (liveSitesForClient.length === 0) setParentProjectId(null);
+    else setParentProjectId((prev) => (prev && liveSitesForClient.some((s) => s.id === prev) ? prev : null));
+  }, [isCareerSiteRequestType, liveSitesForClient]);
 
   // Build slug→value map so isFieldVisible can evaluate conditionals against user input.
   const valuesBySlug = useMemo(() => {
@@ -134,6 +156,10 @@ export default function PublicForm() {
     if (!clientId) { toast.error("Client is required"); return; }
     if (requestTypeField?.required && !requestType) { toast.error("Request type is required"); return; }
     if (titleField?.required && !values[titleField.id]) { toast.error("Title is required"); return; }
+    if (isCareerSiteRequestType && liveSitesForClient.length > 1 && !parentProjectId) {
+      toast.error("Select which live career site this request belongs to");
+      return;
+    }
     const missing = visibleDynamicFields.filter(f => {
       if (!f.required) return false;
       const v = values[f.id];
@@ -184,6 +210,9 @@ export default function PublicForm() {
         shipBy,
         requestType: requestType ?? null,
         requestTypeLabel: requestTypeLabel(requestType ?? null),
+        parentProjectId: isCareerSiteRequestType
+          ? (liveSitesForClient.length === 1 ? liveSitesForClient[0].id : parentProjectId)
+          : null,
         customFields,
         payload: { request_type: requestType ?? null, title: titleValue, description: descriptionValue, ship_by: shipBy, client_id: clientId, ...values },
         files: filePayload,
@@ -278,6 +307,37 @@ export default function PublicForm() {
                 <p className="text-xs text-[hsl(var(--internal))] mt-1 flex items-center gap-1">
                   <Sparkle className="h-3 w-3" /> Internal HireClix request — will be color-coded for the team.
                 </p>
+              )}
+            </div>
+          )}
+
+          {isQuickRequest && isCareerSiteRequestType && clientId && (
+            <div>
+              <Label>Live career site{liveSitesForClient.length > 1 ? " *" : ""}</Label>
+              {liveSitesForClient.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  No live career site for this client yet — request will stay unlinked.
+                </p>
+              ) : liveSitesForClient.length === 1 ? (
+                <p className="text-sm mt-1">
+                  {liveSitesForClient[0].title}
+                  {liveSitesForClient[0].go_live_date ? (
+                    <span className="text-muted-foreground"> · Go-live {fmtDate(liveSitesForClient[0].go_live_date)}</span>
+                  ) : null}
+                </p>
+              ) : (
+                <Select value={parentProjectId ?? undefined} onValueChange={setParentProjectId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select live career site…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {liveSitesForClient.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}{s.go_live_date ? ` · ${fmtDate(s.go_live_date)}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           )}

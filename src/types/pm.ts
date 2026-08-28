@@ -37,6 +37,8 @@ export interface PmProject {
   id: string;
   title: string;
   client_id: string | null;
+  /** Live career site this request nests under (quick requests only). */
+  parent_project_id?: string | null;
   type: ProjectType;
   work_type: WorkType;
   status: ProjectStatus;

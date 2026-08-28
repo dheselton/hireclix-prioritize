@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { emitTasksChanged, useTasksChanged } from "./refresh";
-import { useCareerSiteProjects } from "./clients";
+import { isCareerSiteBuildProject } from "./liveSites";
 import { toast } from "sonner";
 import type { PmProject } from "@/types/pm";
 
@@ -62,11 +62,12 @@ function todayIso(): string {
 
 /** Pure predicate — is this career-site project ready for a support handoff? */
 export function isReadyForSupport(
-  project: Pick<PmProject, "id" | "go_live_date" | "custom_fields">,
-  isCareerSite: boolean,
+  project: Pick<PmProject, "id" | "go_live_date" | "custom_fields" | "type" | "work_type">,
+  isCareerSiteBuild?: boolean,
 ): boolean {
-  if (!isCareerSite) return false;
-  const alreadyIn = !!(project.custom_fields as any)?.support_mode_at;
+  const isBuild = isCareerSiteBuild ?? isCareerSiteBuildProject(project);
+  if (!isBuild) return false;
+  const alreadyIn = !!(project.custom_fields as { support_mode_at?: string } | null)?.support_mode_at;
   if (alreadyIn) return false;
   if (!project.go_live_date) return false;
   return project.go_live_date <= todayIso();
@@ -88,8 +89,9 @@ export function useEnterSupportMode(project: PmProject | null | undefined) {
       clearSupportPromptDismissal(project.id);
       toast.success("Project is now in Support mode");
       emitTasksChanged();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not enter Support mode");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not enter Support mode";
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -99,36 +101,35 @@ export function useEnterSupportMode(project: PmProject | null | undefined) {
 
 /** Should we show the auto-prompt banner right now? */
 export function useShouldPromptSupport(project: PmProject | null | undefined): boolean {
-  const careerSiteMap = useCareerSiteProjects();
   const [, force] = useState(0);
   // Recompute if the tasks-changed bus fires (project may have flipped elsewhere).
   useTasksChanged(() => force((n) => n + 1));
   if (!project) return false;
   if (isDismissed(project.id)) return false;
-  return isReadyForSupport(project, careerSiteMap.has(project.id));
+  return isReadyForSupport(project);
 }
 
-/** Projects across the workspace that are waiting for a Support handoff. */
+/** Career-site build projects across the workspace waiting for a Support handoff. */
 export function useProjectsReadyForSupport(): PmProject[] {
-  const careerSiteMap = useCareerSiteProjects();
   const [projects, setProjects] = useState<PmProject[]>([]);
 
   const reload = useCallback(async () => {
-    if (careerSiteMap.size === 0) { setProjects([]); return; }
     const today = todayIso();
     const { data } = await supabase
       .from("pm_projects")
       .select("*")
+      .eq("type", "career_site")
+      .eq("work_type", "project")
       .lte("go_live_date", today)
-      .in("id", Array.from(careerSiteMap.keys()));
+      .not("status", "in", '("complete","archived")');
     const dismissed = loadDismissed();
     const filtered = ((data ?? []) as PmProject[]).filter((p) => {
-      if ((p.custom_fields as any)?.support_mode_at) return false;
+      if ((p.custom_fields as { support_mode_at?: string } | null)?.support_mode_at) return false;
       if (dismissed[p.id] && dismissed[p.id] > Date.now()) return false;
       return true;
     });
     setProjects(filtered);
-  }, [careerSiteMap]);
+  }, []);
 
   useEffect(() => { reload(); }, [reload]);
   useTasksChanged(reload);

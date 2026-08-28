@@ -1531,6 +1531,7 @@ export type Database = {
           kickoff_date: string | null
           page_group_overrides: Json
           pages_locked_at: string | null
+          parent_project_id: string | null
           requested_by: string | null
           start_date: string | null
           status: string
@@ -1556,6 +1557,7 @@ export type Database = {
           kickoff_date?: string | null
           page_group_overrides?: Json
           pages_locked_at?: string | null
+          parent_project_id?: string | null
           requested_by?: string | null
           start_date?: string | null
           status?: string
@@ -1581,6 +1583,7 @@ export type Database = {
           kickoff_date?: string | null
           page_group_overrides?: Json
           pages_locked_at?: string | null
+          parent_project_id?: string | null
           requested_by?: string | null
           start_date?: string | null
           status?: string
@@ -1604,6 +1607,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "pm_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_projects_parent_project_id_fkey"
+            columns: ["parent_project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
             referencedColumns: ["id"]
           },
           {

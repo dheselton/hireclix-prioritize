@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, FolderKanban, Tag, Layers, UserPlus } from "lucide-react";
+import { Building2, FolderKanban, Tag, Layers, UserPlus, Headphones } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 import { useInternalClientIds, isCareerSiteRequest } from "@/lib/pm/clients";
 import { clientTag } from "@/lib/pm/tags";
+import { ParentLiveSiteChip } from "@/components/pm/ParentLiveSiteChip";
+import type { PmProject } from "@/types/pm";
 
 interface Props {
   projectId: string;
@@ -17,11 +19,13 @@ interface Meta {
   work_type: string | null;
   custom_fields: any;
   client_id: string | null;
+  parent_project_id: string | null;
   requested_by: string | null;
   created_by: string | null;
   creation_source: string | null;
   creation_context: Record<string, unknown> | null;
   client_name: string | null;
+  parent_title: string | null;
 }
 
 function prettyType(v?: string | null) {
@@ -54,21 +58,33 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
     (async () => {
       const { data } = await supabase
         .from("pm_projects")
-        .select("title, work_type, custom_fields, client_id, requested_by, created_by, creation_source, creation_context, clients(name)")
+        .select("title, work_type, custom_fields, client_id, parent_project_id, requested_by, created_by, creation_source, creation_context, clients(name)")
         .eq("id", projectId)
         .maybeSingle();
       if (cancelled || !data) return;
       const d: any = data;
+      let parentTitle: string | null = null;
+      if (d.parent_project_id) {
+        const { data: parent } = await supabase
+          .from("pm_projects")
+          .select("title")
+          .eq("id", d.parent_project_id)
+          .maybeSingle();
+        parentTitle = (parent as { title?: string } | null)?.title ?? null;
+      }
+      if (cancelled) return;
       setMeta({
         title: d.title ?? null,
         work_type: d.work_type ?? null,
         custom_fields: d.custom_fields ?? {},
         client_id: d.client_id ?? null,
+        parent_project_id: d.parent_project_id ?? null,
         requested_by: d.requested_by ?? null,
         created_by: d.created_by ?? null,
         creation_source: d.creation_source ?? null,
         creation_context: d.creation_context ?? null,
         client_name: d.clients?.name ?? null,
+        parent_title: parentTitle,
       });
     })();
     return () => { cancelled = true; };
@@ -80,6 +96,26 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
     ? prettyType(meta.custom_fields?.request_type)
     : null;
   const isInternal = !!meta.client_id && internalClients.has(meta.client_id);
+
+  const projectStub = {
+    id: projectId,
+    title: meta.title ?? "",
+    client_id: meta.client_id,
+    parent_project_id: meta.parent_project_id,
+    type: "quick_request" as const,
+    work_type: (meta.work_type as "request" | "project") ?? "request",
+    status: "active" as const,
+    go_live_date: null,
+    start_date: null,
+    kickoff_date: null,
+    description: null,
+    tags: [] as string[],
+    template_id: null,
+    created_by: meta.created_by,
+    custom_fields: meta.custom_fields ?? {},
+    created_at: "",
+    updated_at: "",
+  } satisfies PmProject;
 
   return (
     <div className="rounded-lg border border-border bg-card p-3">
@@ -99,6 +135,21 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
               {isInternal && <span className="internal-pill shrink-0">Internal</span>}
             </div>
           </Row>
+        )}
+        {meta.parent_project_id && meta.parent_title && (
+          <Row icon={Headphones} label="Live career site">
+            <Link
+              to={`/pm/projects/${meta.parent_project_id}`}
+              className="font-medium hover:underline truncate"
+            >
+              {meta.parent_title}
+            </Link>
+          </Row>
+        )}
+        {meta.work_type === "request" && isCareerSiteRequest(meta.custom_fields) && !meta.parent_project_id && (
+          <div className="py-1.5">
+            <ParentLiveSiteChip project={projectStub} />
+          </div>
         )}
         {meta.title && (
           <Row icon={FolderKanban} label="Project">

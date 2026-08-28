@@ -29,7 +29,9 @@ import { fanoutNewRequestNotifications } from "@/lib/pm/newRequestNotify";
 import { aliasFor } from "@/lib/pm/requestAliases";
 import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
 import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
+import { useLiveSitesForClient, resolveParentProjectId } from "@/lib/pm/liveSites";
 import { Sparkle } from "lucide-react";
+import { fmtDate } from "@/lib/pm/format";
 
 interface Props {
   open: boolean;
@@ -57,7 +59,12 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   const [reqRequestedBy, setReqRequestedBy] = useState<string | null>(null);
   const [reqFiles, setReqFiles] = useState<File[]>([]);
   const [reqLinks, setReqLinks] = useState<StagedLink[]>([]);
+  const [parentProjectId, setParentProjectId] = useState<string | null>(null);
   const { formId: internalFormId, fields: internalFields } = useInternalRequestForm(requestType);
+  const isCareerSiteRequestType = typeof requestType === "string" && requestType.startsWith("careersite_");
+  const { sites: liveSites } = useLiveSitesForClient(
+    isCareerSiteRequestType && reqForm.client_id ? reqForm.client_id : null,
+  );
 
   // Project (blank)
   const [projForm, setProjForm] = useState({
@@ -90,6 +97,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     setQuickTasks([""]);
     setReqRequestedBy(user?.id ?? null);
     setReqFiles([]); setReqLinks([]);
+    setParentProjectId(null);
     setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
     setProjRequestedBy(user?.id ?? null);
     setProjFiles([]); setProjLinks([]);
@@ -106,6 +114,17 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
   // Reset answers when request type changes
   useEffect(() => { setReqFieldValues({}); }, [requestType]);
+
+  // Auto-select unique live site; clear when client/type changes.
+  useEffect(() => {
+    if (!isCareerSiteRequestType) {
+      setParentProjectId(null);
+      return;
+    }
+    if (liveSites.length === 1) setParentProjectId(liveSites[0].id);
+    else if (liveSites.length === 0) setParentProjectId(null);
+    else setParentProjectId((prev) => (prev && liveSites.some((s) => s.id === prev) ? prev : null));
+  }, [isCareerSiteRequestType, liveSites]);
 
   const valuesBySlug = useMemo(() => {
     const out: Record<string, any> = {};
@@ -147,6 +166,16 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       return;
     }
 
+    let resolvedParent: string | null = null;
+    if (isCareerSiteRequestType) {
+      const resolved = resolveParentProjectId({ sites: liveSites, selectedId: parentProjectId });
+      if (resolved.error) {
+        toast.error(resolved.error);
+        return;
+      }
+      resolvedParent = resolved.parentProjectId;
+    }
+
     setBusy(true);
     try {
       const proj = await createProject({
@@ -155,6 +184,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         work_type: "request",
         status: "active",
         client_id: reqForm.client_id,
+        parent_project_id: resolvedParent,
         description: reqForm.description.trim() || null,
         start_date: new Date().toISOString().slice(0, 10),
         created_by: user?.id ?? null,
@@ -417,6 +447,36 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
                 onClientsChanged={(next) => setClients(next)}
               />
             </div>
+            {isCareerSiteRequestType && reqForm.client_id && (
+              <div>
+                <Label>Live career site{liveSites.length > 1 ? " *" : ""}</Label>
+                {liveSites.length === 0 ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No live career site for this client yet — request will stay unlinked until a site enters Support mode.
+                  </p>
+                ) : liveSites.length === 1 ? (
+                  <p className="text-sm mt-1 text-foreground/90">
+                    {liveSites[0].title}
+                    {liveSites[0].go_live_date ? (
+                      <span className="text-muted-foreground"> · Go-live {fmtDate(liveSites[0].go_live_date)}</span>
+                    ) : null}
+                  </p>
+                ) : (
+                  <Select value={parentProjectId ?? undefined} onValueChange={setParentProjectId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select live career site…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {liveSites.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.title}{s.go_live_date ? ` · ${fmtDate(s.go_live_date)}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
             <RequesterPicker
               value={reqRequestedBy}
               onChange={setReqRequestedBy}

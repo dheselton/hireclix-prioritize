@@ -34,6 +34,8 @@ import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
 import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBanner";
+import { LinkedSupportRequests } from "@/components/pm/project/LinkedSupportRequests";
+import { ParentLiveSiteChip } from "@/components/pm/ParentLiveSiteChip";
 import { QaTab } from "@/components/pm/project/QaTab";
 import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
 import { TasksCsvImportDialog } from "@/components/pm/project/TasksCsvImportDialog";
@@ -300,6 +302,12 @@ export default function ProjectDetail() {
                   })}
               </dl>
             </CardContent></Card>
+          )}
+          {isRequest && (
+            <ParentLiveSiteChip project={project} onChanged={reload} />
+          )}
+          {(inSupport || (!isRequest && project.type === "career_site")) && (
+            <LinkedSupportRequests projectId={project.id} />
           )}
           <OverviewTab
             project={project} tasks={tasks}

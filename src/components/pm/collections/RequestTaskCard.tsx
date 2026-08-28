@@ -22,6 +22,8 @@ import { AttributionChip } from "@/components/pm/AttributionChip";
 interface Props {
   task: PmTask;
   clientName?: string | null;
+  /** Title of the live career site this request nests under. */
+  parentSiteName?: string | null;
   onOpen: (id: string) => void;
   onChanged?: () => void;
 }
@@ -33,7 +35,7 @@ function isOverdue(t: PmTask) {
 }
 
 /** Compact, thin card for request-type tasks. Optimized for speed/throughput. */
-export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) {
+export function RequestTaskCard({ task, clientName, parentSiteName, onOpen, onChanged }: Props) {
   const overdue = isOverdue(task);
   const team = useProjectTeam(task.project_id);
   const internalProjects = useInternalProjectIds();
@@ -78,7 +80,9 @@ export function RequestTaskCard({ task, clientName, onOpen, onChanged }: Props) 
         </div>
         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground truncate">
           {clientName && <span className="truncate">{clientName}</span>}
-          {clientName && task.due_date && <span>·</span>}
+          {clientName && parentSiteName && <span>·</span>}
+          {parentSiteName && <span className="truncate">Site: {parentSiteName}</span>}
+          {(clientName || parentSiteName) && task.due_date && <span>·</span>}
           {task.due_date && (
             <span className={cn(overdue && "text-red-500 font-medium")}>
               Due {fmtDate(task.due_date)}

@@ -96,6 +96,7 @@ export function publicFormBootstrap(slug: string) {
     fields: FormFieldRow[];
     clients: ClientOption[];
     users: Pick<PmUser, "id" | "name" | "role">[];
+    liveSites?: Array<{ id: string; title: string; client_id: string; go_live_date: string | null }>;
   }>({ action: "bootstrap", slug });
 }
 

@@ -49,15 +49,21 @@ export function TaskListByType({
   if (variant === "request") {
     return (
       <div className="space-y-1.5">
-        {sorted.map(t => (
+        {sorted.map(t => {
+          const proj = projects.get(t.project_id);
+          const parentId = proj?.parent_project_id;
+          const parentSiteName = parentId ? (projects.get(parentId)?.title ?? null) : null;
+          return (
           <RequestTaskCard
             key={t.id}
             task={t}
-            clientName={clientNames.get(projects.get(t.project_id)?.client_id ?? "") ?? null}
+            clientName={clientNames.get(proj?.client_id ?? "") ?? null}
+            parentSiteName={parentSiteName}
             onOpen={onOpen}
             onChanged={onChanged}
           />
-        ))}
+          );
+        })}
       </div>
     );
   }
