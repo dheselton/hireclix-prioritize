@@ -64,9 +64,12 @@ export function SidebarWorkSkeleton() {
   return (
     <div className="space-y-2 px-2 py-1" aria-label="Loading assigned work" aria-busy="true">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className="flex items-center gap-2">
-          <Skeleton className="h-2 w-2 rounded-full" />
-          <Skeleton className={cn("h-3", index === 1 ? "w-28" : "w-36")} />
+        <div key={index} className="flex items-start gap-2 py-0.5">
+          <Skeleton className="h-2 w-2 rounded-full mt-1.5 shrink-0" />
+          <div className="flex-1 space-y-1.5 min-w-0">
+            <Skeleton className={cn("h-3", index === 1 ? "w-28" : "w-36")} />
+            <Skeleton className={cn("h-2.5", index === 2 ? "w-20" : "w-24")} />
+          </div>
         </div>
       ))}
     </div>

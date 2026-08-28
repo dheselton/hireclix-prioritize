@@ -4,6 +4,7 @@ import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate,   Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock, Settings,
   Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -13,16 +14,35 @@ import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
 import { canSee, type Surface } from "@/lib/pm/permissions";
-import { useInternalProjectIds, useCareerSiteProjects } from "@/lib/pm/clients";
+import {
+  useInternalProjectIds,
+  useCareerSiteProjects,
+  useClientNamesMap,
+  clientNameForProject,
+} from "@/lib/pm/clients";
+import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
 import { projectColorHsl } from "@/lib/pm/projectColor";
+import { fmtDateShort } from "@/lib/pm/format";
+import { dueUrgency } from "@/components/pm/DueBadge";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { SidebarWorkSkeleton } from "@/components/pm/WorkLoadingState";
-import { UserAvatar } from "@/components/pm/UserAvatar";
-import { CreationSourcePill } from "@/components/pm/AttributionChip";
 
-type NavItem = { title: string; url: string; icon: any; end?: boolean; key: Surface };
+type NavItem = { title: string; url: string; icon: LucideIcon; end?: boolean; key: Surface };
+
+type SidebarQuickTask = {
+  task: PmTask;
+  clientName: string | null;
+  dueDate: string | null;
+};
+
+type SidebarProjectRow = {
+  project: PmProject;
+  openCount: number;
+  clientName: string | null;
+  dueDate: string | null;
+};
 
 const primaryNav: NavItem[] = [
   { title: "Daily Briefing", url: "/", icon: Inbox, end: true, key: "queue" },
@@ -52,45 +72,145 @@ const roadmapItems = [
   { title: "Product Roadmap", url: "/roadmap", icon: MapIcon },
 ];
 
+/** Compact due label for the narrow sidebar meta line. */
+function sidebarDueMeta(dueDate: string | null | undefined): { label: string; className: string } | null {
+  const u = dueUrgency(dueDate);
+  if (u === "none" || !dueDate) return null;
+  if (u === "overdue") {
+    return {
+      label: `Overdue · ${fmtDateShort(dueDate)}`,
+      className: "text-destructive font-semibold",
+    };
+  }
+  if (u === "today") {
+    return {
+      label: "Today",
+      className: "text-amber-700 dark:text-amber-300 font-semibold",
+    };
+  }
+  return {
+    label: fmtDateShort(dueDate),
+    className: "text-muted-foreground",
+  };
+}
+
+function dueSortKey(dueDate: string | null | undefined): number {
+  const u = dueUrgency(dueDate);
+  if (u === "overdue") return 0;
+  if (u === "today") return 1;
+  if (u === "upcoming") return 2;
+  return 3;
+}
+
+function compareByDueThenTitle(
+  a: { dueDate: string | null; title: string; openCount?: number },
+  b: { dueDate: string | null; title: string; openCount?: number },
+): number {
+  const urg = dueSortKey(a.dueDate) - dueSortKey(b.dueDate);
+  if (urg !== 0) return urg;
+  if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
+    return a.dueDate < b.dueDate ? -1 : 1;
+  }
+  if (a.dueDate && !b.dueDate) return -1;
+  if (!a.dueDate && b.dueDate) return 1;
+  const aCount = a.openCount ?? 0;
+  const bCount = b.openCount ?? 0;
+  if (aCount !== bCount) return bCount - aCount;
+  return a.title.localeCompare(b.title);
+}
+
+function rowTooltip(title: string, clientName: string | null, dueDate: string | null): string {
+  const parts = [title];
+  parts.push(clientName ?? "No client");
+  if (dueDate) parts.push(`Due ${fmtDateShort(dueDate)}`);
+  return parts.join(" — ");
+}
+
 function useMyWork() {
   const { user } = useCurrentUser();
   const userId = user?.id ?? null;
   const tasksQuery = useTasksQuery();
   const projectsQuery = useProjectsQuery();
+  const teamsMap = useProjectTeamsMap();
+  const clientNames = useClientNamesMap();
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   return useMemo(() => {
     if (!userId) return {
-      myQuickTasks: [] as PmTask[],
-      myProjectsWithCounts: [] as Array<{ project: PmProject; openCount: number }>,
+      myQuickTasks: [] as SidebarQuickTask[],
+      myProjectsWithCounts: [] as SidebarProjectRow[],
       loading: tasksQuery.isPending || projectsQuery.isPending,
     };
     const active = (s: PmTask["status"]) => s !== "complete" && s !== "approved";
     const mine = tasks.filter(t => t.assignee_id === userId && active(t.status));
 
-    // Split by work_type of parent project — quick tasks (request-type projects) vs project tasks.
     const projMap = new Map(projects.map(p => [p.id, p]));
-    const quickTasks = mine.filter(t => (projMap.get(t.project_id) as any)?.work_type === "request");
+    const quickTasks = mine
+      .filter(t => projMap.get(t.project_id)?.work_type === "request")
+      .map((t): SidebarQuickTask => {
+        const proj = projMap.get(t.project_id);
+        return {
+          task: t,
+          clientName: clientNameForProject(proj, clientNames),
+          dueDate: t.due_date,
+        };
+      })
+      .sort((a, b) => compareByDueThenTitle(
+        { dueDate: a.dueDate, title: a.task.title },
+        { dueDate: b.dueDate, title: b.task.title },
+      ));
 
-    // My projects = distinct project ids from my open (non-request) tasks, with counts of my open tasks.
+    // Open assigned task counts on non-request projects.
     const projectCounts = new Map<string, number>();
+    const earliestMyDue = new Map<string, string>();
     for (const t of mine) {
       const proj = projMap.get(t.project_id);
-      if (!proj) continue;
-      if ((proj as any).work_type === "request") continue;
+      if (!proj || proj.work_type === "request") continue;
       projectCounts.set(proj.id, (projectCounts.get(proj.id) ?? 0) + 1);
+      if (t.due_date) {
+        const prev = earliestMyDue.get(proj.id);
+        if (!prev || t.due_date < prev) earliestMyDue.set(proj.id, t.due_date);
+      }
     }
-    const myProjectsWithCounts = [...projectCounts.entries()]
-      .map(([id, openCount]) => ({ project: projMap.get(id)!, openCount }))
-      .filter(x => x.project)
-      .sort((a, b) => b.openCount - a.openCount);
+
+    // Union: assigned open tasks OR team member OR created/requested by me.
+    const candidateIds = new Set<string>(projectCounts.keys());
+    for (const [projectId, members] of teamsMap) {
+      if (members.includes(userId)) candidateIds.add(projectId);
+    }
+    for (const p of projects) {
+      if (p.created_by === userId || p.requested_by === userId) {
+        candidateIds.add(p.id);
+      }
+    }
+
+    const myProjectsWithCounts = [...candidateIds]
+      .map((id): SidebarProjectRow | null => {
+        const project = projMap.get(id);
+        if (!project) return null;
+        if (project.work_type === "request") return null;
+        if (project.status === "complete" || project.status === "archived") return null;
+        const openCount = projectCounts.get(id) ?? 0;
+        const dueDate = project.go_live_date ?? earliestMyDue.get(id) ?? null;
+        return {
+          project,
+          openCount,
+          clientName: clientNameForProject(project, clientNames),
+          dueDate,
+        };
+      })
+      .filter((x): x is SidebarProjectRow => x != null)
+      .sort((a, b) => compareByDueThenTitle(
+        { dueDate: a.dueDate, title: a.project.title, openCount: a.openCount },
+        { dueDate: b.dueDate, title: b.project.title, openCount: b.openCount },
+      ));
 
     return {
-      myQuickTasks: quickTasks.slice(0, 8),
+      myQuickTasks: quickTasks,
       myProjectsWithCounts,
       loading: tasksQuery.isPending || projectsQuery.isPending,
     };
-  }, [tasks, projects, userId, tasksQuery.isPending, projectsQuery.isPending]);
+  }, [tasks, projects, userId, teamsMap, clientNames, tasksQuery.isPending, projectsQuery.isPending]);
 }
 
 function useUnclaimedCount() {
@@ -113,7 +233,7 @@ function ProjectDot({ projectId, isInternal, isCareerSite }: { projectId: string
   const hsl = projectColorHsl(projectId, { isInternal, isCareerSite });
   return (
     <span
-      className="inline-block h-2 w-2 rounded-full shrink-0"
+      className="inline-block h-2 w-2 rounded-full shrink-0 mt-1.5"
       style={{ backgroundColor: `hsl(${hsl})` }}
       aria-hidden
     />
@@ -168,6 +288,21 @@ function SectionLabel({ children, featured }: { children: React.ReactNode; featu
   );
 }
 
+function MetaLine({ clientName, dueDate }: { clientName: string | null; dueDate: string | null }) {
+  const due = sidebarDueMeta(dueDate);
+  return (
+    <span className="block truncate text-[10px] text-muted-foreground">
+      {clientName ?? "No client"}
+      {due && (
+        <>
+          {" · "}
+          <span className={due.className}>{due.label}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
@@ -190,7 +325,7 @@ export function AppSidebar() {
   const canSeeMyWork = !submitterOnly && canSee(roles, "work");
   const canSeeRoadmap = canSee(roles, "roadmap");
 
-  const PROJ_LIMIT = 6;
+  const PROJ_LIMIT = 5;
   const QUICK_LIMIT = 5;
   const visibleProjects = showAllProjects ? myProjectsWithCounts : myProjectsWithCounts.slice(0, PROJ_LIMIT);
   const visibleQuick = showAllQuick ? myQuickTasks : myQuickTasks.slice(0, QUICK_LIMIT);
@@ -254,24 +389,25 @@ export function AppSidebar() {
                       <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
                     ) : (
                       <div className="space-y-px">
-                        {visibleQuick.map(t => (
+                        {visibleQuick.map(({ task: t, clientName, dueDate }) => (
                           <NavLink
                             key={t.id}
                             to={`/pm/tasks/${t.id}`}
                             className={({ isActive }) => cn(
-                              "flex items-center gap-2 px-2 py-1 rounded text-[12px] hover:bg-accent/30 group",
+                              "flex items-start gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-accent/30 group",
                               isActive ? "bg-accent/50 text-foreground font-medium" : "text-foreground/80",
                             )}
-                            title={t.title}
+                            title={rowTooltip(t.title, clientName, dueDate)}
                           >
                             <ProjectDot
                               projectId={t.project_id}
                               isInternal={internalIds.has(t.project_id)}
                               isCareerSite={careerSiteIds.has(t.project_id)}
                             />
-                            <span className="truncate flex-1">{t.title}</span>
-                            <UserAvatar userId={t.created_by} size="xs" className="opacity-80 shrink-0" />
-                            <CreationSourcePill source={t.creation_source} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[12px] font-medium">{t.title}</span>
+                              <MetaLine clientName={clientName} dueDate={dueDate} />
+                            </span>
                           </NavLink>
                         ))}
                         {myQuickTasks.length > QUICK_LIMIT && (
@@ -300,7 +436,7 @@ export function AppSidebar() {
                       <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
                     ) : (
                       <div className="space-y-px">
-                        {visibleProjects.map(({ project, openCount }) => {
+                        {visibleProjects.map(({ project, openCount, clientName, dueDate }) => {
                           const isActive = pathname.startsWith(`/pm/projects/${project.id}`);
                           const hsl = projectColorHsl(project.id, {
                             isInternal: internalIds.has(project.id),
@@ -311,20 +447,23 @@ export function AppSidebar() {
                               key={project.id}
                               to={`/pm/projects/${project.id}`}
                               className={cn(
-                                "relative flex items-center gap-2 pl-3 pr-2 py-1 rounded text-[12px] hover:bg-accent/30",
+                                "relative flex items-start gap-2 pl-3 pr-2 py-1.5 rounded text-[12px] hover:bg-accent/30",
                                 isActive ? "bg-accent/50 text-foreground font-semibold" : "text-foreground/80",
                               )}
-                              title={project.title}
+                              title={rowTooltip(project.title, clientName, dueDate)}
                             >
                               <span
-                                className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r"
+                                className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r"
                                 style={{ backgroundColor: `hsl(${hsl})` }}
                                 aria-hidden
                               />
-                              <span className="truncate flex-1">{project.title}</span>
-                              <UserAvatar userId={project.created_by} size="xs" className="opacity-80 shrink-0" />
-                              <CreationSourcePill source={project.creation_source} />
-                              <CountBadge count={openCount} active={isActive} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[12px] font-medium">{project.title}</span>
+                                <MetaLine clientName={clientName} dueDate={dueDate} />
+                              </span>
+                              {openCount > 0 && (
+                                <CountBadge count={openCount} active={isActive} />
+                              )}
                             </NavLink>
                           );
                         })}
