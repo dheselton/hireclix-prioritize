@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { Rocket } from "lucide-react";
 import { ConvertToProjectModal } from "@/components/pm/ConvertToProjectModal";
-import { supabase } from "@/integrations/supabase/client";
 import {
   updateProject, updateTask, logActivity,
 } from "@/lib/pm/api";
@@ -21,20 +19,21 @@ import { toast } from "sonner";
 import { FilesTab } from "@/components/pm/project/FilesTab";
 import { ProjectHeader } from "@/components/pm/project/ProjectHeader";
 import { KpiStrip } from "@/components/pm/project/KpiStrip";
-import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
+import { ProjectTabs, PROJECT_TAB_IDS, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
 import { canPostClientVisible } from "@/lib/pm/permissions";
 import { PortalMessageThread } from "@/components/pm/portal/PortalMessageThread";
 import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
+import { SupportTab } from "@/components/pm/project/SupportTab";
 import { SnippetsTab } from "@/components/pm/project/SnippetsTab";
 import { PagesTab } from "@/components/pm/project/PagesTab";
 import { ProjectTimelineTab } from "@/components/pm/project/ProjectTimelineTab";
 
 import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
+import { LogSupportRequestDialog } from "@/components/pm/project/LogSupportRequestDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
 import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBanner";
-import { LinkedSupportRequests } from "@/components/pm/project/LinkedSupportRequests";
 import { ParentLiveSiteChip } from "@/components/pm/ParentLiveSiteChip";
 import { QaTab } from "@/components/pm/project/QaTab";
 import { QaBatchPasteDialog } from "@/components/pm/project/QaBatchPasteDialog";
@@ -52,7 +51,8 @@ import { WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingStat
 
 /** Why a mode-gated tab isn't reachable on a given project. */
 const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
-  qa: "QA mode is not active on this project — showing Overview instead.",
+  qa: "QA mode isn't available — showing Overview instead.",
+  support: "This project isn't in Support mode — showing Overview instead.",
   pages: "This project doesn't have a Pages tab — showing Overview instead.",
   documentation: "This project isn't in Support mode — showing Overview instead.",
   snippets: "Snippets are only available to design and dev roles — showing Overview instead.",
@@ -60,16 +60,17 @@ const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
 };
 
 /** The tabs a given project + viewer can actually render. Mirrors the tab strip. */
-function computeAvailableTabs(project: PmProject, user: any): ProjectTabId[] {
-  const isRequest = ((project as any).work_type ?? "project") === "request";
-  const inSupport = !!(project.custom_fields as any)?.support_mode_at;
-  const inQa = isInQaMode(project);
+function computeAvailableTabs(project: PmProject, user: { roles?: string[]; role?: string } | null): ProjectTabId[] {
+  const isRequest = ((project as { work_type?: string }).work_type ?? "project") === "request";
+  const inSupport = !!(project.custom_fields as { support_mode_at?: string } | null)?.support_mode_at;
+  const inQa = isInQaMode(project) && !inSupport;
   const hasTemplate = !!project.template_id;
   const canSeeSnippets =
     !!user?.roles?.some((r: string) => r === "developer" || r === "designer") ||
     user?.role === "developer" || user?.role === "designer";
 
   return [
+    ...(inSupport ? (["support"] as const) : []),
     "overview",
     "tasks",
     ...(inQa ? (["qa"] as const) : []),
@@ -80,7 +81,6 @@ function computeAvailableTabs(project: PmProject, user: any): ProjectTabId[] {
     ...(canSeeSnippets ? (["snippets"] as const) : []),
     ...(inSupport ? (["documentation"] as const) : []),
   ] as ProjectTabId[];
-
 }
 
 export default function ProjectDetail() {
@@ -107,10 +107,8 @@ export default function ProjectDetail() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<ProjectTabId>(() => {
-    // Prefer ?tab=; accept legacy ?section= from older deep links.
     const t = searchParams.get("tab") ?? searchParams.get("section");
-    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation", "client"];
-    if (t && (valid as string[]).includes(t)) return t as ProjectTabId;
+    if (t && (PROJECT_TAB_IDS as string[]).includes(t)) return t as ProjectTabId;
     return "overview";
   });
   // A requested ?tab= is only honored once we know the project — several tabs
@@ -129,8 +127,7 @@ export default function ProjectDetail() {
   // Keep local tab state in sync when deep links change ?tab= (e.g. Overview metrics).
   useEffect(() => {
     const t = searchParams.get("tab") ?? searchParams.get("section");
-    const valid: ProjectTabId[] = ["overview", "tasks", "qa", "timeline", "pages", "files", "snippets", "documentation", "client"];
-    if (t && (valid as string[]).includes(t) && t !== tab) {
+    if (t && (PROJECT_TAB_IDS as string[]).includes(t) && t !== tab) {
       setTab(t as ProjectTabId);
     }
   }, [searchParams, tab]);
@@ -141,10 +138,11 @@ export default function ProjectDetail() {
   const [pendingMode, setPendingMode] = useState<"forward" | "backward">("backward");
   const [convertOpen, setConvertOpen] = useState(false);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
-  const [newTaskSupport, setNewTaskSupport] = useState(false);
   const [newTaskKind, setNewTaskKind] = useState<"task" | "decision" | "issue" | "qa">("task");
+  const [supportRequestOpen, setSupportRequestOpen] = useState(false);
   const [qaBatchOpen, setQaBatchOpen] = useState(false);
   const [tasksCsvOpen, setTasksCsvOpen] = useState(false);
+  const [supportOpenCount, setSupportOpenCount] = useState<number | null>(null);
 
   const reload = () => {
     void projectQuery.refetch();
@@ -191,45 +189,79 @@ export default function ProjectDetail() {
     [project, user],
   );
 
-  // A ?tab= pointing at a gated tab used to be accepted silently and render
-  // nothing. Fall back to Overview and say why.
+  // Validate ?tab= against available tabs. When no explicit tab was requested and
+  // the project is in Support mode, land on Support instead of Overview.
   useEffect(() => {
-    if (!availableTabs || tabChecked) return;
+    if (!availableTabs || !project || tabChecked) return;
     setTabChecked(true);
-    const requested = (searchParams.get("tab") ?? searchParams.get("section")) as ProjectTabId | null;
-    if (!requested || availableTabs.includes(requested)) return;
-    setTab("overview");
-    const next = new URLSearchParams(searchParams);
-    next.set("tab", "overview");
-    next.delete("section");
-    setSearchParams(next, { replace: true });
-    toast.info(
-      UNAVAILABLE_TAB_REASON[requested] ??
-        "That tab isn't available on this project — showing Overview instead.",
-    );
-  }, [availableTabs, tabChecked, searchParams, setSearchParams]);
+    const requestedRaw = searchParams.get("tab") ?? searchParams.get("section");
+    const requested = requestedRaw as ProjectTabId | null;
+    const inSupport = !!(project.custom_fields as { support_mode_at?: string } | null)?.support_mode_at;
+    const hadExplicitTab = !!requestedRaw;
+
+    if (requested && availableTabs.includes(requested)) return;
+
+    if (requested && !availableTabs.includes(requested)) {
+      const fallback: ProjectTabId = inSupport && availableTabs.includes("support") ? "support" : "overview";
+      setTab(fallback);
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", fallback);
+      next.delete("section");
+      setSearchParams(next, { replace: true });
+      const qaInSupport =
+        requested === "qa" && inSupport
+          ? "QA mode ends when a site goes live — showing Support instead."
+          : null;
+      toast.info(
+        qaInSupport ??
+          UNAVAILABLE_TAB_REASON[requested] ??
+          "That tab isn't available on this project — showing Overview instead.",
+      );
+      return;
+    }
+
+    if (!hadExplicitTab && inSupport && availableTabs.includes("support")) {
+      setTab("support");
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", "support");
+      next.delete("section");
+      setSearchParams(next, { replace: true });
+    }
+  }, [availableTabs, tabChecked, searchParams, setSearchParams, project]);
 
   const loading = projectQuery.isPending || tasksQuery.isPending || phasesQuery.isPending || depsQuery.isPending;
   const loadError = projectQuery.isError || tasksQuery.isError || phasesQuery.isError || depsQuery.isError;
   if (loading) return <WorkPageSkeleton />;
   if (loadError) return <div className="page-shell"><WorkLoadError retry={reload} /></div>;
   if (!project) return <div className="page-shell text-sm text-muted-foreground">Project not found.</div>;
-  const p: any = project;
+  const p = project as PmProject & { work_type?: string };
   const isRequest = (p.work_type ?? "project") === "request";
   const myRoles = user?.roles ?? (user?.role ? [user.role] : []);
   const isPM = myRoles.includes("pm");
   // Prefer a "doer" role for the New Task default type; PM is the fallback.
   const defaultTaskRole =
-    ((["developer", "designer", "strategist", "analyst"] as any[]).find(r => (myRoles as any[]).includes(r))) ??
+    ((["developer", "designer", "strategist", "analyst"] as string[]).find(r => myRoles.includes(r as never))) ??
     myRoles[0] ?? user?.role ?? null;
-  const inSupport = !!(project.custom_fields as any)?.support_mode_at;
-  const inQa = isInQaMode(project);
+  const inSupport = !!(project.custom_fields as { support_mode_at?: string } | null)?.support_mode_at;
+  const inQa = isInQaMode(project) && !inSupport;
 
   const canSeeSnippets = !!user?.roles?.some(r => r === "developer" || r === "designer") || user?.role === "developer" || user?.role === "designer";
 
   const hasTemplate = !!project.template_id;
   const canShareWithClient = canPostClientVisible(user?.roles ?? user?.role);
   const tabs: { id: ProjectTabId; label: string; badge?: React.ReactNode }[] = [
+    ...(inSupport
+      ? [{
+          id: "support" as const,
+          label: "Support",
+          badge:
+            supportOpenCount != null && supportOpenCount > 0 ? (
+              <span className="inline-flex items-center justify-center min-w-[1.1rem] h-4 px-1 rounded text-[10px] font-semibold tabular-nums bg-primary/15 text-primary">
+                {supportOpenCount}
+              </span>
+            ) : undefined,
+        }]
+      : []),
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
     ...(inQa ? [{ id: "qa" as const, label: "QA" }] : []),
@@ -239,7 +271,6 @@ export default function ProjectDetail() {
     ...(canShareWithClient ? [{ id: "client" as const, label: "Client" }] : []),
     ...(canSeeSnippets ? [{ id: "snippets" as const, label: "Snippets" }] : []),
     ...(inSupport ? [{ id: "documentation" as const, label: "Documentation" }] : []),
-
   ];
 
 
@@ -249,8 +280,8 @@ export default function ProjectDetail() {
 
       <ProjectHeader
         project={project}
-        onAddTask={() => { handleSetTab("tasks"); setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
-        onLogSupportRequest={() => { handleSetTab("tasks"); setNewTaskSupport(true); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onAddTask={() => { handleSetTab("tasks"); setNewTaskKind("task"); setNewTaskOpen(true); }}
+        onLogSupportRequest={() => { handleSetTab("support"); setSupportRequestOpen(true); }}
         onLogQaBatch={() => { handleSetTab("qa"); setQaBatchOpen(true); }}
       />
       <SupportReadyBanner project={project} />
@@ -262,7 +293,7 @@ export default function ProjectDetail() {
           onDefinePages={() => handleSetTab("pages")}
         />
       )}
-      <KpiStrip project={project} tasks={tasks} />
+      {!inSupport && <KpiStrip project={project} tasks={tasks} />}
 
       {isRequest && (
         <div className="flex justify-end">
@@ -273,6 +304,17 @@ export default function ProjectDetail() {
       )}
 
       <ProjectTabs value={tab} onChange={handleSetTab} tabs={tabs} />
+
+      {tab === "support" && inSupport && (
+        <SupportTab
+          projectId={project.id}
+          siteTasks={tasks}
+          meId={user?.id ?? null}
+          onLogRequest={() => setSupportRequestOpen(true)}
+          onOpenLegacyTask={drawer.open}
+          onOpenCountChange={setSupportOpenCount}
+        />
+      )}
 
       {tab === "overview" && (
         <div className="space-y-4">
@@ -289,10 +331,17 @@ export default function ProjectDetail() {
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                 {Object.entries(project.custom_fields)
                   .filter(([k]) => k !== "request_type")
-                  .map(([k, v]: [string, any]) => {
-                    const label = v?.label ?? k;
-                    const value = v?.value ?? v;
-                    const display = Array.isArray(value) ? value.join(", ") : String(value);
+                  .map(([k, v]: [string, unknown]) => {
+                    const val = v as { label?: string; value?: unknown } | unknown;
+                    const label =
+                      val && typeof val === "object" && "label" in (val as object)
+                        ? ((val as { label?: string }).label ?? k)
+                        : k;
+                    const value =
+                      val && typeof val === "object" && "value" in (val as object)
+                        ? (val as { value?: unknown }).value
+                        : val;
+                    const display = Array.isArray(value) ? value.join(", ") : String(value ?? "");
                     return (
                       <div key={k} className="flex flex-col">
                         <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -305,9 +354,6 @@ export default function ProjectDetail() {
           )}
           {isRequest && (
             <ParentLiveSiteChip project={project} onChanged={reload} />
-          )}
-          {(inSupport || (!isRequest && project.type === "career_site")) && (
-            <LinkedSupportRequests projectId={project.id} />
           )}
           <OverviewTab
             project={project} tasks={tasks}
@@ -326,9 +372,9 @@ export default function ProjectDetail() {
             projectId={project.id}
             meId={user?.id ?? null}
             templateId={project.template_id}
-            onAddTask={() => { setNewTaskSupport(false); setNewTaskKind("task"); setNewTaskOpen(true); }}
+            onAddTask={() => { setNewTaskKind("task"); setNewTaskOpen(true); }}
             onImportCsv={() => setTasksCsvOpen(true)}
-            onAddRaid={(k) => { setNewTaskSupport(false); setNewTaskKind(k); setNewTaskOpen(true); }}
+            onAddRaid={(k) => { setNewTaskKind(k); setNewTaskOpen(true); }}
             supportMode={inSupport}
           />
         </div>
@@ -337,7 +383,7 @@ export default function ProjectDetail() {
       {tab === "qa" && inQa && (
         <QaTab
           tasks={tasks}
-          onNewTicket={() => { setNewTaskSupport(false); setNewTaskKind("qa"); setNewTaskOpen(true); }}
+          onNewTicket={() => { setNewTaskKind("qa"); setNewTaskOpen(true); }}
           onBatchPaste={() => setQaBatchOpen(true)}
         />
       )}
@@ -386,14 +432,19 @@ export default function ProjectDetail() {
       <TaskDrawer />
       <NewTaskDialog
         open={newTaskOpen}
-        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) { setNewTaskSupport(false); setNewTaskKind("task"); } }}
+        onOpenChange={(o) => { setNewTaskOpen(o); if (!o) setNewTaskKind("task"); }}
         project={project}
         phases={phases}
         meId={user?.id ?? null}
-        meRole={defaultTaskRole}
+        meRole={defaultTaskRole as never}
         onCreated={reload}
-        initialSupport={newTaskSupport}
         initialKind={newTaskKind}
+      />
+      <LogSupportRequestDialog
+        open={supportRequestOpen}
+        onOpenChange={setSupportRequestOpen}
+        project={project}
+        onCreated={() => { reload(); }}
       />
       <CascadeConfirmModal
         open={pendingDiffs.length > 0 || !!pendingGoLive}

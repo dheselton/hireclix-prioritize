@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 let cache: Set<string> | null = null;
@@ -130,42 +130,78 @@ export function refreshCareerSiteProjects() {
   return csPending;
 }
 
-// --- Client id → name map (cached, for card identity) ---
-let nameCache: Map<string, string> | null = null;
-let namePending: Promise<Map<string, string>> | null = null;
-const nameSubs = new Set<(m: Map<string, string>) => void>();
+// --- Client id → brand map (name + logo URL, cached) ---
+export type ClientBrand = { name: string; logoUrl: string | null };
 
-async function fetchClientNames(): Promise<Map<string, string>> {
-  const { data } = await supabase.from("clients").select("id,name");
-  const map = new Map<string, string>(
-    ((data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
-  );
-  nameCache = map;
-  nameSubs.forEach((fn) => { try { fn(map); } catch {} });
+let brandCache: Map<string, ClientBrand> | null = null;
+let brandPending: Promise<Map<string, ClientBrand>> | null = null;
+const brandSubs = new Set<(m: Map<string, ClientBrand>) => void>();
+
+async function fetchClientBrands(): Promise<Map<string, ClientBrand>> {
+  const { data } = await supabase.from("clients").select("id,name,logo_path");
+  const map = new Map<string, ClientBrand>();
+  for (const r of ((data ?? []) as { id: string; name: string; logo_path: string | null }[])) {
+    let logoUrl: string | null = null;
+    if (r.logo_path) {
+      const { data: pub } = supabase.storage.from("client-logos").getPublicUrl(r.logo_path);
+      logoUrl = pub?.publicUrl ?? null;
+    }
+    map.set(r.id, { name: r.name, logoUrl });
+  }
+  brandCache = map;
+  // Keep the name-only cache in sync for existing callers.
+  nameCache = new Map(Array.from(map.entries()).map(([id, b]) => [id, b.name]));
+  brandSubs.forEach((fn) => { try { fn(map); } catch {} });
+  nameSubs.forEach((fn) => { try { fn(nameCache!); } catch {} });
   return map;
 }
 
-/** App-wide Map of client id → display name for task/project cards. */
-export function useClientNamesMap(): Map<string, string> {
-  const [map, setMap] = useState<Map<string, string>>(nameCache ?? new Map());
+/** App-wide Map of client id → { name, logoUrl } for cards and headers. */
+export function useClientBrandMap(): Map<string, ClientBrand> {
+  const [map, setMap] = useState<Map<string, ClientBrand>>(brandCache ?? new Map());
   useEffect(() => {
     let cancelled = false;
-    if (nameCache) {
-      setMap(nameCache);
+    if (brandCache) {
+      setMap(brandCache);
     } else {
-      namePending = namePending ?? fetchClientNames();
-      namePending.then((m) => { if (!cancelled) setMap(m); });
+      brandPending = brandPending ?? fetchClientBrands();
+      brandPending.then((m) => { if (!cancelled) setMap(m); });
     }
-    const fn = (m: Map<string, string>) => { if (!cancelled) setMap(m); };
-    nameSubs.add(fn);
-    return () => { cancelled = true; nameSubs.delete(fn); };
+    const fn = (m: Map<string, ClientBrand>) => { if (!cancelled) setMap(m); };
+    brandSubs.add(fn);
+    return () => { cancelled = true; brandSubs.delete(fn); };
   }, []);
   return map;
 }
 
+export function refreshClientBrands() {
+  brandPending = fetchClientBrands();
+  return brandPending;
+}
+
+// --- Client id → name map (cached, for card identity) ---
+let nameCache: Map<string, string> | null = null;
+const nameSubs = new Set<(m: Map<string, string>) => void>();
+
 export function refreshClientNames() {
-  namePending = fetchClientNames();
-  return namePending;
+  return refreshClientBrands().then((brands) => {
+    const map = new Map<string, string>(
+      Array.from(brands.entries()).map(([id, b]) => [id, b.name]),
+    );
+    nameCache = map;
+    nameSubs.forEach((fn) => { try { fn(map); } catch {} });
+    return map;
+  });
+}
+
+/** App-wide Map of client id → display name for task/project cards. */
+export function useClientNamesMap(): Map<string, string> {
+  const brands = useClientBrandMap();
+  return useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [id, b] of brands) m.set(id, b.name);
+    return m;
+  }, [brands]);
 }
 
 /** Resolve a client display name from a project + names map. */

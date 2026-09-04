@@ -1,6 +1,29 @@
 import type { ReactNode } from "react";
 
-export type ProjectTabId = "overview" | "tasks" | "qa" | "timeline" | "pages" | "files" | "snippets" | "documentation" | "client";
+export type ProjectTabId =
+  | "support"
+  | "overview"
+  | "tasks"
+  | "qa"
+  | "timeline"
+  | "pages"
+  | "files"
+  | "snippets"
+  | "documentation"
+  | "client";
+
+export const PROJECT_TAB_IDS: ProjectTabId[] = [
+  "support",
+  "overview",
+  "tasks",
+  "qa",
+  "timeline",
+  "pages",
+  "files",
+  "snippets",
+  "documentation",
+  "client",
+];
 
 export type ProjectTabItem = { id: ProjectTabId; label: string; badge?: ReactNode };
 

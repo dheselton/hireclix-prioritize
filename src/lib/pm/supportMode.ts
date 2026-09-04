@@ -73,7 +73,8 @@ export function isReadyForSupport(
   return project.go_live_date <= todayIso();
 }
 
-/** Enter Support mode for a project — shared handler for banner + dropdown. */
+/** Enter Support mode for a project — shared handler for banner + dropdown.
+ *  Also clears QA mode so go-live testing ends when the site goes live. */
 export function useEnterSupportMode(project: PmProject | null | undefined) {
   const [busy, setBusy] = useState(false);
   const enter = useCallback(async () => {
@@ -81,6 +82,7 @@ export function useEnterSupportMode(project: PmProject | null | undefined) {
     setBusy(true);
     try {
       const next = { ...(project.custom_fields ?? {}), support_mode_at: new Date().toISOString() };
+      delete (next as { qa_mode_at?: string }).qa_mode_at;
       const { error } = await supabase
         .from("pm_projects")
         .update({ custom_fields: next })

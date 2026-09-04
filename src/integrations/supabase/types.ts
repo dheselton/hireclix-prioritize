@@ -50,6 +50,7 @@ export type Database = {
           created_at: string
           id: string
           is_internal: boolean
+          logo_path: string | null
           name: string
           notes: string | null
         }
@@ -58,6 +59,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_internal?: boolean
+          logo_path?: string | null
           name: string
           notes?: string | null
         }
@@ -66,6 +68,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_internal?: boolean
+          logo_path?: string | null
           name?: string
           notes?: string | null
         }

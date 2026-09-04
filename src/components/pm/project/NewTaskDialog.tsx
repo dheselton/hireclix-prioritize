@@ -59,9 +59,6 @@ interface Props {
   meId: string | null;
   meRole: PmRole | null;
   onCreated?: () => void;
-  /** When true, prefills tags + custom_fields so this task is treated as a
-   *  Support request (lives in the support board, not the build archive). */
-  initialSupport?: boolean;
   /** Pre-select the kind (Decision / Risk) so the dialog opens in RAID mode. */
   initialKind?: TaskKind;
 }
@@ -72,7 +69,7 @@ function teamsForTypes(types: TaskType[]): Team[] {
   return Array.from(set);
 }
 
-export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialSupport, initialKind }: Props) {
+export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRole, onCreated, initialKind }: Props) {
   const users = useMockUsers();
   const { user } = useCurrentUser();
   const defaultType: TaskType = meRole ? ROLE_DEFAULT_TYPE[meRole] : "design";
@@ -142,7 +139,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setWatcherIds([]);
     setEstimateHours("");
     setKind(initialKind ?? "task");
-  }, [open, defaultType, meId, initialSupport, initialKind]);
+  }, [open, defaultType, meId, initialKind]);
 
   // Auto-sync status with assignees unless user touched it
   useEffect(() => {
@@ -214,8 +211,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
     setSaving(true);
     try {
       const extraTypeTags = syncTypeTags(tags, types).filter(t => t.startsWith("type:"));
-      const supportFlag = initialSupport ? ['support'] : [];
-      const allTags = Array.from(new Set([...tags, ...extraTypeTags, ...supportFlag]));
+      const allTags = Array.from(new Set([...tags, ...extraTypeTags]));
       const dur = Math.max(1, parseInt(duration, 10) || 1);
 
       const estNum = parseFloat(estimateHours);
@@ -329,9 +325,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {initialSupport
-              ? "New support request"
-              : kind === "decision" ? "Log a decision"
+            {kind === "decision" ? "Log a decision"
               : kind === "issue" ? "Log a risk / issue"
               : "New task"}
           </DialogTitle>
