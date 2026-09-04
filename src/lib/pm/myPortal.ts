@@ -31,6 +31,23 @@ export function groupMyTask(t: PmTask): MyTaskGroupId {
   return "up_next";
 }
 
+/** Task ids where the user is a co-assignee (not necessarily primary). */
+async function fetchCoAssignedTaskIds(userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("pm_task_assignees")
+    .select("task_id")
+    .eq("user_id", userId);
+  return Array.from(new Set(((data ?? []) as Array<{ task_id: string }>).map(r => r.task_id)));
+}
+
+function mergeTasksById(...lists: PmTask[][]): PmTask[] {
+  const byId = new Map<string, PmTask>();
+  for (const list of lists) {
+    for (const t of list) byId.set(t.id, t);
+  }
+  return Array.from(byId.values());
+}
+
 export function useMyTasks(userId: string | null, enabled = true): MyTasksData {
   const [rows, setRows] = useState<PmTask[]>([]);
   const [doneRows, setDoneRows] = useState<PmTask[]>([]);
@@ -40,13 +57,32 @@ export function useMyTasks(userId: string | null, enabled = true): MyTasksData {
   const load = useCallback(async () => {
     if (!enabled || !userId) { setRows([]); setDoneRows([]); setLoading(false); return; }
     setLoading(true);
-    const [openRes, doneRes] = await Promise.all([
-      supabase.from("pm_tasks").select("*").eq("assignee_id", userId).order("due_date", { ascending: true }),
-      supabase.from("pm_tasks").select("*").eq("assignee_id", userId)
-        .in("status", ["complete", "approved"]).order("updated_at", { ascending: false }).limit(20),
+
+    // Primary owner OR co-assignee — same "mine" rule as Daily Briefing / Work chips.
+    const coTaskIds = await fetchCoAssignedTaskIds(userId);
+    const [primaryRes, coTasksRes] = await Promise.all([
+      supabase.from("pm_tasks").select("*").eq("assignee_id", userId),
+      coTaskIds.length
+        ? supabase.from("pm_tasks").select("*").in("id", coTaskIds)
+        : Promise.resolve({ data: [] as PmTask[] } as { data: PmTask[] | null }),
     ]);
-    const open = (((openRes.data ?? []) as unknown) as PmTask[]).filter(t => !isDone(t.status));
-    const done = ((doneRes.data ?? []) as unknown) as PmTask[];
+
+    const primary = (((primaryRes.data ?? []) as unknown) as PmTask[]);
+    const coTasks = (((coTasksRes.data ?? []) as unknown) as PmTask[]);
+
+    const allMine = mergeTasksById(primary, coTasks);
+    const open = allMine
+      .filter(t => !isDone(t.status))
+      .sort((a, b) => {
+        const da = a.due_date ?? "9999-12-31";
+        const db = b.due_date ?? "9999-12-31";
+        return da.localeCompare(db);
+      });
+    const done = allMine
+      .filter(t => isDone(t.status))
+      .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
+      .slice(0, 20);
+
     setRows(open); setDoneRows(done);
 
     const ids = [...new Set([...open, ...done].map(t => t.project_id).filter(Boolean))];
@@ -74,7 +110,7 @@ export function useMyTasks(userId: string | null, enabled = true): MyTasksData {
 
 /* --------------------------------------------------------------- projects */
 
-export type MyProjectRelation = "member" | "requester" | "watcher" | "assignee";
+export type MyProjectRelation = "member" | "requester" | "watcher" | "assignee" | "creator";
 
 export interface MyProject {
   id: string;
@@ -92,12 +128,12 @@ export interface MyProject {
 }
 
 const RELATION_RANK: Record<MyProjectRelation, number> = {
-  member: 0, assignee: 1, requester: 2, watcher: 3,
+  member: 0, assignee: 1, creator: 2, requester: 3, watcher: 4,
 };
 
 /**
  * Every project the current user is attached to — as a team member, a
- * watcher, the requester, or simply because they own a task on it.
+ * watcher, the requester, the creator, or because they own / co-own a task.
  */
 export function useMyProjects(userId: string | null, enabled = true) {
   const [projects, setProjects] = useState<MyProject[]>([]);
@@ -107,10 +143,15 @@ export function useMyProjects(userId: string | null, enabled = true) {
     if (!enabled || !userId) { setProjects([]); setLoading(false); return; }
     setLoading(true);
 
-    const [memberRes, requestedRes, myTaskRes] = await Promise.all([
+    const coTaskIds = await fetchCoAssignedTaskIds(userId);
+    const [memberRes, requestedRes, createdRes, myTaskRes, coTaskRes] = await Promise.all([
       supabase.from("pm_project_members").select("project_id, role").eq("user_id", userId),
       supabase.from("pm_projects").select("id").eq("requested_by", userId),
+      supabase.from("pm_projects").select("id").eq("created_by", userId),
       supabase.from("pm_tasks").select("project_id").eq("assignee_id", userId),
+      coTaskIds.length
+        ? supabase.from("pm_tasks").select("id, project_id").in("id", coTaskIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; project_id: string }> } as { data: Array<{ id: string; project_id: string }> | null }),
     ]);
 
     const relations = new Map<string, Set<MyProjectRelation>>();
@@ -127,7 +168,13 @@ export function useMyProjects(userId: string | null, enabled = true) {
       if (role && role !== "watcher" && role !== "requester") roles.set(r.project_id, role);
     }
     for (const r of (requestedRes.data ?? []) as any[]) add(r.id, "requester");
+    for (const r of (createdRes.data ?? []) as any[]) add(r.id, "creator");
     for (const r of (myTaskRes.data ?? []) as any[]) add(r.project_id, "assignee");
+    const coAssignedTaskIdSet = new Set<string>();
+    for (const r of (coTaskRes.data ?? []) as any[]) {
+      add(r.project_id, "assignee");
+      if (r.id) coAssignedTaskIdSet.add(r.id);
+    }
 
     const ids = [...relations.keys()];
     if (!ids.length) { setProjects([]); setLoading(false); return; }
@@ -146,13 +193,15 @@ export function useMyProjects(userId: string | null, enabled = true) {
     }
 
     const today = todayISO();
+    const isMine = (t: { id: string; assignee_id: string | null }) =>
+      t.assignee_id === userId || coAssignedTaskIdSet.has(t.id);
     const stats = new Map<string, { total: number; done: number; mine: number; overdue: number }>();
     for (const t of (taskRes.data ?? []) as any[]) {
       const s = stats.get(t.project_id) ?? { total: 0, done: 0, mine: 0, overdue: 0 };
       s.total += 1;
       const done = isDone(t.status);
       if (done) s.done += 1;
-      if (t.assignee_id === userId && !done) {
+      if (isMine(t) && !done) {
         s.mine += 1;
         if (t.due_date && t.due_date < today) s.overdue += 1;
       }

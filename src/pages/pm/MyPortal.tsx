@@ -34,7 +34,7 @@ const TABS = [
 ] as const;
 
 const RELATION_LABEL: Record<string, string> = {
-  member: "Team", assignee: "Assigned", requester: "Requester", watcher: "Watching",
+  member: "Team", assignee: "Assigned", creator: "Created", requester: "Requester", watcher: "Watching",
 };
 
 /* ------------------------------------------------------------ project list */
@@ -300,7 +300,7 @@ export default function MyPortal() {
       <div>
         <h1 className="text-xl font-semibold">My Work</h1>
         <p className="text-sm text-muted-foreground">
-          Everything assigned to you, the projects you're attached to, your requests, and your project conversations.
+          Tasks you're assigned to (primary or co-assignee), projects you created or are attached to, your requests, and your project conversations.
         </p>
       </div>
 
@@ -327,7 +327,7 @@ export default function MyPortal() {
               <TaskGroup
                 title="Needs attention" icon={<AlertTriangle className="h-4 w-4" />}
                 tasks={myTasks.attention} projects={myTasks.projects} clientNames={clientNames}
-                link={buildQueueLink({ chips: ["overdue"] })}
+                link={buildQueueLink({ chips: ["assigned_to_me", "overdue"] })}
                 emptyHint="Nothing blocked or overdue. Nice."
               />
               <TaskGroup
@@ -380,7 +380,7 @@ export default function MyPortal() {
           ) : (
             <>
               <p className="text-xs text-muted-foreground px-1">
-                Projects where you're on the team, watching, the requester, or own a task.
+                Projects you created, are on the team for, are watching, requested, or have a task on (as primary or co-assignee).
               </p>
               {myProjects.map(p => <MyProjectCard key={p.id} project={p} />)}
             </>
