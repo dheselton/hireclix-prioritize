@@ -5,6 +5,7 @@ import { extractMentionIds } from "./notifications";
 describe("groupKeyForRequestType", () => {
   it("maps career site and ads slugs to groups", () => {
     expect(groupKeyForRequestType("careersite_new_page")).toBe("career_site");
+    expect(groupKeyForRequestType("careersite_update")).toBe("career_site");
     expect(groupKeyForRequestType("banner_ads")).toBe("ads");
     expect(groupKeyForRequestType("unknown")).toBe("other");
     expect(groupKeyForRequestType(null)).toBe("other");

@@ -4,19 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Share2, Plus, MoreHorizontal, Trash2, Pencil, LifeBuoy,
-  RotateCcw, Headphones, Bug, ListPlus, Building2, Calendar,
+  RotateCcw, Headphones, Bug, ListPlus, Calendar,
 } from "lucide-react";
 import { EditProjectDialog } from "./EditProjectDialog";
 import { ProjectAssignmentsBar } from "./ProjectAssignmentsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useClientBrandMap, useInternalClientIds } from "@/lib/pm/clients";
 import { isCareerSiteBuildProject } from "@/lib/pm/liveSites";
 import { deleteProject } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useEnterSupportMode } from "@/lib/pm/supportMode";
 import { isInQaMode, useEnterQaMode, useExitQaMode } from "@/lib/pm/qaMode";
 import { fmtDate } from "@/lib/pm/format";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -45,6 +46,9 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   onLogQaBatch?: () => void;
 }) {
   const [clientName, setClientName] = useState<string>("");
+  const brands = useClientBrandMap();
+  const brand = project.client_id ? brands.get(project.client_id) : undefined;
+  const logoUrl = brand?.logoUrl ?? null;
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -104,14 +108,14 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
             {project.client_id && clientName ? (
               <Link
                 to={`/pm/clients/${project.client_id}`}
-                className="inline-flex items-center gap-1.5 text-base sm:text-lg font-semibold text-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 text-base sm:text-lg font-semibold text-foreground hover:text-primary transition-colors"
               >
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+                <ClientLogo name={clientName} logoUrl={logoUrl} size="sm" />
                 <span className="truncate">{clientName}</span>
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-base sm:text-lg font-semibold text-muted-foreground">
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+              <span className="inline-flex items-center gap-2 text-base sm:text-lg font-semibold text-muted-foreground">
+                <ClientLogo name="No client" size="sm" />
                 No client
               </span>
             )}
@@ -137,13 +141,13 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
             ) : (
               <h1 className="text-xl sm:text-2xl font-semibold leading-tight truncate max-w-full">{project.title}</h1>
             )}
-            {inQa ? (
-              <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
-                <Bug className="h-3 w-3" /> QA / Go-live testing
-              </Badge>
-            ) : inSupport ? (
+            {inSupport ? (
               <Badge variant="outline" className="bg-info/15 text-info border-info/30 gap-1">
                 <Headphones className="h-3 w-3" /> Support mode
+              </Badge>
+            ) : inQa ? (
+              <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
+                <Bug className="h-3 w-3" /> QA / Go-live testing
               </Badge>
             ) : (
               <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
@@ -177,7 +181,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
               <LifeBuoy className="h-4 w-4 mr-1" /> <span className="truncate">Log support request</span>
             </Button>
           )}
-          {inQa && onLogQaBatch && (
+          {inQa && !inSupport && onLogQaBatch && (
             <Button size="sm" onClick={onLogQaBatch} className="flex-1 sm:flex-none">
               <ListPlus className="h-4 w-4 mr-1" /> <span className="truncate">Log QA batch</span>
             </Button>
@@ -215,20 +219,22 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
                     <RotateCcw className="h-4 w-4 mr-2" /> Exit Support mode
                   </DropdownMenuItem>
                 )}
-                {!inQa ? (
-                  <DropdownMenuItem
-                    disabled={enteringQa}
-                    onSelect={(e) => { e.preventDefault(); enterQa(); }}
-                  >
-                    <Bug className="h-4 w-4 mr-2" /> Enter QA / Go-live mode
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    disabled={exitingQa}
-                    onSelect={(e) => { e.preventDefault(); setConfirmExitQa(true); }}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" /> Exit QA mode
-                  </DropdownMenuItem>
+                {!inSupport && (
+                  !inQa ? (
+                    <DropdownMenuItem
+                      disabled={enteringQa}
+                      onSelect={(e) => { e.preventDefault(); enterQa(); }}
+                    >
+                      <Bug className="h-4 w-4 mr-2" /> Enter QA / Go-live mode
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      disabled={exitingQa}
+                      onSelect={(e) => { e.preventDefault(); setConfirmExitQa(true); }}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" /> Exit QA mode
+                    </DropdownMenuItem>
+                  )
                 )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
@@ -290,7 +296,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
         open={confirmExitSupport}
         onOpenChange={setConfirmExitSupport}
         title="Exit Support mode?"
-        description="Build tasks will return to the main board. Support tickets are not deleted."
+        description="Build tasks will return to the main board. Nested support requests are not deleted."
         confirmLabel="Exit Support mode"
         destructive={false}
         onConfirm={async () => {

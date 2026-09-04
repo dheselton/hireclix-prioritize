@@ -67,7 +67,7 @@ export function resolveParentProjectId(opts: {
   return { parentProjectId: selectedId };
 }
 
-/** Linked child request projects under a live site. */
+/** Linked child request projects under a live site. Prefer supportQueue rollups for UI. */
 export async function fetchLinkedSupportRequests(parentProjectId: string): Promise<PmProject[]> {
   const { data, error } = await supabase
     .from("pm_projects")
@@ -78,6 +78,8 @@ export async function fetchLinkedSupportRequests(parentProjectId: string): Promi
   if (error) throw error;
   return (data ?? []) as unknown as PmProject[];
 }
+
+export { fetchSupportQueueForSite, fetchSiteQueueSummaries } from "@/lib/pm/supportQueue";
 
 /** All live career sites across the workspace (for inventory page). */
 export async function fetchLiveCareerSites(): Promise<LiveSiteSummary[]> {

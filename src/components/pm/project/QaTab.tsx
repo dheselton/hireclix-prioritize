@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bug, ListPlus, Plus, Search } from "lucide-react";
+import { Bug, CheckCircle2, ChevronDown, ChevronRight, ListPlus, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
@@ -18,19 +18,55 @@ interface Props {
   onBatchPaste: () => void;
 }
 
+type ColumnTone = "default" | "done" | "archive";
+
 // Ordered QA columns (mapped from underlying TaskStatus).
-const COLUMNS: { id: string; label: string; statuses: TaskStatus[] }[] = [
-  { id: "new", label: "New", statuses: ["unclaimed"] },
-  { id: "triage", label: "Triaging", statuses: ["claimed"] },
-  { id: "fix", label: "In Fix", statuses: ["in_progress", "blocked"] },
-  { id: "verify", label: "Ready to Verify", statuses: ["in_review"] },
-  { id: "verified", label: "Verified", statuses: ["complete"] },
-  { id: "closed", label: "Closed", statuses: ["approved"] },
+const COLUMNS: { id: string; label: string; statuses: TaskStatus[]; tone: ColumnTone }[] = [
+  { id: "new", label: "New", statuses: ["unclaimed"], tone: "default" },
+  { id: "triage", label: "Triaging", statuses: ["claimed"], tone: "default" },
+  { id: "fix", label: "In Fix", statuses: ["in_progress", "blocked"], tone: "default" },
+  { id: "verify", label: "Ready to Verify", statuses: ["in_review"], tone: "default" },
+  { id: "verified", label: "Verified", statuses: ["complete"], tone: "done" },
+  { id: "closed", label: "Closed", statuses: ["approved"], tone: "archive" },
 ];
+
+function columnShellClass(tone: ColumnTone): string {
+  switch (tone) {
+    case "done":
+      return "bg-success/10 border border-success/20";
+    case "archive":
+      return "bg-muted/50 border border-border";
+    default:
+      return "bg-secondary/40";
+  }
+}
+
+function columnHeaderClass(tone: ColumnTone): string {
+  switch (tone) {
+    case "done":
+      return "text-success";
+    case "archive":
+      return "text-muted-foreground";
+    default:
+      return "text-muted-foreground";
+  }
+}
+
+function columnBadgeClass(tone: ColumnTone): string {
+  switch (tone) {
+    case "done":
+      return "border-success/30 text-success bg-success/10";
+    case "archive":
+      return "border-border text-muted-foreground bg-muted/40";
+    default:
+      return "";
+  }
+}
 
 export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
   const [query, setQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<QaSeverity | "all">("all");
+  const [showClosed, setShowClosed] = useState(false);
   const navigate = useTaskDrawerLink();
 
   const qaTasks = useMemo(
@@ -170,20 +206,60 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {COLUMNS.map(col => {
             const items = byColumn.get(col.id) ?? [];
+            const isArchive = col.tone === "archive";
+            const collapsed = isArchive && !showClosed && items.length > 0;
+            const isDoneLane = col.tone === "done" || col.tone === "archive";
+
             return (
-              <Card key={col.id} className="bg-secondary/40">
+              <Card key={col.id} className={columnShellClass(col.tone)}>
                 <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className={cn(
+                      "text-xs font-semibold uppercase tracking-wide inline-flex items-center gap-1.5",
+                      columnHeaderClass(col.tone),
+                    )}>
+                      {isDoneLane && <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
                       {col.label}
                     </div>
-                    <Badge variant="outline" className="tabular-nums">{items.length}</Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn("tabular-nums", columnBadgeClass(col.tone))}
+                    >
+                      {items.length}
+                    </Badge>
                   </div>
+
                   {items.length === 0 ? (
                     <div className="text-xs text-muted-foreground italic py-4 text-center">—</div>
+                  ) : collapsed ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowClosed(true)}
+                      className="w-full flex items-center justify-center gap-1.5 py-3 rounded-md border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      Show {items.length} closed
+                    </button>
                   ) : (
                     <div className="space-y-2">
-                      {items.map(t => <QaCard key={t.id} task={t} onOpen={() => navigate.open(t.id)} />)}
+                      {isArchive && (
+                        <button
+                          type="button"
+                          onClick={() => setShowClosed(false)}
+                          className="w-full flex items-center justify-center gap-1.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                          Hide closed
+                        </button>
+                      )}
+                      {items.map(t => (
+                        <QaCard
+                          key={t.id}
+                          task={t}
+                          tone={col.tone}
+                          onOpen={() => navigate.open(t.id)}
+                        />
+                      ))}
                     </div>
                   )}
                 </CardContent>
@@ -196,14 +272,31 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
   );
 }
 
-function QaCard({ task, onOpen }: { task: PmTask; onOpen: () => void }) {
+function QaCard({
+  task,
+  tone = "default",
+  onOpen,
+}: {
+  task: PmTask;
+  tone?: ColumnTone;
+  onOpen: () => void;
+}) {
   const details = getQaDetails(task);
   const sev = details.severity ?? "minor";
+  const isDone = tone === "done";
+  const isArchive = tone === "archive";
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="w-full text-left rounded-md border border-border bg-background p-2.5 space-y-1.5 hover:border-foreground/30 hover:shadow-sm transition"
+      className={cn(
+        "w-full text-left rounded-md border p-2.5 space-y-1.5 hover:border-foreground/30 hover:shadow-sm transition",
+        isDone || isArchive
+          ? "bg-background/70 border-border/60"
+          : "border-border bg-background",
+        isArchive && "opacity-80",
+      )}
     >
       <div className="flex items-start gap-2">
         <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
@@ -214,7 +307,10 @@ function QaCard({ task, onOpen }: { task: PmTask; onOpen: () => void }) {
         <span className={cn("text-[10px] font-semibold uppercase px-1.5 py-0 rounded-full border", QA_SEVERITY_STYLE[sev])}>
           {sev}
         </span>
-        <span className="text-[10px] text-muted-foreground">
+        <span className={cn(
+          "text-[10px]",
+          isDone ? "text-success font-medium" : "text-muted-foreground",
+        )}>
           {getKindStatusLabel(task.status, "qa")}
         </span>
         {details.environment && (

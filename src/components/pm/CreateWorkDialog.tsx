@@ -25,11 +25,11 @@ import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { IntakeAttachmentsField, type StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
 import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
-import { fanoutNewRequestNotifications } from "@/lib/pm/newRequestNotify";
 import { aliasFor } from "@/lib/pm/requestAliases";
 import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
-import { useInternalClientIds, refreshCareerSiteProjects } from "@/lib/pm/clients";
+import { useInternalClientIds } from "@/lib/pm/clients";
 import { useLiveSitesForClient, resolveParentProjectId } from "@/lib/pm/liveSites";
+import { createCareerSiteSupportRequest } from "@/lib/pm/supportQueue";
 import { Sparkle } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
 
@@ -178,41 +178,19 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
     setBusy(true);
     try {
-      const proj = await createProject({
+      const { project: proj, watcherIds } = await createCareerSiteSupportRequest({
         title: reqForm.title.trim(),
-        type: "quick_request",
-        work_type: "request",
-        status: "active",
-        client_id: reqForm.client_id,
-        parent_project_id: resolvedParent,
+        clientId: reqForm.client_id,
+        parentProjectId: resolvedParent,
+        requestType,
         description: reqForm.description.trim() || null,
-        start_date: new Date().toISOString().slice(0, 10),
-        created_by: user?.id ?? null,
-        requested_by: reqRequestedBy ?? user?.id ?? null,
-        custom_fields: { request_type: requestType, ...requestCustomFields },
-        creation_source: "intake",
-        creation_context: { request_type: requestType },
-      } as any);
-      let titles = quickTasks.map(t => t.trim()).filter(Boolean).slice(0, 3);
-      if (!titles.length) titles = [reqForm.title.trim()];
-      // Mirror request description onto each auto-created task so context follows the work.
-      const taskDescription = reqForm.description.trim() || null;
-      // Intake tasks ALWAYS start unclaimed — requester (even if on team) is project
-      // metadata, never the task owner. Otherwise unclaimed queue would miss new work.
-      await supabase.from("pm_tasks").insert(titles.map((title, i) => ({
-        project_id: proj.id,
-        title,
-        type: "design",
-        status: "unclaimed",
-        priority: "medium",
-        duration_days: 1,
-        sort_order: i * 10,
-        created_by: user?.id ?? null,
-        assignee_id: null,
-        description: taskDescription,
-        creation_source: "intake",
-        creation_context: { request_type: requestType },
-      })) as any);
+        customFields: requestCustomFields,
+        requestedBy: reqRequestedBy ?? user?.id ?? null,
+        createdBy: user?.id ?? null,
+        taskTitles: quickTasks,
+        creationSource: "intake",
+        creationContext: { request_type: requestType },
+      });
 
       // Always attach staged files/links at the PROJECT level so every task in the
       // request can see the original assets/refs.
@@ -252,19 +230,6 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
           received_email_error: emailResult.ok ? null : (emailResult.error ?? "unknown error").slice(0, 500),
         } as any);
       }
-      // Refresh the Career Site project cache so the new request gets its teal treatment immediately.
-      if (typeof requestType === "string" && requestType.startsWith("careersite_")) {
-        refreshCareerSiteProjects().catch(() => {});
-      }
-      // Auto-add watchers configured for this client + request type.
-      const watcherIds = await applyClientWatchers(proj.id, reqForm.client_id, requestType).catch(() => []);
-      await fanoutNewRequestNotifications({
-        projectId: proj.id,
-        title: reqForm.title.trim(),
-        requestType,
-        clientId: reqForm.client_id,
-        actorId: user?.id ?? null,
-      }).catch(() => {});
       toast.success("Request submitted");
       setSuccess({
         projectId: proj.id,

@@ -24,6 +24,7 @@ export interface ClientRecord {
   is_internal: boolean;
   archived_at: string | null;
   created_at: string;
+  logo_path?: string | null;
 }
 
 export interface ClientProjectRow {
@@ -67,7 +68,7 @@ export function useClientRecord(clientId: string | undefined) {
     if (!clientId) return;
     const { data } = await supabase
       .from("clients")
-      .select("id,name,notes,is_internal,archived_at,created_at")
+      .select("id,name,notes,is_internal,archived_at,created_at,logo_path")
       .eq("id", clientId)
       .maybeSingle();
     setClient((data ?? null) as ClientRecord | null);
@@ -394,7 +395,7 @@ export async function createClient(input: {
 
 export async function updateClient(
   id: string,
-  patch: { name?: string; notes?: string | null; is_internal?: boolean },
+  patch: { name?: string; notes?: string | null; is_internal?: boolean; logo_path?: string | null },
 ) {
   const next = {
     ...patch,
@@ -416,4 +417,41 @@ export async function archiveClient(id: string, archived: boolean) {
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq("id", id);
   if (error) throw error;
+}
+
+// ---------- Logos ----------
+
+export const CLIENT_LOGO_BUCKET = "client-logos";
+
+export function clientLogoPublicUrl(logoPath: string | null | undefined): string | null {
+  if (!logoPath) return null;
+  const { data } = supabase.storage.from(CLIENT_LOGO_BUCKET).getPublicUrl(logoPath);
+  return data?.publicUrl ?? null;
+}
+
+/**
+ * Upload a logo into the public client-logos bucket and set clients.logo_path.
+ * Rolls the storage object back if the DB update fails.
+ */
+export async function uploadClientLogo(clientId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const path = `${clientId}/logo.${ext}`;
+  const { error: upErr } = await supabase.storage
+    .from(CLIENT_LOGO_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type || undefined });
+  if (upErr) throw upErr;
+  try {
+    await updateClient(clientId, { logo_path: path });
+  } catch (err) {
+    await supabase.storage.from(CLIENT_LOGO_BUCKET).remove([path]);
+    throw err;
+  }
+  return path;
+}
+
+export async function removeClientLogo(clientId: string, logoPath: string | null) {
+  await updateClient(clientId, { logo_path: null });
+  if (logoPath) {
+    await supabase.storage.from(CLIENT_LOGO_BUCKET).remove([logoPath]);
+  }
 }
