@@ -1,11 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Plus, Trash2, FileText, ArrowUpDown, X, Upload } from "lucide-react";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { useSubtaskCounts, type SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { fmtDate } from "@/lib/pm/format";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useViewMode } from "@/hooks/useViewMode";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -55,9 +56,8 @@ const VALID_TASK_FILTERS = new Set<string>(["overdue", "blocked", "open", "in_re
 const isDoneStatus = (s: string) => s === "complete" || s === "approved";
 
 function matchesTaskFilter(t: PmTask, f: ProjectTaskFilter): boolean {
-  const today = new Date().toISOString().slice(0, 10);
   switch (f) {
-    case "overdue": return !!t.due_date && t.due_date < today && !isDoneStatus(t.status);
+    case "overdue": return isHardOverdue(t);
     case "blocked": return t.status === "blocked";
     case "open": return !isDoneStatus(t.status);
     case "in_review": return t.status === "in_review";
@@ -65,28 +65,16 @@ function matchesTaskFilter(t: PmTask, f: ProjectTaskFilter): boolean {
   }
 }
 
-/** Read (and strip) the project-scoped filter deep-link params. */
-function readInitialTaskFilter(): ProjectTaskFilter | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get("taskFilter");
-    const chips = params.get("chips");
-    let value: ProjectTaskFilter | null = null;
-    if (raw && VALID_TASK_FILTERS.has(raw)) value = raw as ProjectTaskFilter;
-    else if (chips) {
-      const first = chips.split(",").map(s => s.trim()).find(s => VALID_TASK_FILTERS.has(s));
-      if (first) value = first as ProjectTaskFilter;
-    }
-    if (params.has("taskFilter") || params.has("chips")) {
-      params.delete("taskFilter");
-      params.delete("chips");
-      const url = new URL(window.location.href);
-      url.search = params.toString();
-      window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
-    }
-    return value;
-  } catch { return null; }
+/** Read the project-scoped filter from the deep-link params. */
+function readTaskFilterParam(params: URLSearchParams): ProjectTaskFilter | null {
+  const raw = params.get("taskFilter");
+  if (raw && VALID_TASK_FILTERS.has(raw)) return raw as ProjectTaskFilter;
+  const chips = params.get("chips");
+  if (chips) {
+    const first = chips.split(",").map(s => s.trim()).find(s => VALID_TASK_FILTERS.has(s));
+    if (first) return first as ProjectTaskFilter;
+  }
+  return null;
 }
 
 const TYPE_FILTER: Record<Exclude<TypePill, "all">, string[]> = {
@@ -126,7 +114,21 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
   const [pill, setPill] = useState<TypePill>("all");
   const [kindFilter, setKindFilter] = useState<TaskKind | "all">("all");
   const [watchingOnly, setWatchingOnly] = useState(false);
-  const [taskFilter, setTaskFilter] = useState<ProjectTaskFilter | null>(() => readInitialTaskFilter());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [taskFilter, setTaskFilter] = useState<ProjectTaskFilter | null>(null);
+
+  // Apply ?taskFilter= / ?chips= then strip them so the chip stays dismissible.
+  // This runs on every param change, not just mount: stat links on the project
+  // page (KPI strip, Overview metrics) navigate to the tab we're already on, so
+  // this component never remounts.
+  useEffect(() => {
+    if (!searchParams.has("taskFilter") && !searchParams.has("chips")) return;
+    setTaskFilter(readTaskFilterParam(searchParams));
+    const next = new URLSearchParams(searchParams);
+    next.delete("taskFilter");
+    next.delete("chips");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
   const { isMe, setMode: setMeMode } = useMeMode();
   const watchedTaskIds = useWatchedTaskIds(meId, tasks);
   const [addPageOpen, setAddPageOpen] = useState(false);

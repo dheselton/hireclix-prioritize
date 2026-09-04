@@ -4,6 +4,7 @@ import { useTasksChanged, emitTasksChanged } from "./refresh";
 import { getTaskKind, isHighSeverityRisk, isStaleDecision } from "./taskKind";
 import type { PmTask, PmProject } from "@/types/pm";
 import { isDone } from "@/types/pm";
+import { isHardOverdue, dueState } from "@/lib/pm/dueState";
 
 
 
@@ -122,17 +123,19 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       return wt === "project" || wt == null;
     };
 
-    const overdueTasks = myTasks.filter((t) => t.due_date && t.due_date < today);
+    const overdueTasks = myTasks.filter((t) => isHardOverdue(t, today));
     const blocked = myTasks.filter((t) => t.status === "blocked");
     const quickPool = myTasks.filter(isRequest);
 
     // 5. Quick tasks (top 5)
     const sortByUrgency = (a: PmTask, b: PmTask) => {
       const rank = (t: PmTask) => {
-        if (!t.due_date) return 3;
-        if (t.due_date < today) return 0;
-        if (t.due_date === today) return 1;
-        return 2;
+        const state = dueState(t, today);
+        if (state === "overdue") return 0;
+        if (state === "slipped") return 1;
+        if (state === "today") return 2;
+        if (state === "upcoming") return 3;
+        return 4;
       };
       const ra = rank(a), rb = rank(b);
       if (ra !== rb) return ra - rb;
@@ -224,7 +227,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
       projectsOut = activeProjectList.map((p) => {
         const tasks = byProj.get(p.id) ?? [];
         const completed = tasks.filter((t) => isDone(t.status)).length;
-        const overdue = tasks.filter((t) => t.due_date && t.due_date < today && !isDone(t.status)).length;
+        const overdue = tasks.filter((t) => isHardOverdue(t, today)).length;
         const mine = tasks
           .filter((t) => (t.assignee_id === userId || coTaskIds.includes(t.id)) && !isDone(t.status))
           .sort(sortByUrgency);

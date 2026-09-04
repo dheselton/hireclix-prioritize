@@ -51,7 +51,11 @@ export const fetchDependencies = async (projectId: string, knownTaskIds?: string
 
 export const updateTask = async (id: string, patch: Partial<PmTask>) => {
   // Load prior state for change detection
-  const { data: prev } = await supabase.from('pm_tasks').select('assignee_id, status, title, project_id, custom_fields').eq('id', id).maybeSingle();
+  const { data: prev } = await supabase
+    .from('pm_tasks')
+    .select('assignee_id, status, title, project_id, custom_fields, due_date, original_due_date, due_date_changes')
+    .eq('id', id)
+    .maybeSingle();
 
   // Guard: the BA's "Define pages" task can't be completed until pages exist
   if (patch.status && isDone(patch.status as any) && (prev as any)?.custom_fields?.define_pages === true) {
@@ -61,7 +65,24 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
     }
   }
 
-  const { data, error } = await supabase.from('pm_tasks').update(patch as any).eq('id', id).select().single();
+  const writePatch: Record<string, unknown> = { ...patch };
+  if (Object.prototype.hasOwnProperty.call(patch, 'due_date')) {
+    const nextDue = patch.due_date ?? null;
+    const prevDue = (prev as any)?.due_date as string | null | undefined;
+    if (nextDue !== prevDue) {
+      const original = (prev as any)?.original_due_date as string | null | undefined;
+      if (!original && nextDue) {
+        writePatch.original_due_date = nextDue;
+      } else if (prevDue != null && nextDue !== prevDue) {
+        // Count a change whenever an existing due date moves (or is cleared/set again after original).
+        const prevChanges = Number((prev as any)?.due_date_changes ?? 0);
+        writePatch.due_date_changes = prevChanges + 1;
+        if (!original && prevDue) writePatch.original_due_date = prevDue;
+      }
+    }
+  }
+
+  const { data, error } = await supabase.from('pm_tasks').update(writePatch as any).eq('id', id).select().single();
 
   if (error) throw error;
   emitTasksChanged();
@@ -130,6 +151,12 @@ export const createTask = async (task: Partial<PmTask> & { creation_source?: Cre
     Object.assign(payload, attributionPayload('manual'));
   } else if (payload.creation_context === undefined) {
     payload.creation_context = {};
+  }
+  if (payload.due_date && !payload.original_due_date) {
+    payload.original_due_date = payload.due_date;
+  }
+  if (payload.due_date_changes === undefined) {
+    payload.due_date_changes = 0;
   }
   // Inherit client:/type: tags from the parent project so tasks are searchable by
   // client and project shape without manual entry.

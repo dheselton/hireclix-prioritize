@@ -1,6 +1,8 @@
 import { isDone } from "@/types/pm";
 import type { PmTask, PmProject, TaskType } from "@/types/pm";
 import type { ChipId } from "@/hooks/useChipFilters";
+import { isHardOverdue, isSlipped } from "@/lib/pm/dueState";
+import { todayISO } from "@/lib/pm/format";
 
 /** Filter tasks by a type allow-list. Empty set = no filter (show all). */
 export function applyTaskTypes(tasks: PmTask[], types: Set<TaskType>): PmTask[] {
@@ -31,6 +33,7 @@ export function applyTaskChips(
   if (!active.size) return tasks;
   const today = startOfToday();
   const week = endOfWeek();
+  const todayKey = todayISO();
   const isMine = (t: PmTask) => !!meId && (t.assignee_id === meId || coAssignedTaskIds?.has(t.id));
   return tasks.filter(t => {
     for (const id of active) {
@@ -45,9 +48,10 @@ export function applyTaskChips(
           break;
         }
         case "overdue":
-          if (!t.due_date) return false;
-          if (new Date(t.due_date) >= today) return false;
-          if (isDone(t.status)) return false;
+          if (!isHardOverdue(t, todayKey)) return false;
+          break;
+        case "slipped":
+          if (!isSlipped(t, todayKey)) return false;
           break;
         case "due_this_week": {
           if (!t.due_date) return false;
@@ -140,7 +144,7 @@ export function matchesWorkState(t: PmTask, filter: WorkStateFilter): boolean {
   const week = endOfWeek();
   switch (filter) {
     case "overdue":
-      return !!t.due_date && new Date(t.due_date) < today;
+      return isHardOverdue(t);
     case "due-this-week": {
       if (!t.due_date) return false;
       const d = new Date(t.due_date);

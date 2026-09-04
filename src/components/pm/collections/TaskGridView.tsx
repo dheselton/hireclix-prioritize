@@ -12,7 +12,8 @@ import { SubtaskBadge, useSubtaskCounts } from "@/components/pm/SubtaskBadge";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { ClientContext } from "@/components/pm/ClientContext";
-import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
+import { DueBadge } from "@/components/pm/DueBadge";
+import { dueAccentClass } from "@/lib/pm/dueState";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 
@@ -54,7 +55,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                 t.status === "unclaimed"
                   ? "unclaimed-card"
                   : (t.track === "pm" ? "track-border-pm" : "track-border-production"),
-                overdueAccentClass(t.due_date),
+                dueAccentClass(t),
               )}
               onClick={() => onOpen(t.id)}
             >
@@ -95,7 +96,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                   </div>
                   {t.status === "unclaimed"
                     ? <ClaimButton task={t} onChanged={onChanged} />
-                    : <DueBadge dueDate={t.due_date} />}
+                    : <DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} />}
                 </div>
                 <AttributionChip
                   created_by={t.created_by}

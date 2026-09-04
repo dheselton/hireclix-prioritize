@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isDone, type PmTask, type TaskStatus } from "@/types/pm";
 import { todayISO } from "@/lib/pm/format";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import {
   normalizeClientName,
   clientNameKey,
@@ -144,7 +145,7 @@ export function useClientHub(clientId: string | undefined) {
         activeProjects: projs.filter(p => !ACTIVE_EXCLUDED.has(p.status)).length,
         totalProjects: projs.length,
         openTasks: open.length,
-        overdueTasks: open.filter(t => t.due_date && t.due_date < today).length,
+        overdueTasks: open.filter(t => isHardOverdue(t, today)).length,
         unclaimedTasks: open.filter(t => t.status === "unclaimed").length,
         hours30d: Math.round((minutes / 60) * 10) / 10,
         portalInvites: inviteCount ?? 0,

@@ -6,9 +6,10 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TaskTriagePopover } from "@/components/pm/TaskTriagePopover";
 import { ClientContext } from "@/components/pm/ClientContext";
-import { DueBadge, dueUrgency, overdueAccentClass } from "@/components/pm/DueBadge";
+import { DueBadge } from "@/components/pm/DueBadge";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 import { buildQueueLink } from "@/lib/pm/links";
+import { dueAccentClass, dueState } from "@/lib/pm/dueState";
 import { cn } from "@/lib/utils";
 import type { EnrichedQuickTask } from "@/lib/pm/briefing";
 
@@ -55,16 +56,16 @@ function TypePill({ value }: { value: string | null }) {
 }
 
 function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }) {
-  const u = dueUrgency(t.due_date);
+  const state = dueState(t);
   const dot =
-    u === "overdue" ? "bg-destructive" :
-    u === "today" ? "bg-amber-500" :
-    u === "upcoming" ? "bg-primary" : "bg-muted-foreground/40";
+    state === "overdue" ? "bg-destructive" :
+    state === "slipped" || state === "today" ? "bg-amber-500" :
+    state === "upcoming" ? "bg-primary" : "bg-muted-foreground/40";
   return (
     <div
       className={cn(
         "card-lift w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-md border border-border bg-card text-left group",
-        overdueAccentClass(t.due_date),
+        dueAccentClass(t),
       )}
     >
       <span className={`h-2 w-2 rounded-full shrink-0 mt-1.5 ${dot}`} />
@@ -90,7 +91,7 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
         </div>
       </button>
 
-      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} size="md" /></div>
+      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} size="md" /></div>
       <div className="mt-0.5 touch-action">
         <TaskTriagePopover task={t} />
       </div>
@@ -125,7 +126,7 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
         <TypePill value={t.request_type} />
       </button>
 
-      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} size="md" showEmpty={false} /></div>
+      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} size="md" showEmpty={false} /></div>
       <div className="mt-0.5"><ClaimButton task={t} size="sm" /></div>
     </div>
   );

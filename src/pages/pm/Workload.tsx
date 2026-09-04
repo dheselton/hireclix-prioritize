@@ -7,6 +7,7 @@ import { StatusPill } from "@/components/pm/StatusPill";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { fmtDate } from "@/lib/pm/format";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { cn } from "@/lib/utils";
 import { useViewMode } from "@/hooks/useViewMode";
@@ -78,12 +79,11 @@ export default function Workload() {
     return s;
   }, [isMe, me?.id, teamsMap]);
   const atRiskCount = useMemo(() => {
-    const startOfToday = new Date(new Date().toDateString());
     const flagged = new Set<string>();
     for (const t of tasks) {
       if (t.status === "complete" || t.status === "approved") continue;
       if (healthProjectIds.size && !healthProjectIds.has(t.project_id)) continue;
-      if (t.status === "blocked" || (t.due_date && new Date(t.due_date) < startOfToday)) flagged.add(t.project_id);
+      if (t.status === "blocked" || isHardOverdue(t)) flagged.add(t.project_id);
     }
     return flagged.size;
   }, [tasks, healthProjectIds]);

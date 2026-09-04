@@ -12,6 +12,7 @@ import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { ClientContext } from "@/components/pm/ClientContext";
 import { DueBadge } from "@/components/pm/DueBadge";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -24,10 +25,6 @@ interface Props {
 
 const COLLAPSE_KEY = (pid: string) => `pm.workCard.expanded.${pid}`;
 
-function isOverdue(t: PmTask) {
-  if (!t.due_date) return false;
-  return new Date(t.due_date) < new Date(new Date().toDateString());
-}
 function isDueThisWeek(t: PmTask) {
   if (!t.due_date) return false;
   const d = new Date(t.due_date);
@@ -39,7 +36,7 @@ function isActive(t: PmTask) { return t.status !== "complete" && t.status !== "a
 
 function rank(t: PmTask) {
   if (t.status === "blocked") return 0;
-  if (isOverdue(t)) return 1;
+  if (isHardOverdue(t)) return 1;
   if (isDueThisWeek(t)) return 2;
   if (t.due_date) return 3;
   return 4;
@@ -83,7 +80,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
     for (const t of sorted) {
       if (t.status === "unclaimed") unclaimed++;
       if (t.status === "blocked") blocked++;
-      else if (isOverdue(t)) overdue++;
+      else if (isHardOverdue(t)) overdue++;
       else if (isDueThisWeek(t)) week++;
       else upcoming++;
     }
@@ -187,7 +184,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
               {expanded ? `All work (${visibleTop.length})` : `My next up (${Math.min(3, visibleTop.length)} of ${visibleTop.length})`}
             </div>
             {top.map(t => {
-              const overdue = isOverdue(t);
+              const overdue = isHardOverdue(t);
               return (
                 <button
                   key={t.id}
@@ -206,7 +203,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
                     </div>
                   </div>
                   <StatusPill status={t.status} />
-                  <DueBadge dueDate={t.due_date} />
+                  <DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} />
                   <div onClick={(e) => e.stopPropagation()}>
                     <ClaimButton task={t} />
                   </div>

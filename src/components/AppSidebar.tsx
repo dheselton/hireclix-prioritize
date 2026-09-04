@@ -23,6 +23,7 @@ import {
 import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
 import { projectColorHsl } from "@/lib/pm/projectColor";
 import { fmtDateShort } from "@/lib/pm/format";
+import { dueState } from "@/lib/pm/dueState";
 import { dueUrgency } from "@/components/pm/DueBadge";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
@@ -75,9 +76,39 @@ const roadmapItems = [
 ];
 
 /** Compact due label for the narrow sidebar meta line. */
-function sidebarDueMeta(dueDate: string | null | undefined): { label: string; className: string } | null {
+function sidebarDueMeta(
+  dueDate: string | null | undefined,
+  status?: string | null,
+): { label: string; className: string } | null {
+  if (!dueDate) return null;
+  if (status != null) {
+    const state = dueState({ due_date: dueDate, status });
+    if (state === "none" || state === "settled") return null;
+    if (state === "overdue") {
+      return {
+        label: `Overdue · ${fmtDateShort(dueDate)}`,
+        className: "text-destructive font-semibold",
+      };
+    }
+    if (state === "slipped") {
+      return {
+        label: `Past due · ${fmtDateShort(dueDate)}`,
+        className: "text-amber-700 dark:text-amber-300 font-semibold",
+      };
+    }
+    if (state === "today") {
+      return {
+        label: "Today",
+        className: "text-amber-700 dark:text-amber-300 font-semibold",
+      };
+    }
+    return {
+      label: fmtDateShort(dueDate),
+      className: "text-muted-foreground",
+    };
+  }
   const u = dueUrgency(dueDate);
-  if (u === "none" || !dueDate) return null;
+  if (u === "none") return null;
   if (u === "overdue") {
     return {
       label: `Overdue · ${fmtDateShort(dueDate)}`,
@@ -96,7 +127,15 @@ function sidebarDueMeta(dueDate: string | null | undefined): { label: string; cl
   };
 }
 
-function dueSortKey(dueDate: string | null | undefined): number {
+function dueSortKey(dueDate: string | null | undefined, status?: string | null): number {
+  if (status != null) {
+    const state = dueState({ due_date: dueDate, status });
+    if (state === "overdue") return 0;
+    if (state === "slipped") return 1;
+    if (state === "today") return 2;
+    if (state === "upcoming") return 3;
+    return 4;
+  }
   const u = dueUrgency(dueDate);
   if (u === "overdue") return 0;
   if (u === "today") return 1;
@@ -105,10 +144,10 @@ function dueSortKey(dueDate: string | null | undefined): number {
 }
 
 function compareByDueThenTitle(
-  a: { dueDate: string | null; title: string; openCount?: number },
-  b: { dueDate: string | null; title: string; openCount?: number },
+  a: { dueDate: string | null; title: string; openCount?: number; status?: string | null },
+  b: { dueDate: string | null; title: string; openCount?: number; status?: string | null },
 ): number {
-  const urg = dueSortKey(a.dueDate) - dueSortKey(b.dueDate);
+  const urg = dueSortKey(a.dueDate, a.status) - dueSortKey(b.dueDate, b.status);
   if (urg !== 0) return urg;
   if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
     return a.dueDate < b.dueDate ? -1 : 1;
@@ -160,8 +199,8 @@ function useMyWork() {
         };
       })
       .sort((a, b) => compareByDueThenTitle(
-        { dueDate: a.dueDate, title: a.task.title },
-        { dueDate: b.dueDate, title: b.task.title },
+        { dueDate: a.dueDate, title: a.task.title, status: a.task.status },
+        { dueDate: b.dueDate, title: b.task.title, status: b.task.status },
       ));
 
     // Open assigned task counts on non-request projects.
@@ -296,12 +335,14 @@ function MetaLine({
   clientName,
   dueDate,
   parentSiteName,
+  status,
 }: {
   clientName: string | null;
   dueDate: string | null;
   parentSiteName?: string | null;
+  status?: string | null;
 }) {
-  const due = sidebarDueMeta(dueDate);
+  const due = sidebarDueMeta(dueDate, status);
   return (
     <span className="block truncate text-[10px] text-muted-foreground">
       {clientName ?? "No client"}
@@ -419,7 +460,7 @@ export function AppSidebar() {
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[12px] font-medium">{t.title}</span>
-                              <MetaLine clientName={clientName} dueDate={dueDate} parentSiteName={parentSiteName} />
+                              <MetaLine clientName={clientName} dueDate={dueDate} parentSiteName={parentSiteName} status={t.status} />
                             </span>
                           </NavLink>
                         ))}

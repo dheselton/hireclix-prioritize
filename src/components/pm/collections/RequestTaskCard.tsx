@@ -13,6 +13,7 @@ import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import { teamsFromTask } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import type { PmTask } from "@/types/pm";
 import { TagPillList } from "@/components/pm/tags/TagPill";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
@@ -28,15 +29,9 @@ interface Props {
   onChanged?: () => void;
 }
 
-function isOverdue(t: PmTask) {
-  if (!t.due_date) return false;
-  return new Date(t.due_date) < new Date(new Date().toDateString())
-    && t.status !== "complete" && t.status !== "approved";
-}
-
 /** Compact, thin card for request-type tasks. Optimized for speed/throughput. */
 export function RequestTaskCard({ task, clientName, parentSiteName, onOpen, onChanged }: Props) {
-  const overdue = isOverdue(task);
+  const overdue = isHardOverdue(task);
   const team = useProjectTeam(task.project_id);
   const internalProjects = useInternalProjectIds();
   const careersiteProjects = useCareerSiteProjects();

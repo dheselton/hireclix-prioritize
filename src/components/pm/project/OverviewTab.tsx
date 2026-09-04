@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/pm/project/RichTextEditor";
 import { fmtDate, fmtDateShort, todayISO } from "@/lib/pm/format";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import { projectFilterLink, projectTimeLink } from "@/lib/pm/links";
 import { updateProject } from "@/lib/pm/api";
 import { notifyNewMentions } from "@/lib/pm/notifications";
@@ -49,7 +50,7 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange: _
   const today = todayISO();
   const done = tasks.filter(t => t.status === "complete" || t.status === "approved").length;
   const open = tasks.filter(t => t.status !== "complete" && t.status !== "approved").length;
-  const overdue = tasks.filter(t => t.due_date && t.due_date < today && t.status !== "complete" && t.status !== "approved").length;
+  const overdue = tasks.filter(t => isHardOverdue(t, today)).length;
   const blocked = tasks.filter(t => t.status === "blocked").length;
   const inReview = tasks.filter(t => t.status === "in_review").length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;

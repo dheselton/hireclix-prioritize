@@ -78,6 +78,10 @@ export interface PmTask {
   creation_context?: import('@/lib/pm/attribution').CreationContext | null;
   start_date: string | null;
   due_date: string | null;
+  /** First non-null due_date; preserved when due dates are pushed. */
+  original_due_date?: string | null;
+  /** Times due_date changed after original was set. */
+  due_date_changes?: number;
   duration_days: number;
   min_duration_days: number | null;
   locked: boolean;

@@ -5,6 +5,7 @@ import { useTaskAssigneesQuery } from "@/lib/pm/assignees";
 import { useProjectTeamsQuery } from "@/lib/pm/projectTeam";
 import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { isHighSeverityRisk, isStaleDecision } from "@/lib/pm/taskKind";
+import { isHardOverdue, dueState } from "@/lib/pm/dueState";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 
 export interface CachedBriefingData {
@@ -127,10 +128,12 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
 
     const isRequest = (task: PmTask) => projectsById.get(task.project_id)?.work_type === "request";
     const urgency = (task: PmTask) => {
-      if (!task.due_date) return 3;
-      if (task.due_date < today) return 0;
-      if (task.due_date === today) return 1;
-      return 2;
+      const state = dueState(task, today);
+      if (state === "overdue") return 0;
+      if (state === "slipped") return 1;
+      if (state === "today") return 2;
+      if (state === "upcoming") return 3;
+      return 4;
     };
     const sortUrgent = (a: PmTask, b: PmTask) =>
       urgency(a) - urgency(b) || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
@@ -172,7 +175,7 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
         ...project,
         total_tasks: projectTasks.length,
         completed_tasks: projectTasks.filter(task => isDone(task.status)).length,
-        overdue_tasks: projectTasks.filter(task => task.due_date && task.due_date < today && !isDone(task.status)).length,
+        overdue_tasks: projectTasks.filter(task => isHardOverdue(task, today)).length,
         my_top_tasks: myOpen.slice(0, 3),
         my_total: myOpen.length,
         team: teamsByProject.get(project.id) ?? [],
@@ -189,7 +192,7 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
 
     return {
       counts: {
-        overdue: myTasks.filter(task => task.due_date && task.due_date < today).length,
+        overdue: myTasks.filter(task => isHardOverdue(task, today)).length,
         quickTasks: quickPool.length,
         activeProjects: activeProjects.length,
         blocked: myTasks.filter(task => task.status === "blocked").length,

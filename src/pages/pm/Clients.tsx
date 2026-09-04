@@ -12,7 +12,7 @@ import { AlertTriangle, CalendarClock, Search, Users, Link2, Plus } from "lucide
 import { useClientsWithPortal } from "@/lib/pm/portalAccess";
 import { clientWorkLink } from "@/lib/pm/links";
 import { fmtDate, todayISO } from "@/lib/pm/format";
-import { isDone, type TaskStatus } from "@/types/pm";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import { NewClientPopover } from "@/components/pm/NewClientPopover";
 
 interface ClientRow {
@@ -60,7 +60,7 @@ export default function Clients() {
 
         const overdue = new Map<string, number>();
         for (const t of ((tasks ?? []) as { project_id: string; status: string; due_date: string | null }[])) {
-          if (isDone(t.status as TaskStatus)) continue;
+          if (!isHardOverdue(t, today)) continue;
           const cid = clientOfProject.get(t.project_id);
           if (!cid) continue;
           overdue.set(cid, (overdue.get(cid) ?? 0) + 1);

@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { localDateISO } from "@/lib/pm/format";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 import { useQuery } from "@tanstack/react-query";
 import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
@@ -36,8 +37,11 @@ export function daysSince(iso: string | null | undefined): number | null {
   return Math.floor((Date.now() - t) / 86_400_000);
 }
 
-export const isOverdue = (t: PmTask, today = startOfToday()) =>
-  !!t.due_date && !isDone(t.status) && new Date(`${t.due_date}T00:00:00`) < today;
+/** Hard overdue only (unclaimed/claimed past due). Prefer isHardOverdue from dueState. */
+export const isOverdue = (t: PmTask, today: Date | string = startOfToday()) => {
+  const todayKey = typeof today === "string" ? today : localDateISO(today);
+  return isHardOverdue(t, todayKey);
+};
 
 export interface ReportData {
   loading: boolean;

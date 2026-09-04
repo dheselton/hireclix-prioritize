@@ -10,7 +10,8 @@ import { AlertTriangle, CircleDot, ListTodo, MessageSquare, FileText, ExternalLi
 import { StatusPill } from "@/components/pm/StatusPill";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { ClientContext } from "@/components/pm/ClientContext";
-import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
+import { DueBadge } from "@/components/pm/DueBadge";
+import { dueAccentClass } from "@/lib/pm/dueState";
 import { ProjectTabs, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { fmtDate } from "@/lib/pm/format";
@@ -111,7 +112,7 @@ function TaskRow({
       to={`/pm/tasks/${task.id}`}
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-md border border-border/60 bg-card hover:bg-accent/30 transition",
-        overdueAccentClass(task.due_date),
+        dueAccentClass(task),
       )}
     >
       <span className="flex-1 min-w-0 space-y-1">
@@ -123,7 +124,7 @@ function TaskRow({
           taskTitle={task.title}
         />
       </span>
-      <DueBadge dueDate={task.due_date} />
+      <DueBadge dueDate={task.due_date} status={task.status} dueDateChanges={task.due_date_changes} />
       <StatusPill status={task.status} />
       <UserAvatar userId={task.assignee_id} size="xs" />
     </Link>

@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { localDateISO } from "@/lib/pm/format";
-import { isDone, type TaskStatus } from "@/types/pm";
+import { dueState } from "@/lib/pm/dueState";
+import type { TaskStatus } from "@/types/pm";
 
 export type NotifEventType =
   | "assigned"
@@ -11,6 +12,7 @@ export type NotifEventType =
   | "status_change"
   | "due_soon"
   | "overdue"
+  | "due_date_slipped"
   | "new_request"
   | "unclaimed_team";
 
@@ -20,7 +22,12 @@ export const EVENT_META: Record<NotifEventType, { label: string; desc: string; u
   mention:        { label: "@Mentions",                desc: "Someone mentioned you in a comment or notes", urgent: true },
   status_change:  { label: "Status changes",           desc: "Status changed on a task you're assigned to", urgent: false },
   due_soon:       { label: "Due soon",                 desc: "A task you're assigned to is due within 24 hours", urgent: false },
-  overdue:        { label: "Overdue",                  desc: "A task you're assigned to is past its due date", urgent: true },
+  overdue:        { label: "Overdue",                  desc: "Unclaimed or claimed work past its due date (not yet started)", urgent: true },
+  due_date_slipped: {
+    label: "Past due (stale)",
+    desc: "Active work past its due date with no updates or comments for 3+ days",
+    urgent: false,
+  },
   new_request:    { label: "New request submitted",    desc: "Creative/production quick requests (web, career site, design, dev). Other requests appear on the Daily Briefing dashboard only.", urgent: false },
   unclaimed_team: { label: "Unclaimed work in my team", desc: "Legacy — no longer broadcast. Unclaimed requests appear on the Daily Briefing dashboard.", urgent: false },
 };
@@ -28,6 +35,13 @@ export const EVENT_META: Record<NotifEventType, { label: string; desc: string; u
 export const ALL_EVENT_TYPES = Object.keys(EVENT_META) as NotifEventType[];
 
 const OFF_BY_DEFAULT: NotifEventType[] = ["new_request", "unclaimed_team"];
+
+/** Hard overdue: escalate at most once every N days. */
+const OVERDUE_DEDUPE_DAYS = 3;
+/** Slipped/stale: at most once every N days. */
+const SLIPPED_DEDUPE_DAYS = 7;
+/** Slipped work only notifies when last activity is older than this. */
+const STALE_DAYS = 3;
 
 export function defaultPrefFor(event_type: NotifEventType): NotifPref {
   const on = !OFF_BY_DEFAULT.includes(event_type);
@@ -256,7 +270,7 @@ async function fetchAssignedTasks(userId: string) {
   const [{ data: primary }, { data: coRows }] = await Promise.all([
     supabase
       .from("pm_tasks")
-      .select("id, title, due_date, status, assignee_id")
+      .select("id, title, due_date, status, assignee_id, updated_at")
       .eq("assignee_id", userId)
       .not("due_date", "is", null),
     supabase.from("pm_task_assignees").select("task_id").eq("user_id", userId),
@@ -266,7 +280,7 @@ async function fetchAssignedTasks(userId: string) {
   if (coIds.length) {
     const { data } = await supabase
       .from("pm_tasks")
-      .select("id, title, due_date, status, assignee_id")
+      .select("id, title, due_date, status, assignee_id, updated_at")
       .in("id", coIds)
       .not("due_date", "is", null);
     coTasks = (data ?? []) as any[];
@@ -277,7 +291,34 @@ async function fetchAssignedTasks(userId: string) {
   return [...byId.values()];
 }
 
-/** Scan tasks assigned to the current user and create due_soon / overdue notifications (dedup per day). */
+async function fetchLatestCommentAt(taskIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!taskIds.length) return out;
+  const { data } = await supabase
+    .from("pm_comments")
+    .select("task_id, created_at")
+    .in("task_id", taskIds)
+    .order("created_at", { ascending: false });
+  for (const row of (data ?? []) as { task_id: string | null; created_at: string }[]) {
+    if (!row.task_id || out.has(row.task_id)) continue;
+    out.set(row.task_id, row.created_at);
+  }
+  return out;
+}
+
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
+function lastActivityMs(task: { updated_at?: string | null }, commentAt?: string): number {
+  const a = task.updated_at ? new Date(task.updated_at).getTime() : 0;
+  const b = commentAt ? new Date(commentAt).getTime() : 0;
+  return Math.max(a, b);
+}
+
+/** Scan tasks assigned to the current user and create due_soon / overdue / slipped notifications. */
 export async function scanDueDateNotifications() {
   const userId = getCurrentUserId();
   if (!userId) return;
@@ -285,39 +326,93 @@ export async function scanDueDateNotifications() {
   const in24 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const tasks = await fetchAssignedTasks(userId);
   if (!tasks.length) return;
-  const today = localDateISO(now);
-  // Fetch today's existing notifs to dedup
+
+  const lookbackDays = Math.max(OVERDUE_DEDUPE_DAYS, SLIPPED_DEDUPE_DAYS);
+  const since = daysAgoIso(lookbackDays);
   const { data: existing } = await supabase
     .from("pm_notifications")
     .select("type, link, created_at")
     .eq("user_id", userId)
-    .gte("created_at", `${today}T00:00:00Z`);
+    .gte("created_at", since);
+
   const seen = new Set((existing ?? []).map((n: any) => `${n.type}|${n.link}`));
+  // Also track most recent per type|link for windowed dedupe
+  const lastByKey = new Map<string, number>();
+  for (const n of (existing ?? []) as { type: string; link: string | null; created_at: string }[]) {
+    const key = `${n.type}|${n.link}`;
+    const ts = new Date(n.created_at).getTime();
+    const prev = lastByKey.get(key) ?? 0;
+    if (ts > prev) lastByKey.set(key, ts);
+  }
+
+  const commentAt = await fetchLatestCommentAt(tasks.map((t: any) => t.id));
+  const staleMs = STALE_DAYS * 24 * 60 * 60 * 1000;
+  const overdueWindowMs = OVERDUE_DEDUPE_DAYS * 24 * 60 * 60 * 1000;
+  const slippedWindowMs = SLIPPED_DEDUPE_DAYS * 24 * 60 * 60 * 1000;
+
+  const withinWindow = (type: string, link: string, windowMs: number) => {
+    const key = `${type}|${link}`;
+    if (seen.has(key)) {
+      const last = lastByKey.get(key) ?? 0;
+      if (now.getTime() - last < windowMs) return true;
+    }
+    return false;
+  };
 
   for (const t of tasks as any[]) {
-    if (isDone(t.status as TaskStatus)) continue;
-    const due = new Date(t.due_date);
+    const state = dueState({ due_date: t.due_date, status: t.status as TaskStatus });
+    const due = new Date(`${t.due_date}T00:00:00`);
     const link = `/pm/tasks/${t.id}`;
-    if (due < now) {
-      const key = `overdue|${link}`;
-      if (!seen.has(key)) {
-        await createNotification({
-          user_id: userId, event_type: "overdue",
-          title: `Overdue: ${t.title}`,
-          body: `Was due ${due.toLocaleDateString()}`,
-          link,
-        });
-      }
-    } else if (due < in24) {
+
+    if (state === "settled" || state === "none") continue;
+
+    if (state === "overdue") {
+      if (withinWindow("overdue", link, overdueWindowMs)) continue;
+      await createNotification({
+        user_id: userId,
+        event_type: "overdue",
+        title: `Overdue: ${t.title}`,
+        body: `Was due ${due.toLocaleDateString()} — still unclaimed or not started`,
+        link,
+      });
+      seen.add(`overdue|${link}`);
+      lastByKey.set(`overdue|${link}`, now.getTime());
+      continue;
+    }
+
+    if (state === "slipped") {
+      const lastAct = lastActivityMs(t, commentAt.get(t.id));
+      if (lastAct && now.getTime() - lastAct < staleMs) continue;
+      if (withinWindow("due_date_slipped", link, slippedWindowMs)) continue;
+      await createNotification({
+        user_id: userId,
+        event_type: "due_date_slipped",
+        title: `Past due (stale): ${t.title}`,
+        body: `Due ${due.toLocaleDateString()} — no updates in ${STALE_DAYS}+ days`,
+        link,
+      });
+      seen.add(`due_date_slipped|${link}`);
+      lastByKey.set(`due_date_slipped|${link}`, now.getTime());
+      continue;
+    }
+
+    // due soon: today or within 24h (upcoming with due datetime soon)
+    if (state === "today" || (state === "upcoming" && due.getTime() < in24.getTime())) {
       const key = `due_soon|${link}`;
-      if (!seen.has(key)) {
-        await createNotification({
-          user_id: userId, event_type: "due_soon",
-          title: `Due soon: ${t.title}`,
-          body: `Due ${due.toLocaleString()}`,
-          link,
-        });
-      }
+      if (seen.has(key)) continue;
+      // due_soon still dedupes per day via today's existing set; widen to calendar day
+      const todayStart = new Date(`${localDateISO(now)}T00:00:00`).getTime();
+      const last = lastByKey.get(key) ?? 0;
+      if (last >= todayStart) continue;
+      await createNotification({
+        user_id: userId,
+        event_type: "due_soon",
+        title: `Due soon: ${t.title}`,
+        body: `Due ${due.toLocaleDateString()}`,
+        link,
+      });
+      seen.add(key);
+      lastByKey.set(key, now.getTime());
     }
   }
 }

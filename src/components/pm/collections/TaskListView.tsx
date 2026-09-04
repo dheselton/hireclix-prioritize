@@ -187,7 +187,7 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       className="max-w-[160px]"
                     />
                   </td>
-                  <td className="p-2 whitespace-nowrap"><DueBadge dueDate={t.due_date} /></td>
+                  <td className="p-2 whitespace-nowrap"><DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} /></td>
                   <td className="p-2 text-center">
                     <div className="flex items-center justify-end gap-1">
                       <PriorityFlag priority={t.priority} size="sm" />

@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientContext } from "@/components/pm/ClientContext";
-import { DueBadge, overdueAccentClass } from "@/components/pm/DueBadge";
+import { DueBadge } from "@/components/pm/DueBadge";
+import { dueAccentClass } from "@/lib/pm/dueState";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 
@@ -175,7 +176,7 @@ function KCard({ task, project, onOpen, overlay }: {
           "cursor-pointer hover:shadow-md transition",
           blocked && "border-red-500/60",
           overlay && "shadow-lg",
-          overdueAccentClass(task.due_date),
+          dueAccentClass(task),
         )}>
         <CardContent className="p-2.5 space-y-1.5">
           <div className="flex items-start gap-2">
@@ -204,7 +205,7 @@ function KCard({ task, project, onOpen, overlay }: {
           </div>
           {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
           <div className="flex items-center justify-end pt-1">
-            <DueBadge dueDate={task.due_date} />
+            <DueBadge dueDate={task.due_date} status={task.status} dueDateChanges={task.due_date_changes} />
           </div>
         </CardContent>
       </Card>
@@ -224,7 +225,7 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
   const options = columns.includes(task.status) ? columns : [task.status, ...columns];
   const clientNames = useClientNamesMap();
   return (
-    <Card className={cn("w-full", blocked && "border-red-500/60", overdueAccentClass(task.due_date))}>
+    <Card className={cn("w-full", blocked && "border-red-500/60", dueAccentClass(task))}>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start gap-2" onClick={() => onOpen(task.id)}>
           <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
@@ -254,7 +255,7 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
               {options.map(s => <SelectItem key={s} value={s} className="text-xs">{COL_LABELS[s]}</SelectItem>)}
             </SelectContent>
           </Select>
-          <DueBadge dueDate={task.due_date} />
+          <DueBadge dueDate={task.due_date} status={task.status} dueDateChanges={task.due_date_changes} />
         </div>
       </CardContent>
     </Card>

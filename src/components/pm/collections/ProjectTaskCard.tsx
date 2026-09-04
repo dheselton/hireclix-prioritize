@@ -15,6 +15,7 @@ import { useProjectTeam } from "@/lib/pm/projectTeam";
 import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from "@/lib/pm/clients";
 import { teamsFromTask } from "@/lib/pm/teams";
 import { teamBarBackground } from "@/lib/pm/taskVisualState";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import type { PmProject, PmTask } from "@/types/pm";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TagPillList } from "@/components/pm/tags/TagPill";
@@ -34,17 +35,11 @@ interface Props {
 }
 
 
-function isOverdue(t: PmTask) {
-  if (!t.due_date) return false;
-  return new Date(t.due_date) < new Date(new Date().toDateString())
-    && t.status !== "complete" && t.status !== "approved";
-}
-
 /** Richer card for project-type tasks. Shows project hierarchy + phase context. */
 export function ProjectTaskCard({
   task, project, phaseName, clientName, showProjectHeader = true, onOpen, onChanged,
 }: Props) {
-  const overdue = isOverdue(task);
+  const overdue = isHardOverdue(task);
   const team = useProjectTeam(task.project_id);
   const internalProjects = useInternalProjectIds();
   const careersiteProjects = useCareerSiteProjects();

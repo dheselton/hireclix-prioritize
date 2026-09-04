@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 import { todayISO } from "@/lib/pm/format";
+import { isHardOverdue } from "@/lib/pm/dueState";
 
 /* ------------------------------------------------------------------ tasks */
 
@@ -24,9 +25,8 @@ export interface MyTasksData {
 }
 
 export function groupMyTask(t: PmTask): MyTaskGroupId {
-  const today = todayISO();
   if (t.status === "blocked") return "attention";
-  if (t.due_date && t.due_date < today) return "attention";
+  if (isHardOverdue(t)) return "attention";
   if (t.status === "in_progress" || t.status === "in_review") return "in_progress";
   return "up_next";
 }
@@ -203,7 +203,7 @@ export function useMyProjects(userId: string | null, enabled = true) {
       if (done) s.done += 1;
       if (isMine(t) && !done) {
         s.mine += 1;
-        if (t.due_date && t.due_date < today) s.overdue += 1;
+        if (isHardOverdue(t, today)) s.overdue += 1;
       }
       stats.set(t.project_id, s);
     }

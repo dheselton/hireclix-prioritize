@@ -5,7 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { ClientContext } from "@/components/pm/ClientContext";
-import { DueBadge, dueUrgency } from "@/components/pm/DueBadge";
+import { DueBadge } from "@/components/pm/DueBadge";
+import { dueState } from "@/lib/pm/dueState";
 import { fmtDate, todayISO } from "@/lib/pm/format";
 import { useClientNamesMap, useInternalClientIds } from "@/lib/pm/clients";
 import { cn } from "@/lib/utils";
@@ -99,15 +100,15 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
         ) : (
           <div className="space-y-1.5">
             {project.my_top_tasks.map((t) => {
-              const u = dueUrgency(t.due_date);
+              const state = dueState(t);
               const borderColor =
-                u === "overdue" ? "border-l-destructive" :
-                u === "today" ? "border-l-amber-500" :
-                u === "upcoming" ? "border-l-primary" : "border-l-muted-foreground/40";
+                state === "overdue" ? "border-l-destructive" :
+                state === "slipped" || state === "today" ? "border-l-amber-500" :
+                state === "upcoming" ? "border-l-primary" : "border-l-muted-foreground/40";
               const dot =
-                u === "overdue" ? "bg-destructive" :
-                u === "today" ? "bg-amber-500" :
-                u === "upcoming" ? "bg-primary" : "bg-muted-foreground/40";
+                state === "overdue" ? "bg-destructive" :
+                state === "slipped" || state === "today" ? "bg-amber-500" :
+                state === "upcoming" ? "bg-primary" : "bg-muted-foreground/40";
               return (
                 <button
                   key={t.id}
@@ -116,7 +117,7 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
                 >
                   <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
                   <span className="flex-1 min-w-0 text-xs font-medium truncate">{t.title}</span>
-                  <DueBadge dueDate={t.due_date} />
+                  <DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} />
                 </button>
               );
             })}

@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ProjectWorkCard } from "./ProjectWorkCard";
 import { TaskListView } from "./TaskListView";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -19,12 +20,11 @@ interface Props {
 function isActive(t: PmTask) { return t.status !== "complete" && t.status !== "approved"; }
 
 function healthRank(tasks: PmTask[]) {
-  const today = new Date(new Date().toDateString());
   let overdue = 0, blocked = 0;
   for (const t of tasks) {
     if (!isActive(t)) continue;
     if (t.status === "blocked") blocked++;
-    else if (t.due_date && new Date(t.due_date) < today) overdue++;
+    else if (isHardOverdue(t)) overdue++;
   }
   if (overdue > 0) return 0;
   if (blocked > 0) return 1;

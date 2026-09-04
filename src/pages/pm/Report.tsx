@@ -108,6 +108,10 @@ export default function Report() {
   }, [tasks, projects, lastActivity, weekIso]);
 
   const overdueTasks = useMemo(() => tasks.filter(t => isOverdue(t, today)), [tasks, today]);
+  const pushedOverdue = useMemo(
+    () => overdueTasks.filter(t => (t.due_date_changes ?? 0) > 0).length,
+    [overdueTasks],
+  );
 
   const byPerson = useMemo(() => {
     const map = new Map<string, PmTask[]>();
@@ -197,7 +201,7 @@ export default function Report() {
       {/* 2 — Overdue by person */}
       <PanelShell
         title="Overdue by person" icon={AlertTriangle}
-        hint={`${overdueTasks.length} overdue task${overdueTasks.length === 1 ? "" : "s"} across the team.`}
+        hint={`${overdueTasks.length} unclaimed/claimed overdue task${overdueTasks.length === 1 ? "" : "s"} across the team${pushedOverdue ? ` · ${pushedOverdue} previously pushed` : ""}.`}
       >
         {byPerson.length === 0 ? (
           <p className="text-sm text-muted-foreground flex items-center gap-2">

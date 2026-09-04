@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, Ban, Clock, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { isHardOverdue } from "@/lib/pm/dueState";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -18,8 +19,6 @@ function isActive(t: PmTask) { return t.status !== "complete" && t.status !== "a
  * show overdue / blocked / active counts. Each row deep-links to project detail.
  */
 export function ProjectHealthList({ projects, tasks, projectIds }: Props) {
-  const today = new Date(new Date().toDateString());
-
   const rows = useMemo(() => {
     const byProj = new Map<string, PmTask[]>();
     for (const t of tasks) {
@@ -38,7 +37,7 @@ export function ProjectHealthList({ projects, tasks, projectIds }: Props) {
           if (!isActive(t)) continue;
           active++;
           if (t.status === "blocked") blocked++;
-          else if (t.due_date && new Date(t.due_date) < today) overdue++;
+          else if (isHardOverdue(t)) overdue++;
           if (t.status === "in_review") inReview++;
         }
         const health: "overdue" | "at_risk" | "on_track" =
