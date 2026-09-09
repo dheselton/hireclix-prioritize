@@ -7,6 +7,7 @@
 import { Calendar } from "lucide-react";
 import { fmtDate, todayISO } from "@/lib/pm/format";
 import { daysLate, dueState, type DueState } from "@/lib/pm/dueState";
+import { taskStatusClockMeta } from "@/lib/pm/statusClock";
 import type { TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +29,13 @@ export function overdueAccentClass(dueDate: string | null | undefined): string {
 type DueBadgeSize = "sm" | "md";
 
 /**
- * Scannable due-date badge: Overdue / Past due / Today / formatted date / No date.
+ * Scannable due-date badge: Overdue / status clock / Today / formatted date / No date.
  */
 export function DueBadge({
   dueDate,
   status,
+  statusChangedAt,
+  updatedAt,
   dueDateChanges,
   size = "sm",
   showEmpty = true,
@@ -41,6 +44,9 @@ export function DueBadge({
   dueDate: string | null | undefined;
   /** When provided, past-due work uses status-aware overdue vs slipped. */
   status?: TaskStatus | string | null;
+  /** When status entered — drives In review · Nd style badges. */
+  statusChangedAt?: string | null;
+  updatedAt?: string | null;
   /** Optional push count from pm_tasks.due_date_changes. */
   dueDateChanges?: number | null;
   size?: DueBadgeSize;
@@ -60,6 +66,16 @@ export function DueBadge({
   const late = daysLate(dueDate);
   const pushed = dueDateChanges && dueDateChanges > 0 ? ` · pushed ${dueDateChanges}x` : "";
 
+  const statusClock =
+    status != null
+      ? taskStatusClockMeta({
+          due_date: dueDate,
+          status,
+          status_changed_at: statusChangedAt,
+          updated_at: updatedAt,
+        })
+      : null;
+
   if (state === "overdue") {
     return (
       <span
@@ -72,6 +88,27 @@ export function DueBadge({
       >
         <Calendar className="h-3 w-3 shrink-0" />
         Overdue{dueDate ? ` · ${fmtDate(dueDate)}` : ""}{pushed}
+      </span>
+    );
+  }
+  if (state === "slipped" && statusClock) {
+    return (
+      <span className={cn("inline-flex flex-col items-end gap-0.5", className)}>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded font-medium tabular-nums text-amber-700 bg-amber-500/15 dark:text-amber-300",
+            text,
+            pad,
+          )}
+        >
+          <Calendar className="h-3 w-3 shrink-0" />
+          {statusClock.primary}{pushed}
+        </span>
+        {statusClock.secondary && (
+          <span className={cn("text-muted-foreground tabular-nums", size === "md" ? "text-[10px]" : "text-[9px]")}>
+            {statusClock.secondary}
+          </span>
+        )}
       </span>
     );
   }

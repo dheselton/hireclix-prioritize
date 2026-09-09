@@ -205,7 +205,7 @@ function KCard({ task, project, onOpen, overlay }: {
           </div>
           {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}
           <div className="flex items-center justify-end pt-1">
-            <DueBadge dueDate={task.due_date} status={task.status} dueDateChanges={task.due_date_changes} />
+            <DueBadge dueDate={task.due_date} status={task.status} statusChangedAt={task.status_changed_at} updatedAt={task.updated_at} dueDateChanges={task.due_date_changes} />
           </div>
         </CardContent>
       </Card>
@@ -255,7 +255,7 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
               {options.map(s => <SelectItem key={s} value={s} className="text-xs">{COL_LABELS[s]}</SelectItem>)}
             </SelectContent>
           </Select>
-          <DueBadge dueDate={task.due_date} status={task.status} dueDateChanges={task.due_date_changes} />
+          <DueBadge dueDate={task.due_date} status={task.status} statusChangedAt={task.status_changed_at} updatedAt={task.updated_at} dueDateChanges={task.due_date_changes} />
         </div>
       </CardContent>
     </Card>

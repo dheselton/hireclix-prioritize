@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { runGlobalSearch, type SearchBundle, type SearchResult, type ResultKind } from "@/lib/search";
 import { getRecents, pushRecent } from "@/lib/search/recents";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { useClientBrandMap } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { SearchHighlight } from "./SearchHighlight";
 
 const KIND_META: Record<ResultKind, { label: string; Icon: React.ComponentType<{ className?: string }>; group: string }> = {
@@ -188,6 +190,9 @@ function ResultRow({ r, term, active, onHover, onClick }: {
   r: SearchResult; term: string; active: boolean; onHover: () => void; onClick: () => void;
 }) {
   const { Icon, label } = KIND_META[r.kind];
+  const brands = useClientBrandMap();
+  const clientLogoUrl = r.kind === "client" ? brands.get(r.id)?.logoUrl ?? null : null;
+
   return (
     <button
       type="button"
@@ -198,7 +203,11 @@ function ResultRow({ r, term, active, onHover, onClick }: {
         active ? "bg-muted" : "hover:bg-muted/60",
       )}
     >
-      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      {r.kind === "client" ? (
+        <ClientLogo name={r.title} logoUrl={clientLogoUrl} size="xs" />
+      ) : (
+        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      )}
       <div className="flex-1 min-w-0">
         <div className="truncate">
           <SearchHighlight text={r.title} term={term} />

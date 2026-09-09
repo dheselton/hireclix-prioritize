@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, FolderKanban, Tag, Layers, UserPlus, Headphones } from "lucide-react";
+import { FolderKanban, Tag, Layers, UserPlus, Headphones } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { AttributionChip } from "@/components/pm/AttributionChip";
-import { useInternalClientIds, isCareerSiteRequest } from "@/lib/pm/clients";
+import { useClientBrandMap, useInternalClientIds, isCareerSiteRequest } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { clientTag } from "@/lib/pm/tags";
 import { ParentLiveSiteChip } from "@/components/pm/ParentLiveSiteChip";
 import type { PmProject } from "@/types/pm";
@@ -35,10 +36,10 @@ function prettyType(v?: string | null) {
 
 function Row({
   icon: Icon, label, children,
-}: { icon: any; label: string; children: React.ReactNode }) {
+}: { icon?: any; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2 py-1.5">
-      <Icon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+      {Icon ? <Icon className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" /> : null}
       <div className="min-w-0 flex-1">
         <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
           {label}
@@ -52,6 +53,7 @@ function Row({
 export function TaskMetaCard({ projectId, phaseName }: Props) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const internalClients = useInternalClientIds();
+  const brands = useClientBrandMap();
 
   useEffect(() => {
     let cancelled = false;
@@ -124,8 +126,13 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
       </div>
       <div className="divide-y divide-border/60">
         {meta.client_name && (
-          <Row icon={Building2} label="Client">
+          <Row label="Client">
             <div className="flex items-center gap-1.5 flex-wrap">
+              <ClientLogo
+                name={meta.client_name}
+                logoUrl={meta.client_id ? brands.get(meta.client_id)?.logoUrl ?? null : null}
+                size="2xs"
+              />
               <Link
                 to={`/pm/work?tags=${encodeURIComponent(clientTag(meta.client_name) ?? "")}`}
                 className="font-medium hover:underline truncate"

@@ -124,7 +124,7 @@ function TaskRow({
           taskTitle={task.title}
         />
       </span>
-      <DueBadge dueDate={task.due_date} status={task.status} dueDateChanges={task.due_date_changes} />
+      <DueBadge dueDate={task.due_date} status={task.status} statusChangedAt={task.status_changed_at} updatedAt={task.updated_at} dueDateChanges={task.due_date_changes} />
       <StatusPill status={task.status} />
       <UserAvatar userId={task.assignee_id} size="xs" />
     </Link>

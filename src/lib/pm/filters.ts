@@ -2,6 +2,7 @@ import { isDone } from "@/types/pm";
 import type { PmTask, PmProject, TaskType } from "@/types/pm";
 import type { ChipId } from "@/hooks/useChipFilters";
 import { isHardOverdue, isSlipped } from "@/lib/pm/dueState";
+import { isInSupportMode } from "@/lib/pm/liveSites";
 import { todayISO } from "@/lib/pm/format";
 
 /** Filter tasks by a type allow-list. Empty set = no filter (show all). */
@@ -110,6 +111,8 @@ export function applyProjectChips(
           if (!p.go_live_date) return false;
           if (new Date(p.go_live_date) >= today) return false;
           if (p.status === "complete") return false;
+          // A live site's go-live date is a launch milestone, not a missed deadline.
+          if (isInSupportMode(p)) return false;
           break;
         case "due_this_week": {
           if (!p.go_live_date) return false;

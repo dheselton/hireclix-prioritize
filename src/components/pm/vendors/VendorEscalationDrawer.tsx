@@ -32,7 +32,8 @@ import {
 import { StatusPill } from "@/components/pm/StatusPill";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { fmtDate, fmtDateShort, todayISO } from "@/lib/pm/format";
-import { useProjectsQuery } from "@/lib/pm/queries";
+import { fetchLiveCareerSites } from "@/lib/pm/liveSites";
+import { useQuery } from "@tanstack/react-query";
 import {
   addAffectedSites,
   daysWaiting,
@@ -49,6 +50,7 @@ import {
   TOUCHPOINT_CHANNELS,
 } from "@/lib/pm/vendors";
 import { cn } from "@/lib/utils";
+import { fetchLinkedOpsSitesForPicker } from "@/lib/pm/opsSites";
 
 interface Props {
   escalationId: string | null;
@@ -68,7 +70,16 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
   const navigate = useNavigate();
   const users = useMockUsers();
   const { data: escalation, refetch } = useEscalation(escalationId);
-  const projectsQuery = useProjectsQuery();
+  const liveSitesQuery = useQuery({
+    queryKey: ["pm-live-career-sites"],
+    queryFn: fetchLiveCareerSites,
+    staleTime: 30_000,
+  });
+  const opsSitesQuery = useQuery({
+    queryKey: ["pm-ops-sites-picker"],
+    queryFn: fetchLinkedOpsSitesForPicker,
+    staleTime: 30_000,
+  });
 
   const [direction, setDirection] = useState<TouchpointDirection>("outbound");
   const [channel, setChannel] = useState<TouchpointChannel>("email");
@@ -100,18 +111,31 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
     [escalation],
   );
 
+  /** Prefer linked ops catalog; fall back to Prioritize live career sites. */
   const siteOptions = useMemo(() => {
-    const projects = projectsQuery.data ?? [];
-    return projects
+    const ops = opsSitesQuery.data ?? [];
+    if (ops.length > 0) {
+      return ops
+        .filter((s) => s.projectId && !linkedIds.has(s.projectId))
+        .map((s) => ({
+          id: s.projectId!,
+          title: s.name || s.projectTitle || "Site",
+          clientId: s.clientId,
+          healthStatus: s.healthStatus,
+        }))
+        .sort((a, b) => a.title.localeCompare(b.title));
+    }
+    const sites = liveSitesQuery.data ?? [];
+    return sites
       .filter((p) => !linkedIds.has(p.id))
       .map((p) => ({
         id: p.id,
         title: p.title,
         clientId: p.client_id,
+        healthStatus: null as string | null,
       }))
-      .sort((a, b) => a.title.localeCompare(b.title))
-      .slice(0, 200);
-  }, [projectsQuery.data, linkedIds]);
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [opsSitesQuery.data, liveSitesQuery.data, linkedIds]);
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
@@ -467,7 +491,10 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
           </DialogHeader>
           <div className="max-h-64 overflow-y-auto space-y-1 border rounded-md p-2">
             {siteOptions.length === 0 ? (
-              <p className="text-[12px] text-muted-foreground p-2">No more projects to add.</p>
+              <p className="text-[12px] text-muted-foreground p-2">
+                No more live career sites to add. Sync from careersite-ops or enter Support mode on a
+                site first.
+              </p>
             ) : (
               siteOptions.map((s) => {
                 const on = selectedSites.has(s.id);
@@ -488,7 +515,12 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
                         });
                       }}
                     />
-                    <span className="truncate">{s.title}</span>
+                    <span className="truncate flex-1">{s.title}</span>
+                    {s.healthStatus && s.healthStatus !== "up" && (
+                      <span className="text-[10px] uppercase text-destructive shrink-0">
+                        {s.healthStatus}
+                      </span>
+                    )}
                   </label>
                 );
               })

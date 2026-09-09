@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const MONOGRAM_COLORS = [
@@ -21,30 +22,54 @@ function initialsFor(name: string): string {
 interface Props {
   name: string;
   logoUrl?: string | null;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "2xs" | "xs" | "sm" | "md" | "lg";
   className?: string;
   title?: string;
 }
 
 const SIZE: Record<NonNullable<Props["size"]>, string> = {
+  "2xs": "h-5 w-5 text-[8px]",
   xs: "h-6 w-6 text-[9px]",
   sm: "h-8 w-8 text-[11px]",
   md: "h-10 w-10 text-sm",
   lg: "h-14 w-14 text-base",
 };
 
+function Monogram({
+  name, size, className, title,
+}: { name: string; size: string; className?: string; title?: string }) {
+  return (
+    <div
+      className={cn(
+        "rounded-md flex items-center justify-center font-semibold text-white shrink-0",
+        size,
+        className,
+      )}
+      style={{ backgroundColor: colorForName(name || "?") }}
+      title={title ?? name}
+      aria-hidden={!name}
+    >
+      {initialsFor(name)}
+    </div>
+  );
+}
+
 /** Client logo with deterministic-color initials monogram fallback. */
 export function ClientLogo({ name, logoUrl, size = "sm", className, title }: Props) {
+  const [failed, setFailed] = useState(false);
   const sz = SIZE[size];
-  const initials = initialsFor(name);
-  const bg = colorForName(name || "?");
 
-  if (logoUrl) {
+  useEffect(() => { setFailed(false); }, [logoUrl]);
+
+  if (logoUrl && !failed) {
     return (
       <img
         src={logoUrl}
         alt={name}
         title={title ?? name}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
         className={cn(
           "rounded-md object-contain bg-background border border-border shrink-0",
           sz,
@@ -54,18 +79,5 @@ export function ClientLogo({ name, logoUrl, size = "sm", className, title }: Pro
     );
   }
 
-  return (
-    <div
-      className={cn(
-        "rounded-md flex items-center justify-center font-semibold text-white shrink-0",
-        sz,
-        className,
-      )}
-      style={{ backgroundColor: bg }}
-      title={title ?? name}
-      aria-hidden={!name}
-    >
-      {initials}
-    </div>
-  );
+  return <Monogram name={name} size={sz} className={className} title={title} />;
 }

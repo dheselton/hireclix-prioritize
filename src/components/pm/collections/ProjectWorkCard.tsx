@@ -203,7 +203,7 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
                     </div>
                   </div>
                   <StatusPill status={t.status} />
-                  <DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} />
+                  <DueBadge dueDate={t.due_date} status={t.status} statusChangedAt={t.status_changed_at} updatedAt={t.updated_at} dueDateChanges={t.due_date_changes} />
                   <div onClick={(e) => e.stopPropagation()}>
                     <ClaimButton task={t} />
                   </div>

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import { localDateISO } from "@/lib/pm/format";
 import { dueState } from "@/lib/pm/dueState";
+import { slippedNotificationBody } from "@/lib/pm/statusClock";
 import type { TaskStatus } from "@/types/pm";
 
 export type NotifEventType =
@@ -26,7 +27,7 @@ export const EVENT_META: Record<NotifEventType, { label: string; desc: string; u
   overdue:        { label: "Overdue",                  desc: "Unclaimed or claimed work past its due date (not yet started)", urgent: true },
   due_date_slipped: {
     label: "Past due (stale)",
-    desc: "Active work past its due date with no updates or comments for 3+ days",
+    desc: "Waiting work (in review, blocked, etc.) with no updates or comments for 3+ days",
     urgent: false,
   },
   new_request:    { label: "New request submitted",    desc: "Creative/production quick requests (web, career site, design, dev). Other requests appear on the Daily Briefing dashboard only.", urgent: false },
@@ -276,7 +277,7 @@ async function fetchAssignedTasks(userId: string) {
   const [{ data: primary }, { data: coRows }] = await Promise.all([
     supabase
       .from("pm_tasks")
-      .select("id, title, due_date, status, assignee_id, updated_at")
+      .select("id, title, due_date, status, assignee_id, updated_at, status_changed_at")
       .eq("assignee_id", userId)
       .not("due_date", "is", null),
     supabase.from("pm_task_assignees").select("task_id").eq("user_id", userId),
@@ -286,7 +287,7 @@ async function fetchAssignedTasks(userId: string) {
   if (coIds.length) {
     const { data } = await supabase
       .from("pm_tasks")
-      .select("id, title, due_date, status, assignee_id, updated_at")
+      .select("id, title, due_date, status, assignee_id, updated_at, status_changed_at")
       .in("id", coIds)
       .not("due_date", "is", null);
     coTasks = (data ?? []) as any[];
@@ -403,7 +404,7 @@ export async function scanDueDateNotifications() {
         user_id: userId,
         event_type: "due_date_slipped",
         title: `Past due (stale): ${t.title}`,
-        body: `Due ${due.toLocaleDateString()} — no updates in ${STALE_DAYS}+ days`,
+        body: `${slippedNotificationBody(t)} — no updates in ${STALE_DAYS}+ days`,
         link,
       });
       seen.add(`due_date_slipped|${link}`);

@@ -39,3 +39,12 @@ verify_jwt = false
 
 [functions.public-form-api]
 verify_jwt = false
+
+[functions.ingest-job-api-data]
+verify_jwt = false
+
+[functions.sync-ops-sites]
+verify_jwt = false
+
+[functions.ops-site-alert]
+verify_jwt = false

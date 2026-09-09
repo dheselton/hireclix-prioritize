@@ -4,6 +4,8 @@
 import { Link } from "react-router-dom";
 import { Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useClientBrandMap } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 
 type ClientContextSize = "sm" | "md";
 
@@ -27,6 +29,9 @@ export function ClientContext({
   size?: ClientContextSize;
   className?: string;
 }) {
+  const brands = useClientBrandMap();
+  const logoUrl = clientId ? brands.get(clientId)?.logoUrl ?? null : null;
+
   const client = (clientName ?? "").trim();
   const project = (projectTitle ?? "").trim();
   const task = (taskTitle ?? "").trim();
@@ -70,7 +75,15 @@ export function ClientContext({
 
   return (
     <div className={cn("flex items-center gap-1.5 min-w-0", className)}>
-      <Building2 className={cn("shrink-0 text-muted-foreground", size === "md" ? "h-4 w-4" : "h-3.5 w-3.5")} />
+      {client ? (
+        <ClientLogo
+          name={client}
+          logoUrl={logoUrl}
+          size={size === "md" ? "xs" : "2xs"}
+        />
+      ) : (
+        <Building2 className={cn("shrink-0 text-muted-foreground", size === "md" ? "h-4 w-4" : "h-3.5 w-3.5")} />
+      )}
       <div className="min-w-0 flex items-baseline gap-1.5 flex-wrap">
         {clientNode}
         {clientNode && showProject && <span className="text-muted-foreground/50 shrink-0">·</span>}

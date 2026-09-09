@@ -1,6 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NewClientPopover } from "./NewClientPopover";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useClientBrandMap, useInternalClientIds } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { cn } from "@/lib/utils";
 
 interface Client { id: string; name: string; is_internal?: boolean; archived_at?: string | null }
@@ -25,7 +26,9 @@ export function ClientSelect({
   allowCreate = true,
 }: Props) {
   const internalIds = useInternalClientIds();
+  const brands = useClientBrandMap();
   const isInternal = (id: string) => internalIds.has(id) || !!clients.find(c => c.id === id)?.is_internal;
+
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1">
@@ -42,6 +45,11 @@ export function ClientSelect({
             {clients.map(c => (
               <SelectItem key={c.id} value={c.id}>
                 <span className="inline-flex items-center gap-2">
+                  <ClientLogo
+                    name={c.name}
+                    logoUrl={brands.get(c.id)?.logoUrl ?? null}
+                    size="2xs"
+                  />
                   <span>{c.name}</span>
                   {isInternal(c.id) && <span className="internal-pill">Internal</span>}
                 </span>

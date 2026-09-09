@@ -14,12 +14,15 @@ import { clientWorkLink } from "@/lib/pm/links";
 import { fmtDate, todayISO } from "@/lib/pm/format";
 import { isHardOverdue } from "@/lib/pm/dueState";
 import { NewClientPopover } from "@/components/pm/NewClientPopover";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
+import { useClientBrandMap } from "@/lib/pm/clients";
 
 interface ClientRow {
   id: string;
   name: string;
   is_internal: boolean;
   archived_at: string | null;
+  logo_path: string | null;
   projectCount: number;
   activeCount: number;
   overdueCount: number;
@@ -40,6 +43,7 @@ export default function Clients() {
   const [sort, setSort] = useState<SortId>("active");
   const [scope, setScope] = useState<ScopeId>("all");
   const withPortal = useClientsWithPortal();
+  const brands = useClientBrandMap();
 
   function reloadClients() {
     setLoading(true);
@@ -48,7 +52,7 @@ export default function Clients() {
       const today = todayISO();
       try {
         const [{ data: clients, error: cErr }, { data: projects, error: pErr }, { data: tasks, error: tErr }] = await Promise.all([
-          supabase.from("clients").select("id,name,is_internal,archived_at").order("name"),
+          supabase.from("clients").select("id,name,is_internal,archived_at,logo_path").order("name"),
           supabase.from("pm_projects").select("id,client_id,status,go_live_date"),
           supabase.from("pm_tasks").select("project_id,status,due_date").lt("due_date", today),
         ]);
@@ -85,6 +89,7 @@ export default function Clients() {
           name: c.name,
           is_internal: !!c.is_internal,
           archived_at: c.archived_at ?? null,
+          logo_path: c.logo_path ?? null,
           projectCount: counts.get(c.id)?.total ?? 0,
           activeCount: counts.get(c.id)?.active ?? 0,
           overdueCount: overdue.get(c.id) ?? 0,
@@ -175,6 +180,11 @@ export default function Clients() {
           <Card key={c.id} className="p-3 hover:border-primary/40 transition-colors">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <Link to={`/pm/clients/${c.id}`} className="min-w-0 flex items-center gap-2 flex-wrap">
+                <ClientLogo
+                  name={c.name}
+                  logoUrl={brands.get(c.id)?.logoUrl ?? null}
+                  size="xs"
+                />
                 <span className="text-sm font-medium truncate">{c.name}</span>
                 {c.is_internal && <span className="internal-pill">Internal</span>}
                 {c.archived_at && <Badge variant="outline" className="text-muted-foreground">Archived</Badge>}

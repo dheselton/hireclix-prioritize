@@ -91,7 +91,7 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
         </div>
       </button>
 
-      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} size="md" /></div>
+      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} status={t.status} statusChangedAt={t.status_changed_at} updatedAt={t.updated_at} dueDateChanges={t.due_date_changes} size="md" /></div>
       <div className="mt-0.5 touch-action">
         <TaskTriagePopover task={t} />
       </div>
@@ -126,7 +126,7 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
         <TypePill value={t.request_type} />
       </button>
 
-      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} size="md" showEmpty={false} /></div>
+      <div className="shrink-0 mt-0.5"><DueBadge dueDate={t.due_date} status={t.status} statusChangedAt={t.status_changed_at} updatedAt={t.updated_at} dueDateChanges={t.due_date_changes} size="md" showEmpty={false} /></div>
       <div className="mt-0.5"><ClaimButton task={t} size="sm" /></div>
     </div>
   );

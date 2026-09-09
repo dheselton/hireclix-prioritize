@@ -117,7 +117,7 @@ export function ProjectBriefingCard({ project }: { project: ProjectWithMeta }) {
                 >
                   <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
                   <span className="flex-1 min-w-0 text-xs font-medium truncate">{t.title}</span>
-                  <DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} />
+                  <DueBadge dueDate={t.due_date} status={t.status} statusChangedAt={t.status_changed_at} updatedAt={t.updated_at} dueDateChanges={t.due_date_changes} />
                 </button>
               );
             })}

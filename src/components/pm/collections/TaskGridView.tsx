@@ -96,7 +96,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                   </div>
                   {t.status === "unclaimed"
                     ? <ClaimButton task={t} onChanged={onChanged} />
-                    : <DueBadge dueDate={t.due_date} status={t.status} dueDateChanges={t.due_date_changes} />}
+                    : <DueBadge dueDate={t.due_date} status={t.status} statusChangedAt={t.status_changed_at} updatedAt={t.updated_at} dueDateChanges={t.due_date_changes} />}
                 </div>
                 <AttributionChip
                   created_by={t.created_by}

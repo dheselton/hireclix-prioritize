@@ -1190,6 +1190,66 @@ export type Database = {
           },
         ]
       }
+      pm_ops_sites: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          health_status: string
+          last_checked_at: string | null
+          name: string
+          ops_site_id: string
+          platform: string | null
+          prod_url: string | null
+          project_id: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          health_status?: string
+          last_checked_at?: string | null
+          name: string
+          ops_site_id: string
+          platform?: string | null
+          prod_url?: string | null
+          project_id?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          health_status?: string
+          last_checked_at?: string | null
+          name?: string
+          ops_site_id?: string
+          platform?: string | null
+          prod_url?: string | null
+          project_id?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_ops_sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_ops_sites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_portal_access: {
         Row: {
           client_id: string | null

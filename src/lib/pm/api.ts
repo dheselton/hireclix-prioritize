@@ -66,6 +66,9 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
   }
 
   const writePatch: Record<string, unknown> = { ...patch };
+  if (patch.status && (prev as any)?.status && patch.status !== (prev as any).status) {
+    writePatch.status_changed_at = new Date().toISOString();
+  }
   if (Object.prototype.hasOwnProperty.call(patch, 'due_date')) {
     const nextDue = patch.due_date ?? null;
     const prevDue = (prev as any)?.due_date as string | null | undefined;
@@ -158,6 +161,9 @@ export const createTask = async (task: Partial<PmTask> & { creation_source?: Cre
   if (payload.due_date_changes === undefined) {
     payload.due_date_changes = 0;
   }
+  if (payload.status_changed_at === undefined) {
+    payload.status_changed_at = new Date().toISOString();
+  }
   // Inherit client:/type: tags from the parent project so tasks are searchable by
   // client and project shape without manual entry.
   if (payload.project_id) {
@@ -199,7 +205,18 @@ export const deleteTask = async (id: string) => {
 };
 
 export const updateProject = async (id: string, patch: Partial<PmProject>) => {
-  const { data, error } = await supabase.from('pm_projects').update(patch as any).eq('id', id).select().single();
+  const writePatch: Record<string, unknown> = { ...patch };
+  if (patch.status) {
+    const { data: prev } = await supabase
+      .from('pm_projects')
+      .select('status')
+      .eq('id', id)
+      .maybeSingle();
+    if ((prev as any)?.status && patch.status !== (prev as any).status) {
+      writePatch.status_changed_at = new Date().toISOString();
+    }
+  }
+  const { data, error } = await supabase.from('pm_projects').update(writePatch as any).eq('id', id).select().single();
   if (error) throw error;
   return data as unknown as PmProject;
 };

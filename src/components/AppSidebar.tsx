@@ -23,10 +23,12 @@ import {
 } from "@/lib/pm/clients";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
+import { isInSupportMode } from "@/lib/pm/liveSites";
 import { projectColorHsl } from "@/lib/pm/projectColor";
 import { fmtDateShort } from "@/lib/pm/format";
 import { dueState } from "@/lib/pm/dueState";
 import { dueUrgency } from "@/components/pm/DueBadge";
+import { projectStatusClockMeta, taskStatusClockMeta, waitingSortKey } from "@/lib/pm/statusClock";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
@@ -48,6 +50,8 @@ type SidebarProjectRow = {
   clientName: string | null;
   clientId: string | null;
   dueDate: string | null;
+  /** Go-live date once the project is in Support mode — a milestone, not a deadline. */
+  liveSince: string | null;
 };
 
 const primaryNav: NavItem[] = [
@@ -80,13 +84,56 @@ const roadmapItems = [
   { title: "Product Roadmap", url: "/roadmap", icon: MapIcon },
 ];
 
+type SidebarDueMeta = {
+  label: string;
+  secondary?: string | null;
+  className: string;
+};
+
 /** Compact due label for the narrow sidebar meta line. */
 function sidebarDueMeta(
   dueDate: string | null | undefined,
-  status?: string | null,
-): { label: string; className: string } | null {
-  if (!dueDate) return null;
+  opts?: {
+    status?: string | null;
+    statusChangedAt?: string | null;
+    updatedAt?: string | null;
+    entity?: "task" | "project";
+  },
+): SidebarDueMeta | null {
+  const status = opts?.status;
+  const entity = opts?.entity ?? "task";
+
+  if (entity === "project" && status) {
+    const projectClock = projectStatusClockMeta({
+      dueDate: dueDate ?? null,
+      status,
+      status_changed_at: opts?.statusChangedAt,
+      updated_at: opts?.updatedAt,
+    });
+    if (projectClock) {
+      return {
+        label: projectClock.primary,
+        secondary: projectClock.secondary,
+        className: projectClock.className,
+      };
+    }
+  }
+
   if (status != null) {
+    const clock = taskStatusClockMeta({
+      due_date: dueDate,
+      status,
+      status_changed_at: opts?.statusChangedAt,
+      updated_at: opts?.updatedAt,
+    });
+    if (clock) {
+      return {
+        label: clock.primary,
+        secondary: clock.secondary,
+        className: clock.className,
+      };
+    }
+
     const state = dueState({ due_date: dueDate, status });
     if (state === "none" || state === "settled") return null;
     if (state === "overdue") {
@@ -95,23 +142,22 @@ function sidebarDueMeta(
         className: "text-destructive font-semibold",
       };
     }
-    if (state === "slipped") {
-      return {
-        label: `Past due · ${fmtDateShort(dueDate)}`,
-        className: "text-amber-700 dark:text-amber-300 font-semibold",
-      };
-    }
     if (state === "today") {
       return {
         label: "Today",
         className: "text-amber-700 dark:text-amber-300 font-semibold",
       };
     }
-    return {
-      label: fmtDateShort(dueDate),
-      className: "text-muted-foreground",
-    };
+    if (dueDate) {
+      return {
+        label: fmtDateShort(dueDate),
+        className: "text-muted-foreground",
+      };
+    }
+    return null;
   }
+
+  if (!dueDate) return null;
   const u = dueUrgency(dueDate);
   if (u === "none") return null;
   if (u === "overdue") {
@@ -132,27 +178,35 @@ function sidebarDueMeta(
   };
 }
 
-function dueSortKey(dueDate: string | null | undefined, status?: string | null): number {
-  if (status != null) {
-    const state = dueState({ due_date: dueDate, status });
-    if (state === "overdue") return 0;
-    if (state === "slipped") return 1;
-    if (state === "today") return 2;
-    if (state === "upcoming") return 3;
-    return 4;
-  }
-  const u = dueUrgency(dueDate);
-  if (u === "overdue") return 0;
-  if (u === "today") return 1;
-  if (u === "upcoming") return 2;
-  return 3;
-}
-
 function compareByDueThenTitle(
-  a: { dueDate: string | null; title: string; openCount?: number; status?: string | null },
-  b: { dueDate: string | null; title: string; openCount?: number; status?: string | null },
+  a: {
+    dueDate: string | null;
+    title: string;
+    openCount?: number;
+    status?: string | null;
+    statusChangedAt?: string | null;
+    updatedAt?: string | null;
+  },
+  b: {
+    dueDate: string | null;
+    title: string;
+    openCount?: number;
+    status?: string | null;
+    statusChangedAt?: string | null;
+    updatedAt?: string | null;
+  },
 ): number {
-  const urg = dueSortKey(a.dueDate, a.status) - dueSortKey(b.dueDate, b.status);
+  const urg = waitingSortKey({
+    dueDate: a.dueDate,
+    status: a.status,
+    statusChangedAt: a.statusChangedAt,
+    updatedAt: a.updatedAt,
+  }) - waitingSortKey({
+    dueDate: b.dueDate,
+    status: b.status,
+    statusChangedAt: b.statusChangedAt,
+    updatedAt: b.updatedAt,
+  });
   if (urg !== 0) return urg;
   if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
     return a.dueDate < b.dueDate ? -1 : 1;
@@ -165,9 +219,15 @@ function compareByDueThenTitle(
   return a.title.localeCompare(b.title);
 }
 
-function rowTooltip(title: string, clientName: string | null, dueDate: string | null): string {
+function rowTooltip(
+  title: string,
+  clientName: string | null,
+  dueDate: string | null,
+  liveSince?: string | null,
+): string {
   const parts = [title];
   parts.push(clientName ?? "No client");
+  if (liveSince) parts.push(`Live since ${fmtDateShort(liveSince)}`);
   if (dueDate) parts.push(`Due ${fmtDateShort(dueDate)}`);
   return parts.join(" — ");
 }
@@ -205,8 +265,20 @@ function useMyWork() {
         };
       })
       .sort((a, b) => compareByDueThenTitle(
-        { dueDate: a.dueDate, title: a.task.title, status: a.task.status },
-        { dueDate: b.dueDate, title: b.task.title, status: b.task.status },
+        {
+          dueDate: a.dueDate,
+          title: a.task.title,
+          status: a.task.status,
+          statusChangedAt: a.task.status_changed_at,
+          updatedAt: a.task.updated_at,
+        },
+        {
+          dueDate: b.dueDate,
+          title: b.task.title,
+          status: b.task.status,
+          statusChangedAt: b.task.status_changed_at,
+          updatedAt: b.task.updated_at,
+        },
       ));
 
     // Open assigned task counts on non-request projects.
@@ -240,19 +312,39 @@ function useMyWork() {
         if (project.work_type === "request") return null;
         if (project.status === "complete" || project.status === "archived") return null;
         const openCount = projectCounts.get(id) ?? 0;
-        const dueDate = project.go_live_date ?? earliestMyDue.get(id) ?? null;
+        // A live site stays open to hold its support queue, so its go-live date is
+        // a launch milestone. Only pre-launch projects treat it as a deadline.
+        const live = isInSupportMode(project);
+        const dueDate = live
+          ? earliestMyDue.get(id) ?? null
+          : project.go_live_date ?? earliestMyDue.get(id) ?? null;
         return {
           project,
           openCount,
           clientName: clientNameForProject(project, clientNames),
           clientId: project.client_id ?? null,
           dueDate,
+          liveSince: live ? project.go_live_date : null,
         };
       })
       .filter((x): x is SidebarProjectRow => x != null)
       .sort((a, b) => compareByDueThenTitle(
-        { dueDate: a.dueDate, title: a.project.title, openCount: a.openCount },
-        { dueDate: b.dueDate, title: b.project.title, openCount: b.openCount },
+        {
+          dueDate: a.dueDate,
+          title: a.project.title,
+          openCount: a.openCount,
+          status: a.project.status,
+          statusChangedAt: a.project.status_changed_at,
+          updatedAt: a.project.updated_at,
+        },
+        {
+          dueDate: b.dueDate,
+          title: b.project.title,
+          openCount: b.openCount,
+          status: b.project.status,
+          statusChangedAt: b.project.status_changed_at,
+          updatedAt: b.project.updated_at,
+        },
       ));
 
     return {
@@ -344,16 +436,25 @@ function MetaLine({
   dueDate,
   parentSiteName,
   status,
+  statusChangedAt,
+  updatedAt,
+  entity = "task",
+  liveSince,
 }: {
   clientName: string | null;
   clientId?: string | null;
   dueDate: string | null;
   parentSiteName?: string | null;
   status?: string | null;
+  statusChangedAt?: string | null;
+  updatedAt?: string | null;
+  entity?: "task" | "project";
+  /** Go-live date for a Support-mode project — a launch milestone, not a deadline. */
+  liveSince?: string | null;
 }) {
   const brands = useClientBrandMap();
   const logoUrl = clientId ? brands.get(clientId)?.logoUrl ?? null : null;
-  const due = sidebarDueMeta(dueDate, status);
+  const due = sidebarDueMeta(dueDate, { status, statusChangedAt, updatedAt, entity });
   return (
     <span className="flex items-center gap-1 min-w-0 text-[10px] text-muted-foreground">
       {clientName ? (
@@ -362,10 +463,19 @@ function MetaLine({
       <span className="truncate">
         {clientName ?? "No client"}
         {parentSiteName && <> · Site: {parentSiteName}</>}
+        {liveSince && (
+          <>
+            {" · "}
+            <span className="text-info font-medium">Live · {fmtDateShort(liveSince)}</span>
+          </>
+        )}
         {due && (
           <>
             {" · "}
             <span className={due.className}>{due.label}</span>
+            {due.secondary && (
+              <span className="text-muted-foreground/80 font-normal"> · {due.secondary}</span>
+            )}
           </>
         )}
       </span>
@@ -476,7 +586,15 @@ export function AppSidebar() {
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[12px] font-medium">{t.title}</span>
-                              <MetaLine clientName={clientName} clientId={clientId} dueDate={dueDate} parentSiteName={parentSiteName} status={t.status} />
+                              <MetaLine
+                                clientName={clientName}
+                                clientId={clientId}
+                                dueDate={dueDate}
+                                parentSiteName={parentSiteName}
+                                status={t.status}
+                                statusChangedAt={t.status_changed_at}
+                                updatedAt={t.updated_at}
+                              />
                             </span>
                           </NavLink>
                         ))}
@@ -506,7 +624,7 @@ export function AppSidebar() {
                       <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
                     ) : (
                       <div className="space-y-px">
-                        {visibleProjects.map(({ project, openCount, clientName, clientId, dueDate }) => {
+                        {visibleProjects.map(({ project, openCount, clientName, clientId, dueDate, liveSince }) => {
                           const isActive = pathname.startsWith(`/pm/projects/${project.id}`);
                           const hsl = projectColorHsl(project.id, {
                             isInternal: internalIds.has(project.id),
@@ -520,7 +638,7 @@ export function AppSidebar() {
                                 "relative flex items-start gap-2 pl-3 pr-2 py-1.5 rounded text-[12px] hover:bg-accent/30",
                                 isActive ? "bg-accent/50 text-foreground font-semibold" : "text-foreground/80",
                               )}
-                              title={rowTooltip(project.title, clientName, dueDate)}
+                              title={rowTooltip(project.title, clientName, dueDate, liveSince)}
                             >
                               <span
                                 className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r"
@@ -529,7 +647,16 @@ export function AppSidebar() {
                               />
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-[12px] font-medium">{project.title}</span>
-                                <MetaLine clientName={clientName} clientId={clientId} dueDate={dueDate} />
+                                <MetaLine
+                                  clientName={clientName}
+                                  clientId={clientId}
+                                  dueDate={dueDate}
+                                  status={project.status}
+                                  statusChangedAt={project.status_changed_at}
+                                  updatedAt={project.updated_at}
+                                  entity="project"
+                                  liveSince={liveSince}
+                                />
                               </span>
                               {openCount > 0 && (
                                 <CountBadge count={openCount} active={isActive} />

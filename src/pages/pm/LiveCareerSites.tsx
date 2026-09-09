@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Headphones, Search, LifeBuoy, AlertTriangle, Clock, Link2,
+  Headphones, Search, LifeBuoy, AlertTriangle, Clock, Link2, RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +23,15 @@ import {
   fetchUnlinkedCareerSiteRequests,
   type SiteQueueSummary,
 } from "@/lib/pm/supportQueue";
+import {
+  fetchOpsSites,
+  fetchUnmappedOpsSites,
+  healthBadgeClass,
+  linkOpsSiteToProject,
+  opsSiteByProjectId,
+  triggerOpsSitesSync,
+  type PmOpsSite,
+} from "@/lib/pm/opsSites";
 import { requestTypeLabel } from "@/lib/pm/requestTypes";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
@@ -69,6 +78,10 @@ export default function LiveCareerSites() {
   const [onlyUnclaimed, setOnlyUnclaimed] = useState(false);
   const [logFor, setLogFor] = useState<LiveSiteSummary | null>(null);
   const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
+  const [opsByProject, setOpsByProject] = useState<Map<string, PmOpsSite>>(new Map());
+  const [unmappedOps, setUnmappedOps] = useState<PmOpsSite[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [mapBusyId, setMapBusyId] = useState<string | null>(null);
 
   const reload = async () => {
     setLoading(true);
@@ -103,6 +116,14 @@ export default function LiveCareerSites() {
         }),
       );
       setUnlinked(orphaned);
+      try {
+        const ops = await fetchOpsSites();
+        setOpsByProject(opsSiteByProjectId(ops));
+        setUnmappedOps(await fetchUnmappedOpsSites());
+      } catch {
+        setOpsByProject(new Map());
+        setUnmappedOps([]);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load live career sites");
       setRows([]);
@@ -160,16 +181,72 @@ export default function LiveCareerSites() {
     }
   }
 
+  async function syncFromOps() {
+    setSyncing(true);
+    try {
+      const result = await triggerOpsSitesSync();
+      if (result.skipped) {
+        toast.message(result.message ?? "Ops API URL not configured yet");
+      } else {
+        toast.success(
+          `Synced ${result.synced} sites (${result.linked} linked, ${result.unmapped} need mapping)`,
+        );
+      }
+      await reload();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function mapOpsSite(opsSiteId: string, projectId: string) {
+    setMapBusyId(opsSiteId);
+    try {
+      const site = rows.find((r) => r.id === projectId);
+      await linkOpsSiteToProject(opsSiteId, projectId, site?.client_id ?? null);
+      toast.success("Mapped to Prioritize project");
+      await reload();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Couldn't map site");
+    } finally {
+      setMapBusyId(null);
+    }
+  }
+
   return (
     <div className="page-shell space-y-5 max-w-6xl">
       <header className="space-y-1">
-        <h1 className="text-[20px] font-medium leading-tight flex items-center gap-2">
-          <Headphones className="h-5 w-5 text-muted-foreground" />
-          Live Career Sites
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Career site projects in Support mode — queue health and ongoing support after go-live.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-[20px] font-medium leading-tight flex items-center gap-2">
+              <Headphones className="h-5 w-5 text-muted-foreground" />
+              Live Career Sites
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Career site projects in Support mode — queue health from Prioritize, uptime from{" "}
+              <a
+                href="https://careersite-ops.hireclix.com/site-health"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+              >
+                careersite-ops
+              </a>
+              .
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            disabled={syncing}
+            onClick={() => void syncFromOps()}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+            {syncing ? "Syncing…" : "Sync from ops"}
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -213,6 +290,7 @@ export default function LiveCareerSites() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((row) => {
           const liveSince = liveSinceLabel(row);
+          const ops = opsByProject.get(row.id);
           return (
             <Card
               key={row.id}
@@ -244,9 +322,22 @@ export default function LiveCareerSites() {
                       )}
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide shrink-0">
-                    Support
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                      Support
+                    </Badge>
+                    {ops && (
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase tracking-wide",
+                          healthBadgeClass(ops.health_status),
+                        )}
+                        title={ops.prod_url ?? ops.name}
+                      >
+                        {ops.health_status}
+                      </span>
+                    )}
+                  </div>
                 </Link>
 
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -318,6 +409,66 @@ export default function LiveCareerSites() {
           );
         })}
       </div>
+
+      {unmappedOps.length > 0 && (
+        <section className="space-y-2 pt-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <h2 className="text-sm font-medium">Unmapped ops sites</h2>
+            <Badge variant="secondary" className="tabular-nums">
+              {unmappedOps.length}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            From careersite-ops but not linked to a Prioritize live site yet. Map them so down alerts
+            and vendor escalations land on the right project.
+          </p>
+          <ul className="space-y-2">
+            {unmappedOps.map((site) => (
+              <li
+                key={site.ops_site_id}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{site.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {site.client_name ?? "No client"}
+                    {site.prod_url ? ` · ${site.prod_url}` : ""}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase tracking-wide",
+                    healthBadgeClass(site.health_status),
+                  )}
+                >
+                  {site.health_status}
+                </span>
+                <Select
+                  disabled={mapBusyId === site.ops_site_id || rows.length === 0}
+                  onValueChange={(projectId) => void mapOpsSite(site.ops_site_id, projectId)}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-xs">
+                    <SelectValue
+                      placeholder={
+                        mapBusyId === site.ops_site_id ? "Linking…" : "Map to Prioritize site"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 bg-popover max-h-64">
+                    {rows.map((r) => (
+                      <SelectItem key={r.id} value={r.id} className="text-xs">
+                        {r.clientName ? `${r.clientName} — ` : ""}
+                        {r.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {unlinked.length > 0 && (
         <section className="space-y-2 pt-2">

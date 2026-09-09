@@ -5,7 +5,8 @@ import { useTaskAssigneesQuery } from "@/lib/pm/assignees";
 import { useProjectTeamsQuery } from "@/lib/pm/projectTeam";
 import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { isHighSeverityRisk, isStaleDecision } from "@/lib/pm/taskKind";
-import { isHardOverdue, dueState } from "@/lib/pm/dueState";
+import { isHardOverdue } from "@/lib/pm/dueState";
+import { waitingSortKey } from "@/lib/pm/statusClock";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 import { countFollowUpsDueForOwner } from "@/lib/pm/vendors";
 
@@ -138,16 +139,20 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
     );
 
     const isRequest = (task: PmTask) => projectsById.get(task.project_id)?.work_type === "request";
-    const urgency = (task: PmTask) => {
-      const state = dueState(task, today);
-      if (state === "overdue") return 0;
-      if (state === "slipped") return 1;
-      if (state === "today") return 2;
-      if (state === "upcoming") return 3;
-      return 4;
+    const sortUrgent = (a: PmTask, b: PmTask) => {
+      const urg = waitingSortKey({
+        dueDate: a.due_date,
+        status: a.status,
+        statusChangedAt: a.status_changed_at,
+        updatedAt: a.updated_at,
+      }, today) - waitingSortKey({
+        dueDate: b.due_date,
+        status: b.status,
+        statusChangedAt: b.status_changed_at,
+        updatedAt: b.updated_at,
+      }, today);
+      return urg || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
     };
-    const sortUrgent = (a: PmTask, b: PmTask) =>
-      urgency(a) - urgency(b) || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
 
     const enrich = (task: PmTask) => {
       const project = projectsById.get(task.project_id);

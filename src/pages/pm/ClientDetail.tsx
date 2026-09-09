@@ -20,6 +20,8 @@ import { useClientsWithPortal } from "@/lib/pm/portalAccess";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { canSee } from "@/lib/pm/permissions";
 import { fmtDate } from "@/lib/pm/format";
+import { useClientBrandMap } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 
 const TABS = ["overview", "projects", "notes", "assets", "portal"] as const;
 type TabId = (typeof TABS)[number];
@@ -30,6 +32,7 @@ export default function ClientDetail() {
   const { client, loading: clientLoading, reload: reloadClient } = useClientRecord(id);
   const { projects, stats, contacts, loading, error } = useClientHub(id);
   const withPortal = useClientsWithPortal();
+  const brands = useClientBrandMap();
   const { roles } = useCurrentUser();
   const canManage = canSee(roles, "clients");
 
@@ -77,6 +80,13 @@ export default function ClientDetail() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
+            {client && (
+              <ClientLogo
+                name={client.name}
+                logoUrl={brands.get(client.id)?.logoUrl ?? null}
+                size="lg"
+              />
+            )}
             <h1 className="text-[20px] font-medium leading-tight">
               {clientLoading ? "Loading…" : client?.name ?? "Client"}
             </h1>

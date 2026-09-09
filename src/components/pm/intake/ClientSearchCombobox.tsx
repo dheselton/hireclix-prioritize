@@ -3,7 +3,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { NewClientPopover } from "@/components/pm/NewClientPopover";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useClientBrandMap, useInternalClientIds } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
 
@@ -32,6 +33,7 @@ export function ClientSearchCombobox({
 }: Props) {
   const [open, setOpen] = useState(false);
   const internalIds = useInternalClientIds();
+  const brands = useClientBrandMap();
   const isInternal = (id: string) => internalIds.has(id) || !!clients.find(c => c.id === id)?.is_internal;
   const selected = useMemo(() => clients.find(c => c.id === value), [clients, value]);
 
@@ -51,11 +53,16 @@ export function ClientSearchCombobox({
                 !selected && "text-muted-foreground",
               )}
             >
-              <span className="truncate">
+              <span className="inline-flex items-center gap-2 min-w-0 truncate">
                 {selected ? (
                   <>
-                    {selected.name}
-                    {isInternal(selected.id) && <span className="internal-pill ml-2">Internal</span>}
+                    <ClientLogo
+                      name={selected.name}
+                      logoUrl={brands.get(selected.id)?.logoUrl ?? null}
+                      size="2xs"
+                    />
+                    <span className="truncate">{selected.name}</span>
+                    {isInternal(selected.id) && <span className="internal-pill shrink-0">Internal</span>}
                   </>
                 ) : placeholder}
               </span>
@@ -74,8 +81,14 @@ export function ClientSearchCombobox({
                       value={c.name}
                       onSelect={() => { onChange(c.id); setOpen(false); }}
                     >
-                      <Check className={cn("h-4 w-4 mr-2", value === c.id ? "opacity-100" : "opacity-0")} />
-                      <span className="flex-1">{c.name}</span>
+                      <Check className={cn("h-4 w-4 mr-2 shrink-0", value === c.id ? "opacity-100" : "opacity-0")} />
+                      <ClientLogo
+                        name={c.name}
+                        logoUrl={brands.get(c.id)?.logoUrl ?? null}
+                        size="2xs"
+                        className="mr-2"
+                      />
+                      <span className="flex-1 truncate">{c.name}</span>
                       {isInternal(c.id) && <span className="internal-pill">Internal</span>}
                     </CommandItem>
                   ))}

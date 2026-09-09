@@ -42,6 +42,8 @@ export interface PmProject {
   type: ProjectType;
   work_type: WorkType;
   status: ProjectStatus;
+  /** When status last changed — drives status-clock badges. */
+  status_changed_at?: string | null;
   go_live_date: string | null;
   start_date: string | null;
   kickoff_date: string | null;
@@ -72,6 +74,8 @@ export interface PmTask {
   description: string | null;
   type: TaskType;
   status: TaskStatus;
+  /** When status last changed — drives status-clock badges. */
+  status_changed_at?: string | null;
   assignee_id: string | null;
   created_by: string | null;
   creation_source?: import('@/lib/pm/attribution').CreationSource | null;
