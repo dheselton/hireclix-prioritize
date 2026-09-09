@@ -14,7 +14,8 @@ export type NotifEventType =
   | "overdue"
   | "due_date_slipped"
   | "new_request"
-  | "unclaimed_team";
+  | "unclaimed_team"
+  | "vendor_follow_up_due";
 
 export const EVENT_META: Record<NotifEventType, { label: string; desc: string; urgent: boolean }> = {
   assigned:       { label: "Assigned to a task",       desc: "You were made the owner or co-assignee of a task", urgent: true },
@@ -30,6 +31,11 @@ export const EVENT_META: Record<NotifEventType, { label: string; desc: string; u
   },
   new_request:    { label: "New request submitted",    desc: "Creative/production quick requests (web, career site, design, dev). Other requests appear on the Daily Briefing dashboard only.", urgent: false },
   unclaimed_team: { label: "Unclaimed work in my team", desc: "Legacy — no longer broadcast. Unclaimed requests appear on the Daily Briefing dashboard.", urgent: false },
+  vendor_follow_up_due: {
+    label: "Vendor follow-up due",
+    desc: "An escalation you own is due for follow-up with the vendor",
+    urgent: true,
+  },
 };
 
 export const ALL_EVENT_TYPES = Object.keys(EVENT_META) as NotifEventType[];
@@ -350,6 +356,14 @@ export async function scanDueDateNotifications() {
   const overdueWindowMs = OVERDUE_DEDUPE_DAYS * 24 * 60 * 60 * 1000;
   const slippedWindowMs = SLIPPED_DEDUPE_DAYS * 24 * 60 * 60 * 1000;
 
+  // Suppress stale nudges for tasks waiting on an open vendor escalation —
+  // the escalation owner is nudged instead.
+  let vendorBlocked = new Set<string>();
+  try {
+    const { fetchOpenVendorBlockedTaskIds } = await import("@/lib/pm/vendors");
+    vendorBlocked = await fetchOpenVendorBlockedTaskIds();
+  } catch {}
+
   const withinWindow = (type: string, link: string, windowMs: number) => {
     const key = `${type}|${link}`;
     if (seen.has(key)) {
@@ -381,6 +395,7 @@ export async function scanDueDateNotifications() {
     }
 
     if (state === "slipped") {
+      if (vendorBlocked.has(t.id)) continue;
       const lastAct = lastActivityMs(t, commentAt.get(t.id));
       if (lastAct && now.getTime() - lastAct < staleMs) continue;
       if (withinWindow("due_date_slipped", link, slippedWindowMs)) continue;

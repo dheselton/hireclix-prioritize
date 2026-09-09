@@ -29,6 +29,7 @@ export function applyTaskChips(
   meId: string | null | undefined,
   watcherTaskIds?: Set<string>,
   coAssignedTaskIds?: Set<string>,
+  vendorBlockedTaskIds?: Set<string>,
 ) {
   if (!active.size) return tasks;
   const today = startOfToday();
@@ -63,6 +64,9 @@ export function applyTaskChips(
           if (t.status !== "blocked") return false; break;
         case "unclaimed":
           if (t.status !== "unclaimed") return false; break;
+        case "waiting_on_vendor":
+          if (!vendorBlockedTaskIds?.has(t.id)) return false;
+          break;
       }
     }
     return true;

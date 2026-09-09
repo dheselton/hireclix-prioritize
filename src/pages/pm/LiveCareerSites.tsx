@@ -91,6 +91,7 @@ export default function LiveCareerSites() {
                 openRequestCount: 0,
                 needsTriage: 0,
                 inProgress: 0,
+                awaitingVendor: 0,
                 waiting: 0,
                 overdue: 0,
                 closedLast30d: 0,
@@ -269,6 +270,12 @@ export default function LiveCareerSites() {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                   {row.queue.inProgress > 0 && (
                     <span>{row.queue.inProgress} in progress</span>
+                  )}
+                  {row.queue.awaitingVendor > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="h-3 w-3" />
+                      {row.queue.awaitingVendor} awaiting vendor
+                    </span>
                   )}
                   {row.queue.waiting > 0 && (
                     <span className="inline-flex items-center gap-0.5 text-warning">

@@ -16,7 +16,12 @@ import type { RequestType } from "@/lib/pm/requestTypes";
 import type { CreationSource } from "@/lib/pm/attribution";
 import { isDone, type PmProject, type PmTask, type TaskStatus } from "@/types/pm";
 
-export type SupportRollupStatus = "needs_triage" | "in_progress" | "waiting" | "closed";
+export type SupportRollupStatus =
+  | "needs_triage"
+  | "in_progress"
+  | "awaiting_vendor"
+  | "waiting"
+  | "closed";
 
 export interface SupportRequestRollup {
   project: PmProject;
@@ -25,6 +30,7 @@ export interface SupportRequestRollup {
   unclaimedTasks: number;
   overdueTasks: number;
   blockedTasks: number;
+  vendorBlockedTasks: number;
   nextDue: string | null;
   oldestOpenAt: string | null;
   oldestOpenAgeDays: number | null;
@@ -39,6 +45,7 @@ export interface SiteQueueSummary {
   openRequestCount: number;
   needsTriage: number;
   inProgress: number;
+  awaitingVendor: number;
   waiting: number;
   overdue: number;
   closedLast30d: number;
@@ -74,7 +81,12 @@ function daysBetween(isoA: string, isoB: string): number {
   return Math.max(0, Math.round((b.getTime() - a.getTime()) / 86400000));
 }
 
-function rollupOne(project: PmProject, tasks: PmTask[], today = todayISO()): SupportRequestRollup {
+function rollupOne(
+  project: PmProject,
+  tasks: PmTask[],
+  today = todayISO(),
+  vendorBlockedTaskIds?: Set<string>,
+): SupportRequestRollup {
   const requestType =
     typeof (project.custom_fields as { request_type?: string } | null)?.request_type === "string"
       ? (project.custom_fields as { request_type: string }).request_type
@@ -84,6 +96,7 @@ function rollupOne(project: PmProject, tasks: PmTask[], today = todayISO()): Sup
   const open = tasks.filter((t) => !isDone(t.status as TaskStatus));
   const unclaimed = open.filter((t) => t.status === "unclaimed");
   const blocked = open.filter((t) => t.status === "blocked");
+  const vendorBlocked = open.filter((t) => vendorBlockedTaskIds?.has(t.id));
   const overdue = open.filter((t) => isHardOverdue(t, today));
 
   const dues = open
@@ -118,6 +131,8 @@ function rollupOne(project: PmProject, tasks: PmTask[], today = todayISO()): Sup
   let rollupStatus: SupportRollupStatus;
   if (inactive || (tasks.length > 0 && open.length === 0)) {
     rollupStatus = "closed";
+  } else if (vendorBlocked.length > 0) {
+    rollupStatus = "awaiting_vendor";
   } else if (project.status === "on_hold" || blocked.length > 0) {
     rollupStatus = "waiting";
   } else if (unclaimed.length > 0 || open.length === 0) {
@@ -134,6 +149,7 @@ function rollupOne(project: PmProject, tasks: PmTask[], today = todayISO()): Sup
     unclaimedTasks: unclaimed.length,
     overdueTasks: overdue.length,
     blockedTasks: blocked.length,
+    vendorBlockedTasks: vendorBlocked.length,
     nextDue,
     oldestOpenAt,
     oldestOpenAgeDays,
@@ -142,6 +158,26 @@ function rollupOne(project: PmProject, tasks: PmTask[], today = todayISO()): Sup
     rollupStatus,
     priority,
   };
+}
+
+async function fetchVendorBlockedIdsForTasks(taskIds: string[]): Promise<Set<string>> {
+  if (!taskIds.length) return new Set();
+  const { data: links, error } = await supabase
+    .from("pm_vendor_escalation_tasks")
+    .select("task_id, escalation_id")
+    .in("task_id", taskIds);
+  if (error) throw error;
+  const rows = (links ?? []) as { task_id: string; escalation_id: string }[];
+  if (!rows.length) return new Set();
+  const escIds = Array.from(new Set(rows.map((r) => r.escalation_id)));
+  const { data: openEsc, error: e2 } = await supabase
+    .from("pm_vendor_escalations")
+    .select("id")
+    .in("id", escIds)
+    .in("status", ["awaiting_vendor", "awaiting_us"]);
+  if (e2) throw e2;
+  const openSet = new Set(((openEsc ?? []) as { id: string }[]).map((r) => r.id));
+  return new Set(rows.filter((r) => openSet.has(r.escalation_id)).map((r) => r.task_id));
 }
 
 async function fetchTasksForProjects(projectIds: string[]): Promise<PmTask[]> {
@@ -171,8 +207,9 @@ export async function fetchSupportQueueForSite(parentProjectId: string): Promise
     list.push(t);
     byProject.set(t.project_id, list);
   }
+  const vendorBlocked = await fetchVendorBlockedIdsForTasks(tasks.map((t) => t.id));
   const today = todayISO();
-  return projects.map((p) => rollupOne(p, byProject.get(p.id) ?? [], today));
+  return projects.map((p) => rollupOne(p, byProject.get(p.id) ?? [], today, vendorBlocked));
 }
 
 /** Workspace-wide queue summaries keyed by live-site parent id. */
@@ -184,6 +221,7 @@ export async function fetchSiteQueueSummaries(parentIds: string[]): Promise<Map<
       openRequestCount: 0,
       needsTriage: 0,
       inProgress: 0,
+      awaitingVendor: 0,
       waiting: 0,
       overdue: 0,
       closedLast30d: 0,
@@ -208,6 +246,7 @@ export async function fetchSiteQueueSummaries(parentIds: string[]): Promise<Map<
     list.push(t);
     byProject.set(t.project_id, list);
   }
+  const vendorBlocked = await fetchVendorBlockedIdsForTasks(tasks.map((t) => t.id));
 
   const today = todayISO();
   const cutoff = new Date();
@@ -219,7 +258,7 @@ export async function fetchSiteQueueSummaries(parentIds: string[]): Promise<Map<
     if (!parentId) continue;
     const summary = map.get(parentId);
     if (!summary) continue;
-    const rollup = rollupOne(p, byProject.get(p.id) ?? [], today);
+    const rollup = rollupOne(p, byProject.get(p.id) ?? [], today, vendorBlocked);
 
     if (rollup.rollupStatus === "closed") {
       const closedAt = p.updated_at ?? p.created_at;
@@ -230,6 +269,7 @@ export async function fetchSiteQueueSummaries(parentIds: string[]): Promise<Map<
     summary.openRequestCount += 1;
     if (rollup.rollupStatus === "needs_triage") summary.needsTriage += 1;
     else if (rollup.rollupStatus === "in_progress") summary.inProgress += 1;
+    else if (rollup.rollupStatus === "awaiting_vendor") summary.awaitingVendor += 1;
     else if (rollup.rollupStatus === "waiting") summary.waiting += 1;
     if (rollup.overdueTasks > 0) summary.overdue += 1;
 
@@ -348,6 +388,7 @@ export function summarizeQueue(rows: SupportRequestRollup[]): {
   open: number;
   unclaimed: number;
   overdue: number;
+  awaitingVendor: number;
   waiting: number;
   closedLast30d: number;
 } {
@@ -358,6 +399,7 @@ export function summarizeQueue(rows: SupportRequestRollup[]): {
   let open = 0;
   let unclaimed = 0;
   let overdue = 0;
+  let awaitingVendor = 0;
   let waiting = 0;
   let closedLast30d = 0;
 
@@ -370,8 +412,9 @@ export function summarizeQueue(rows: SupportRequestRollup[]): {
     open += 1;
     if (r.unclaimedTasks > 0 || r.rollupStatus === "needs_triage") unclaimed += 1;
     if (r.overdueTasks > 0) overdue += 1;
+    if (r.rollupStatus === "awaiting_vendor") awaitingVendor += 1;
     if (r.rollupStatus === "waiting") waiting += 1;
   }
 
-  return { open, unclaimed, overdue, waiting, closedLast30d };
+  return { open, unclaimed, overdue, awaitingVendor, waiting, closedLast30d };
 }

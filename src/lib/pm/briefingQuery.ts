@@ -7,6 +7,7 @@ import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { isHighSeverityRisk, isStaleDecision } from "@/lib/pm/taskKind";
 import { isHardOverdue, dueState } from "@/lib/pm/dueState";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
+import { countFollowUpsDueForOwner } from "@/lib/pm/vendors";
 
 export interface CachedBriefingData {
   counts: {
@@ -15,6 +16,7 @@ export interface CachedBriefingData {
     activeProjects: number;
     blocked: number;
     raidAttention: number;
+    vendorFollowUps: number;
   };
   quickTasks: Array<PmTask & {
     project_title: string | null;
@@ -35,7 +37,7 @@ export interface CachedBriefingData {
   reload: () => void;
 }
 
-const EMPTY_COUNTS = { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0 };
+const EMPTY_COUNTS = { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0, vendorFollowUps: 0 };
 
 function todayIso() {
   const d = new Date();
@@ -56,11 +58,18 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
     },
     enabled: !!userId,
   });
+  const vendorFollowUpsQuery = useQuery({
+    queryKey: ["pm-vendor-follow-ups-due", userId],
+    queryFn: () => countFollowUpsDueForOwner(userId!),
+    enabled: !!userId,
+    staleTime: 30_000,
+  });
   const refetchTasks = tasksQuery.refetch;
   const refetchProjects = projectsQuery.refetch;
   const refetchAssignees = assigneesQuery.refetch;
   const refetchTeams = teamsQuery.refetch;
   const refetchClients = clientsQuery.refetch;
+  const refetchVendorFollowUps = vendorFollowUpsQuery.refetch;
 
   const reload = useCallback(() => {
     void refetchTasks();
@@ -68,12 +77,14 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
     void refetchAssignees();
     void refetchTeams();
     void refetchClients();
+    void refetchVendorFollowUps();
   }, [
     refetchTasks,
     refetchProjects,
     refetchAssignees,
     refetchTeams,
     refetchClients,
+    refetchVendorFollowUps,
   ]);
 
   const loading = !!userId && (
@@ -197,6 +208,7 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
         activeProjects: activeProjects.length,
         blocked: myTasks.filter(task => task.status === "blocked").length,
         raidAttention,
+        vendorFollowUps: vendorFollowUpsQuery.data ?? 0,
       },
       quickTasks,
       unclaimedQuickTasks,
@@ -214,6 +226,7 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
     assigneesQuery.data,
     teamsQuery.data,
     clientsQuery.data,
+    vendorFollowUpsQuery.data,
     reload,
   ]);
 }

@@ -22,12 +22,15 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes, isWorkStateFilter, matchesWorkState, WORK_STATE_LABEL, type WorkStateFilter } from "@/lib/pm/filters";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
+import { useOpenVendorBlockedTaskIds } from "@/lib/pm/vendors";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+
+const EMPTY_VENDOR_SET = new Set<string>();
 import { WorkKanban } from "@/components/pm/work/WorkKanban";
 import { useTagFilter, taskMatchesTagFilter } from "@/hooks/useTagFilter";
 import { TagFilterChip } from "@/components/pm/tags/TagFilterChip";
@@ -116,6 +119,8 @@ export default function Work() {
 
   const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
   const tagFilter = useTagFilter("board");
+  const { data: vendorBlockedTaskIds } = useOpenVendorBlockedTaskIds();
+  const vendorBlockedSet = vendorBlockedTaskIds ?? EMPTY_VENDOR_SET;
 
   // Deep-link filters: ?user=<id> (Team Workload / Team Report), ?client=<id>
   // (Team Report), ?filter=overdue|due-this-week|blocked|no-date (Workload
@@ -167,7 +172,7 @@ export default function Work() {
   const visibleTasks = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
-    v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds);
+    v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds, vendorBlockedSet);
     if (workType.value !== "all") {
       v = v.filter(t => {
         const wt = (projById.get(t.project_id) as PmProject & { work_type?: string })?.work_type ?? "project";
@@ -209,7 +214,7 @@ export default function Work() {
       });
     }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap, search]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, vendorBlockedSet, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap, search]);
 
   // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
   const clientTagsInUse = useMemo(() => {

@@ -32,6 +32,8 @@ import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
 import { RequestContextPanel } from "@/components/pm/workspace/RequestContextPanel";
 import { IncidentContextBanner } from "@/components/pm/workspace/IncidentContextBanner";
+import { VendorWaitBanner } from "@/components/pm/workspace/VendorWaitBanner";
+import { VendorWaitCard } from "@/components/pm/workspace/VendorWaitCard";
 import { UpcomingBanner } from "@/components/pm/workspace/UpcomingBanner";
 import { DefinePagesBanner } from "@/components/pm/workspace/DefinePagesBanner";
 import { DependenciesSection } from "@/components/pm/drawer/DependenciesSection";
@@ -218,6 +220,7 @@ export default function TaskWorkspace() {
                 currentTaskId={task.id}
               />
             )}
+            <VendorWaitBanner taskId={task.id} />
             <DescriptionSection task={task} patch={patch} />
             {task.status === "blocked" && <BlockerBanner />}
             <SubtasksSection task={task} />
@@ -231,6 +234,7 @@ export default function TaskWorkspace() {
           <aside className="space-y-3">
             <TaskMetaCard projectId={task.project_id} phaseName={crumbs.phaseName} />
             <RaidDetailsCard task={task} patch={patch} />
+            <VendorWaitCard task={task} patch={patch} />
             <ControlPanel task={task} setTask={setTask} patch={patch} />
             <QuickChecklist taskId={task.id} />
 

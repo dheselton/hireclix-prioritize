@@ -24,12 +24,15 @@ import { useChipFilters } from "@/hooks/useChipFilters";
 import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
+import { useOpenVendorBlockedTaskIds } from "@/lib/pm/vendors";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
 import { WorkKanban } from "@/components/pm/work/WorkKanban";
+
+const EMPTY_VENDOR_SET = new Set<string>();
 
 const COL_LABELS: Record<TaskStatus, string> = {
   unclaimed: "Unclaimed", claimed: "Claimed", in_progress: "In Progress", blocked: "Blocked",
@@ -101,11 +104,13 @@ export default function Board() {
   }, [coMap, user?.id]);
 
   const watchedTaskIds = useWatchedTaskIds(user?.id, tasks);
+  const { data: vendorBlockedTaskIds } = useOpenVendorBlockedTaskIds();
+  const vendorBlockedSet = vendorBlockedTaskIds ?? EMPTY_VENDOR_SET;
 
   const visible = useMemo(() => {
     let v = applyTaskTypes(tasks, types);
     v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
-    v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds);
+    v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds, vendorBlockedSet);
     if (workType.value !== "all") {
       v = v.filter(t => {
         const wt = (projById.get(t.project_id) as any)?.work_type ?? "project";
@@ -113,7 +118,7 @@ export default function Board() {
       });
     }
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds]);
+  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, vendorBlockedSet]);
 
   const hiddenStatuses = TASK_STATUSES.filter(s => !cols.includes(s));
   const hiddenCounts = hiddenStatuses.map(s => ({ s, n: visible.filter(t => t.status === s).length }));

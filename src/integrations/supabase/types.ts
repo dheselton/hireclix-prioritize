@@ -2552,6 +2552,201 @@ export type Database = {
         }
         Relationships: []
       }
+      pm_vendor_escalation_tasks: {
+        Row: {
+          escalation_id: string
+          linked_at: string
+          task_id: string
+        }
+        Insert: {
+          escalation_id: string
+          linked_at?: string
+          task_id: string
+        }
+        Update: {
+          escalation_id?: string
+          linked_at?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_vendor_escalation_tasks_escalation_id_fkey"
+            columns: ["escalation_id"]
+            isOneToOne: false
+            referencedRelation: "pm_vendor_escalations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_vendor_escalation_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pm_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_vendor_escalations: {
+        Row: {
+          created_at: string
+          description: string | null
+          first_response_at: string | null
+          id: string
+          last_inbound_at: string | null
+          last_outbound_at: string | null
+          next_follow_up_on: string | null
+          opened_at: string
+          owner_id: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          vendor_id: string
+          vendor_ref: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          first_response_at?: string | null
+          id?: string
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          next_follow_up_on?: string | null
+          opened_at?: string
+          owner_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+          vendor_id: string
+          vendor_ref?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          first_response_at?: string | null
+          id?: string
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          next_follow_up_on?: string | null
+          opened_at?: string
+          owner_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          vendor_id?: string
+          vendor_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_vendor_escalations_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "pm_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_vendor_escalations_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "pm_vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_vendor_touchpoints: {
+        Row: {
+          channel: string
+          created_at: string
+          direction: string
+          escalation_id: string
+          id: string
+          logged_by: string | null
+          occurred_at: string
+          summary: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          direction: string
+          escalation_id: string
+          id?: string
+          logged_by?: string | null
+          occurred_at?: string
+          summary: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          direction?: string
+          escalation_id?: string
+          id?: string
+          logged_by?: string | null
+          occurred_at?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_vendor_touchpoints_escalation_id_fkey"
+            columns: ["escalation_id"]
+            isOneToOne: false
+            referencedRelation: "pm_vendor_escalations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_vendor_touchpoints_logged_by_fkey"
+            columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "pm_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pm_vendors: {
+        Row: {
+          active: boolean
+          category: string
+          contacts: Json
+          created_at: string
+          expected_first_response_days: number | null
+          follow_up_cadence_days: number
+          id: string
+          name: string
+          notes: string | null
+          support_email: string | null
+          support_url: string | null
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          contacts?: Json
+          created_at?: string
+          expected_first_response_days?: number | null
+          follow_up_cadence_days?: number
+          id?: string
+          name: string
+          notes?: string | null
+          support_email?: string | null
+          support_url?: string | null
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          contacts?: Json
+          created_at?: string
+          expected_first_response_days?: number | null
+          follow_up_cadence_days?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          support_email?: string | null
+          support_url?: string | null
+        }
+        Relationships: []
+      }
       pm_webhook_deliveries: {
         Row: {
           attempted_at: string

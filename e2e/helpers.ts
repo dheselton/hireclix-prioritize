@@ -107,6 +107,7 @@ export const CORE_ROUTES = [
   "/pm/forms",
   "/pm/templates",
   "/pm/integrations",
+  "/pm/vendors",
   "/snippets",
   "/pm/help",
   "/pm/settings",

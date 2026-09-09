@@ -32,6 +32,7 @@ export type Surface =
   | "formBuilder"
   | "templates"
   | "integrations"
+  | "vendors"
   | "team"
   | "roadmap"
   | "snippets"
@@ -66,6 +67,8 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
         return true;
     }
   }
+  // Developers can see vendor escalations (often the ones chasing Webflow/iPaaS).
+  if (r === "developer" && surface === "vendors") return true;
   switch (surface) {
     case "inbox":
     case "report":
@@ -73,6 +76,7 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
     case "templates":
     case "formBuilder":
     case "integrations":
+    case "vendors":
     case "team":
     case "roadmap":
       return false;
@@ -97,6 +101,7 @@ export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
   if (!canSee(role, "templates")) out.push("/pm/templates");
   if (!canSee(role, "formBuilder")) out.push("/pm/forms/");
   if (!canSee(role, "integrations")) out.push("/pm/integrations");
+  if (!canSee(role, "vendors")) out.push("/pm/vendors");
   if (!canSee(role, "team")) out.push("/pm/team");
   if (!canSee(role, "roadmap")) out.push("/roadmap");
   if (!canSee(role, "workload")) out.push("/pm/workload");

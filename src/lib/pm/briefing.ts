@@ -20,6 +20,7 @@ export interface BriefingCounts {
   activeProjects: number;
   blocked: number;
   raidAttention: number;
+  vendorFollowUps: number;
 }
 
 export type EnrichedQuickTask = PmTask & {
@@ -46,7 +47,7 @@ interface BriefingData {
 
 export function useBriefingData(userId: string | null | undefined): BriefingData & { reload: () => void } {
   const [state, setState] = useState<BriefingData>({
-    counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0 },
+    counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0, vendorFollowUps: 0 },
     quickTasks: [],
     unclaimedQuickTasks: [],
     projects: [],
@@ -56,7 +57,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
   const reload = useCallback(async () => {
     if (!userId) {
       setState({
-        counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0 },
+        counts: { overdue: 0, quickTasks: 0, activeProjects: 0, blocked: 0, raidAttention: 0, vendorFollowUps: 0 },
         quickTasks: [],
         unclaimedQuickTasks: [],
         projects: [],
@@ -274,6 +275,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
         activeProjects: activeProjectList.length,
         blocked: blocked.length,
         raidAttention,
+        vendorFollowUps: 0,
       },
       quickTasks: quickTop,
       unclaimedQuickTasks: unclaimedQuick,

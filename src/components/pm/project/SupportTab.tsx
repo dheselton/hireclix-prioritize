@@ -27,6 +27,7 @@ const CAREER_TYPES =
 const GROUP_ORDER: { status: SupportRollupStatus; label: string }[] = [
   { status: "needs_triage", label: "Needs triage" },
   { status: "in_progress", label: "In progress" },
+  { status: "awaiting_vendor", label: "Awaiting vendor" },
   { status: "waiting", label: "Waiting" },
   { status: "closed", label: "Recently closed" },
 ];
@@ -137,6 +138,7 @@ export function SupportTab({
           <Stat label="Open" value={summary.open} />
           <Stat label="Needs triage" value={summary.unclaimed} accent="text-primary" />
           <Stat label="Overdue" value={summary.overdue} accent="text-destructive" />
+          <Stat label="Awaiting vendor" value={summary.awaitingVendor} accent="text-amber-700 dark:text-amber-300" />
           <Stat label="Waiting" value={summary.waiting} accent="text-warning" />
           <Stat label="Closed 30d" value={summary.closedLast30d} accent="text-muted-foreground" />
         </div>

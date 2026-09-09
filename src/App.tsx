@@ -36,6 +36,7 @@ const PortalView = lazy(() => import("./pages/PortalView"));
 const Templates = lazy(() => import("./pages/pm/Templates"));
 const TemplateBuilder = lazy(() => import("./pages/pm/TemplateBuilder"));
 const Integrations = lazy(() => import("./pages/pm/Integrations"));
+const Vendors = lazy(() => import("./pages/pm/Vendors"));
 const Team = lazy(() => import("./pages/pm/Team"));
 const TaskWorkspace = lazy(() => import("./pages/pm/TaskWorkspace"));
 const Snippets = lazy(() => import("./pages/pm/Snippets"));
@@ -130,6 +131,7 @@ function App() {
                 <Route path="/pm/templates" element={<AppLayout><Templates /></AppLayout>} />
                 <Route path="/pm/templates/:id/edit" element={<AppLayout><TemplateBuilder /></AppLayout>} />
                 <Route path="/pm/integrations" element={<AppLayout><Integrations /></AppLayout>} />
+                <Route path="/pm/vendors" element={<AppLayout><Vendors /></AppLayout>} />
                 <Route path="/pm/team" element={<AppLayout><Team /></AppLayout>} />
                 <Route path="/snippets" element={<AppLayout><Snippets /></AppLayout>} />
                 <Route path="/pm/help" element={<AppLayout><Help /></AppLayout>} />

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate,   Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock, Settings,
-  Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound, Headphones,
+  Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound, Headphones, LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -18,8 +18,10 @@ import {
   useInternalProjectIds,
   useCareerSiteProjects,
   useClientNamesMap,
+  useClientBrandMap,
   clientNameForProject,
 } from "@/lib/pm/clients";
+import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
 import { projectColorHsl } from "@/lib/pm/projectColor";
 import { fmtDateShort } from "@/lib/pm/format";
@@ -35,6 +37,7 @@ type NavItem = { title: string; url: string; icon: LucideIcon; end?: boolean; ke
 type SidebarQuickTask = {
   task: PmTask;
   clientName: string | null;
+  clientId: string | null;
   dueDate: string | null;
   parentSiteName: string | null;
 };
@@ -43,6 +46,7 @@ type SidebarProjectRow = {
   project: PmProject;
   openCount: number;
   clientName: string | null;
+  clientId: string | null;
   dueDate: string | null;
 };
 
@@ -57,6 +61,7 @@ const primaryNav: NavItem[] = [
   { title: "Team Report", url: "/pm/report", icon: BarChart3, key: "report" },
   { title: "Clients", url: "/pm/clients", icon: Building2, key: "clients" },
   { title: "Live Career Sites", url: "/pm/live-sites", icon: Headphones, key: "clients" },
+  { title: "Vendors", url: "/pm/vendors", icon: LifeBuoy, key: "vendors" },
 ];
 
 const configureNav: NavItem[] = [
@@ -194,6 +199,7 @@ function useMyWork() {
         return {
           task: t,
           clientName: clientNameForProject(proj, clientNames),
+          clientId: proj?.client_id ?? null,
           dueDate: t.due_date,
           parentSiteName: parent?.title ?? null,
         };
@@ -239,6 +245,7 @@ function useMyWork() {
           project,
           openCount,
           clientName: clientNameForProject(project, clientNames),
+          clientId: project.client_id ?? null,
           dueDate,
         };
       })
@@ -333,26 +340,35 @@ function SectionLabel({ children, featured }: { children: React.ReactNode; featu
 
 function MetaLine({
   clientName,
+  clientId,
   dueDate,
   parentSiteName,
   status,
 }: {
   clientName: string | null;
+  clientId?: string | null;
   dueDate: string | null;
   parentSiteName?: string | null;
   status?: string | null;
 }) {
+  const brands = useClientBrandMap();
+  const logoUrl = clientId ? brands.get(clientId)?.logoUrl ?? null : null;
   const due = sidebarDueMeta(dueDate, status);
   return (
-    <span className="block truncate text-[10px] text-muted-foreground">
-      {clientName ?? "No client"}
-      {parentSiteName && <> · Site: {parentSiteName}</>}
-      {due && (
-        <>
-          {" · "}
-          <span className={due.className}>{due.label}</span>
-        </>
-      )}
+    <span className="flex items-center gap-1 min-w-0 text-[10px] text-muted-foreground">
+      {clientName ? (
+        <ClientLogo name={clientName} logoUrl={logoUrl} size="2xs" />
+      ) : null}
+      <span className="truncate">
+        {clientName ?? "No client"}
+        {parentSiteName && <> · Site: {parentSiteName}</>}
+        {due && (
+          <>
+            {" · "}
+            <span className={due.className}>{due.label}</span>
+          </>
+        )}
+      </span>
     </span>
   );
 }
@@ -443,7 +459,7 @@ export function AppSidebar() {
                       <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
                     ) : (
                       <div className="space-y-px">
-                        {visibleQuick.map(({ task: t, clientName, dueDate, parentSiteName }) => (
+                        {visibleQuick.map(({ task: t, clientName, clientId, dueDate, parentSiteName }) => (
                           <NavLink
                             key={t.id}
                             to={`/pm/tasks/${t.id}`}
@@ -460,7 +476,7 @@ export function AppSidebar() {
                             />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[12px] font-medium">{t.title}</span>
-                              <MetaLine clientName={clientName} dueDate={dueDate} parentSiteName={parentSiteName} status={t.status} />
+                              <MetaLine clientName={clientName} clientId={clientId} dueDate={dueDate} parentSiteName={parentSiteName} status={t.status} />
                             </span>
                           </NavLink>
                         ))}
@@ -490,7 +506,7 @@ export function AppSidebar() {
                       <div className="text-[11px] text-muted-foreground/60 px-2 py-1 italic">None</div>
                     ) : (
                       <div className="space-y-px">
-                        {visibleProjects.map(({ project, openCount, clientName, dueDate }) => {
+                        {visibleProjects.map(({ project, openCount, clientName, clientId, dueDate }) => {
                           const isActive = pathname.startsWith(`/pm/projects/${project.id}`);
                           const hsl = projectColorHsl(project.id, {
                             isInternal: internalIds.has(project.id),
@@ -513,7 +529,7 @@ export function AppSidebar() {
                               />
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-[12px] font-medium">{project.title}</span>
-                                <MetaLine clientName={clientName} dueDate={dueDate} />
+                                <MetaLine clientName={clientName} clientId={clientId} dueDate={dueDate} />
                               </span>
                               {openCount > 0 && (
                                 <CountBadge count={openCount} active={isActive} />
