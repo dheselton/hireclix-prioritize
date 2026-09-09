@@ -15,6 +15,8 @@ import { isCareerSiteBuildProject } from "@/lib/pm/liveSites";
 import { deleteProject } from "@/lib/pm/api";
 import { emitTasksChanged } from "@/lib/pm/refresh";
 import { useEnterSupportMode } from "@/lib/pm/supportMode";
+import { openBuildTasks } from "@/lib/pm/supportHandoff";
+import { SupportHandoffDialog } from "@/components/pm/project/SupportHandoffDialog";
 import { isInQaMode, useEnterQaMode, useExitQaMode } from "@/lib/pm/qaMode";
 import { fmtDate } from "@/lib/pm/format";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
@@ -29,7 +31,7 @@ import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { SharePortalDialog } from "@/components/pm/portal/SharePortalDialog";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 import { toast } from "sonner";
-import type { PmProject, ProjectStatus } from "@/types/pm";
+import type { PmProject, PmTask, ProjectStatus } from "@/types/pm";
 
 const STATUS_STYLE: Record<ProjectStatus, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -40,8 +42,10 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQaBatch }: {
-  project: PmProject; onAddTask: () => void;
+export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequest, onLogQaBatch }: {
+  project: PmProject;
+  tasks?: PmTask[];
+  onAddTask: () => void;
   onLogSupportRequest?: () => void;
   onLogQaBatch?: () => void;
 }) {
@@ -56,6 +60,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
   const [confirmExitSupport, setConfirmExitSupport] = useState(false);
   const [confirmExitQa, setConfirmExitQa] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [handoffOpen, setHandoffOpen] = useState(false);
   const internalIds = useInternalClientIds();
   const isInternal = !!project.client_id && internalIds.has(project.client_id);
   const isCareerSite = isCareerSiteBuildProject(project);
@@ -71,6 +76,14 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
 
   const contactName = (project as any).client_contact_name as string | null | undefined;
   const contactEmail = (project as any).client_contact_email as string | null | undefined;
+
+  async function onEnterSupport() {
+    if (openBuildTasks(tasks).length > 0) {
+      setHandoffOpen(true);
+      return;
+    }
+    await enterSupport();
+  }
 
   useEffect(() => {
     (async () => {
@@ -206,7 +219,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
                 {isCareerSite && !inSupport && (
                   <DropdownMenuItem
                     disabled={enteringSupport}
-                    onSelect={(e) => { e.preventDefault(); enterSupport(); }}
+                    onSelect={(e) => { e.preventDefault(); void onEnterSupport(); }}
                   >
                     <Headphones className="h-4 w-4 mr-2" /> Enter Support mode (Live Career Site)
                   </DropdownMenuItem>
@@ -330,6 +343,14 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
       {isPM && (
         <EditProjectDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
       )}
+
+      <SupportHandoffDialog
+        open={handoffOpen}
+        onOpenChange={setHandoffOpen}
+        project={project}
+        tasks={tasks}
+        enterSupportMode
+      />
     </header>
   );
 }

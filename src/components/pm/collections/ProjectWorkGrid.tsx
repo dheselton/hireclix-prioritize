@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ProjectWorkCard } from "./ProjectWorkCard";
 import { TaskListView } from "./TaskListView";
 import { isHardOverdue } from "@/lib/pm/dueState";
+import { isActiveBuildProject } from "@/lib/pm/liveSites";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -32,27 +32,40 @@ function healthRank(tasks: PmTask[]) {
   return 3;
 }
 
+/** Pure helper — which projects get All Work / Project Work cards. */
+export function projectWorkCardGroups(
+  tasks: PmTask[],
+  projects: Map<string, PmProject>,
+): { list: { project: PmProject; tasks: PmTask[] }[]; loose: PmTask[] } {
+  const byProj = new Map<string, PmTask[]>();
+  const loose: PmTask[] = [];
+  for (const t of tasks) {
+    const proj = t.project_id ? projects.get(t.project_id) : undefined;
+    if (!t.project_id || !proj) {
+      loose.push(t);
+      continue;
+    }
+    // Live/Support-mode (and complete/archived) sites are not active builds —
+    // their leftover tasks stay findable in list/kanban, not as project cards.
+    if (!isActiveBuildProject(proj)) continue;
+    const arr = byProj.get(t.project_id) ?? [];
+    arr.push(t);
+    byProj.set(t.project_id, arr);
+  }
+  const list = Array.from(byProj.entries())
+    .map(([pid, ts]) => ({ project: projects.get(pid)!, tasks: ts }))
+    .sort((a, b) => healthRank(a.tasks) - healthRank(b.tasks) || a.project.title.localeCompare(b.project.title));
+  return { list, loose };
+}
+
 export function ProjectWorkGrid({ tasks, projects, meId, onOpenTask, onChanged, hideLoose }: Props) {
   const navigate = useNavigate();
   const [showLoose, setShowLoose] = useState(true);
 
-  const groups = useMemo(() => {
-    const byProj = new Map<string, PmTask[]>();
-    const loose: PmTask[] = [];
-    for (const t of tasks) {
-      if (!t.project_id || !projects.get(t.project_id)) {
-        loose.push(t);
-      } else {
-        const arr = byProj.get(t.project_id) ?? [];
-        arr.push(t);
-        byProj.set(t.project_id, arr);
-      }
-    }
-    const list = Array.from(byProj.entries())
-      .map(([pid, ts]) => ({ project: projects.get(pid)!, tasks: ts }))
-      .sort((a, b) => healthRank(a.tasks) - healthRank(b.tasks) || a.project.title.localeCompare(b.project.title));
-    return { list, loose };
-  }, [tasks, projects]);
+  const groups = useMemo(
+    () => projectWorkCardGroups(tasks, projects),
+    [tasks, projects],
+  );
 
   const isEmpty = groups.list.length === 0 && groups.loose.length === 0;
   if (isEmpty) {

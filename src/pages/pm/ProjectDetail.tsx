@@ -33,6 +33,7 @@ import { NewTaskDialog } from "@/components/pm/project/NewTaskDialog";
 import { LogSupportRequestDialog } from "@/components/pm/project/LogSupportRequestDialog";
 import { DocumentationTab } from "@/components/pm/project/DocumentationTab";
 import { SupportReadyBanner } from "@/components/pm/project/SupportReadyBanner";
+import { SupportLeftoverBanner } from "@/components/pm/project/SupportLeftoverBanner";
 import { DiscoveryReadyBanner } from "@/components/pm/project/DiscoveryReadyBanner";
 import { ParentLiveSiteChip } from "@/components/pm/ParentLiveSiteChip";
 import { QaTab } from "@/components/pm/project/QaTab";
@@ -280,11 +281,13 @@ export default function ProjectDetail() {
 
       <ProjectHeader
         project={project}
+        tasks={tasks}
         onAddTask={() => { handleSetTab("tasks"); setNewTaskKind("task"); setNewTaskOpen(true); }}
         onLogSupportRequest={() => { handleSetTab("support"); setSupportRequestOpen(true); }}
         onLogQaBatch={() => { handleSetTab("qa"); setQaBatchOpen(true); }}
       />
-      <SupportReadyBanner project={project} />
+      <SupportReadyBanner project={project} tasks={tasks} />
+      <SupportLeftoverBanner project={project} tasks={tasks} />
       {!isRequest && hasTemplate && (
         <DiscoveryReadyBanner
           projectId={project.id}
