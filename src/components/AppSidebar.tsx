@@ -23,7 +23,7 @@ import {
 } from "@/lib/pm/clients";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { useProjectTeamsMap } from "@/lib/pm/projectTeam";
-import { isInSupportMode } from "@/lib/pm/liveSites";
+import { isActiveBuildProject } from "@/lib/pm/liveSites";
 import { projectColorHsl } from "@/lib/pm/projectColor";
 import { fmtDateShort } from "@/lib/pm/format";
 import { dueState } from "@/lib/pm/dueState";
@@ -309,22 +309,17 @@ function useMyWork() {
       .map((id): SidebarProjectRow | null => {
         const project = projMap.get(id);
         if (!project) return null;
-        if (project.work_type === "request") return null;
-        if (project.status === "complete" || project.status === "archived") return null;
+        // Live Support-mode sites belong under Live Career Sites, not Active Projects.
+        if (!isActiveBuildProject(project)) return null;
         const openCount = projectCounts.get(id) ?? 0;
-        // A live site stays open to hold its support queue, so its go-live date is
-        // a launch milestone. Only pre-launch projects treat it as a deadline.
-        const live = isInSupportMode(project);
-        const dueDate = live
-          ? earliestMyDue.get(id) ?? null
-          : project.go_live_date ?? earliestMyDue.get(id) ?? null;
+        const dueDate = project.go_live_date ?? earliestMyDue.get(id) ?? null;
         return {
           project,
           openCount,
           clientName: clientNameForProject(project, clientNames),
           clientId: project.client_id ?? null,
           dueDate,
-          liveSince: live ? project.go_live_date : null,
+          liveSince: null,
         };
       })
       .filter((x): x is SidebarProjectRow => x != null)

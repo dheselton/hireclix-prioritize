@@ -89,7 +89,7 @@ export function useEnterSupportMode(project: PmProject | null | undefined) {
         .eq("id", project.id);
       if (error) throw error;
       clearSupportPromptDismissal(project.id);
-      toast.success("Project is now in Support mode");
+      toast.success("Now a Live Career Site — removed from Active Projects");
       emitTasksChanged();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Could not enter Support mode";

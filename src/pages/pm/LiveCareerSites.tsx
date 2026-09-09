@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Headphones, Search, LifeBuoy, AlertTriangle, Clock, Link2, RefreshCw,
+  Headphones, Search, LifeBuoy, AlertTriangle, Clock, Link2, RefreshCw, Layers,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,10 +14,13 @@ import { fmtDate, fmtDateShort } from "@/lib/pm/format";
 import { useClientBrandMap } from "@/lib/pm/clients";
 import {
   fetchLiveCareerSites,
-  linkRequestToLiveSite,
-  liveSitesForClient,
   type LiveSiteSummary,
 } from "@/lib/pm/liveSites";
+import {
+  correctRequestType,
+  isCareerSiteRequestType,
+  linkRequestToLiveSiteCorrected,
+} from "@/lib/pm/requestCorrections";
 import {
   fetchSiteQueueSummaries,
   fetchUnlinkedCareerSiteRequests,
@@ -34,11 +37,19 @@ import {
   triggerOpsSitesSync,
   type PmOpsSite,
 } from "@/lib/pm/opsSites";
-import { requestTypeLabel } from "@/lib/pm/requestTypes";
+import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
+import { requestTypeLabel, type RequestType } from "@/lib/pm/requestTypes";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { AvatarStack } from "@/components/pm/AvatarStack";
 import { LogSupportRequestDialog } from "@/components/pm/project/LogSupportRequestDialog";
+import { CreateSiteInitiativeDialog } from "@/components/pm/project/CreateSiteInitiativeDialog";
+import { SiteInitiativeCard } from "@/components/pm/project/SiteInitiativeCard";
+import {
+  fetchOpenSiteInitiatives,
+  fetchSiteInitiativeRollup,
+  type SiteInitiativeRollup,
+} from "@/lib/pm/siteInitiatives";
 import { cn } from "@/lib/utils";
 import type { PmProject } from "@/types/pm";
 import { toast } from "sonner";
@@ -72,6 +83,7 @@ export default function LiveCareerSites() {
   const brands = useClientBrandMap();
   const [rows, setRows] = useState<Row[]>([]);
   const [unlinked, setUnlinked] = useState<PmProject[]>([]);
+  const [initiatives, setInitiatives] = useState<SiteInitiativeRollup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -79,6 +91,7 @@ export default function LiveCareerSites() {
   const [onlyOverdue, setOnlyOverdue] = useState(false);
   const [onlyUnclaimed, setOnlyUnclaimed] = useState(false);
   const [logFor, setLogFor] = useState<LiveSiteSummary | null>(null);
+  const [initiativeOpen, setInitiativeOpen] = useState(false);
   const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
   const [opsByProject, setOpsByProject] = useState<Map<string, PmOpsSite>>(new Map());
   const [unmappedOps, setUnmappedOps] = useState<PmOpsSite[]>([]);
@@ -121,6 +134,17 @@ export default function LiveCareerSites() {
       );
       setUnlinked(orphaned);
       try {
+        const openInits = await fetchOpenSiteInitiatives();
+        const rollups = await Promise.all(
+          openInits.map((p) => fetchSiteInitiativeRollup(p.id)),
+        );
+        setInitiatives(
+          rollups.filter((r): r is SiteInitiativeRollup => r != null),
+        );
+      } catch {
+        setInitiatives([]);
+      }
+      try {
         const ops = await fetchOpsSites();
         setOpsByProject(opsSiteByProjectId(ops));
         setUnmappedOps(await fetchUnmappedOpsSites());
@@ -132,6 +156,7 @@ export default function LiveCareerSites() {
       setError(e instanceof Error ? e.message : "Failed to load live career sites");
       setRows([]);
       setUnlinked([]);
+      setInitiatives([]);
     } finally {
       setLoading(false);
     }
@@ -175,11 +200,40 @@ export default function LiveCareerSites() {
   async function linkOrphan(request: PmProject, parentId: string) {
     setLinkBusyId(request.id);
     try {
-      await linkRequestToLiveSite(request.id, parentId);
-      toast.success("Linked to live site");
+      const result = await linkRequestToLiveSiteCorrected({
+        requestId: request.id,
+        parentProjectId: parentId,
+        normalizeClient: true,
+      });
+      toast.success(
+        result.clientNormalized
+          ? "Linked to live site (client aligned to site)"
+          : "Linked to live site",
+      );
       await reload();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Couldn't link request");
+    } finally {
+      setLinkBusyId(null);
+    }
+  }
+
+  async function changeOrphanType(request: PmProject, nextType: RequestType) {
+    setLinkBusyId(request.id);
+    try {
+      await correctRequestType({
+        requestId: request.id,
+        requestType: nextType,
+        parentProjectId: null,
+      });
+      toast.success(
+        isCareerSiteRequestType(nextType)
+          ? "Request type updated"
+          : "Request type updated — removed from unlinked career-site list",
+      );
+      await reload();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update request type");
     } finally {
       setLinkBusyId(null);
     }
@@ -273,16 +327,28 @@ export default function LiveCareerSites() {
               .
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            disabled={syncing}
-            onClick={() => void syncFromOps()}
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
-            {syncing ? "Syncing…" : "Sync from ops"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1.5"
+              onClick={() => setInitiativeOpen(true)}
+              disabled={rows.length === 0}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              New multi-site initiative
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              disabled={syncing}
+              onClick={() => void syncFromOps()}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+              {syncing ? "Syncing…" : "Sync from ops"}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -447,6 +513,27 @@ export default function LiveCareerSites() {
         })}
       </div>
 
+      {initiatives.length > 0 && (
+        <section className="space-y-2 pt-2">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-medium">Multi-site initiatives</h2>
+            <Badge variant="secondary" className="tabular-nums">
+              {initiatives.length}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Shared maintenance or feature rollouts. Each site still has its own Support-queue
+            request; progress rolls up here.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {initiatives.map((r) => (
+              <SiteInitiativeCard key={r.initiative.id} rollup={r} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {unmappedOps.length > 0 && (
         <section className="space-y-2 pt-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -542,8 +629,9 @@ export default function LiveCareerSites() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Submitted before a live site existed for the client — link them so they appear in the
-            site&apos;s Support queue.
+            Open career-site requests with no live-site parent. Link them to any live site
+            (client will be aligned if needed), or change the request type if they were
+            misclassified.
           </p>
           <ul className="space-y-2">
             {unlinked.map((req) => (
@@ -551,8 +639,10 @@ export default function LiveCareerSites() {
                 key={req.id}
                 request={req}
                 clientName={req.client_id ? brands.get(req.client_id)?.name ?? null : null}
+                allLiveSites={rows}
                 busy={linkBusyId === req.id}
                 onLink={(parentId) => void linkOrphan(req, parentId)}
+                onChangeType={(t) => void changeOrphanType(req, t)}
               />
             ))}
           </ul>
@@ -572,6 +662,15 @@ export default function LiveCareerSites() {
           }}
         />
       )}
+
+      <CreateSiteInitiativeDialog
+        open={initiativeOpen}
+        onOpenChange={setInitiativeOpen}
+        sites={rows}
+        onCreated={() => {
+          void reload();
+        }}
+      />
     </div>
   );
 }
@@ -623,82 +722,161 @@ function FilterToggle({
 function UnlinkedRow({
   request,
   clientName,
+  allLiveSites,
   busy,
   onLink,
+  onChangeType,
 }: {
   request: PmProject;
   clientName: string | null;
+  allLiveSites: Row[];
   busy: boolean;
   onLink: (parentId: string) => void;
+  onChangeType: (t: RequestType) => void;
 }) {
-  const [sites, setSites] = useState<LiveSiteSummary[]>([]);
-  const [selected, setSelected] = useState<string>("");
   const rt = (request.custom_fields as { request_type?: string } | null)?.request_type;
+  const [requestType, setRequestType] = useState<RequestType | "">(
+    (rt as RequestType) ?? "",
+  );
+  const [selected, setSelected] = useState<string>("");
+  const [editingType, setEditingType] = useState(false);
+
+  // Prefer same-client sites, but always allow any live site.
+  const sameClientSites = allLiveSites.filter(
+    (s) => request.client_id && s.client_id === request.client_id,
+  );
+  const otherSites = allLiveSites.filter(
+    (s) => !request.client_id || s.client_id !== request.client_id,
+  );
 
   useEffect(() => {
-    if (!request.client_id) {
-      setSites([]);
-      return;
+    if (sameClientSites.length === 1) {
+      setSelected(sameClientSites[0].id);
     }
-    let cancelled = false;
-    void liveSitesForClient(request.client_id).then((s) => {
-      if (cancelled) return;
-      setSites(s);
-      if (s.length === 1) setSelected(s[0].id);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [request.client_id]);
+  }, [sameClientSites.length, sameClientSites[0]?.id]);
+
+  const selectedSite = allLiveSites.find((s) => s.id === selected);
+  const clientMismatch =
+    !!selectedSite?.client_id &&
+    !!request.client_id &&
+    selectedSite.client_id !== request.client_id;
 
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5">
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <Link
-          to={`/pm/projects/${request.id}`}
-          className="text-sm font-medium hover:text-primary truncate block"
-        >
-          {request.title}
-        </Link>
-        <div className="text-[11px] text-muted-foreground truncate">
-          {clientName ?? "No client"}
-          {rt ? ` · ${requestTypeLabel(rt) ?? rt}` : ""}
-          {request.created_at ? ` · ${fmtDate(request.created_at.slice(0, 10))}` : ""}
+    <li className="flex flex-col gap-2 rounded-md border border-border bg-card px-3 py-2.5">
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <Link
+            to={`/pm/projects/${request.id}`}
+            className="text-sm font-medium hover:text-primary truncate block"
+          >
+            {request.title}
+          </Link>
+          <div className="text-[11px] text-muted-foreground truncate">
+            {clientName ?? "No client"}
+            {rt ? ` · ${requestTypeLabel(rt) ?? rt}` : ""}
+            {request.created_at ? ` · ${fmtDate(request.created_at.slice(0, 10))}` : ""}
+          </div>
+          {clientMismatch && selectedSite && (
+            <div className="text-[11px] text-amber-700 dark:text-amber-300">
+              Client mismatch — linking will set client to{" "}
+              <span className="font-medium">
+                {selectedSite.clientName ?? selectedSite.title}
+              </span>
+            </div>
+          )}
         </div>
-      </div>
-      {sites.length === 0 ? (
-        <span className="text-[11px] text-muted-foreground">No live site for this client yet</span>
-      ) : (
-        <>
-          {sites.length > 1 && (
+
+        {allLiveSites.length === 0 ? (
+          <span className="text-[11px] text-muted-foreground">No live sites in inventory yet</span>
+        ) : (
+          <>
             <Select value={selected} onValueChange={setSelected}>
-              <SelectTrigger className="h-8 w-[200px] text-xs">
-                <SelectValue placeholder="Select site…" />
+              <SelectTrigger className="h-8 w-[220px] text-xs">
+                <SelectValue placeholder="Select live site…" />
               </SelectTrigger>
-              <SelectContent>
-                {sites.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title}
-                  </SelectItem>
-                ))}
+              <SelectContent className="z-50 bg-popover max-h-64">
+                {sameClientSites.length > 0 && (
+                  <>
+                    {sameClientSites.map((s) => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs">
+                        {s.clientName ? `${s.clientName} — ` : ""}
+                        {s.title}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {otherSites.length > 0 && (
+                  <>
+                    {otherSites.map((s) => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs">
+                        {s.clientName ? `${s.clientName} — ` : ""}
+                        {s.title}
+                        {sameClientSites.length > 0 ? " (other client)" : ""}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
-          )}
-          {sites.length === 1 && (
-            <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
-              → {sites[0].title}
-            </span>
-          )}
+            <Button
+              size="sm"
+              className="h-8 text-xs"
+              disabled={busy || !selected}
+              onClick={() => onLink(selected)}
+            >
+              {busy ? "Linking…" : clientMismatch ? "Link & fix client" : "Link"}
+            </Button>
+          </>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
+        {editingType ? (
+          <>
+            <div className="min-w-[220px] flex-1">
+              <GroupedRequestTypeSelect
+                value={requestType}
+                onChange={(v) => setRequestType(v)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 text-xs"
+              disabled={busy || !requestType || requestType === rt}
+              onClick={() => {
+                if (requestType) onChangeType(requestType);
+                setEditingType(false);
+              }}
+            >
+              Save type
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 text-xs"
+              disabled={busy}
+              onClick={() => {
+                setRequestType((rt as RequestType) ?? "");
+                setEditingType(false);
+              }}
+            >
+              Cancel
+            </Button>
+          </>
+        ) : (
           <Button
             size="sm"
-            className="h-8 text-xs"
-            disabled={busy || !selected}
-            onClick={() => onLink(selected)}
+            variant="ghost"
+            className="h-7 text-xs text-muted-foreground"
+            disabled={busy}
+            onClick={() => setEditingType(true)}
           >
-            {busy ? "Linking…" : "Link"}
+            Change request type…
           </Button>
-        </>
-      )}
+        )}
+      </div>
     </li>
   );
 }

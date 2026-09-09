@@ -5,6 +5,7 @@ import { getTaskKind, isHighSeverityRisk, isStaleDecision } from "./taskKind";
 import type { PmTask, PmProject } from "@/types/pm";
 import { isDone } from "@/types/pm";
 import { isHardOverdue, dueState } from "@/lib/pm/dueState";
+import { isActiveBuildProject } from "@/lib/pm/liveSites";
 
 
 
@@ -194,7 +195,7 @@ export function useBriefingData(userId: string | null | undefined): BriefingData
     // 6. Active projects with aggregates
     const activeProjectList = Array.from(candidateProjectIds)
       .map((id) => projById.get(id))
-      .filter((p): p is PmProject => !!p && (p as any).work_type === "project" && p.status === "active");
+      .filter((p): p is PmProject => !!p && isActiveBuildProject(p) && p.status === "active");
 
     // 6b. Fetch project members for all candidate projects (for team avatars)
     const teamByProj = new Map<string, string[]>();

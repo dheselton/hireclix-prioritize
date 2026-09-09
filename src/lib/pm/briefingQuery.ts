@@ -7,6 +7,7 @@ import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { isHighSeverityRisk, isStaleDecision } from "@/lib/pm/taskKind";
 import { isHardOverdue } from "@/lib/pm/dueState";
 import { waitingSortKey } from "@/lib/pm/statusClock";
+import { isActiveBuildProject } from "@/lib/pm/liveSites";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 import { countFollowUpsDueForOwner } from "@/lib/pm/vendors";
 
@@ -173,7 +174,7 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
       .map(enrich);
 
     const activeProjects = candidateProjects.filter(project =>
-      project.work_type === "project" && project.status === "active",
+      isActiveBuildProject(project) && project.status === "active",
     );
     const activeIds = new Set(activeProjects.map(project => project.id));
     const tasksByProject = new Map<string, PmTask[]>();

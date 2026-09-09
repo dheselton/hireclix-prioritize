@@ -38,6 +38,20 @@ export function isLiveCareerSite(
   return isInSupportMode(project);
 }
 
+/**
+ * Active build work — shows in Active Projects / briefing Project Work.
+ * Live Support-mode sites are excluded (they live under Live Career Sites).
+ */
+export function isActiveBuildProject(
+  project: Pick<PmProject, "work_type" | "status" | "custom_fields"> | null | undefined,
+): boolean {
+  if (!project) return false;
+  if (project.work_type === "request") return false;
+  if (project.status === "complete" || project.status === "archived") return false;
+  if (isInSupportMode(project)) return false;
+  return true;
+}
+
 /** Fetch Support-mode (live) sites for a client — used by intake site picker. */
 export async function liveSitesForClient(clientId: string): Promise<LiveSiteSummary[]> {
   if (!clientId) return [];
@@ -127,3 +141,6 @@ export async function linkRequestToLiveSite(requestProjectId: string, parentProj
     .eq("id", requestProjectId);
   if (error) throw error;
 }
+
+/** Prefer {@link linkRequestToLiveSiteCorrected} when client may need normalizing. */
+export { linkRequestToLiveSiteCorrected, correctRequestType } from "@/lib/pm/requestCorrections";

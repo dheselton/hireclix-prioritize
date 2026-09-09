@@ -1250,6 +1250,55 @@ export type Database = {
           },
         ]
       }
+      pm_site_initiative_items: {
+        Row: {
+          id: string
+          initiative_project_id: string
+          site_project_id: string
+          request_project_id: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          initiative_project_id: string
+          site_project_id: string
+          request_project_id: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          initiative_project_id?: string
+          site_project_id?: string
+          request_project_id?: string
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_site_initiative_items_initiative_project_id_fkey"
+            columns: ["initiative_project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_site_initiative_items_site_project_id_fkey"
+            columns: ["site_project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_site_initiative_items_request_project_id_fkey"
+            columns: ["request_project_id"]
+            isOneToOne: true
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_portal_access: {
         Row: {
           client_id: string | null

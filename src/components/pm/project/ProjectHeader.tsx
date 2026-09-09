@@ -208,7 +208,7 @@ export function ProjectHeader({ project, onAddTask, onLogSupportRequest, onLogQa
                     disabled={enteringSupport}
                     onSelect={(e) => { e.preventDefault(); enterSupport(); }}
                   >
-                    <Headphones className="h-4 w-4 mr-2" /> Enter Support mode
+                    <Headphones className="h-4 w-4 mr-2" /> Enter Support mode (Live Career Site)
                   </DropdownMenuItem>
                 )}
                 {inSupport && (

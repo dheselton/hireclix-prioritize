@@ -4,6 +4,7 @@ import { AlertTriangle, Ban, Clock, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { isHardOverdue } from "@/lib/pm/dueState";
+import { isActiveBuildProject } from "@/lib/pm/liveSites";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -29,7 +30,7 @@ export function ProjectHealthList({ projects, tasks, projectIds }: Props) {
       }
     }
     return projects
-      .filter(p => (!projectIds.size || projectIds.has(p.id)) && p.status !== "complete" && p.status !== "archived")
+      .filter(p => (!projectIds.size || projectIds.has(p.id)) && isActiveBuildProject(p))
       .map(p => {
         const ts = byProj.get(p.id) ?? [];
         let overdue = 0, blocked = 0, active = 0, inReview = 0;
