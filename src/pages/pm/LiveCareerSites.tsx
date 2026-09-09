@@ -24,6 +24,8 @@ import {
   type SiteQueueSummary,
 } from "@/lib/pm/supportQueue";
 import {
+  createLiveSiteFromOps,
+  createLiveSitesFromOps,
   fetchOpsSites,
   fetchUnmappedOpsSites,
   healthBadgeClass,
@@ -82,6 +84,8 @@ export default function LiveCareerSites() {
   const [unmappedOps, setUnmappedOps] = useState<PmOpsSite[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [mapBusyId, setMapBusyId] = useState<string | null>(null);
+  const [createBusyId, setCreateBusyId] = useState<string | null>(null);
+  const [creatingAll, setCreatingAll] = useState(false);
 
   const reload = async () => {
     setLoading(true);
@@ -211,6 +215,39 @@ export default function LiveCareerSites() {
       toast.error(e instanceof Error ? e.message : "Couldn't map site");
     } finally {
       setMapBusyId(null);
+    }
+  }
+
+  async function createFromOps(site: PmOpsSite) {
+    setCreateBusyId(site.ops_site_id);
+    try {
+      await createLiveSiteFromOps(site);
+      toast.success(`Created live site: ${site.name}`);
+      await reload();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Couldn't create live site");
+    } finally {
+      setCreateBusyId(null);
+    }
+  }
+
+  async function createAllFromOps() {
+    if (unmappedOps.length === 0) return;
+    setCreatingAll(true);
+    try {
+      const result = await createLiveSitesFromOps(unmappedOps);
+      if (result.failed === 0) {
+        toast.success(`Created ${result.created} live sites`);
+      } else {
+        toast.message(
+          `Created ${result.created} live sites (${result.failed} failed)`,
+        );
+      }
+      await reload();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Bulk create failed");
+    } finally {
+      setCreatingAll(false);
     }
   }
 
@@ -412,60 +449,85 @@ export default function LiveCareerSites() {
 
       {unmappedOps.length > 0 && (
         <section className="space-y-2 pt-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
             <h2 className="text-sm font-medium">Unmapped ops sites</h2>
             <Badge variant="secondary" className="tabular-nums">
               {unmappedOps.length}
             </Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs ml-auto"
+              disabled={creatingAll || !!createBusyId || !!mapBusyId}
+              onClick={() => void createAllFromOps()}
+            >
+              {creatingAll ? "Creating…" : "Create all unmapped"}
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            From careersite-ops but not linked to a Prioritize live site yet. Map them so down alerts
-            and vendor escalations land on the right project.
+            From careersite-ops but not linked yet. Create a Support-mode inventory record (not a
+            new build) so down alerts and vendor escalations have a home — or map to an existing
+            live site.
           </p>
           <ul className="space-y-2">
-            {unmappedOps.map((site) => (
-              <li
-                key={site.ops_site_id}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{site.name}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">
-                    {site.client_name ?? "No client"}
-                    {site.prod_url ? ` · ${site.prod_url}` : ""}
+            {unmappedOps.map((site) => {
+              const rowBusy =
+                creatingAll ||
+                createBusyId === site.ops_site_id ||
+                mapBusyId === site.ops_site_id;
+              return (
+                <li
+                  key={site.ops_site_id}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{site.name}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {site.client_name ?? "No client"}
+                      {site.prod_url ? ` · ${site.prod_url}` : ""}
+                    </div>
                   </div>
-                </div>
-                <span
-                  className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase tracking-wide",
-                    healthBadgeClass(site.health_status),
-                  )}
-                >
-                  {site.health_status}
-                </span>
-                <Select
-                  disabled={mapBusyId === site.ops_site_id || rows.length === 0}
-                  onValueChange={(projectId) => void mapOpsSite(site.ops_site_id, projectId)}
-                >
-                  <SelectTrigger className="w-[200px] h-8 text-xs">
-                    <SelectValue
-                      placeholder={
-                        mapBusyId === site.ops_site_id ? "Linking…" : "Map to Prioritize site"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-popover max-h-64">
-                    {rows.map((r) => (
-                      <SelectItem key={r.id} value={r.id} className="text-xs">
-                        {r.clientName ? `${r.clientName} — ` : ""}
-                        {r.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </li>
-            ))}
+                  <span
+                    className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase tracking-wide",
+                      healthBadgeClass(site.health_status),
+                    )}
+                  >
+                    {site.health_status}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 text-xs"
+                    disabled={rowBusy}
+                    onClick={() => void createFromOps(site)}
+                  >
+                    {createBusyId === site.ops_site_id ? "Creating…" : "Create live site"}
+                  </Button>
+                  <Select
+                    disabled={rowBusy || rows.length === 0}
+                    onValueChange={(projectId) => void mapOpsSite(site.ops_site_id, projectId)}
+                  >
+                    <SelectTrigger className="w-[200px] h-8 text-xs">
+                      <SelectValue
+                        placeholder={
+                          mapBusyId === site.ops_site_id ? "Linking…" : "Map to Prioritize site"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover max-h-64">
+                      {rows.map((r) => (
+                        <SelectItem key={r.id} value={r.id} className="text-xs">
+                          {r.clientName ? `${r.clientName} — ` : ""}
+                          {r.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

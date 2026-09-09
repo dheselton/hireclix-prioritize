@@ -4,6 +4,8 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@/lib/pm/clientHub";
+import { emitTasksChanged } from "@/lib/pm/refresh";
 
 export type OpsHealthStatus = "up" | "down" | "degraded" | "unknown";
 
@@ -128,6 +130,77 @@ export async function linkOpsSiteToProject(
       await supabase.from("pm_projects").update({ client_id: clientId }).eq("id", projectId);
     }
   }
+}
+
+/**
+ * Create a Support-mode live career site inventory shell from an unmapped ops row.
+ * Find-or-creates the client; does not start a build workflow.
+ */
+export async function createLiveSiteFromOps(site: PmOpsSite): Promise<string> {
+  const name = site.name?.trim();
+  if (!name) throw new Error("Ops site is missing a name");
+  if (site.project_id) throw new Error("Ops site is already linked to a Prioritize project");
+
+  const clientName = (site.client_name?.trim() || name);
+  const client = await createClient({ name: clientName });
+  const now = new Date().toISOString();
+
+  const { data: project, error } = await supabase
+    .from("pm_projects")
+    .insert({
+      title: name,
+      type: "career_site",
+      work_type: "project",
+      status: "active",
+      client_id: client.id,
+      custom_fields: {
+        support_mode_at: now,
+        ops_site_id: site.ops_site_id,
+        prod_url: site.prod_url,
+        platform: site.platform,
+        imported_from_ops: true,
+      },
+      creation_source: "automation",
+      creation_context: {
+        source: "ops-create-live-site",
+        ops_site_id: site.ops_site_id,
+      },
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  const projectId = (project as { id: string }).id;
+
+  await linkOpsSiteToProject(site.ops_site_id, projectId, client.id);
+  emitTasksChanged();
+  return projectId;
+}
+
+export async function createLiveSitesFromOps(sites: PmOpsSite[]): Promise<{
+  created: number;
+  failed: number;
+  errors: { opsSiteId: string; name: string; message: string }[];
+}> {
+  let created = 0;
+  let failed = 0;
+  const errors: { opsSiteId: string; name: string; message: string }[] = [];
+
+  for (const site of sites) {
+    try {
+      await createLiveSiteFromOps(site);
+      created += 1;
+    } catch (e: unknown) {
+      failed += 1;
+      errors.push({
+        opsSiteId: site.ops_site_id,
+        name: site.name,
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  return { created, failed, errors };
 }
 
 export async function unlinkOpsSite(opsSiteId: string): Promise<void> {
