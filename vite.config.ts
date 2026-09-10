@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    fs: {
+      // Allow importing markdown guides from docs/ into the Help hub.
+      allow: [".", path.resolve(__dirname, "./docs")],
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
