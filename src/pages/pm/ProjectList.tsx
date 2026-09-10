@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Zap, FolderKanban } from "lucide-react";
+import { Zap, FolderKanban } from "lucide-react";
 import { fetchProjects, fetchTasks } from "@/lib/pm/api";
 import { useTasksChanged } from "@/lib/pm/refresh";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -15,15 +15,14 @@ import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { useMyProjectIds } from "@/hooks/useMyProjectIds";
 import { applyProjectChips, applyProjectMeMode } from "@/lib/pm/filters";
-import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+import { useCreateWork } from "@/components/pm/CreateWorkProvider";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
-import { supabase } from "@/integrations/supabase/client";
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<PmProject[]>([]);
   const [tasks, setTasks] = useState<PmTask[]>([]);
-  const [open, setOpen] = useState<null | "select" | "request" | "project">(null);
+  const { openCreateWork } = useCreateWork();
   const { user } = useCurrentUser();
   const [mode, setMode] = useViewMode("projects", "projects");
   const drawer = useTaskDrawerLink();
@@ -58,10 +57,10 @@ export default function ProjectList() {
         extraControls={<WorkTypeFilterToggle value={wt.value} onChange={wt.set} />}
         actions={user?.role === "submitter" ? null : (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setOpen("request")}>
+            <Button size="sm" variant="outline" onClick={() => openCreateWork("request")}>
               <Zap className="h-4 w-4 mr-1" /> Quick Request
             </Button>
-            <Button size="sm" onClick={() => setOpen("project")}>
+            <Button size="sm" onClick={() => openCreateWork("project")}>
               <FolderKanban className="h-4 w-4 mr-1" /> Project
             </Button>
           </div>
@@ -90,12 +89,6 @@ export default function ProjectList() {
         <ProjectGridView projects={visible} tasks={tasks} />
       )}
 
-      <CreateWorkDialog
-        open={open !== null}
-        onOpenChange={(v) => { if (!v) setOpen(null); }}
-        initialStep={open ?? "select"}
-        onCreated={reload}
-      />
       <TaskDrawer />
     </div>
   );

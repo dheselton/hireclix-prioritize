@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap, FolderKanban } from "lucide-react";
-import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+import { useCreateWork } from "@/components/pm/CreateWorkProvider";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
@@ -23,7 +23,7 @@ import { WorkListSkeleton, WorkLoadError, WorkPageSkeleton } from "@/components/
 export default function WorkQueue() {
   const { user, role } = useCurrentUser();
   const drawer = useTaskDrawerLink();
-  const [createOpen, setCreateOpen] = useState<null | "request" | "project">(null);
+  const { openCreateWork } = useCreateWork();
 
   // Submitter-only data (preserved from prior version)
   const isSubmitter = role === "submitter";
@@ -124,10 +124,10 @@ export default function WorkQueue() {
       <DailyBriefingHero firstName={firstName} counts={counts} />
 
       <div className="flex items-center justify-end gap-2 mb-4">
-        <Button size="sm" variant="outline" onClick={() => setCreateOpen("request")}>
+        <Button size="sm" variant="outline" onClick={() => openCreateWork("request")}>
           <Zap className="h-4 w-4 mr-1" /> Quick Request
         </Button>
-        <Button size="sm" onClick={() => setCreateOpen("project")}>
+        <Button size="sm" onClick={() => openCreateWork("project")}>
           <FolderKanban className="h-4 w-4 mr-1" /> Project
         </Button>
       </div>
@@ -144,12 +144,6 @@ export default function WorkQueue() {
       {user?.id && <NotesSection userId={user.id} />}
 
       <TaskDrawer />
-      <CreateWorkDialog
-        open={createOpen !== null}
-        onOpenChange={(v) => { if (!v) setCreateOpen(null); }}
-        initialStep={createOpen ?? "select"}
-        onCreated={() => { /* briefing data auto-refreshes via emitTasksChanged */ }}
-      />
     </div>
   );
 }

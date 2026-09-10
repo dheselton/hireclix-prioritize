@@ -51,6 +51,7 @@ const RoadmapDashboard = lazy(() => import("./pages/RoadmapDashboard"));
 import { ActiveTimerProvider } from "@/components/pm/timer/ActiveTimerProvider";
 import { FloatingTimerTray } from "@/components/pm/timer/FloatingTimerTray";
 import { PreviewProvider } from "@/components/pm/attachments/PreviewProvider";
+import { CreateWorkProvider } from "@/components/pm/CreateWorkProvider";
 
 import { RoleRouteGuard } from "@/components/pm/SubmitterRouteGuard";
 
@@ -103,6 +104,7 @@ function App() {
           <BrowserRouter>
             <ActiveTimerProvider>
               <PreviewProvider>
+              <CreateWorkProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/f/:slug" element={<Suspense fallback={<RouteFallback />}><PublicForm /></Suspense>} />
@@ -146,6 +148,7 @@ function App() {
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </CreateWorkProvider>
               <FloatingTimerTray />
               </PreviewProvider>
             </ActiveTimerProvider>

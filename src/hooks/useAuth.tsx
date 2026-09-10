@@ -64,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [access, setAccess] = useState<AccessState>('loading');
   const [loading, setLoading] = useState(true);
 
-  const applySession = useCallback(async (next: Session | null) => {
+  const applySession = useCallback(async (next: Session | null, opts?: { silent?: boolean }) => {
+    const silent = !!opts?.silent;
     setSession(next);
     setUser(next?.user ?? null);
 
@@ -75,6 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
+    // Background token refresh: keep session/user fresh without flipping loading
+    // (which unmounts ProtectedRoute children and wipes open dialogs).
+    if (silent) return;
 
     setLoading(true);
     const { member, pending } = await resolvePmMember(next.user);
@@ -92,9 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Avoid deadlocks: resolve async after the callback returns
-      setTimeout(() => { void applySession(session); }, 0);
+      setTimeout(() => {
+        void applySession(session, {
+          silent: event === 'TOKEN_REFRESHED',
+        });
+      }, 0);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {

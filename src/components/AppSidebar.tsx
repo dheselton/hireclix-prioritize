@@ -4,6 +4,7 @@ import {
   Inbox, Inbox as InboxIcon, LayoutGrid, Users, Calendar, FileText,
   LayoutTemplate,   Plug, Map as MapIcon, BarChart3, Code, BookOpen, Clock, Settings,
   Zap, Folder, ChevronRight, UserCircle, Building2, UsersRound, Headphones, LifeBuoy,
+  Video, ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -78,6 +79,7 @@ const configureNav: NavItem[] = [
 const snippetsItem: NavItem = { title: "Snippets", url: "/snippets", icon: Code, key: "snippets" };
 const helpItem: NavItem = { title: "Help", url: "/pm/help", icon: BookOpen, key: "help" };
 const settingsItem: NavItem = { title: "Settings", url: "/pm/settings", icon: Settings, key: "settings" };
+const LOOM_LIBRARY_URL = "https://careersite-ops.hireclix.com/loom-library";
 
 const roadmapItems = [
   { title: "Roadmap Dashboard", url: "/roadmap/dashboard", icon: BarChart3 },
@@ -396,6 +398,30 @@ function NavRow({ item, active, badge }: { item: NavItem; active: boolean; badge
   );
 }
 
+/** External resource link — opens in a new tab, mirrors NavRow styling. */
+function ExternalNavRow({
+  title,
+  href,
+  icon: Icon,
+}: {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] transition-colors text-muted-foreground hover:text-foreground hover:bg-accent/30"
+    >
+      <Icon className="h-4 w-4 shrink-0 opacity-70" />
+      <span className="truncate flex-1">{title}</span>
+      <ExternalLink className="h-3 w-3 shrink-0 opacity-50 group-hover:opacity-80" aria-hidden />
+    </a>
+  );
+}
+
 /** Compact count pill with consistent alignment. */
 function CountBadge({ count, active }: { count: number; active?: boolean }) {
   return (
@@ -495,10 +521,12 @@ export function AppSidebar() {
     : primaryNav.filter(i => canSee(roles, i.key));
   const visibleConfigure = submitterOnly ? [] : configureNav.filter(i => canSee(roles, i.key));
   const canSeeSnippets = !submitterOnly && canSee(roles, "snippets");
+  const canSeeLoomLibrary = !submitterOnly && canSee(roles, "loomLibrary");
   const canSeeHelp = canSee(roles, helpItem.key);
   const canSeeSettings = canSee(roles, settingsItem.key);
   const canSeeMyWork = !submitterOnly && canSee(roles, "work");
   const canSeeRoadmap = canSee(roles, "roadmap");
+  const showResources = canSeeSnippets || canSeeLoomLibrary || canSeeHelp || canSeeSettings;
 
   const PROJ_LIMIT = 5;
   const QUICK_LIMIT = 5;
@@ -696,18 +724,25 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {visibleConfigure.length > 0 && (canSeeSnippets || canSeeHelp || canSeeSettings) && (
+        {visibleConfigure.length > 0 && showResources && (
           <Separator className="mx-3 w-auto bg-border/50" />
         )}
 
         {/* RESOURCES */}
-        {(canSeeSnippets || canSeeHelp || canSeeSettings) && (
+        {showResources && (
           <SidebarGroup>
             <SectionLabel>Resources</SectionLabel>
             <SidebarGroupContent>
               <nav className="space-y-0.5 px-2">
                 {canSeeSnippets && (
                   <NavRow item={snippetsItem} active={pathname.startsWith(snippetsItem.url)} />
+                )}
+                {canSeeLoomLibrary && (
+                  <ExternalNavRow
+                    title="Loom Library"
+                    href={LOOM_LIBRARY_URL}
+                    icon={Video}
+                  />
                 )}
                 {canSeeHelp && (
                   <NavRow item={helpItem} active={pathname.startsWith(helpItem.url)} />

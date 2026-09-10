@@ -61,4 +61,15 @@ describe("permissions mobile role matrix", () => {
     expect(canSee(["pm", "designer"], "snippets")).toBe(true);
     expect(blockedRoutePrefixes(["pm", "designer"])).toEqual([]);
   });
+
+  it("loomLibrary is limited to creative production roles", () => {
+    expect(canSee("designer", "loomLibrary")).toBe(true);
+    expect(canSee("developer", "loomLibrary")).toBe(true);
+    expect(canSee("tech_lead", "loomLibrary")).toBe(true);
+    expect(canSee("pm", "loomLibrary")).toBe(false);
+    expect(canSee("ba", "loomLibrary")).toBe(false);
+    expect(canSee("submitter", "loomLibrary")).toBe(false);
+    expect(canSee(["pm", "designer"], "loomLibrary")).toBe(true);
+    expect(canSee(["pm", "ba"], "loomLibrary")).toBe(false);
+  });
 });

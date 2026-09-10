@@ -36,6 +36,7 @@ export type Surface =
   | "team"
   | "roadmap"
   | "snippets"
+  | "loomLibrary"
   | "help"
   | "projectDetail"
   | "taskWorkspace"
@@ -43,12 +44,17 @@ export type Surface =
   | "profile"
   | "notifications";
 
+/** Creative production roles that can see the external Loom Library resource. */
+const LOOM_LIBRARY_ROLES = new Set<PmRole>(["designer", "developer", "tech_lead"]);
+
 function canSeeSingle(r: PmRole, surface: Surface): boolean {
   // Everyone has a personal "My Work" portal and can edit their own settings.
   if (surface === "myWork" || surface === "settings" || surface === "profile" || surface === "notifications") return true;
   if (r === "submitter") {
     return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
+  // Loom Library is creative-production only — even PM/BA need a production role.
+  if (surface === "loomLibrary") return LOOM_LIBRARY_ROLES.has(r);
   // BA gets the same surface access as PM.
   if (r === "pm" || r === "ba") return true;
   // Tech Lead = union of dev + PM-ish (sees everything except integrations/form builder/templates authoring surfaces treated below).

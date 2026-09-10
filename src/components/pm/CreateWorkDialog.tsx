@@ -1,11 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Zap, FolderKanban, X, Plus, FileText, Rocket, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,6 +42,14 @@ import { useLiveSitesForClient, resolveParentProjectId } from "@/lib/pm/liveSite
 import { createCareerSiteSupportRequest } from "@/lib/pm/supportQueue";
 import { Sparkle } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
+import {
+  clearCreateWorkDraft,
+  draftHasContent,
+  readCreateWorkDraft,
+  writeCreateWorkDraft,
+  type CreateWorkDraft,
+  type CreateWorkDraftStep,
+} from "@/lib/pm/createWorkDraft";
 
 interface Props {
   open: boolean;
@@ -40,16 +58,22 @@ interface Props {
   initialStep?: "select" | "request" | "project";
 }
 
-type Step = "select" | "request" | "project-entry" | "project-blank";
+type Step = CreateWorkDraftStep;
+
+function stepFromInitial(initialStep: "select" | "request" | "project"): Step {
+  if (initialStep === "project") return "project-entry";
+  return initialStep;
+}
 
 export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
   const { user } = useCurrentUser();
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>(initialStep === "project" ? "project-entry" : (initialStep as Step));
+  const [step, setStep] = useState<Step>(stepFromInitial(initialStep));
   const [clients, setClients] = useState<{ id: string; name: string; is_internal?: boolean }[]>([]);
   const internalIds = useInternalClientIds();
   const [templates, setTemplates] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // Request
   const [reqForm, setReqForm] = useState({ title: "", client_id: "", description: "" });
@@ -88,32 +112,165 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     emailSent: boolean | null;
   }>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setStep(initialStep === "project" ? "project-entry" : (initialStep as Step));
-    setReqForm({ title: "", client_id: "", description: "" });
-    setRequestType("web_edit");
+  const wasOpenRef = useRef(false);
+  const skipFieldResetRef = useRef(false);
+  const readyToPersistRef = useRef(false);
+
+  function blankDraftSnapshot(nextStep: Step): Omit<CreateWorkDraft, "v" | "userId" | "updatedAt"> {
+    return {
+      step: nextStep,
+      requestType: "web_edit",
+      reqForm: { title: "", client_id: "", description: "" },
+      reqFieldValues: {},
+      quickTasks: [""],
+      reqRequestedBy: user?.id ?? null,
+      reqLinks: [],
+      parentProjectId: null,
+      projForm: { title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" },
+      projRequestedBy: user?.id ?? null,
+      projLinks: [],
+    };
+  }
+
+  function applyDraft(draft: CreateWorkDraft) {
+    skipFieldResetRef.current = true;
+    setStep(draft.step);
+    setRequestType(draft.requestType);
+    setReqForm(draft.reqForm);
+    setReqFieldValues(draft.reqFieldValues);
+    setQuickTasks(draft.quickTasks.length ? draft.quickTasks : [""]);
+    setReqRequestedBy(draft.reqRequestedBy);
+    setReqLinks(draft.reqLinks);
+    setParentProjectId(draft.parentProjectId);
+    setProjForm(draft.projForm);
+    setProjRequestedBy(draft.projRequestedBy);
+    setProjLinks(draft.projLinks);
+    // Files cannot be restored from sessionStorage after a hard refresh.
+    setReqFiles([]);
+    setProjFiles([]);
+    setSuccess(null);
+  }
+
+  function resetToDefaults(nextStep: Step) {
+    skipFieldResetRef.current = true;
+    const blank = blankDraftSnapshot(nextStep);
+    setStep(blank.step);
+    setRequestType(blank.requestType);
+    setReqForm(blank.reqForm);
     setReqFieldValues({});
     setQuickTasks([""]);
-    setReqRequestedBy(user?.id ?? null);
-    setReqFiles([]); setReqLinks([]);
+    setReqRequestedBy(blank.reqRequestedBy);
+    setReqFiles([]);
+    setReqLinks([]);
     setParentProjectId(null);
-    setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
-    setProjRequestedBy(user?.id ?? null);
-    setProjFiles([]); setProjLinks([]);
+    setProjForm(blank.projForm);
+    setProjRequestedBy(blank.projRequestedBy);
+    setProjFiles([]);
+    setProjLinks([]);
     setSuccess(null);
-    (async () => {
-      const [{ data: c }, { data: t }] = await Promise.all([
-        supabase.from("clients").select("id,name,is_internal").order("name"),
-        supabase.from("pm_project_templates").select("id,name,type").order("created_at", { ascending: false }),
-      ]);
-      setClients(c || []);
-      setTemplates(t || []);
-    })();
+  }
+
+  function currentDraftPayload(): Omit<CreateWorkDraft, "v" | "userId" | "updatedAt"> {
+    return {
+      step,
+      requestType,
+      reqForm,
+      reqFieldValues,
+      quickTasks,
+      reqRequestedBy,
+      reqLinks,
+      parentProjectId,
+      projForm,
+      projRequestedBy,
+      projLinks,
+    };
+  }
+
+  function hasUnsavedWork(): boolean {
+    if (success) return false;
+    if (reqFiles.length > 0 || projFiles.length > 0) return true;
+    return draftHasContent({
+      ...currentDraftPayload(),
+      v: 1,
+      userId: user?.id ?? "anon",
+      updatedAt: "",
+    });
+  }
+
+  async function loadLookups() {
+    const [{ data: c }, { data: t }] = await Promise.all([
+      supabase.from("clients").select("id,name,is_internal").order("name"),
+      supabase.from("pm_project_templates").select("id,name,type").order("created_at", { ascending: false }),
+    ]);
+    setClients(c || []);
+    setTemplates(t || []);
+  }
+
+  // Open transition: restore draft / keep in-memory work / start fresh.
+  useEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!open) {
+      readyToPersistRef.current = false;
+      return;
+    }
+    if (!justOpened) return;
+
+    void loadLookups();
+
+    if (success || hasUnsavedWork()) {
+      readyToPersistRef.current = true;
+      if (initialStep === "request" && step === "select") setStep("request");
+      if (initialStep === "project" && step === "select") setStep("project-entry");
+      return;
+    }
+
+    const draft = readCreateWorkDraft(user?.id);
+    if (draft) {
+      applyDraft(draft);
+      readyToPersistRef.current = true;
+      return;
+    }
+
+    resetToDefaults(stepFromInitial(initialStep));
+    readyToPersistRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open transition
   }, [open, initialStep, user?.id]);
 
-  // Reset answers when request type changes
-  useEffect(() => { setReqFieldValues({}); }, [requestType]);
+  // Autosave serializable fields (not File[]) while the dialog is open.
+  useEffect(() => {
+    if (!open || !readyToPersistRef.current || success) return;
+    writeCreateWorkDraft(user?.id, currentDraftPayload());
+  }, [
+    open, success, user?.id, step, requestType, reqForm, reqFieldValues, quickTasks,
+    reqRequestedBy, reqLinks, parentProjectId, projForm, projRequestedBy, projLinks,
+  ]);
+
+  // Reset answers when request type changes (skip during draft restore / blank reset).
+  useEffect(() => {
+    if (skipFieldResetRef.current) {
+      skipFieldResetRef.current = false;
+      return;
+    }
+    setReqFieldValues({});
+  }, [requestType]);
+
+  function discardDraftAndClose() {
+    clearCreateWorkDraft(user?.id);
+    resetToDefaults(stepFromInitial(initialStep));
+    setConfirmDiscard(false);
+    onOpenChange(false);
+  }
+
+  function handleDialogOpenChange(next: boolean) {
+    if (next) {
+      onOpenChange(true);
+      return;
+    }
+    // Closing keeps the draft in sessionStorage + in-memory state so tab switches
+    // and navigation do not wipe progress. Explicit discard is separate.
+    onOpenChange(false);
+  }
 
   // Dev house tickets default to the Dev Internal client when none is selected yet.
   useEffect(() => {
@@ -243,6 +400,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         } as any);
       }
       toast.success("Request submitted");
+      clearCreateWorkDraft(user?.id);
       setSuccess({
         projectId: proj.id,
         requestType,
@@ -287,6 +445,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
       }
       const watcherIds = await applyClientWatchers(proj.id, projForm.client_id, null).catch(() => []);
       toast.success("Project created");
+      clearCreateWorkDraft(user?.id);
       setSuccess({
         projectId: proj.id,
         requestType: null,
@@ -315,7 +474,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -348,13 +507,9 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
               variant="outline"
               onClick={() => {
                 setSuccess(null);
-                setStep(success.requestType ? "request" : "project-blank");
-                setReqForm({ title: "", client_id: "", description: "" });
-                setReqFieldValues({});
-                setQuickTasks([""]);
-                setReqFiles([]); setReqLinks([]);
-                setProjForm({ title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" });
-                setProjFiles([]); setProjLinks([]);
+                clearCreateWorkDraft(user?.id);
+                resetToDefaults(success.requestType ? "request" : "project-blank");
+                readyToPersistRef.current = true;
               }}
             >
               Submit another
@@ -653,6 +808,14 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         {!success && step !== "select" && (
           <DialogFooter className={cn("gap-2")}>
             <Button
+              variant="ghost"
+              className="mr-auto text-muted-foreground"
+              onClick={() => setConfirmDiscard(true)}
+              disabled={busy || !hasUnsavedWork()}
+            >
+              Discard draft
+            </Button>
+            <Button
               variant="outline"
               onClick={() => setStep(step === "project-blank" ? "project-entry" : "select")}
               disabled={busy}
@@ -663,6 +826,21 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard this draft?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Your Quick Request / project draft will be cleared. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction onClick={discardDraftAndClose}>Discard draft</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     <TimelineSetupWizard
       templateId={wizardTemplateId}

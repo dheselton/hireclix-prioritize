@@ -28,7 +28,7 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
-import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+import { useCreateWork } from "@/components/pm/CreateWorkProvider";
 
 const EMPTY_VENDOR_SET = new Set<string>();
 import { WorkKanban } from "@/components/pm/work/WorkKanban";
@@ -69,7 +69,7 @@ export default function Work() {
   const projectsQuery = useProjectsQuery();
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const projects = projectsQuery.data ?? EMPTY_PROJECTS;
-  const [openCreate, setOpenCreate] = useState<null | "select" | "request" | "project">(null);
+  const { openCreateWork } = useCreateWork();
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { user, roles } = useCurrentUser();
@@ -349,12 +349,12 @@ export default function Work() {
             )}
             {canCreate && (
               <>
-                <Button size="sm" variant="outline" className="h-8" onClick={() => setOpenCreate("request")} title="Lightweight project (1–3 tasks)">
+                <Button size="sm" variant="outline" className="h-8" onClick={() => openCreateWork("request")} title="Lightweight project (1–3 tasks)">
                   <Plus className="h-4 w-4 sm:mr-1" />
                   <span className="hidden sm:inline">Quick Request</span>
                   <span className="sm:hidden">Quick</span>
                 </Button>
-                <Button size="sm" className="h-8" onClick={() => setOpenCreate("project")} title="Multi-phase project with timeline">
+                <Button size="sm" className="h-8" onClick={() => openCreateWork("project")} title="Multi-phase project with timeline">
                   <Plus className="h-4 w-4 sm:mr-1" />
                   Project
                 </Button>
@@ -434,12 +434,6 @@ export default function Work() {
         <WorkKanban tasks={visibleTasks} columns={cols} projects={projById} onOpen={drawer.open} onMove={moveTo} />
       )}
 
-      <CreateWorkDialog
-        open={openCreate !== null}
-        onOpenChange={(v) => { if (!v) setOpenCreate(null); }}
-        initialStep={openCreate ?? "select"}
-        onCreated={reload}
-      />
       <TaskDrawer />
     </div>
   );
