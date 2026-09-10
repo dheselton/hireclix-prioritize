@@ -23,11 +23,13 @@ import {
 import { getCurrentUserId } from "@/lib/pm/mockUser";
 import {
   createEscalation,
+  ESCALATION_CATEGORIES,
   linkTaskToEscalation,
   unlinkTask,
   useEscalationForTask,
   useEscalations,
   useVendors,
+  type EscalationCategory,
   type EscalationSeverity,
 } from "@/lib/pm/vendors";
 import type { PmTask } from "@/types/pm";
@@ -52,9 +54,15 @@ export function VendorWaitCard({ task }: Props) {
   // Create form
   const [vendorId, setVendorId] = useState("");
   const [title, setTitle] = useState(task.title);
+  const [summary, setSummary] = useState("");
   const [vendorRef, setVendorRef] = useState("");
   const [severity, setSeverity] = useState<EscalationSeverity>("high");
+  const [category, setCategory] = useState<EscalationCategory | "">("");
   const [description, setDescription] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+
+  const selectedVendor = vendors.find((v) => v.id === vendorId);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["pm-vendor-escalation-for-task", task.id] });
@@ -71,7 +79,11 @@ export function VendorWaitCard({ task }: Props) {
     setTitle(task.title);
     setVendorRef("");
     setSeverity("high");
+    setSummary("");
+    setCategory("");
     setDescription("");
+    setContactName("");
+    setContactEmail("");
     setPickerOpen(true);
   };
 
@@ -95,15 +107,19 @@ export function VendorWaitCard({ task }: Props) {
   };
 
   const handleCreate = async () => {
-    if (!vendorId || !title.trim()) return;
+    if (!vendorId || !title.trim() || !summary.trim()) return;
     setBusy(true);
     try {
       await createEscalation({
         vendorId,
         title: title.trim(),
+        summary: summary.trim(),
         description: description.trim() || undefined,
         vendorRef: vendorRef.trim() || null,
         severity,
+        category: category || null,
+        vendorContactName: contactName.trim() || null,
+        vendorContactEmail: contactEmail.trim() || null,
         ownerId: getCurrentUserId(),
         linkTaskId: task.id,
         blockLinkedTasks: true,
@@ -261,6 +277,16 @@ export function VendorWaitCard({ task }: Props) {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Short description *</Label>
+                <Textarea
+                  rows={2}
+                  className="text-xs"
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  placeholder="What’s broken / what we need from them"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[11px]">Vendor case #</Label>
@@ -290,6 +316,78 @@ export function VendorWaitCard({ task }: Props) {
                   </Select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Category</Label>
+                  <Select
+                    value={category || "__none__"}
+                    onValueChange={(v) =>
+                      setCategory(v === "__none__" ? "" : (v as EscalationCategory))
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-xs capitalize">
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      <SelectItem value="__none__" className="text-xs">
+                        —
+                      </SelectItem>
+                      {ESCALATION_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c} className="text-xs capitalize">
+                          {c.replace(/_/g, " ")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedVendor && selectedVendor.contacts.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Pick contact</Label>
+                    <Select
+                      value="__none__"
+                      onValueChange={(idx) => {
+                        if (idx === "__none__") return;
+                        const c = selectedVendor.contacts[Number(idx)];
+                        if (!c) return;
+                        setContactName(c.name ?? "");
+                        setContactEmail(c.email ?? "");
+                      }}
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Fill…" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-popover">
+                        <SelectItem value="__none__" className="text-xs">
+                          Choose…
+                        </SelectItem>
+                        {selectedVendor.contacts.map((c, i) => (
+                          <SelectItem key={i} value={String(i)} className="text-xs">
+                            {c.name || c.email || `Contact ${i + 1}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Contact name</Label>
+                  <Input
+                    className="h-9 text-xs"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Contact email</Label>
+                  <Input
+                    className="h-9 text-xs"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="space-y-1">
                 <Label className="text-[11px]">Notes</Label>
                 <Textarea
@@ -297,7 +395,7 @@ export function VendorWaitCard({ task }: Props) {
                   className="text-xs"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What are we waiting on them for?"
+                  placeholder="Optional longer detail"
                 />
               </div>
             </div>
@@ -311,7 +409,9 @@ export function VendorWaitCard({ task }: Props) {
               type="button"
               disabled={
                 busy ||
-                (mode === "attach" ? !attachEscalationId : !vendorId || !title.trim())
+                (mode === "attach"
+                  ? !attachEscalationId
+                  : !vendorId || !title.trim() || !summary.trim())
               }
               onClick={mode === "attach" ? handleAttach : handleCreate}
             >

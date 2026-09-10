@@ -18,8 +18,32 @@ export type EscalationStatus =
   | "resolved"
   | "closed_unresolved";
 export type EscalationSeverity = "low" | "medium" | "high" | "critical";
+export type EscalationCategory =
+  | "bug"
+  | "outage"
+  | "performance"
+  | "feature_gap"
+  | "billing"
+  | "other";
 export type TouchpointDirection = "outbound" | "inbound";
 export type TouchpointChannel = "email" | "call" | "chat" | "portal" | "meeting";
+
+export const ESCALATION_CATEGORIES: EscalationCategory[] = [
+  "bug",
+  "outage",
+  "performance",
+  "feature_gap",
+  "billing",
+  "other",
+];
+
+/** Calendar-day SLA targets by severity (response days, resolve days). */
+export const SLA_DAYS_BY_SEVERITY: Record<EscalationSeverity, { response: number; resolve: number }> = {
+  critical: { response: 1, resolve: 3 },
+  high: { response: 2, resolve: 7 },
+  medium: { response: 3, resolve: 14 },
+  low: { response: 5, resolve: 30 },
+};
 
 export type VendorContact = { name?: string; email?: string; role?: string };
 
@@ -41,10 +65,20 @@ export type PmVendorEscalation = {
   id: string;
   vendor_id: string;
   title: string;
+  summary: string | null;
   description: string | null;
   vendor_ref: string | null;
   status: EscalationStatus;
   severity: EscalationSeverity;
+  category: EscalationCategory | null;
+  impact_summary: string | null;
+  vendor_contact_name: string | null;
+  vendor_contact_email: string | null;
+  root_cause: string | null;
+  expected_response_by: string | null;
+  expected_resolve_by: string | null;
+  response_breached_at: string | null;
+  resolve_breached_at: string | null;
   owner_id: string | null;
   opened_at: string;
   last_outbound_at: string | null;
@@ -63,6 +97,7 @@ export type PmVendorTouchpoint = {
   channel: TouchpointChannel;
   occurred_at: string;
   summary: string;
+  thread_url: string | null;
   logged_by: string | null;
   created_at: string;
 };
@@ -98,6 +133,8 @@ export type VendorScorecard = {
   unresolvedPast30d: number;
   avgChasesPerEscalation: number | null;
   oldestOpenAgeDays: number | null;
+  responseBreachRate: number | null;
+  resolveBreachRate: number | null;
 };
 
 export const VENDOR_CATEGORIES: VendorCategory[] = [
@@ -167,10 +204,20 @@ function parseEscalation(row: any): PmVendorEscalation {
     id: row.id,
     vendor_id: row.vendor_id,
     title: row.title,
+    summary: row.summary ?? null,
     description: row.description ?? null,
     vendor_ref: row.vendor_ref ?? null,
     status: row.status as EscalationStatus,
     severity: (row.severity ?? "high") as EscalationSeverity,
+    category: (row.category ?? null) as EscalationCategory | null,
+    impact_summary: row.impact_summary ?? null,
+    vendor_contact_name: row.vendor_contact_name ?? null,
+    vendor_contact_email: row.vendor_contact_email ?? null,
+    root_cause: row.root_cause ?? null,
+    expected_response_by: row.expected_response_by ?? null,
+    expected_resolve_by: row.expected_resolve_by ?? null,
+    response_breached_at: row.response_breached_at ?? null,
+    resolve_breached_at: row.resolve_breached_at ?? null,
     owner_id: row.owner_id ?? null,
     opened_at: row.opened_at,
     last_outbound_at: row.last_outbound_at ?? null,
@@ -181,6 +228,119 @@ function parseEscalation(row: any): PmVendorEscalation {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+function parseTouchpoint(row: any): PmVendorTouchpoint {
+  return {
+    id: row.id,
+    escalation_id: row.escalation_id,
+    direction: row.direction as TouchpointDirection,
+    channel: (row.channel ?? "email") as TouchpointChannel,
+    occurred_at: row.occurred_at,
+    summary: row.summary,
+    thread_url: row.thread_url ?? null,
+    logged_by: row.logged_by ?? null,
+    created_at: row.created_at,
+  };
+}
+
+function addCalendarDays(iso: string, days: number): string {
+  const d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
+}
+
+export function slaTargetsForSeverity(
+  severity: EscalationSeverity,
+  vendor?: Pick<PmVendor, "expected_first_response_days"> | null,
+): { responseDays: number; resolveDays: number } {
+  const base = SLA_DAYS_BY_SEVERITY[severity] ?? SLA_DAYS_BY_SEVERITY.high;
+  const responseDays =
+    vendor?.expected_first_response_days != null && vendor.expected_first_response_days > 0
+      ? vendor.expected_first_response_days
+      : base.response;
+  return { responseDays, resolveDays: base.resolve };
+}
+
+export function computeSlaDeadlines(
+  openedAt: string,
+  severity: EscalationSeverity,
+  vendor?: Pick<PmVendor, "expected_first_response_days"> | null,
+): { expected_response_by: string; expected_resolve_by: string } {
+  const { responseDays, resolveDays } = slaTargetsForSeverity(severity, vendor);
+  return {
+    expected_response_by: addCalendarDays(openedAt, responseDays),
+    expected_resolve_by: addCalendarDays(openedAt, resolveDays),
+  };
+}
+
+export function isResponseBreached(
+  esc: Pick<
+    PmVendorEscalation,
+    "expected_response_by" | "first_response_at" | "response_breached_at" | "status"
+  >,
+  now = new Date(),
+): boolean {
+  if (esc.response_breached_at) return true;
+  if (!esc.expected_response_by) return false;
+  const deadline = new Date(esc.expected_response_by).getTime();
+  if (esc.first_response_at) {
+    return new Date(esc.first_response_at).getTime() > deadline;
+  }
+  if (!isEscalationOpen(esc.status)) return false;
+  return now.getTime() > deadline;
+}
+
+export function isResolveBreached(
+  esc: Pick<
+    PmVendorEscalation,
+    "expected_resolve_by" | "resolved_at" | "resolve_breached_at" | "status"
+  >,
+  now = new Date(),
+): boolean {
+  if (esc.resolve_breached_at) return true;
+  if (!esc.expected_resolve_by) return false;
+  const deadline = new Date(esc.expected_resolve_by).getTime();
+  if (esc.resolved_at) {
+    return new Date(esc.resolved_at).getTime() > deadline;
+  }
+  if (!isEscalationOpen(esc.status)) return false;
+  return now.getTime() > deadline;
+}
+
+export function slaLabel(
+  esc: Pick<
+    PmVendorEscalation,
+    | "expected_response_by"
+    | "expected_resolve_by"
+    | "first_response_at"
+    | "response_breached_at"
+    | "resolve_breached_at"
+    | "status"
+    | "resolved_at"
+  >,
+): { response: string; resolve: string } {
+  const respBreached = isResponseBreached(esc);
+  const resBreached = isResolveBreached(esc);
+  const response = !esc.expected_response_by
+    ? "No response SLA"
+    : esc.first_response_at
+      ? respBreached
+        ? "Response breached"
+        : "Responded on time"
+      : respBreached
+        ? "Response overdue"
+        : `Response due ${esc.expected_response_by.slice(0, 10)}`;
+  const resolve = !esc.expected_resolve_by
+    ? "No resolve SLA"
+    : esc.resolved_at
+      ? resBreached
+        ? "Resolve breached"
+        : "Resolved on time"
+      : resBreached
+        ? "Resolve overdue"
+        : `Resolve due ${esc.expected_resolve_by.slice(0, 10)}`;
+  return { response, resolve };
 }
 
 export function daysWaiting(escalation: Pick<PmVendorEscalation, "opened_at" | "resolved_at">, today = todayISO()): number {
@@ -305,7 +465,7 @@ export async function fetchTouchpoints(escalationId: string): Promise<PmVendorTo
     .eq("escalation_id", escalationId)
     .order("occurred_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as PmVendorTouchpoint[];
+  return ((data ?? []) as any[]).map(parseTouchpoint);
 }
 
 async function fetchTouchpointsForEscalations(
@@ -319,10 +479,11 @@ async function fetchTouchpointsForEscalations(
     .in("escalation_id", escalationIds)
     .order("occurred_at", { ascending: true });
   if (error) throw error;
-  for (const row of (data ?? []) as PmVendorTouchpoint[]) {
-    const list = map.get(row.escalation_id) ?? [];
-    list.push(row);
-    map.set(row.escalation_id, list);
+  for (const row of (data ?? []) as any[]) {
+    const tp = parseTouchpoint(row);
+    const list = map.get(tp.escalation_id) ?? [];
+    list.push(tp);
+    map.set(tp.escalation_id, list);
   }
   return map;
 }
@@ -446,9 +607,14 @@ export type CreateEscalationSite = {
 export type CreateEscalationInput = {
   vendorId: string;
   title: string;
+  summary: string;
   description?: string;
   vendorRef?: string | null;
   severity?: EscalationSeverity;
+  category?: EscalationCategory | null;
+  impactSummary?: string | null;
+  vendorContactName?: string | null;
+  vendorContactEmail?: string | null;
   ownerId?: string | null;
   sites?: CreateEscalationSite[];
   /** Existing task to link immediately (e.g. from task workspace). */
@@ -461,38 +627,54 @@ export async function createEscalation(input: CreateEscalationInput): Promise<{
   taskIds: string[];
 }> {
   const ownerId = input.ownerId ?? getCurrentUserId();
+  const summary = input.summary.trim();
+  if (!summary) throw new Error("Short description is required");
+
+  const { data: vendorRow } = await supabase
+    .from("pm_vendors")
+    .select("*")
+    .eq("id", input.vendorId)
+    .maybeSingle();
+  const vendor = vendorRow ? parseVendor(vendorRow) : null;
+  const severity = input.severity ?? "high";
+  const openedAt = new Date().toISOString();
+  const sla = computeSlaDeadlines(openedAt, severity, vendor);
+
   const { data: escalation, error } = await supabase
     .from("pm_vendor_escalations")
     .insert({
       vendor_id: input.vendorId,
       title: input.title,
+      summary,
       description: input.description || null,
       vendor_ref: input.vendorRef ?? null,
-      severity: input.severity ?? "high",
+      severity,
+      category: input.category ?? null,
+      impact_summary: input.impactSummary?.trim() || null,
+      vendor_contact_name: input.vendorContactName?.trim() || null,
+      vendor_contact_email: input.vendorContactEmail?.trim() || null,
       owner_id: ownerId,
       status: "awaiting_vendor",
+      opened_at: openedAt,
       next_follow_up_on: todayISO(),
-    })
+      expected_response_by: sla.expected_response_by,
+      expected_resolve_by: sla.expected_resolve_by,
+    } as any)
     .select()
     .single();
   if (error) throw error;
 
   const esc = parseEscalation(escalation);
   const taskIds: string[] = [];
-  const priority = severityToPriority(input.severity ?? "high");
-  const { data: vendorRow } = await supabase
-    .from("pm_vendors")
-    .select("name")
-    .eq("id", input.vendorId)
-    .maybeSingle();
-  const vendorName = (vendorRow as any)?.name ?? "vendor";
+  const priority = severityToPriority(severity);
+  const vendorName = vendor?.name ?? "vendor";
 
   const shouldBlock = input.blockLinkedTasks !== false;
   for (const site of input.sites ?? []) {
     const t = await createTask({
       project_id: site.projectId,
       title: `[Waiting on ${vendorName}] ${input.title} — ${site.projectTitle}`,
-      description: input.description ?? null,
+      description: summary,
       type: "dev",
       priority,
       assignee_id: site.assigneeId ?? null,
@@ -524,18 +706,58 @@ export async function updateEscalation(
     Pick<
       PmVendorEscalation,
       | "title"
+      | "summary"
       | "description"
       | "vendor_ref"
       | "severity"
       | "owner_id"
       | "status"
       | "next_follow_up_on"
+      | "category"
+      | "impact_summary"
+      | "vendor_contact_name"
+      | "vendor_contact_email"
+      | "root_cause"
+      | "expected_response_by"
+      | "expected_resolve_by"
+      | "response_breached_at"
+      | "resolve_breached_at"
     >
   >,
 ): Promise<PmVendorEscalation> {
+  let nextPatch: Record<string, unknown> = { ...patch };
+
+  if (patch.severity !== undefined) {
+    const { data: current } = await supabase
+      .from("pm_vendor_escalations")
+      .select("status, opened_at, first_response_at, vendor_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (current && isEscalationOpen((current as any).status)) {
+      const { data: vendorRow } = await supabase
+        .from("pm_vendors")
+        .select("*")
+        .eq("id", (current as any).vendor_id)
+        .maybeSingle();
+      const vendor = vendorRow ? parseVendor(vendorRow) : null;
+      const sla = computeSlaDeadlines(
+        (current as any).opened_at,
+        patch.severity,
+        vendor,
+      );
+      nextPatch = {
+        ...nextPatch,
+        expected_response_by: sla.expected_response_by,
+        expected_resolve_by: sla.expected_resolve_by,
+        ...(!(current as any).first_response_at ? { response_breached_at: null } : {}),
+        resolve_breached_at: null,
+      };
+    }
+  }
+
   const { data, error } = await supabase
     .from("pm_vendor_escalations")
-    .update(patch as any)
+    .update(nextPatch as any)
     .eq("id", id)
     .select()
     .single();
@@ -613,6 +835,7 @@ export async function logTouchpoint(input: {
   channel?: TouchpointChannel;
   summary: string;
   occurredAt?: string;
+  threadUrl?: string | null;
 }): Promise<PmVendorTouchpoint> {
   const { data, error } = await supabase
     .from("pm_vendor_touchpoints")
@@ -622,26 +845,47 @@ export async function logTouchpoint(input: {
       channel: input.channel ?? "email",
       summary: input.summary,
       occurred_at: input.occurredAt ?? new Date().toISOString(),
+      thread_url: input.threadUrl?.trim() || null,
       logged_by: getCurrentUserId(),
-    })
+    } as any)
     .select()
     .single();
   if (error) throw error;
-  return data as PmVendorTouchpoint;
+  return parseTouchpoint(data);
 }
 
 export async function resolveEscalation(
   id: string,
-  opts?: { unresolved?: boolean; advanceLinkedTasks?: boolean },
+  opts?: { unresolved?: boolean; advanceLinkedTasks?: boolean; rootCause?: string | null },
 ): Promise<void> {
   const status: EscalationStatus = opts?.unresolved ? "closed_unresolved" : "resolved";
+  const resolvedAt = new Date().toISOString();
+
+  const { data: current } = await supabase
+    .from("pm_vendor_escalations")
+    .select("expected_resolve_by, resolve_breached_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  let resolveBreachedAt = (current as any)?.resolve_breached_at ?? null;
+  const expectedResolveBy = (current as any)?.expected_resolve_by as string | null;
+  if (
+    !resolveBreachedAt &&
+    expectedResolveBy &&
+    new Date(resolvedAt).getTime() > new Date(expectedResolveBy).getTime()
+  ) {
+    resolveBreachedAt = resolvedAt;
+  }
+
   const { error } = await supabase
     .from("pm_vendor_escalations")
     .update({
       status,
-      resolved_at: new Date().toISOString(),
+      resolved_at: resolvedAt,
       next_follow_up_on: null,
-    })
+      root_cause: opts?.rootCause?.trim() || null,
+      resolve_breached_at: resolveBreachedAt,
+    } as any)
     .eq("id", id);
   if (error) throw error;
 
@@ -747,6 +991,16 @@ export function computeVendorScorecard(
   const oldestOpenAgeDays =
     open.length === 0 ? null : Math.max(...open.map((e) => daysWaiting(e, today)));
 
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - 90);
+  const recent = forVendor.filter((e) => new Date(e.opened_at).getTime() >= cutoff.getTime());
+  const withResponseDeadline = recent.filter((e) => e.expected_response_by || e.first_response_at || e.response_breached_at);
+  const responseBreaches = withResponseDeadline.filter((e) => isResponseBreached(e)).length;
+  const withResolveDeadline = recent.filter(
+    (e) => e.expected_resolve_by || e.resolved_at || e.resolve_breached_at,
+  );
+  const resolveBreaches = withResolveDeadline.filter((e) => isResolveBreached(e)).length;
+
   return {
     vendor,
     openEscalations: open.length,
@@ -756,6 +1010,14 @@ export function computeVendorScorecard(
     unresolvedPast30d,
     avgChasesPerEscalation: avgChases == null ? null : Math.round(avgChases * 10) / 10,
     oldestOpenAgeDays,
+    responseBreachRate:
+      withResponseDeadline.length === 0
+        ? null
+        : Math.round((responseBreaches / withResponseDeadline.length) * 100),
+    resolveBreachRate:
+      withResolveDeadline.length === 0
+        ? null
+        : Math.round((resolveBreaches / withResolveDeadline.length) * 100),
   };
 }
 

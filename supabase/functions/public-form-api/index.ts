@@ -26,6 +26,13 @@ const ALIASES: Record<string, string> = {
   careersite_sow: "careersite@hireclix.com",
   careersite_support: "careersite@hireclix.com",
   careersite_update: "careersite@hireclix.com",
+  dev_api: "requests@hireclix.com",
+  dev_reporting: "requests@hireclix.com",
+  dev_bug: "requests@hireclix.com",
+  dev_spike: "requests@hireclix.com",
+  dev_tech_debt: "requests@hireclix.com",
+  dev_tools: "requests@hireclix.com",
+  dev_platform: "requests@hireclix.com",
   web_edit: "web@hireclix.com",
   landing_page: "web@hireclix.com",
   banner_ads: "ads@hireclix.com",
@@ -107,6 +114,7 @@ function clientTag(name: string | null | undefined) {
 
 const GROUP_TYPES: Record<string, string[]> = {
   career_site: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support"],
+  dev: ["dev_api", "dev_reporting", "dev_bug", "dev_spike", "dev_tech_debt", "dev_tools", "dev_platform"],
   web: ["web_edit", "landing_page", "careersite_update"],
   ads: ["banner_ads", "social", "email"],
   content: ["copywriting", "job_description", "infographic"],

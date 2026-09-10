@@ -37,13 +37,18 @@ import { useQuery } from "@tanstack/react-query";
 import {
   addAffectedSites,
   daysWaiting,
+  ESCALATION_CATEGORIES,
   isFollowUpDue,
   isLinkedTaskDone,
+  isResolveBreached,
+  isResponseBreached,
   logTouchpoint,
   reopenEscalation,
   resolveEscalation,
+  slaLabel,
   updateEscalation,
   useEscalation,
+  type EscalationCategory,
   type EscalationSeverity,
   type TouchpointChannel,
   type TouchpointDirection,
@@ -84,6 +89,8 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
   const [direction, setDirection] = useState<TouchpointDirection>("outbound");
   const [channel, setChannel] = useState<TouchpointChannel>("email");
   const [summary, setSummary] = useState("");
+  const [occurredAt, setOccurredAt] = useState("");
+  const [threadUrl, setThreadUrl] = useState("");
   const [logging, setLogging] = useState(false);
 
   const [sitesOpen, setSitesOpen] = useState(false);
@@ -91,10 +98,27 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
   const [addingSites, setAddingSites] = useState(false);
 
   const [vendorRefDraft, setVendorRefDraft] = useState("");
+  const [titleDraft, setTitleDraft] = useState("");
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [impactDraft, setImpactDraft] = useState("");
+  const [contactNameDraft, setContactNameDraft] = useState("");
+  const [contactEmailDraft, setContactEmailDraft] = useState("");
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [resolveUnresolved, setResolveUnresolved] = useState(false);
+  const [rootCauseDraft, setRootCauseDraft] = useState("");
+  const [savingField, setSavingField] = useState(false);
 
   useEffect(() => {
     setVendorRefDraft(escalation?.vendor_ref ?? "");
-  }, [escalation?.id, escalation?.vendor_ref]);
+    setTitleDraft(escalation?.title ?? "");
+    setSummaryDraft(escalation?.summary ?? "");
+    setDescriptionDraft(escalation?.description ?? "");
+    setImpactDraft(escalation?.impact_summary ?? "");
+    setContactNameDraft(escalation?.vendor_contact_name ?? "");
+    setContactEmailDraft(escalation?.vendor_contact_email ?? "");
+    setRootCauseDraft(escalation?.root_cause ?? "");
+  }, [escalation?.id, escalation?.updated_at]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["pm-vendor-escalation", escalationId] });
@@ -148,8 +172,12 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
         direction,
         channel,
         summary: summary.trim(),
+        occurredAt: occurredAt ? new Date(occurredAt).toISOString() : undefined,
+        threadUrl: threadUrl.trim() || null,
       });
       setSummary("");
+      setThreadUrl("");
+      setOccurredAt("");
       invalidate();
       toast.success(direction === "outbound" ? "Outbound contact logged" : "Vendor reply logged");
     } catch (err: any) {
@@ -159,15 +187,23 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
     }
   };
 
-  const handleResolve = async (unresolved = false) => {
+  const openResolve = (unresolved = false) => {
+    setResolveUnresolved(unresolved);
+    setRootCauseDraft(escalation?.root_cause ?? "");
+    setResolveOpen(true);
+  };
+
+  const handleResolve = async () => {
     if (!escalation) return;
     try {
       await resolveEscalation(escalation.id, {
-        unresolved,
-        advanceLinkedTasks: !unresolved,
+        unresolved: resolveUnresolved,
+        advanceLinkedTasks: !resolveUnresolved,
+        rootCause: rootCauseDraft.trim() || null,
       });
+      setResolveOpen(false);
       invalidate();
-      toast.success(unresolved ? "Closed unresolved" : "Escalation resolved");
+      toast.success(resolveUnresolved ? "Closed unresolved" : "Escalation resolved");
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to resolve");
     }
@@ -184,16 +220,28 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
     }
   };
 
+  const saveField = async (
+    patch: Parameters<typeof updateEscalation>[1],
+    opts?: { silent?: boolean },
+  ) => {
+    if (!escalation) return;
+    setSavingField(true);
+    try {
+      await updateEscalation(escalation.id, patch);
+      invalidate();
+      if (!opts?.silent) toast.success("Saved");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to save");
+    } finally {
+      setSavingField(false);
+    }
+  };
+
   const saveVendorRef = async () => {
     if (!escalation) return;
     const next = vendorRefDraft.trim() || null;
     if (next === (escalation.vendor_ref ?? null)) return;
-    try {
-      await updateEscalation(escalation.id, { vendor_ref: next });
-      invalidate();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to save case #");
-    }
+    await saveField({ vendor_ref: next }, { silent: true });
   };
 
   const handleAddSites = async () => {
@@ -221,6 +269,9 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
   const followUpDue = escalation ? isFollowUpDue(escalation) : false;
   const waiting = escalation ? daysWaiting(escalation) : 0;
   const touchpoints = escalation?.touchpoints ?? [];
+  const sla = escalation ? slaLabel(escalation) : null;
+  const responseBreached = escalation ? isResponseBreached(escalation) : false;
+  const resolveBreached = escalation ? isResolveBreached(escalation) : false;
 
   return (
     <>
@@ -239,7 +290,6 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
             <div className="space-y-5 mt-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-[15px] font-medium">{escalation.title}</h3>
                   <span
                     className={
                       "text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide border " +
@@ -263,6 +313,40 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
                   >
                     {escalation.status.replace(/_/g, " ")}
                   </span>
+                  {escalation.category && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-border capitalize">
+                      {escalation.category.replace(/_/g, " ")}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Title</Label>
+                  <Input
+                    className="h-8 text-xs font-medium"
+                    value={titleDraft}
+                    disabled={savingField}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={() => {
+                      const next = titleDraft.trim();
+                      if (!next || next === escalation.title) return;
+                      void saveField({ title: next }, { silent: true });
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Short description</Label>
+                  <Textarea
+                    rows={2}
+                    className="text-xs"
+                    value={summaryDraft}
+                    disabled={savingField}
+                    onChange={(e) => setSummaryDraft(e.target.value)}
+                    onBlur={() => {
+                      const next = summaryDraft.trim() || null;
+                      if (next === (escalation.summary ?? null)) return;
+                      void saveField({ summary: next }, { silent: true });
+                    }}
+                  />
                 </div>
                 <div className="text-[13px] text-muted-foreground">
                   <span className="font-medium text-foreground">{escalation.vendor.name}</span>
@@ -282,31 +366,194 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
                     <> · {escalation.chaseCount} chase{escalation.chaseCount === 1 ? "" : "s"}</>
                   )}
                 </div>
-                {escalation.description && (
-                  <p className="text-[13px] text-muted-foreground whitespace-pre-wrap">
-                    {escalation.description}
-                  </p>
+                {sla && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <span
+                      className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full border",
+                        responseBreached
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-muted text-muted-foreground border-border",
+                      )}
+                    >
+                      {sla.response}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full border",
+                        resolveBreached
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-muted text-muted-foreground border-border",
+                      )}
+                    >
+                      {sla.resolve}
+                    </span>
+                  </div>
                 )}
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Severity</Label>
+                  <Select
+                    value={escalation.severity}
+                    disabled={savingField || !isOpen}
+                    onValueChange={(v) =>
+                      void saveField({ severity: v as EscalationSeverity })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs capitalize">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      {(["low", "medium", "high", "critical"] as EscalationSeverity[]).map((s) => (
+                        <SelectItem key={s} value={s} className="text-xs capitalize">
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Category</Label>
+                  <Select
+                    value={escalation.category ?? "__none__"}
+                    disabled={savingField}
+                    onValueChange={(v) =>
+                      void saveField({
+                        category: v === "__none__" ? null : (v as EscalationCategory),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs capitalize">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      <SelectItem value="__none__" className="text-xs">
+                        —
+                      </SelectItem>
+                      {ESCALATION_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c} className="text-xs capitalize">
+                          {c.replace(/_/g, " ")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Owner</Label>
+                  <Select
+                    value={escalation.owner_id ?? "__none__"}
+                    disabled={savingField}
+                    onValueChange={(v) =>
+                      void saveField({ owner_id: v === "__none__" ? null : v })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      <SelectItem value="__none__" className="text-xs">
+                        Unassigned
+                      </SelectItem>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id} className="text-xs">
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Vendor case #</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={vendorRefDraft}
+                    onChange={(e) => setVendorRefDraft(e.target.value)}
+                    onBlur={saveVendorRef}
+                    placeholder="e.g. WF-12345"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Vendor contact</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={contactNameDraft}
+                    onChange={(e) => setContactNameDraft(e.target.value)}
+                    onBlur={() => {
+                      const next = contactNameDraft.trim() || null;
+                      if (next === (escalation.vendor_contact_name ?? null)) return;
+                      void saveField({ vendor_contact_name: next }, { silent: true });
+                    }}
+                    placeholder="Name"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Contact email</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={contactEmailDraft}
+                    onChange={(e) => setContactEmailDraft(e.target.value)}
+                    onBlur={() => {
+                      const next = contactEmailDraft.trim() || null;
+                      if (next === (escalation.vendor_contact_email ?? null)) return;
+                      void saveField({ vendor_contact_email: next }, { silent: true });
+                    }}
+                    placeholder="email@"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
-                <Label className="text-[11px]">Vendor case / ticket #</Label>
-                <Input
-                  className="h-8 text-xs"
-                  value={vendorRefDraft}
-                  onChange={(e) => setVendorRefDraft(e.target.value)}
-                  onBlur={saveVendorRef}
-                  placeholder="e.g. WF-12345"
+                <Label className="text-[11px]">Impact</Label>
+                <Textarea
+                  rows={2}
+                  className="text-xs"
+                  value={impactDraft}
+                  onChange={(e) => setImpactDraft(e.target.value)}
+                  onBlur={() => {
+                    const next = impactDraft.trim() || null;
+                    if (next === (escalation.impact_summary ?? null)) return;
+                    void saveField({ impact_summary: next }, { silent: true });
+                  }}
+                  placeholder="Clients / sites affected"
                 />
               </div>
+
+              <div className="space-y-1">
+                <Label className="text-[11px]">Longer notes</Label>
+                <Textarea
+                  rows={2}
+                  className="text-xs"
+                  value={descriptionDraft}
+                  onChange={(e) => setDescriptionDraft(e.target.value)}
+                  onBlur={() => {
+                    const next = descriptionDraft.trim() || null;
+                    if (next === (escalation.description ?? null)) return;
+                    void saveField({ description: next }, { silent: true });
+                  }}
+                />
+              </div>
+
+              {escalation.root_cause && (
+                <div className="rounded-md border border-border bg-muted/30 px-2.5 py-2 text-[12px]">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Root cause
+                  </div>
+                  <p className="mt-0.5 whitespace-pre-wrap">{escalation.root_cause}</p>
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 {isOpen ? (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => handleResolve(false)}>
+                    <Button size="sm" variant="outline" onClick={() => openResolve(false)}>
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Resolve
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleResolve(true)}>
+                    <Button size="sm" variant="ghost" onClick={() => openResolve(true)}>
                       Close unresolved
                     </Button>
                   </>
@@ -415,6 +662,26 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
                         : "What did they say / promise?"
                     }
                   />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">When (optional)</Label>
+                      <Input
+                        type="datetime-local"
+                        className="h-8 text-xs"
+                        value={occurredAt}
+                        onChange={(e) => setOccurredAt(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Thread URL</Label>
+                      <Input
+                        className="h-8 text-xs"
+                        value={threadUrl}
+                        onChange={(e) => setThreadUrl(e.target.value)}
+                        placeholder="https://…"
+                      />
+                    </div>
+                  </div>
                   <Button
                     size="sm"
                     className="w-full gap-1.5"
@@ -473,6 +740,16 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
                               {who && <span className="text-muted-foreground">· {who}</span>}
                             </div>
                             <p className="mt-1 whitespace-pre-wrap">{tp.summary}</p>
+                            {tp.thread_url && (
+                              <a
+                                href={tp.thread_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] text-primary underline underline-offset-2 mt-1 inline-block truncate max-w-full"
+                              >
+                                {tp.thread_url}
+                              </a>
+                            )}
                           </li>
                         );
                       })}
@@ -483,6 +760,34 @@ export function VendorEscalationDrawer({ escalationId, onOpenChange }: Props) {
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog open={resolveOpen} onOpenChange={setResolveOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {resolveUnresolved ? "Close unresolved" : "Resolve escalation"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-[11px]">Root cause / outcome (optional)</Label>
+            <Textarea
+              rows={3}
+              className="text-xs"
+              value={rootCauseDraft}
+              onChange={(e) => setRootCauseDraft(e.target.value)}
+              placeholder="What was the fix or why is this closed?"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setResolveOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleResolve()}>
+              {resolveUnresolved ? "Close" : "Resolve"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={sitesOpen} onOpenChange={setSitesOpen}>
         <DialogContent className="sm:max-w-md">

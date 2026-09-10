@@ -10,6 +10,7 @@ export const CREATIVE_PRODUCTION_GROUP_KEYS = [
   "content",
   "ads",
   "career_site",
+  "dev",
 ] as const;
 
 export type CreativeProductionGroupKey = (typeof CREATIVE_PRODUCTION_GROUP_KEYS)[number];

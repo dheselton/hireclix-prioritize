@@ -1250,6 +1250,56 @@ export type Database = {
           },
         ]
       }
+      pm_ops_alert_events: {
+        Row: {
+          id: string
+          received_at: string
+          event: string
+          ops_site_id: string
+          alert_id: string | null
+          action: string | null
+          project_id: string | null
+          source: string
+          payload: Json
+          ok: boolean
+          message: string | null
+        }
+        Insert: {
+          id?: string
+          received_at?: string
+          event: string
+          ops_site_id: string
+          alert_id?: string | null
+          action?: string | null
+          project_id?: string | null
+          source?: string
+          payload?: Json
+          ok?: boolean
+          message?: string | null
+        }
+        Update: {
+          id?: string
+          received_at?: string
+          event?: string
+          ops_site_id?: string
+          alert_id?: string | null
+          action?: string | null
+          project_id?: string | null
+          source?: string
+          payload?: Json
+          ok?: boolean
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_ops_alert_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "pm_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_site_initiative_items: {
         Row: {
           id: string
@@ -2696,56 +2746,86 @@ export type Database = {
       }
       pm_vendor_escalations: {
         Row: {
+          category: string | null
           created_at: string
           description: string | null
+          expected_resolve_by: string | null
+          expected_response_by: string | null
           first_response_at: string | null
           id: string
+          impact_summary: string | null
           last_inbound_at: string | null
           last_outbound_at: string | null
           next_follow_up_on: string | null
           opened_at: string
           owner_id: string | null
+          resolve_breached_at: string | null
           resolved_at: string | null
+          response_breached_at: string | null
+          root_cause: string | null
           severity: string
           status: string
+          summary: string | null
           title: string
           updated_at: string
+          vendor_contact_email: string | null
+          vendor_contact_name: string | null
           vendor_id: string
           vendor_ref: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
           description?: string | null
+          expected_resolve_by?: string | null
+          expected_response_by?: string | null
           first_response_at?: string | null
           id?: string
+          impact_summary?: string | null
           last_inbound_at?: string | null
           last_outbound_at?: string | null
           next_follow_up_on?: string | null
           opened_at?: string
           owner_id?: string | null
+          resolve_breached_at?: string | null
           resolved_at?: string | null
+          response_breached_at?: string | null
+          root_cause?: string | null
           severity?: string
           status?: string
+          summary?: string | null
           title: string
           updated_at?: string
+          vendor_contact_email?: string | null
+          vendor_contact_name?: string | null
           vendor_id: string
           vendor_ref?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string
           description?: string | null
+          expected_resolve_by?: string | null
+          expected_response_by?: string | null
           first_response_at?: string | null
           id?: string
+          impact_summary?: string | null
           last_inbound_at?: string | null
           last_outbound_at?: string | null
           next_follow_up_on?: string | null
           opened_at?: string
           owner_id?: string | null
+          resolve_breached_at?: string | null
           resolved_at?: string | null
+          response_breached_at?: string | null
+          root_cause?: string | null
           severity?: string
           status?: string
+          summary?: string | null
           title?: string
           updated_at?: string
+          vendor_contact_email?: string | null
+          vendor_contact_name?: string | null
           vendor_id?: string
           vendor_ref?: string | null
         }
@@ -2776,6 +2856,7 @@ export type Database = {
           logged_by: string | null
           occurred_at: string
           summary: string
+          thread_url: string | null
         }
         Insert: {
           channel?: string
@@ -2786,6 +2867,7 @@ export type Database = {
           logged_by?: string | null
           occurred_at?: string
           summary: string
+          thread_url?: string | null
         }
         Update: {
           channel?: string
@@ -2796,6 +2878,7 @@ export type Database = {
           logged_by?: string | null
           occurred_at?: string
           summary?: string
+          thread_url?: string | null
         }
         Relationships: [
           {

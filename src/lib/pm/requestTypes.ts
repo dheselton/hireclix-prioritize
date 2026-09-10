@@ -12,6 +12,13 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   careersite_new_page: "Career site · New page",
   careersite_sow: "Career site · SOW project",
   careersite_support: "Career site · General support",
+  dev_api: "Dev · API / integration",
+  dev_reporting: "Dev · Reporting",
+  dev_bug: "Dev · Bug",
+  dev_spike: "Dev · Spike / research",
+  dev_tech_debt: "Dev · Tech debt",
+  dev_tools: "Dev · Internal tools",
+  dev_platform: "Dev · Platform / infra",
   banner_ads: "Banner ads",
   social: "Social post",
   email: "Email",
@@ -31,6 +38,7 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
 
 export const REQUEST_TYPE_GROUPS: { key: string; label: string; types: RequestType[] }[] = [
   { key: "career_site", label: "Career Site Support", types: ["careersite_bug", "careersite_content", "careersite_jobfeed", "careersite_new_page", "careersite_sow", "careersite_support", "careersite_update"] },
+  { key: "dev",                label: "Dev",                types: ["dev_api", "dev_reporting", "dev_bug", "dev_spike", "dev_tech_debt", "dev_tools", "dev_platform"] },
   { key: "web",                label: "Web",                types: ["web_edit", "landing_page"] },
   { key: "ads",                label: "Ads & Campaigns",    types: ["banner_ads", "social", "email"] },
   { key: "content",            label: "Content",            types: ["copywriting", "job_description", "infographic"] },
@@ -39,6 +47,11 @@ export const REQUEST_TYPE_GROUPS: { key: string; label: string; types: RequestTy
   { key: "brand",              label: "Brand",              types: ["brand_assets"] },
   { key: "other",              label: "Other",              types: ["general"] },
 ];
+
+/** True for engineering house-account / platform Quick Request types. */
+export function isDevRequestType(slug: string | null | undefined): boolean {
+  return typeof slug === "string" && slug.startsWith("dev_");
+}
 
 export const REQUEST_TYPE_GROUP_KEYS = REQUEST_TYPE_GROUPS.map(g => g.key);
 

@@ -7,6 +7,7 @@
  *
  * Autolink: match prod_url (normalized) to live career site projects, or
  * custom_fields.ops_site_id / site_url / clients.
+ * Remaining unmapped rows get Support-mode live-site shells auto-created.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 
@@ -25,6 +26,8 @@ type OpsSitePayload = {
   status?: string | null;
   last_checked_at?: string | null;
 };
+
+type Sb = ReturnType<typeof createClient>;
 
 function normalizeUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -48,7 +51,7 @@ function coerceHealth(status: string | null | undefined): string {
 
 /** Prefer Deno.env; fall back to vault via get_edge_secret (service role). */
 async function resolveSecret(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Sb,
   name: string,
 ): Promise<string | null> {
   const fromEnv = Deno.env.get(name);
@@ -59,6 +62,100 @@ async function resolveSecret(
     return null;
   }
   return typeof data === "string" && data.length > 0 ? data : null;
+}
+
+async function findOrCreateClient(
+  supabase: Sb,
+  clientName: string,
+  clientByName: Map<string, string>,
+): Promise<string> {
+  const key = clientName.trim().toLowerCase();
+  const existing = clientByName.get(key);
+  if (existing) return existing;
+
+  const { data: found } = await supabase
+    .from("clients")
+    .select("id, name")
+    .ilike("name", clientName.trim())
+    .limit(1)
+    .maybeSingle();
+  if (found?.id) {
+    clientByName.set((found.name as string).trim().toLowerCase(), found.id);
+    return found.id as string;
+  }
+
+  const { data: created, error } = await supabase
+    .from("clients")
+    .insert({ name: clientName.trim(), is_internal: false })
+    .select("id, name")
+    .single();
+  if (error) {
+    // Race: unique name — re-fetch
+    const { data: again } = await supabase
+      .from("clients")
+      .select("id, name")
+      .ilike("name", clientName.trim())
+      .limit(1)
+      .maybeSingle();
+    if (again?.id) {
+      clientByName.set((again.name as string).trim().toLowerCase(), again.id);
+      return again.id as string;
+    }
+    throw error;
+  }
+  clientByName.set((created.name as string).trim().toLowerCase(), created.id);
+  return created.id as string;
+}
+
+/** Create Support-mode live career site shell and link pm_ops_sites. */
+async function createLiveSiteFromOpsRow(
+  supabase: Sb,
+  row: {
+    ops_site_id: string;
+    name: string;
+    client_name?: string | null;
+    prod_url?: string | null;
+    platform?: string | null;
+  },
+  clientByName: Map<string, string>,
+): Promise<{ projectId: string; clientId: string }> {
+  const name = row.name.trim();
+  const clientName = (row.client_name?.trim() || name);
+  const clientId = await findOrCreateClient(supabase, clientName, clientByName);
+  const now = new Date().toISOString();
+
+  const { data: project, error } = await supabase
+    .from("pm_projects")
+    .insert({
+      title: name,
+      type: "career_site",
+      work_type: "project",
+      status: "active",
+      client_id: clientId,
+      custom_fields: {
+        support_mode_at: now,
+        ops_site_id: row.ops_site_id,
+        prod_url: row.prod_url ?? null,
+        platform: row.platform ?? null,
+        imported_from_ops: true,
+      },
+      creation_source: "automation",
+      creation_context: {
+        source: "ops-sync-auto-create",
+        ops_site_id: row.ops_site_id,
+      },
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const projectId = (project as { id: string }).id;
+  await supabase
+    .from("pm_ops_sites")
+    .update({ project_id: projectId, client_id: clientId })
+    .eq("ops_site_id", row.ops_site_id);
+
+  return { projectId, clientId };
 }
 
 Deno.serve(async (req) => {
@@ -82,6 +179,7 @@ Deno.serve(async (req) => {
           message: "OPS_SITES_API_URL not configured — set secrets then re-run Sync",
           synced: 0,
           linked: 0,
+          created: 0,
           unmapped: 0,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -140,7 +238,7 @@ Deno.serve(async (req) => {
     );
 
     let linked = 0;
-    let unmapped = 0;
+    let unmappedAfterMatch = 0;
 
     for (const site of list) {
       if (!site?.id || !site?.name) continue;
@@ -177,7 +275,7 @@ Deno.serve(async (req) => {
       }
 
       if (projectId) linked += 1;
-      else unmapped += 1;
+      else unmappedAfterMatch += 1;
 
       const { error } = await supabase.from("pm_ops_sites").upsert(
         {
@@ -205,10 +303,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Auto-create Support-mode shells for remaining unmapped rows
+    let created = 0;
+    const { data: stillUnmapped } = await supabase
+      .from("pm_ops_sites")
+      .select("ops_site_id, name, client_name, prod_url, platform")
+      .is("project_id", null);
+
+    for (const row of (stillUnmapped ?? []) as any[]) {
+      if (!row?.ops_site_id || !row?.name) continue;
+      try {
+        const result = await createLiveSiteFromOpsRow(supabase, row, clientByName);
+        created += 1;
+        linked += 1;
+        // Keep local maps fresh for subsequent rows
+        byOpsId.set(row.ops_site_id, { id: result.projectId, client_id: result.clientId });
+      } catch (e) {
+        console.error(`auto-create failed for ${row.ops_site_id}:`, e);
+      }
+    }
+
+    const unmapped = Math.max(0, unmappedAfterMatch - created);
+
     return new Response(
       JSON.stringify({
         synced: list.length,
         linked,
+        created,
         unmapped,
         skipped: false,
       }),

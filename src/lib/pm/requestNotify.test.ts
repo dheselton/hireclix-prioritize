@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupKeyForRequestType } from "./requestTypes";
+import { groupKeyForRequestType, isDevRequestType } from "./requestTypes";
 import { extractMentionIds } from "./notifications";
 
 describe("groupKeyForRequestType", () => {
@@ -9,6 +9,22 @@ describe("groupKeyForRequestType", () => {
     expect(groupKeyForRequestType("banner_ads")).toBe("ads");
     expect(groupKeyForRequestType("unknown")).toBe("other");
     expect(groupKeyForRequestType(null)).toBe("other");
+  });
+
+  it("maps dev house-account slugs to the dev group", () => {
+    expect(groupKeyForRequestType("dev_api")).toBe("dev");
+    expect(groupKeyForRequestType("dev_reporting")).toBe("dev");
+    expect(groupKeyForRequestType("dev_spike")).toBe("dev");
+  });
+});
+
+describe("isDevRequestType", () => {
+  it("matches dev_ prefix", () => {
+    expect(isDevRequestType("dev_api")).toBe(true);
+    expect(isDevRequestType("dev_platform")).toBe(true);
+    expect(isDevRequestType("careersite_bug")).toBe(false);
+    expect(isDevRequestType("general")).toBe(false);
+    expect(isDevRequestType(null)).toBe(false);
   });
 });
 

@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
 import { useInternalRequestForm, slugifyLabel } from "@/components/pm/forms/useInternalRequestForm";
 import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
-import { REQUEST_TYPE_LABELS, type RequestType } from "@/lib/pm/requestTypes";
+import { REQUEST_TYPE_LABELS, isDevRequestType, type RequestType } from "@/lib/pm/requestTypes";
 
 import { TimelineSetupWizard } from "@/components/pm/TimelineSetupWizard";
 import { ClientSelect } from "@/components/pm/ClientSelect";
@@ -27,7 +27,7 @@ import { SubmissionSuccess } from "@/components/pm/intake/SubmissionSuccess";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { aliasFor } from "@/lib/pm/requestAliases";
 import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
-import { useInternalClientIds } from "@/lib/pm/clients";
+import { useInternalClientIds, resolveDevInternalClientId } from "@/lib/pm/clients";
 import { useLiveSitesForClient, resolveParentProjectId } from "@/lib/pm/liveSites";
 import { createCareerSiteSupportRequest } from "@/lib/pm/supportQueue";
 import { Sparkle } from "lucide-react";
@@ -114,6 +114,18 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
   // Reset answers when request type changes
   useEffect(() => { setReqFieldValues({}); }, [requestType]);
+
+  // Dev house tickets default to the Dev Internal client when none is selected yet.
+  useEffect(() => {
+    if (!isDevRequestType(requestType)) return;
+    if (reqForm.client_id) return;
+    let cancelled = false;
+    void resolveDevInternalClientId().then((id) => {
+      if (cancelled || !id) return;
+      setReqForm((prev) => (prev.client_id ? prev : { ...prev, client_id: id }));
+    });
+    return () => { cancelled = true; };
+  }, [requestType, reqForm.client_id]);
 
   // Auto-select unique live site; clear when client/type changes.
   useEffect(() => {
@@ -389,15 +401,19 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
               <div className="rounded-md border internal-border-l bg-[hsl(var(--internal)/0.06)] px-3 py-2 flex items-center gap-2">
                 <Sparkle className="h-4 w-4 text-[hsl(var(--internal))]" />
                 <div className="text-xs">
-                  <span className="font-semibold text-[hsl(var(--internal))]">Internal HireClix Request</span>
-                  <span className="text-muted-foreground"> — will be color-coded for internal team visibility.</span>
+                  <span className="font-semibold text-[hsl(var(--internal))]">Internal request</span>
+                  <span className="text-muted-foreground"> — will be color-coded for internal team visibility. Change the client later if this becomes billable.</span>
                 </div>
               </div>
             )}
             <div>
               <Label>Request type *</Label>
               <GroupedRequestTypeSelect value={requestType} onChange={setRequestType} />
-              <p className="text-xs text-muted-foreground mt-1">Fields below change based on the request type.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isDevRequestType(requestType)
+                  ? "Dev tickets default to Dev Internal — override client if this is billable."
+                  : "Fields below change based on the request type."}
+              </p>
             </div>
             <div>
               <Label>Title *</Label>

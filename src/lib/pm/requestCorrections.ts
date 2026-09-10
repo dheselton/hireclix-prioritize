@@ -16,6 +16,8 @@ export function isCareerSiteRequestType(slug: string | null | undefined): boolea
   return typeof slug === "string" && slug.startsWith("careersite_");
 }
 
+export { isDevRequestType } from "@/lib/pm/requestTypes";
+
 export type LinkRequestToSiteInput = {
   requestId: string;
   parentProjectId: string;

@@ -39,6 +39,14 @@ describe("shouldShowInUnlinkedList", () => {
       shouldShowInUnlinkedList({
         work_type: "request",
         status: "active",
+        parent_project_id: null,
+        custom_fields: { request_type: "dev_spike" },
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowInUnlinkedList({
+        work_type: "request",
+        status: "active",
         parent_project_id: "site-1",
         custom_fields: { request_type: "careersite_bug" },
       }),

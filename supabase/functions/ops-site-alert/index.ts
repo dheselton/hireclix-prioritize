@@ -1,8 +1,9 @@
 /**
  * Inbound webhook from careersite-ops for site down / recovery alerts.
+ * Also accepts authenticated JWT calls from Live Career Sites for test alerts.
  *
  * POST /functions/v1/ops-site-alert
- * Header: x-api-key: OPS_SITE_ALERT_API_KEY
+ * Auth: x-api-key: OPS_SITE_ALERT_API_KEY  OR  Authorization: Bearer <user JWT>
  *
  * Body:
  * {
@@ -11,7 +12,8 @@
  *   "prod_url": "https://...",
  *   "site_name": "...",
  *   "detected_at": "ISO-8601",
- *   "alert_id": "ops-unique-alert-id"
+ *   "alert_id": "ops-unique-alert-id",
+ *   "source": "ops" | "test"   // JWT path forces "test"
  * }
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
@@ -29,16 +31,26 @@ type AlertBody = {
   site_name?: string;
   detected_at?: string;
   alert_id?: string;
+  source?: string;
 };
+
+type Sb = ReturnType<typeof createClient>;
 
 function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 /** Prefer Deno.env; fall back to vault via get_edge_secret (service role). */
 async function resolveSecret(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Sb,
   name: string,
 ): Promise<string | null> {
   const fromEnv = Deno.env.get(name);
@@ -51,67 +63,265 @@ async function resolveSecret(
   return typeof data === "string" && data.length > 0 ? data : null;
 }
 
+async function findOrCreateClient(
+  supabase: Sb,
+  clientName: string,
+): Promise<string> {
+  const trimmed = clientName.trim();
+  const { data: found } = await supabase
+    .from("clients")
+    .select("id")
+    .ilike("name", trimmed)
+    .limit(1)
+    .maybeSingle();
+  if (found?.id) return found.id as string;
+
+  const { data: created, error } = await supabase
+    .from("clients")
+    .insert({ name: trimmed, is_internal: false })
+    .select("id")
+    .single();
+  if (error) {
+    const { data: again } = await supabase
+      .from("clients")
+      .select("id")
+      .ilike("name", trimmed)
+      .limit(1)
+      .maybeSingle();
+    if (again?.id) return again.id as string;
+    throw error;
+  }
+  return (created as { id: string }).id;
+}
+
+/**
+ * Ensure ops site is linked to a Support-mode live project + client.
+ * Creates pm_ops_sites row and/or live-site shell as needed.
+ */
+async function ensureMappedSite(
+  supabase: Sb,
+  opts: {
+    opsSiteId: string;
+    siteName: string;
+    prodUrl: string | null;
+    existing: any | null;
+  },
+): Promise<{ projectId: string | null; clientId: string; opsSite: any }> {
+  let opsSite = opts.existing;
+  let projectId = (opsSite as any)?.project_id as string | null;
+  let clientId = (opsSite as any)?.client_id as string | null;
+
+  if (projectId && !clientId) {
+    const { data: parent } = await supabase
+      .from("pm_projects")
+      .select("client_id")
+      .eq("id", projectId)
+      .maybeSingle();
+    clientId = (parent as any)?.client_id ?? null;
+  }
+
+  if (!clientId && (opsSite as any)?.client_name) {
+    clientId = await findOrCreateClient(supabase, (opsSite as any).client_name);
+  }
+
+  if (!clientId) {
+    const nameForClient = (opsSite as any)?.name || opts.siteName || opts.opsSiteId;
+    clientId = await findOrCreateClient(supabase, nameForClient);
+  }
+
+  // Upsert cache row if missing
+  if (!opsSite) {
+    const name = opts.siteName || opts.opsSiteId;
+    const now = new Date().toISOString();
+    const { data: inserted, error } = await supabase
+      .from("pm_ops_sites")
+      .upsert(
+        {
+          ops_site_id: opts.opsSiteId,
+          name,
+          client_name: name,
+          prod_url: opts.prodUrl,
+          health_status: "unknown",
+          last_checked_at: now,
+          client_id: clientId,
+          synced_at: now,
+        },
+        { onConflict: "ops_site_id" },
+      )
+      .select("*")
+      .single();
+    if (error) throw error;
+    opsSite = inserted;
+  } else if (!opsSite.client_id) {
+    await supabase
+      .from("pm_ops_sites")
+      .update({ client_id: clientId })
+      .eq("ops_site_id", opts.opsSiteId);
+    opsSite = { ...opsSite, client_id: clientId };
+  }
+
+  projectId = (opsSite as any)?.project_id as string | null;
+
+  if (!projectId) {
+    const name = ((opsSite as any)?.name as string) || opts.siteName || opts.opsSiteId;
+    const now = new Date().toISOString();
+    const { data: project, error: projErr } = await supabase
+      .from("pm_projects")
+      .insert({
+        title: name,
+        type: "career_site",
+        work_type: "project",
+        status: "active",
+        client_id: clientId,
+        custom_fields: {
+          support_mode_at: now,
+          ops_site_id: opts.opsSiteId,
+          prod_url: opts.prodUrl ?? (opsSite as any)?.prod_url ?? null,
+          platform: (opsSite as any)?.platform ?? null,
+          imported_from_ops: true,
+        },
+        creation_source: "automation",
+        creation_context: {
+          source: "ops-alert-auto-create",
+          ops_site_id: opts.opsSiteId,
+        },
+      })
+      .select("id")
+      .single();
+    if (projErr) throw projErr;
+    projectId = (project as { id: string }).id;
+    await supabase
+      .from("pm_ops_sites")
+      .update({ project_id: projectId, client_id: clientId })
+      .eq("ops_site_id", opts.opsSiteId);
+    opsSite = { ...opsSite, project_id: projectId, client_id: clientId };
+  }
+
+  return { projectId, clientId, opsSite };
+}
+
+async function logAlertEvent(
+  supabase: Sb,
+  row: {
+    event: string;
+    ops_site_id: string;
+    alert_id: string | null;
+    action: string;
+    project_id?: string | null;
+    source: "ops" | "test";
+    payload: unknown;
+    ok: boolean;
+    message?: string | null;
+  },
+) {
+  const { error } = await supabase.from("pm_ops_alert_events").insert({
+    event: row.event,
+    ops_site_id: row.ops_site_id,
+    alert_id: row.alert_id,
+    action: row.action,
+    project_id: row.project_id ?? null,
+    source: row.source,
+    payload: row.payload ?? {},
+    ok: row.ok,
+    message: row.message ?? null,
+  });
+  if (error) console.error("pm_ops_alert_events insert failed:", error.message);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+
+  let body: AlertBody | null = null;
+  let source: "ops" | "test" = "ops";
+  let authViaJwt = false;
+
   try {
     if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Method not allowed" }, 405);
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
 
     const apiKey = req.headers.get("x-api-key");
     const expected = await resolveSecret(supabase, "OPS_SITE_ALERT_API_KEY");
-    if (!expected || !apiKey || apiKey !== expected) {
-      return new Response(JSON.stringify({ error: "Unauthorized: Invalid API key" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const apiKeyOk = !!(expected && apiKey && apiKey === expected);
+
+    if (!apiKeyOk) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+      if (!jwt) {
+        return jsonResponse({ error: "Unauthorized: Invalid API key" }, 401);
+      }
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "",
+        { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+      );
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData?.user) {
+        return jsonResponse({ error: "Unauthorized: Invalid API key or session" }, 401);
+      }
+      authViaJwt = true;
     }
 
-    const body = (await req.json()) as AlertBody;
+    body = (await req.json()) as AlertBody;
     const event = (body.event ?? "").toLowerCase();
     const opsSiteId = body.ops_site_id?.trim();
     const alertId = body.alert_id?.trim() || `ops-${opsSiteId}-${body.detected_at ?? Date.now()}`;
     const siteName = body.site_name?.trim() || "Career site";
     const detectedAt = body.detected_at ?? new Date().toISOString();
 
-    if (!opsSiteId) {
-      return new Response(JSON.stringify({ error: "ops_site_id required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // JWT UI tests always mark source=test; API-key callers may pass source=test explicitly
+    if (authViaJwt || (body.source ?? "").toLowerCase() === "test") {
+      source = "test";
     }
 
-    const { data: opsSite } = await supabase
+    if (!opsSiteId) {
+      await logAlertEvent(supabase, {
+        event: event || "unknown",
+        ops_site_id: "",
+        alert_id: alertId,
+        action: "bad_payload",
+        source,
+        payload: body,
+        ok: false,
+        message: "ops_site_id required",
+      });
+      return jsonResponse({ error: "ops_site_id required" }, 400);
+    }
+
+    const { data: opsSiteRow } = await supabase
       .from("pm_ops_sites")
       .select("*")
       .eq("ops_site_id", opsSiteId)
       .maybeSingle();
 
+    let opsSite = opsSiteRow as any;
+
     // Update health cache if we have a row
     if (opsSite) {
       const health =
-        event === "site.down" ? "down" : event === "site.up" || event === "site.recovered" ? "up" : (opsSite as any).health_status;
+        event === "site.down"
+          ? "down"
+          : event === "site.up" || event === "site.recovered"
+          ? "up"
+          : opsSite.health_status;
       await supabase
         .from("pm_ops_sites")
         .update({ health_status: health, last_checked_at: detectedAt })
         .eq("ops_site_id", opsSiteId);
+      opsSite = { ...opsSite, health_status: health, last_checked_at: detectedAt };
     }
 
-    const projectId = (opsSite as any)?.project_id as string | null;
-    const clientId = (opsSite as any)?.client_id as string | null;
-    const displayName = (opsSite as any)?.name ?? siteName;
-    const prodUrl = body.prod_url ?? (opsSite as any)?.prod_url ?? null;
+    let projectId = opsSite?.project_id as string | null;
+    const displayName = opsSite?.name ?? siteName;
+    const prodUrl = body.prod_url ?? opsSite?.prod_url ?? null;
+    const isTest = source === "test";
 
     // Find open alert request for this ops site / alert
     const findOpenAlert = async () => {
@@ -124,7 +334,6 @@ Deno.serve(async (req) => {
       if (projectId) q = q.eq("parent_project_id", projectId);
       const { data } = await q.order("created_at", { ascending: false }).limit(5);
       const rows = (data ?? []) as any[];
-      // Prefer exact alert_id match, else any active for site
       const byAlert = rows.find((r) => r.custom_fields?.ops_alert_id === alertId);
       return byAlert ?? rows[0] ?? null;
     };
@@ -143,25 +352,45 @@ Deno.serve(async (req) => {
         await supabase.from("pm_projects").update({ custom_fields: cf }).eq("id", open.id);
         await supabase.from("pm_comments").insert({
           project_id: open.id,
-          body: `Site recovered (ops alert). Detected at ${detectedAt}.${prodUrl ? ` URL: ${prodUrl}` : ""} Confirm and close when ready.`,
+          body: `${isTest ? "[TEST] " : ""}Site recovered (ops alert). Detected at ${detectedAt}.${prodUrl ? ` URL: ${prodUrl}` : ""} Confirm and close when ready.`,
           visibility: "internal",
         });
-        return new Response(
-          JSON.stringify({ ok: true, action: "commented_recovery", project_id: open.id }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        await logAlertEvent(supabase, {
+          event,
+          ops_site_id: opsSiteId,
+          alert_id: alertId,
+          action: "commented_recovery",
+          project_id: open.id,
+          source,
+          payload: body,
+          ok: true,
+        });
+        return jsonResponse({ ok: true, action: "commented_recovery", project_id: open.id });
       }
-      return new Response(
-        JSON.stringify({ ok: true, action: "no_open_alert" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      await logAlertEvent(supabase, {
+        event,
+        ops_site_id: opsSiteId,
+        alert_id: alertId,
+        action: "no_open_alert",
+        source,
+        payload: body,
+        ok: true,
+      });
+      return jsonResponse({ ok: true, action: "no_open_alert" });
     }
 
     if (!isDown) {
-      return new Response(JSON.stringify({ error: `Unsupported event: ${event}` }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      await logAlertEvent(supabase, {
+        event,
+        ops_site_id: opsSiteId,
+        alert_id: alertId,
+        action: "unsupported_event",
+        source,
+        payload: body,
+        ok: false,
+        message: `Unsupported event: ${event}`,
       });
+      return jsonResponse({ error: `Unsupported event: ${event}` }, 400);
     }
 
     // Dedup: existing open alert for this site
@@ -169,7 +398,7 @@ Deno.serve(async (req) => {
     if (existing) {
       await supabase.from("pm_comments").insert({
         project_id: existing.id,
-        body: `Repeat down alert from ops (${alertId}) at ${detectedAt}.${prodUrl ? ` ${prodUrl}` : ""}`,
+        body: `${isTest ? "[TEST] " : ""}Repeat down alert from ops (${alertId}) at ${detectedAt}.${prodUrl ? ` ${prodUrl}` : ""}`,
         visibility: "internal",
       });
       await supabase
@@ -184,57 +413,42 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
-      return new Response(
-        JSON.stringify({ ok: true, action: "deduped", project_id: existing.id }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      await logAlertEvent(supabase, {
+        event,
+        ops_site_id: opsSiteId,
+        alert_id: alertId,
+        action: "deduped",
+        project_id: existing.id,
+        source,
+        payload: body,
+        ok: true,
+      });
+      return jsonResponse({ ok: true, action: "deduped", project_id: existing.id });
     }
 
-    // Resolve client for create
-    let resolvedClientId = clientId;
-    if (!resolvedClientId && projectId) {
-      const { data: parent } = await supabase
-        .from("pm_projects")
-        .select("client_id")
-        .eq("id", projectId)
-        .maybeSingle();
-      resolvedClientId = (parent as any)?.client_id ?? null;
-    }
-
-    if (!resolvedClientId) {
-      // Create unlinked inbox-style request under a synthetic needs-mapping path:
-      // still need a client_id — use first matching client by ops client_name or fail soft.
-      if ((opsSite as any)?.client_name) {
-        const { data: c } = await supabase
-          .from("clients")
-          .select("id")
-          .ilike("name", (opsSite as any).client_name)
-          .limit(1)
-          .maybeSingle();
-        resolvedClientId = (c as any)?.id ?? null;
-      }
-    }
-
-    if (!resolvedClientId) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          action: "unmapped_no_client",
-          message: `Site ${opsSiteId} has no linked Prioritize project/client. Sync + map on Live Sites, then alerts will create tickets.`,
-        }),
-        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    // Auto-provision live site + client so we never soft-fail with 202
+    const mapped = await ensureMappedSite(supabase, {
+      opsSiteId,
+      siteName: displayName,
+      prodUrl,
+      existing: opsSite,
+    });
+    projectId = mapped.projectId;
+    const resolvedClientId = mapped.clientId;
+    opsSite = mapped.opsSite;
 
     const today = todayISO();
-    const title = `[Site down] ${displayName}`;
+    const finalTitle = isTest
+      ? `[TEST][Site down] ${displayName}`
+      : `[Site down] ${displayName}`;
     const description = [
-      `Automated alert from careersite-ops.`,
+      isTest
+        ? `Test alert from Prioritize Live Career Sites.`
+        : `Automated alert from careersite-ops.`,
       prodUrl ? `URL: ${prodUrl}` : null,
       `Ops site id: ${opsSiteId}`,
       `Alert id: ${alertId}`,
       `Detected: ${detectedAt}`,
-      !projectId ? "⚠️ Site is not linked to a live career site project in Prioritize — map it on Live Career Sites." : null,
     ]
       .filter(Boolean)
       .join("\n");
@@ -242,7 +456,7 @@ Deno.serve(async (req) => {
     const { data: project, error: projErr } = await supabase
       .from("pm_projects")
       .insert({
-        title,
+        title: finalTitle,
         type: "quick_request",
         work_type: "request",
         status: "active",
@@ -258,9 +472,15 @@ Deno.serve(async (req) => {
           ops_detected_at: detectedAt,
           ops_prod_url: prodUrl,
           is_support: true,
+          ...(isTest ? { ops_test: true } : {}),
         },
         creation_source: "automation",
-        creation_context: { source: "ops-site-alert", ops_site_id: opsSiteId, alert_id: alertId },
+        creation_context: {
+          source: "ops-site-alert",
+          ops_site_id: opsSiteId,
+          alert_id: alertId,
+          test: isTest,
+        },
       })
       .select()
       .single();
@@ -269,36 +489,72 @@ Deno.serve(async (req) => {
 
     const { error: taskErr } = await supabase.from("pm_tasks").insert({
       project_id: (project as any).id,
-      title,
+      title: finalTitle,
       description,
       type: "dev",
       status: "unclaimed",
       priority: "urgent",
-      tags: ["support", "ops-alert"],
+      tags: isTest ? ["support", "ops-alert", "ops-test"] : ["support", "ops-alert"],
       custom_fields: {
         ops_site_id: opsSiteId,
         ops_alert_id: alertId,
         is_support: true,
+        ...(isTest ? { ops_test: true } : {}),
       },
       creation_source: "automation",
-      creation_context: { source: "ops-site-alert" },
+      creation_context: { source: "ops-site-alert", test: isTest },
     });
     if (taskErr) throw taskErr;
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        action: "created",
-        project_id: (project as any).id,
-        linked: !!projectId,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    // Notify team (same path as form / manual career-site requests)
+    try {
+      await supabase.rpc("fanout_new_request_notifications", {
+        p_project_id: (project as any).id,
+        p_title: finalTitle,
+        p_group_key: "career_site",
+        p_client_id: resolvedClientId,
+        p_request_type: "careersite_bug",
+        p_actor_id: null,
+      });
+    } catch (notifyErr) {
+      console.error("fanout_new_request_notifications failed:", notifyErr);
+    }
+
+    await logAlertEvent(supabase, {
+      event,
+      ops_site_id: opsSiteId,
+      alert_id: alertId,
+      action: "created",
+      project_id: (project as any).id,
+      source,
+      payload: body,
+      ok: true,
+    });
+
+    return jsonResponse({
+      ok: true,
+      action: "created",
+      project_id: (project as any).id,
+      linked: !!projectId,
+      source,
+    });
   } catch (err) {
     console.error("ops-site-alert error", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    try {
+      await logAlertEvent(supabase, {
+        event: (body?.event ?? "unknown").toLowerCase(),
+        ops_site_id: body?.ops_site_id?.trim() || "unknown",
+        alert_id: body?.alert_id?.trim() || null,
+        action: "error",
+        source,
+        payload: body ?? {},
+        ok: false,
+        message,
+      });
+    } catch {
+      /* ignore log failure */
+    }
+    return jsonResponse({ error: message }, 500);
   }
 });

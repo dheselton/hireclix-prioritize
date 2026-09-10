@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Headphones, Search, LifeBuoy, AlertTriangle, Clock, Link2, RefreshCw, Layers,
+  FlaskConical, Activity,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,11 +31,14 @@ import {
   createLiveSiteFromOps,
   createLiveSitesFromOps,
   fetchOpsSites,
+  fetchRecentOpsAlertEvents,
   fetchUnmappedOpsSites,
   healthBadgeClass,
   linkOpsSiteToProject,
   opsSiteByProjectId,
+  sendTestOpsAlert,
   triggerOpsSitesSync,
+  type OpsAlertEvent,
   type PmOpsSite,
 } from "@/lib/pm/opsSites";
 import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
@@ -99,6 +103,10 @@ export default function LiveCareerSites() {
   const [mapBusyId, setMapBusyId] = useState<string | null>(null);
   const [createBusyId, setCreateBusyId] = useState<string | null>(null);
   const [creatingAll, setCreatingAll] = useState(false);
+  const [recentAlerts, setRecentAlerts] = useState<OpsAlertEvent[]>([]);
+  const [testBusyId, setTestBusyId] = useState<string | null>(null);
+  /** Per-site alert_id so Test down → Test down dedupes and Test recovery finds the ticket. */
+  const [testAlertIds, setTestAlertIds] = useState<Record<string, string>>({});
 
   const reload = async () => {
     setLoading(true);
@@ -151,6 +159,11 @@ export default function LiveCareerSites() {
       } catch {
         setOpsByProject(new Map());
         setUnmappedOps([]);
+      }
+      try {
+        setRecentAlerts(await fetchRecentOpsAlertEvents(20));
+      } catch {
+        setRecentAlerts([]);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load live career sites");
@@ -246,8 +259,13 @@ export default function LiveCareerSites() {
       if (result.skipped) {
         toast.message(result.message ?? "Ops API URL not configured yet");
       } else {
+        const created = result.created ?? 0;
         toast.success(
-          `Synced ${result.synced} sites (${result.linked} linked, ${result.unmapped} need mapping)`,
+          created > 0
+            ? `Synced ${result.synced} sites (${result.linked} linked, ${created} auto-created)`
+            : `Synced ${result.synced} sites (${result.linked} linked${
+                result.unmapped > 0 ? `, ${result.unmapped} still need mapping` : ""
+              })`,
         );
       }
       await reload();
@@ -255,6 +273,46 @@ export default function LiveCareerSites() {
       toast.error(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function runTestAlert(
+    ops: PmOpsSite,
+    event: "site.down" | "site.up",
+  ) {
+    setTestBusyId(`${ops.ops_site_id}:${event}`);
+    try {
+      let alertId = testAlertIds[ops.ops_site_id];
+      if (!alertId && event === "site.down") {
+        alertId = `test-${ops.ops_site_id}-${Date.now()}`;
+        setTestAlertIds((prev) => ({ ...prev, [ops.ops_site_id]: alertId! }));
+      }
+      const result = await sendTestOpsAlert({
+        event,
+        opsSiteId: ops.ops_site_id,
+        siteName: ops.name,
+        prodUrl: ops.prod_url,
+        alertId,
+      });
+      if (result.alert_id) {
+        setTestAlertIds((prev) => ({ ...prev, [ops.ops_site_id]: result.alert_id! }));
+      }
+      if (!result.ok && result.error) {
+        toast.error(result.error);
+      } else if (result.action === "created" && result.project_id) {
+        toast.success(`Test ticket created (${result.project_id.slice(0, 8)}…)`);
+      } else if (result.action === "deduped" && result.project_id) {
+        toast.message(`Deduped onto open alert (${result.project_id.slice(0, 8)}…)`);
+      } else if (result.action === "commented_recovery" && result.project_id) {
+        toast.success(`Recovery commented — confirm & close when ready`);
+      } else {
+        toast.message(`Alert: ${result.action}`);
+      }
+      await reload();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Test alert failed");
+    } finally {
+      setTestBusyId(null);
     }
   }
 
@@ -488,24 +546,53 @@ export default function LiveCareerSites() {
                   )}
                 </div>
 
-                <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                  <AvatarStack userIds={row.queue.assigneeIds} max={4} size="xs" />
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setLogFor(row);
-                      }}
-                    >
-                      <LifeBuoy className="h-3 w-3 mr-1" /> New request
-                    </Button>
-                    <Button size="sm" className="h-7 text-xs" asChild>
-                      <Link to={`/pm/projects/${row.id}?tab=support`}>Open</Link>
-                    </Button>
+                <div className="mt-auto flex flex-col gap-2 pt-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <AvatarStack userIds={row.queue.assigneeIds} max={4} size="xs" />
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setLogFor(row);
+                        }}
+                      >
+                        <LifeBuoy className="h-3 w-3 mr-1" /> New request
+                      </Button>
+                      <Button size="sm" className="h-7 text-xs" asChild>
+                        <Link to={`/pm/projects/${row.id}?tab=support`}>Open</Link>
+                      </Button>
+                    </div>
                   </div>
+                  {ops && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <FlaskConical className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs px-2"
+                        disabled={!!testBusyId}
+                        onClick={() => void runTestAlert(ops, "site.down")}
+                      >
+                        {testBusyId === `${ops.ops_site_id}:site.down`
+                          ? "Sending…"
+                          : "Test down"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs px-2"
+                        disabled={!!testBusyId}
+                        onClick={() => void runTestAlert(ops, "site.up")}
+                      >
+                        {testBusyId === `${ops.ops_site_id}:site.up`
+                          ? "Sending…"
+                          : "Test recovery"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -531,6 +618,72 @@ export default function LiveCareerSites() {
               <SiteInitiativeCard key={r.initiative.id} rollup={r} />
             ))}
           </div>
+        </section>
+      )}
+
+      {recentAlerts.length > 0 && (
+        <section className="space-y-2 pt-2">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-medium">Recent ops alerts</h2>
+            <Badge variant="secondary" className="tabular-nums">
+              {recentAlerts.length}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Inbound site.down / site.up from careersite-ops and in-app tests. Use this to confirm
+            tickets without curling.
+          </p>
+          <ul className="rounded-lg border border-border divide-y divide-border bg-card overflow-hidden">
+            {recentAlerts.map((ev) => {
+              const siteName =
+                [...opsByProject.values()].find((s) => s.ops_site_id === ev.ops_site_id)?.name ??
+                unmappedOps.find((s) => s.ops_site_id === ev.ops_site_id)?.name ??
+                ev.ops_site_id;
+              return (
+                <li
+                  key={ev.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs"
+                >
+                  <span className="text-muted-foreground tabular-nums shrink-0">
+                    {fmtDateShort(ev.received_at.slice(0, 10))}{" "}
+                    {ev.received_at.slice(11, 16)}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] uppercase",
+                      ev.source === "test" && "border-dashed",
+                    )}
+                  >
+                    {ev.source}
+                  </Badge>
+                  <span className="font-medium">{ev.event}</span>
+                  <span className="text-muted-foreground truncate max-w-[180px]" title={siteName}>
+                    {siteName}
+                  </span>
+                  <Badge
+                    variant={ev.ok ? "secondary" : "destructive"}
+                    className="tabular-nums"
+                  >
+                    {ev.action ?? (ev.ok ? "ok" : "error")}
+                  </Badge>
+                  {ev.project_id ? (
+                    <Link
+                      to={`/pm/projects/${ev.project_id}`}
+                      className="text-primary underline-offset-2 hover:underline ml-auto"
+                    >
+                      Open ticket
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground ml-auto truncate max-w-[200px]">
+                      {ev.message ?? "—"}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 

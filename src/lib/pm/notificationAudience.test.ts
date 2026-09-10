@@ -10,6 +10,8 @@ describe("isCreativeProductionRequest", () => {
     expect(isCreativeProductionRequest("careersite_jobfeed")).toBe(true);
     expect(isCreativeProductionRequest("web_edit")).toBe(true);
     expect(isCreativeProductionRequest("banner_ads")).toBe(true);
+    expect(isCreativeProductionRequest("dev_reporting")).toBe(true);
+    expect(isCreativeProductionRequest("dev_api")).toBe(true);
   });
 
   it("excludes general/other", () => {

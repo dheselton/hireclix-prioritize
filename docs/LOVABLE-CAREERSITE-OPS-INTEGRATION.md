@@ -175,10 +175,11 @@ Use a **different secret** from the catalog API.
 | Status | Meaning |
 |--------|---------|
 | `200` | Success — ticket created, deduped, recovery commented, or no open alert to close |
-| `202` | Site not mapped to Prioritize project/client yet (`unmapped_no_client`). Fix mapping in Prioritize Live Sites, then retry |
 | `400` | Bad payload (e.g. missing `ops_site_id`) |
-| `401` | Invalid `x-api-key` |
+| `401` | Invalid `x-api-key` (or invalid session for in-app test) |
 | `500` | Prioritize error |
+
+Unmapped sites are **auto-provisioned** (Support-mode live site + client) on `site.down` — Prioritize no longer returns `202 unmapped_no_client`.
 
 Example success responses:
 
@@ -307,7 +308,7 @@ curl -sS -X POST \
 ## Questions / edge cases
 
 **Q: Site exists in ops but not in Prioritize yet?**  
-A: Webhook returns `202 unmapped_no_client`. Prioritize team maps it on Live Career Sites, then alerts work.
+A: Prioritize auto-creates a Support-mode live career site + client on sync or on the first `site.down`, then creates the ticket under it.
 
 **Q: Same site down twice before recovery?**  
 A: Prioritize dedupes — second `site.down` adds a comment to existing open alert, not a new ticket.
@@ -317,3 +318,6 @@ A: Yes — just tell Prioritize team the final URL for `OPS_SITES_API_URL`.
 
 **Q: Do we need CORS?**  
 A: No for these endpoints — only server-to-server calls.
+
+**Q: How do we test without forcing a real outage?**  
+A: On Prioritize **Live Career Sites**, use **Test down** / **Test recovery** (JWT-authenticated). Events appear under **Recent ops alerts** with `source: test`.

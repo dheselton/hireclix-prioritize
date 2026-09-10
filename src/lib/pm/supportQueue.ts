@@ -11,7 +11,7 @@ import { fanoutNewRequestNotifications } from "@/lib/pm/newRequestNotify";
 import { isHardOverdue } from "@/lib/pm/dueState";
 import { todayISO } from "@/lib/pm/format";
 import { emitTasksChanged } from "@/lib/pm/refresh";
-import { refreshCareerSiteProjects } from "@/lib/pm/clients";
+import { intakeTaskTypeForRequest, refreshCareerSiteProjects } from "@/lib/pm/clients";
 import type { RequestType } from "@/lib/pm/requestTypes";
 import type { CreationSource } from "@/lib/pm/attribution";
 import { isDone, type PmProject, type PmTask, type TaskStatus } from "@/types/pm";
@@ -344,12 +344,13 @@ export async function createCareerSiteSupportRequest(
   let titles = (input.taskTitles ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 3);
   if (!titles.length) titles = [title];
   const taskDescription = input.description?.trim() || null;
+  const taskType = intakeTaskTypeForRequest(input.requestType);
 
   const { error: taskErr } = await supabase.from("pm_tasks").insert(
     titles.map((taskTitle, i) => ({
       project_id: project.id,
       title: taskTitle,
-      type: "design",
+      type: taskType,
       status: "unclaimed",
       priority: "medium",
       duration_days: 1,

@@ -361,6 +361,7 @@ export default function PublicForm() {
               </Label>
               <GroupedRequestTypeSelect
                 value={(values[requestTypeField.id] as RequestType) || ""}
+                excludeGroups={["dev"]}
                 onChange={(v) => setValues({ ...values, [requestTypeField.id]: v })}
               />
               <p className="text-xs text-muted-foreground mt-1">Fields below change based on the request type.</p>

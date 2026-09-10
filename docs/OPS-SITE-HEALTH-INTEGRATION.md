@@ -38,7 +38,8 @@ Set Prioritize secret `OPS_SITES_API_URL` to that full URL.
 **Prioritize consumer:** edge function `sync-ops-sites`  
 - Env: `OPS_SITES_API_URL`, `OPS_SITES_API_KEY`  
 - Cron: hourly + **Sync now** on Live Career Sites  
-- Upserts `pm_ops_sites`; auto-links when URL or `custom_fields.ops_site_id` matches a live Support-mode project
+- Upserts `pm_ops_sites`; auto-links when URL or `custom_fields.ops_site_id` matches a live Support-mode project  
+- **Auto-creates** Support-mode live-site shells for remaining unmapped ops sites (find-or-create client)
 
 ---
 
@@ -67,14 +68,15 @@ x-api-key: <OPS_SITE_ALERT_API_KEY>
 
 | `event` | Behavior |
 |---------|----------|
-| `site.down` | Create a career-site support request + unclaimed urgent task under the linked live site (deduped if an open ops alert already exists — adds a comment instead) |
+| `site.down` | Create a career-site support request + unclaimed urgent task under the linked live site (deduped if an open ops alert already exists — adds a comment instead). Auto-provisions a live site + client if missing. Fans out `new_request` notifications (`careersite_bug`). |
 | `site.up` / `site.recovered` | Comment on the open alert request and clear `ops_alert_active` (does **not** auto-complete) |
 
 **Prioritize consumer:** edge function `ops-site-alert`  
 - Env: `OPS_SITE_ALERT_API_KEY`  
-- `verify_jwt = false` (API key only)
+- `verify_jwt = false` — accepts **either** `x-api-key` (ops) **or** a logged-in user JWT (in-app tests)  
+- Every inbound call is logged to `pm_ops_alert_events`
 
-Unmapped sites (no linked project/client) return `202` with `action: unmapped_no_client` so ops can retry after mapping.
+Optional body field `source: "test"` marks the ticket `[TEST][Site down]…` and `custom_fields.ops_test: true`. JWT callers always get `source=test`.
 
 ---
 
@@ -84,10 +86,16 @@ Unmapped sites (no linked project/client) return `202` with `action: unmapped_no
 |--------|---------|
 | `OPS_SITES_API_URL` | `sync-ops-sites` — full URL to your catalog endpoint |
 | `OPS_SITES_API_KEY` | `sync-ops-sites` — sent as `x-api-key` |
-| `OPS_SITE_ALERT_API_KEY` | `ops-site-alert` — expected inbound key |
+| `OPS_SITE_ALERT_API_KEY` | `ops-site-alert` — expected inbound key from careersite-ops |
 
 ---
 
-## 4. Manual sync from Prioritize UI
+## 4. Testing from Prioritize (no curl)
 
-Live Career Sites → **Sync from ops** calls `supabase.functions.invoke('sync-ops-sites')`.
+On **Live Career Sites**:
+
+1. **Sync from ops** — pulls catalog; auto-creates unmapped live sites.
+2. Per linked site: **Test down** → creates/dedupes an urgent support ticket; **Test recovery** → comments and clears active flag.
+3. **Recent ops alerts** — last ~20 inbound events (`ops` or `test`) with links to tickets.
+
+Production webhooks use the same endpoint; they show as `source: ops` in Recent ops alerts.

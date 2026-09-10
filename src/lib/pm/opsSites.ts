@@ -235,6 +235,7 @@ export async function unlinkOpsSite(opsSiteId: string): Promise<void> {
 export async function triggerOpsSitesSync(): Promise<{
   synced: number;
   linked: number;
+  created?: number;
   unmapped: number;
   skipped?: boolean;
   message?: string;
@@ -244,6 +245,94 @@ export async function triggerOpsSitesSync(): Promise<{
   });
   if (error) throw error;
   return data as any;
+}
+
+export type OpsAlertEvent = {
+  id: string;
+  received_at: string;
+  event: string;
+  ops_site_id: string;
+  alert_id: string | null;
+  action: string | null;
+  project_id: string | null;
+  source: "ops" | "test";
+  ok: boolean;
+  message: string | null;
+};
+
+export type OpsAlertActionResult = {
+  ok: boolean;
+  action: string;
+  project_id?: string;
+  linked?: boolean;
+  source?: string;
+  message?: string;
+  error?: string;
+  /** Echoed so callers can reuse for recovery / dedupe. */
+  alert_id?: string;
+};
+
+/** Fetch recent inbound ops alert events (test + production). */
+export async function fetchRecentOpsAlertEvents(limit = 20): Promise<OpsAlertEvent[]> {
+  const { data, error } = await supabase
+    .from("pm_ops_alert_events")
+    .select("id, received_at, event, ops_site_id, alert_id, action, project_id, source, ok, message")
+    .order("received_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    if (error.code === "42P01" || /does not exist|relation/i.test(error.message)) return [];
+    throw error;
+  }
+  return ((data ?? []) as any[]).map((r) => ({
+    id: r.id,
+    received_at: r.received_at,
+    event: r.event,
+    ops_site_id: r.ops_site_id,
+    alert_id: r.alert_id ?? null,
+    action: r.action ?? null,
+    project_id: r.project_id ?? null,
+    source: (r.source === "test" ? "test" : "ops") as "ops" | "test",
+    ok: !!r.ok,
+    message: r.message ?? null,
+  }));
+}
+
+/**
+ * Fire a test down/up alert via ops-site-alert (JWT auth — no API key in browser).
+ * Uses a stable alert_id for the session so down → down dedupes and up recovers the same ticket.
+ */
+export async function sendTestOpsAlert(params: {
+  event: "site.down" | "site.up";
+  opsSiteId: string;
+  siteName?: string | null;
+  prodUrl?: string | null;
+  /** Reuse across down/up so recovery finds the open ticket. */
+  alertId?: string;
+}): Promise<OpsAlertActionResult> {
+  const alertId =
+    params.alertId ??
+    `test-${params.opsSiteId}-${Date.now()}`;
+  const { data, error } = await supabase.functions.invoke("ops-site-alert", {
+    body: {
+      event: params.event,
+      ops_site_id: params.opsSiteId,
+      site_name: params.siteName ?? undefined,
+      prod_url: params.prodUrl ?? undefined,
+      detected_at: new Date().toISOString(),
+      alert_id: alertId,
+      source: "test",
+    },
+  });
+  if (error) throw error;
+  return { ...(data as OpsAlertActionResult), alert_id: alertId };
+}
+
+export function useRecentOpsAlertEvents(limit = 20) {
+  return useQuery({
+    queryKey: ["pm-ops-alert-events", limit],
+    queryFn: () => fetchRecentOpsAlertEvents(limit),
+    staleTime: 15_000,
+  });
 }
 
 export function healthBadgeClass(status: OpsHealthStatus | string | null | undefined): string {

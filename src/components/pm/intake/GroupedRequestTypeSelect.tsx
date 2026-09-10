@@ -6,15 +6,27 @@ interface Props {
   onChange: (v: RequestType) => void;
   placeholder?: string;
   className?: string;
+  /** Group keys to omit (e.g. hide "dev" on the public client form). */
+  excludeGroups?: string[];
 }
 
 /** Grouped request-type dropdown reused by CreateWorkDialog and the public Quick Request form. */
-export function GroupedRequestTypeSelect({ value, onChange, placeholder = "Select a request type", className }: Props) {
+export function GroupedRequestTypeSelect({
+  value,
+  onChange,
+  placeholder = "Select a request type",
+  className,
+  excludeGroups,
+}: Props) {
+  const groups = excludeGroups?.length
+    ? REQUEST_TYPE_GROUPS.filter((g) => !excludeGroups.includes(g.key))
+    : REQUEST_TYPE_GROUPS;
+
   return (
     <Select value={value ?? ""} onValueChange={(v) => onChange(v as RequestType)}>
       <SelectTrigger className={className}><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent className="z-50 bg-popover max-h-[60vh]">
-        {REQUEST_TYPE_GROUPS.map(g => (
+        {groups.map(g => (
           <SelectGroup key={g.key}>
             <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">{g.label}</SelectLabel>
             {g.types.map(t => (

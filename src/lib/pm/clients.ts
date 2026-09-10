@@ -220,6 +220,56 @@ export function isCareerSiteRequest(customFields: any): boolean {
   return typeof t === "string" && t.startsWith("careersite_");
 }
 
+export const DEV_INTERNAL_CLIENT_NAME = "Dev Internal";
+
+let devInternalIdCache: string | null | undefined;
+let devInternalPending: Promise<string | null> | null = null;
+
+/**
+ * Resolve the Dev Internal house-account client id (cached).
+ * Returns null if the migration has not been applied yet.
+ */
+export async function resolveDevInternalClientId(): Promise<string | null> {
+  if (devInternalIdCache !== undefined) return devInternalIdCache;
+  if (!devInternalPending) {
+    devInternalPending = (async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id,name")
+        .is("archived_at", null)
+        .ilike("name", DEV_INTERNAL_CLIENT_NAME);
+      if (error) {
+        console.error("resolveDevInternalClientId", error);
+        devInternalIdCache = null;
+        return null;
+      }
+      const rows = (data ?? []) as { id: string; name: string }[];
+      const exact = rows.find(
+        (r) => r.name.trim().toLowerCase() === DEV_INTERNAL_CLIENT_NAME.toLowerCase(),
+      );
+      devInternalIdCache = exact?.id ?? rows[0]?.id ?? null;
+      return devInternalIdCache;
+    })().finally(() => {
+      devInternalPending = null;
+    });
+  }
+  return devInternalPending;
+}
+
+/** Clear cached Dev Internal id (tests / after client edits). */
+export function clearDevInternalClientCache() {
+  devInternalIdCache = undefined;
+  devInternalPending = null;
+}
+
+/**
+ * Default task type stamped on Quick Request intake tasks.
+ * Dev house tickets use `dev`; career-site / creative intake stays `design`.
+ */
+export function intakeTaskTypeForRequest(requestType: string | null | undefined): "dev" | "design" {
+  return typeof requestType === "string" && requestType.startsWith("dev_") ? "dev" : "design";
+}
+
 /** Pretty sub-type label for a Career Site request (strips the "careersite_" prefix). */
 export function careerSiteSubtype(customFields: any): string | null {
   const t = customFields?.request_type;
