@@ -14,6 +14,8 @@ Shareable markdown for HireClix Prioritize. The same files render in-app at **`/
 | External | Client portal & public forms | `external/` |
 | Shared | Glossary + career-site deep-dive | `_shared/` |
 
+Key operator Career Site guides: `operators/career-site-template.md`, `operators/career-site-project.md`, `_shared/career-site-build.md`.
+
 ## Guide format
 
 1. **When to use this**

@@ -1,72 +1,73 @@
 # Career Site project — end-to-end walkthrough
 
-From finalizing the template to editing dates so the whole schedule cascades.
+From editing the Career Site template, through create, schedule cascade, pages, and Support mode.
+
+For field-by-field template editing see [Set up a Career Site template](/pm/help?guide=operators/career-site-template). For the create wizard alone see [Start a Career Site project](/pm/help?guide=operators/career-site-project).
 
 ## 1 · Finalize the Career Site template
 
-1. Go to [Templates](/pm/templates) in the sidebar.
-2. Find *Career Site* and click **Edit**.
-3. For every task, confirm:
-   - **Duration (days)** is realistic.
-   - **Role** is set (Designer / Developer / PM / etc.) — new projects use this to suggest assignees.
-   - **Phase** is set so tasks group correctly in the project.
-4. Lock anchor tasks:
-   - Mark *Kickoff* as **Locked to kickoff**.
-   - Mark *Launch* as **Locked to go-live**.
-5. Add **dependencies** so each task lists what it waits on. Without these the timeline cannot cascade.
-6. Set **Default go-live offset** (the panel at the top of the template editor) — this is how far out new projects start.
+1. Go to [Templates](/pm/templates) → **Career Site** → **Edit**.
+2. Confirm **Name** (and optionally **Go-live offset (days)** — stored only; the create wizard suggests go-live from the task schedule, not this offset).
+3. Under **Page Groups**, set expected pages, parallel cap, discovery gate `temp_id`, reserved days per phase (blank = formula), and optional page presets. Assign slot tasks to each group in the Tasks list.
+4. In **Tasks**, for every row confirm:
+   - **Title**, **Type**, **Phase**, **Days**
+   - **Page Group** vs **— (one-off)**
+   - **Lock** when the bar should stay fixed in the create Gantt
+   - **Teams** (Design, Dev, PM, QA, …)
+   - **Link snippets** on design/dev tasks that reuse career-site code
+5. Dependencies, assignee roles, and lock-to-kickoff / lock-to-go-live may exist on the **seeded** template but are **not** editable in TemplateBuilder — they still copy into new projects.
 
 ## 2 · Start a new Career Site project
 
-1. Open [All Work](/pm/work) (or use **New Project** from the create-work flow).
-2. Pick the **Career Site** template.
-3. Pick a **Client** and a **Go-live date**.
-4. Click **Create**. The system copies every template task, dependency, and snippet link onto the new project, and seeds dates from the template offsets.
-5. Open the project → **Tasks** tab. Verify the phases and tasks landed.
+1. Open the wizard via Templates → **Use**, editor → **Create Project**, or Create Work → Full Project → pick the template.
+2. **Step 1 — Dates**: set **Kickoff** (defaults today) and **Go-live**. Use **Use suggested** when the suggested end date fits. Fix **Timeline too tight** warnings before continuing.
+3. **Step 2 — Review**: confirm summary and mini Gantt; read the *Pages are defined after Discovery* banner if page groups exist.
+4. Click **Confirm & Create**. Title becomes `{template name} — {date}`; **client is not set in the wizard** — add it on the project next.
+5. Open **Tasks** and verify phases, reservations, and the BA **Define pages** task.
 
-## 3 · Set the real schedule
+## 3 · Set / adjust the real schedule
 
 1. On the project header click **Configure Timeline**.
-2. Enter the **Kickoff date**.
-3. If the project has no dependencies yet, click **Auto-link tasks in order** — this builds a finish-to-start chain from the current sort order so the cascade has something to follow.
-4. Click **Recalculate from Kickoff**. A confirmation modal lists every task that will move. Review and **Apply**.
-5. If you already know the go-live, set both dates and click **Recalculate from Go-Live** — flexible tasks compress to fit the window.
-6. If you see *"Schedule already up to date"*, the dates are already valid; nothing needs to change.
-7. Use **Diagnose timeline** if a button seems to do nothing — it tells you whether you have dependencies, dates, and a kickoff set.
+2. Enter or confirm the **Kickoff date**.
+3. If the project has no dependencies yet, click **Auto-link tasks in order** — builds a finish-to-start chain from sort order.
+4. Click **Recalculate from Kickoff**. Review the confirmation list → **Apply**.
+5. If go-live is fixed, set both dates and **Recalculate from Go-Live** — flexible tasks compress to fit.
+6. *Schedule already up to date* means nothing needs to move.
+7. Use **Diagnose timeline** if a button seems to do nothing — it reports missing dependencies, dates, or kickoff.
 
 ## 4 · Edit one task and let the rest cascade
 
-1. Open **Timeline** (Gantt) on the project, or open a task workspace from the Tasks tab.
-2. Drag the bar in the Gantt, or change **Start / Due** in the workspace.
-3. The **Cascade Confirm** modal opens, listing every downstream task that will shift and by how many days.
-4. Click **Apply** — every dependent task updates at once.
-5. Tasks on the **critical path** (longest chain to go-live) are highlighted red on the Gantt.
+1. Open **Timeline** (Gantt) on the project, or open a task workspace from Tasks.
+2. Drag the bar, or change **Start / Due** in the workspace.
+3. **Cascade Confirm** lists every downstream task that will shift.
+4. **Apply** — dependents update together.
+5. **Critical path** tasks (longest chain to go-live) are highlighted on the Gantt.
 
-Tip: cascading only pushes tasks *later*. If you pull a task earlier, downstream tasks stay put unless you recalc from kickoff.
+Tip: cascading only pushes tasks *later*. Pulling a task earlier does not pull dependents unless you recalc from kickoff.
 
 ## 5 · Add / remove people
 
-- **Project members:** Project → *Overview* → **Team** card → *Add* to invite a user with a project role; the *×* button removes them.
-- **Assign a task:** click the **avatar** on any board card or list row — a search popover lets you assign, change, or unassign inline.
-- **Bulk reassign:** on the Board (List view) select multiple rows → use the *Reassign* dropdown in the bulk actions bar.
+- **Project members:** Overview → **Team** card → **Add** / **×**.
+- **Assign a task:** click the **avatar** on a board card or list row.
+- **Bulk reassign:** Board list view → select rows → **Reassign** in the bulk bar.
 
 ## 6 · All mode vs Me mode
 
-The toggle in the top bar controls visibility. In **All** mode every user sees every project and task across all teams — designers, devs, strategists, analysts, and PMs. In **Me** mode the view narrows to tasks assigned to you and projects you belong to, filtered by your team lane.
+Top-bar toggle. **All** shows every project/task across teams. **Me** narrows to your assignments and projects, filtered by team lane.
 
-## 7 · Page groups & reserved time (Benefits, Life At, Locations…)
+## 7 · Page groups & reserved time
 
-Most career site projects don't know their final page list until Discovery wraps. The platform handles that by **reserving time across every phase your page tasks touch** (Design, Build, QA, etc.) at project creation, then **consuming** that reservation as you add real pages.
+Most career sites don’t know the final page list until Discovery. At create, the platform **reserves** time across every phase page slots touch, then **consumes** that reservation when you add real pages.
 
-1. **In the template editor**: define one or more Page Groups (e.g. "Content Page"). Assign the slot tasks (Wireframe, Design, Build, QA) to that group. Set the group's *Expected pages* (default 5) and *Parallel cap* (default 3 — how many pages your team can work on at once in a single phase).
-2. **Per-phase reserved days** auto-compute as *(sum of slot task days in that phase × expected pages ÷ parallel cap)*. Override any phase manually in the template editor if your team works differently.
-3. **Creating a project**: the wizard skips the Pages step by default and shows a reservation summary. The schedule includes one *reservation placeholder task per group per phase*, sized to your formula — so Go-Live already accounts for the work.
-4. If you already know the pages, tick **"I already know the pages"** in the wizard and pick them — the system stamps them immediately and skips reservations.
-5. **After Discovery**: open the project's **Pages** tab, click **Add pages**, paste your page list (one per line), and pick the group. Each page stamps the full bundle and **shrinks the matching reservation tasks** in each phase. If you go over the reservation, normal cascade rules push downstream tasks (Go-Live moves with confirmation).
-6. Remove a page anytime from the Pages tab — all its tasks delete together; reserved time is *not* auto-refunded so the schedule stays stable.
+1. **In the template** (see template guide): page groups + slot tasks + expected pages + parallel cap; reserved days auto-compute unless overridden.
+2. **At create**: wizard never asks for pages. Reservation placeholders and a **Define pages** task are created so go-live already includes page capacity.
+3. **After Discovery**: project **Pages** tab → **Add pages** → paste names (one per line) → pick group. Each page stamps the bundle and shrinks matching reservation tasks. Over-budget adds can cascade (confirm). Removing a page deletes its tasks; reserved time is **not** auto-refunded.
+4. The Pages tab shows defined-vs-expected count and remaining reserved days per group.
 
-Tip: the Pages tab shows defined-vs-expected count and remaining reserved days per group, so you can see at a glance whether your group is still within budget.
+## 8 · Enter Support mode
+
+When build/QA is done: project header → **Enter Support mode (Live Career Site)**. The project then appears on [Live Career Sites](/pm/live-sites) for support tickets and ops health.
 
 ## Done when
 
-Template dates and dependencies are solid, a project exists with a real kickoff/go-live, and page reservations (or real pages) match Discovery.
+Template slots and reservations are correct, a project exists with kickoff/go-live and client set, pages are defined or still reserved on purpose, owners are clear, and live sites are in Support mode after launch.
