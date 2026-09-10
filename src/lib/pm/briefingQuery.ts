@@ -10,6 +10,7 @@ import { waitingSortKey } from "@/lib/pm/statusClock";
 import { isActiveBuildProject } from "@/lib/pm/liveSites";
 import { isDone, type PmProject, type PmTask } from "@/types/pm";
 import { countFollowUpsDueForOwner } from "@/lib/pm/vendors";
+import type { EnrichedQuickTask } from "@/lib/pm/briefing";
 
 export interface CachedBriefingData {
   counts: {
@@ -20,12 +21,8 @@ export interface CachedBriefingData {
     raidAttention: number;
     vendorFollowUps: number;
   };
-  quickTasks: Array<PmTask & {
-    project_title: string | null;
-    client_name: string | null;
-    request_type: string | null;
-  }>;
-  unclaimedQuickTasks: CachedBriefingData["quickTasks"];
+  quickTasks: EnrichedQuickTask[];
+  unclaimedQuickTasks: EnrichedQuickTask[];
   projects: Array<PmProject & {
     total_tasks: number;
     completed_tasks: number;
@@ -155,12 +152,13 @@ export function useCachedBriefingData(userId: string | null | undefined): Cached
       return urg || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
     };
 
-    const enrich = (task: PmTask) => {
+    const enrich = (task: PmTask): EnrichedQuickTask => {
       const project = projectsById.get(task.project_id);
       const fields = project?.custom_fields as Record<string, unknown> | null;
       return {
         ...task,
         project_title: project?.title ?? null,
+        client_id: project?.client_id ?? null,
         client_name: project?.client_id ? clientNames.get(project.client_id) ?? null : null,
         request_type: typeof fields?.request_type === "string" ? fields.request_type : null,
       };
