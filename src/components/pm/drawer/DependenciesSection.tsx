@@ -10,6 +10,7 @@ import { TaskPicker } from "./TaskPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { REVEAL_MODE_LABEL, REVEAL_MODE_SHORT } from "@/lib/pm/reveal";
 import type { RevealMode } from "@/types/pm";
+import { toast } from "sonner";
 
 interface Dep { id: string; task_id: string; depends_on_task_id: string; reveal_mode?: string; }
 interface TaskLite { id: string; title: string; status: string; project_id: string; project_title?: string; }
@@ -39,13 +40,31 @@ export function DependenciesSection({ taskId }: { taskId: string }) {
   }
   useEffect(() => { load(); }, [taskId]);
 
-  async function addDep(otherId: string, mode: "blocked_by" | "blocking") {
-    const row = mode === "blocked_by"
-      ? { task_id: taskId, depends_on_task_id: otherId, type: "finish_start", lag_days: 0, reveal_mode: "on_complete" }
-      : { task_id: otherId, depends_on_task_id: taskId, type: "finish_start", lag_days: 0, reveal_mode: "on_complete" };
-    await supabase.from("pm_task_dependencies").insert(row as any);
+  async function addDeps(otherIds: string[], mode: "blocked_by" | "blocking") {
+    const existing = new Set([
+      ...blockedBy.map((b) => b.task.id),
+      ...blocking.map((b) => b.task.id),
+    ]);
+    const rows = otherIds
+      .filter((id) => id !== taskId && !existing.has(id))
+      .map((otherId) =>
+        mode === "blocked_by"
+          ? { task_id: taskId, depends_on_task_id: otherId, type: "finish_start", lag_days: 0, reveal_mode: "on_complete" }
+          : { task_id: otherId, depends_on_task_id: taskId, type: "finish_start", lag_days: 0, reveal_mode: "on_complete" },
+      );
+    if (!rows.length) {
+      toast.message("No new dependencies to add");
+      return;
+    }
+    const { error } = await supabase.from("pm_task_dependencies").insert(rows as any);
+    if (error) {
+      toast.error("Couldn't add dependencies");
+      return;
+    }
+    toast.success(`Added ${rows.length} dependenc${rows.length === 1 ? "y" : "ies"}`);
     await load();
   }
+
   async function removeDep(id: string) {
     await supabase.from("pm_task_dependencies").delete().eq("id", id);
     await load();
@@ -56,30 +75,52 @@ export function DependenciesSection({ taskId }: { taskId: string }) {
   }
 
   const Row = ({ task, dep, showReveal }: { task: TaskLite; dep: Dep; showReveal: boolean }) => (
-    <div className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/40">
-      <button className="flex-1 text-left min-w-0" onClick={() => open(task.id)}>
-        <div className="text-sm truncate">{task.title}</div>
-        <div className="text-[11px] text-muted-foreground truncate">{task.project_title}</div>
-      </button>
-      <Badge className={(STATUS_COLORS as any)[task.status] ?? ""}>{task.status.replace("_", " ")}</Badge>
-      {showReveal && (
-        <Select
-          value={(dep.reveal_mode as RevealMode) ?? "on_complete"}
-          onValueChange={(v) => setReveal(dep.id, v)}
+    <div className="group px-2 py-2 rounded hover:bg-muted/40 space-y-1.5">
+      <div className="flex items-start gap-2">
+        <button className="flex-1 text-left min-w-0" onClick={() => open(task.id)}>
+          <div className="text-sm font-medium leading-snug break-words whitespace-normal">
+            {task.title}
+          </div>
+          {task.project_title && (
+            <div className="text-[11px] text-muted-foreground mt-0.5 break-words">
+              {task.project_title}
+            </div>
+          )}
+        </button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 text-destructive touch-action shrink-0"
+          onClick={() => removeDep(dep.id)}
         >
-          <SelectTrigger className="h-7 w-[120px] text-[11px]" title={REVEAL_MODE_LABEL[(dep.reveal_mode as RevealMode) ?? "on_complete"]}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-50 bg-popover">
-            {(["on_complete","on_start","always"] as RevealMode[]).map(m => (
-              <SelectItem key={m} value={m} className="text-xs">{REVEAL_MODE_SHORT[m]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive touch-action" onClick={() => removeDep(dep.id)}>
-        <Trash2 className="h-3 w-3" />
-      </Button>
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge className={`capitalize ${(STATUS_COLORS as any)[task.status] ?? ""}`}>
+          {task.status.replace(/_/g, " ")}
+        </Badge>
+        {showReveal && (
+          <Select
+            value={(dep.reveal_mode as RevealMode) ?? "on_complete"}
+            onValueChange={(v) => setReveal(dep.id, v)}
+          >
+            <SelectTrigger
+              className="h-7 w-[120px] text-[11px]"
+              title={REVEAL_MODE_LABEL[(dep.reveal_mode as RevealMode) ?? "on_complete"]}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {(["on_complete", "on_start", "always"] as RevealMode[]).map((m) => (
+                <SelectItem key={m} value={m} className="text-xs">
+                  {REVEAL_MODE_SHORT[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
     </div>
   );
 
@@ -91,27 +132,58 @@ export function DependenciesSection({ taskId }: { taskId: string }) {
       <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between mb-1">
-            <div className="text-xs font-medium text-muted-foreground flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Blocked by</div>
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setPickerMode("blocked_by")}><Plus className="h-3 w-3 mr-1" /> Add</Button>
+            <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <ArrowLeft className="h-3 w-3" /> Blocked by
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs"
+              onClick={() => setPickerMode("blocked_by")}
+            >
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
           </div>
-          {blockedBy.map(({ dep, task }) => <Row key={dep.id} task={task} dep={dep} showReveal />)}
-          {!blockedBy.length && <div className="text-xs text-muted-foreground italic px-2">None.</div>}
+          {blockedBy.map(({ dep, task }) => (
+            <Row key={dep.id} task={task} dep={dep} showReveal />
+          ))}
+          {!blockedBy.length && (
+            <div className="text-xs text-muted-foreground italic px-2">None.</div>
+          )}
         </div>
         <div>
           <div className="flex items-center justify-between mb-1">
-            <div className="text-xs font-medium text-muted-foreground flex items-center gap-1"><ArrowRight className="h-3 w-3" /> Blocking</div>
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setPickerMode("blocking")}><Plus className="h-3 w-3 mr-1" /> Add</Button>
+            <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <ArrowRight className="h-3 w-3" /> Blocking
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs"
+              onClick={() => setPickerMode("blocking")}
+            >
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
           </div>
-          {blocking.map(({ dep, task }) => <Row key={dep.id} task={task} dep={dep} showReveal={false} />)}
-          {!blocking.length && <div className="text-xs text-muted-foreground italic px-2">None.</div>}
+          {blocking.map(({ dep, task }) => (
+            <Row key={dep.id} task={task} dep={dep} showReveal={false} />
+          ))}
+          {!blocking.length && (
+            <div className="text-xs text-muted-foreground italic px-2">None.</div>
+          )}
         </div>
       </div>
 
       <TaskPicker
         open={!!pickerMode}
         onClose={() => setPickerMode(null)}
-        excludeIds={[taskId, ...blockedBy.map(b => b.task.id), ...blocking.map(b => b.task.id)]}
-        onPick={(id) => pickerMode && addDep(id, pickerMode)}
+        excludeIds={[
+          taskId,
+          ...blockedBy.map((b) => b.task.id),
+          ...blocking.map((b) => b.task.id),
+        ]}
+        title={pickerMode === "blocking" ? "Add blocking tasks" : "Add blocked-by tasks"}
+        onPickMany={(ids) => pickerMode && addDeps(ids, pickerMode)}
       />
     </SectionShell>
   );

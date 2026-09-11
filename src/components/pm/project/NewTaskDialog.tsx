@@ -31,6 +31,7 @@ import {
 } from "@/types/pm";
 import { STATUS_COLORS } from "@/types/pm";
 import { KIND_META, TASK_KINDS, assertTaskKind, type TaskKind } from "@/lib/pm/taskKind";
+import { QA_PRIORITY_OPTIONS, getQaPriorityLabel, coerceQaPriority } from "@/lib/pm/taskKind";
 import { TaskTypePicker } from "@/components/pm/tasks/TaskTypePicker";
 import { syncTypeTags } from "@/lib/pm/taskTypes";
 
@@ -91,11 +92,11 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
   const [devEnv, setDevEnv] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // "More options" state
+  // "More options" — default collapsed so Create stays reachable
   const [moreOpen, setMoreOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
+    if (typeof window === "undefined") return false;
     const v = localStorage.getItem(MORE_OPEN_KEY);
-    return v === null ? true : v === "1";
+    return v === null ? false : v === "1";
   });
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(MORE_OPEN_KEY, moreOpen ? "1" : "0");
@@ -322,20 +323,23 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {kind === "decision" ? "Log a decision"
-              : kind === "issue" ? "Log a risk / issue"
-              : "New task"}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[640px] max-h-[90vh] !flex !flex-col !overflow-hidden gap-0 p-0">
+        <div className="px-4 pt-4 sm:px-6 sm:pt-6 shrink-0">
+          <DialogHeader>
+            <DialogTitle>
+              {kind === "decision" ? "Log a decision"
+                : kind === "issue" ? "Log a risk / issue"
+                : kind === "qa" ? "New QA ticket"
+                : "New task"}
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-4 pt-1">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
           {/* Kind selector — drives what this row represents */}
           <div className="space-y-1.5">
             <Label>Log as</Label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {TASK_KINDS.map(k => {
                 const meta = KIND_META[k];
                 const Icon = meta.icon;
@@ -344,7 +348,10 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setKind(k)}
+                    onClick={() => {
+                      setKind(k);
+                      if (k === "qa") setPriority(coerceQaPriority(priority));
+                    }}
                     className={cn(
                       "flex items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-medium transition",
                       active
@@ -354,14 +361,11 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                     title={meta.description}
                   >
                     <Icon className="h-3.5 w-3.5" style={{ color: meta.dotHsl }} />
-                    {meta.label}
+                    {meta.short}
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {KIND_META[kind].description}
-            </p>
           </div>
 
           {/* Title */}
@@ -383,78 +387,19 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
             />
           </div>
 
-
-
-
-
-          {/* Description */}
+          {/* Type */}
           <div className="space-y-1.5">
-            <Label htmlFor="new-task-desc">Description</Label>
-            <Textarea
-              id="new-task-desc"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Optional details, context, links…"
-              rows={3}
-            />
+            <Label>Type {types.length > 1 && <span className="text-xs text-muted-foreground font-normal">(first = primary)</span>}</Label>
+            <TaskTypePicker value={types} onChange={setTypes} />
           </div>
 
-          {/* Type (multi) + Priority */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Type {types.length > 1 && <span className="text-xs text-muted-foreground font-normal">(first = primary)</span>}</Label>
-              <TaskTypePicker value={types} onChange={setTypes} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Priority</Label>
-              <Select value={priority} onValueChange={v => setPriority(v as TaskPriority)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {PRIORITIES.map(p => (
-                    <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Due date */}
+          <div className="space-y-1.5">
+            <Label>Due date</Label>
+            <DateField value={dueDate} onChange={handleDueChange} />
           </div>
 
-          {/* Status + Phase */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select
-                value={status}
-                onValueChange={v => { setStatus(v as TaskStatus); setStatusDirty(true); }}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  {TASK_STATUSES.map(s => (
-                    <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Phase</Label>
-              <Select
-                value={phaseId ?? "__none"}
-                onValueChange={v => setPhaseId(v === "__none" ? null : v)}
-                disabled={phases.length === 0}
-              >
-                <SelectTrigger><SelectValue placeholder="No phase" /></SelectTrigger>
-                <SelectContent className="z-50 bg-popover">
-                  <SelectItem value="__none">No phase</SelectItem>
-                  {phases.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Assignees (multi) */}
+          {/* Assignees */}
           <div className="space-y-1.5">
             <Label>Assignees {assigneeIds.length > 1 && <span className="text-xs text-muted-foreground font-normal">(first = primary)</span>}</Label>
             <div className="flex flex-wrap items-center gap-1.5 min-h-9 rounded-md border border-input bg-background px-2 py-1.5">
@@ -502,71 +447,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
             </div>
           </div>
 
-          {/* Teams */}
-          <div className="space-y-1.5">
-            <Label>Teams</Label>
-            <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
-              <TeamsMultiSelect
-                value={teams}
-                onChange={(next) => { setTeams(next); setTeamsDirty(true); }}
-                align="start"
-              />
-            </div>
-          </div>
-
-          {/* Start + Due */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Start date</Label>
-              <DateField value={startDate} onChange={handleStartChange} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Due date</Label>
-              <DateField value={dueDate} onChange={handleDueChange} />
-            </div>
-          </div>
-
-          {/* Duration + Tags */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="new-task-dur">Duration (business days)</Label>
-              <Input
-                id="new-task-dur"
-                type="number"
-                min={1}
-                step={1}
-                value={duration}
-                onChange={e => handleDurationChange(e.target.value)}
-              />
-              <p className="text-[11px] text-muted-foreground">Syncs with Start &amp; Due (weekends excluded).</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tags</Label>
-              <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
-                <TagPicker
-                  value={tags}
-                  onChange={setTags}
-                  editableNamespaces={["feature", "type"]}
-                  placeholder="Tag"
-                />
-              </div>
-              <p className="text-[11px] text-muted-foreground">Client & project-type tags are added automatically from the project.</p>
-            </div>
-          </div>
-
-          {/* Dev environment (conditional) */}
-          {types.includes("dev") && (
-            <div className="space-y-1.5">
-              <Label htmlFor="new-task-env">Dev environment</Label>
-              <Input
-                id="new-task-env"
-                value={devEnv}
-                onChange={e => setDevEnv(e.target.value)}
-                placeholder="staging.acme.com"
-              />
-            </div>
-          )}
-
           {/* More options */}
           <div className="border-t border-border pt-3">
             <button
@@ -576,16 +456,141 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
             >
               {moreOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               More options
-              {!moreOpen && (files.length + links.length + checklist.length + deps.length + watcherIds.length > 0 || estimateHours) ? (
+              {!moreOpen && (files.length + links.length + checklist.length + deps.length + watcherIds.length > 0 || estimateHours || description) ? (
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">
-                  {files.length + links.length} att · {checklist.length} chk · {deps.length} dep · {watcherIds.length} w
+                  details set
                 </Badge>
               ) : null}
             </button>
 
             {moreOpen && (
               <div className="mt-3 space-y-4">
-                {/* Attachments + links */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-task-desc">Description</Label>
+                  <Textarea
+                    id="new-task-desc"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="Optional details, context, links…"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Priority</Label>
+                    {kind === "qa" ? (
+                      <Select
+                        value={coerceQaPriority(priority)}
+                        onValueChange={v => setPriority(v as TaskPriority)}
+                      >
+                        <SelectTrigger>
+                          <span className="truncate">{getQaPriorityLabel(priority)}</span>
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-popover">
+                          {QA_PRIORITY_OPTIONS.map(p => (
+                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select value={priority} onValueChange={v => setPriority(v as TaskPriority)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent className="z-50 bg-popover">
+                          {PRIORITIES.map(p => (
+                            <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Status</Label>
+                    <Select
+                      value={status}
+                      onValueChange={v => { setStatus(v as TaskStatus); setStatusDirty(true); }}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent className="z-50 bg-popover">
+                        {TASK_STATUSES.map(s => (
+                          <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Phase</Label>
+                    <Select
+                      value={phaseId ?? "__none"}
+                      onValueChange={v => setPhaseId(v === "__none" ? null : v)}
+                      disabled={phases.length === 0}
+                    >
+                      <SelectTrigger><SelectValue placeholder="No phase" /></SelectTrigger>
+                      <SelectContent className="z-50 bg-popover">
+                        <SelectItem value="__none">No phase</SelectItem>
+                        {phases.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Start date</Label>
+                    <DateField value={startDate} onChange={handleStartChange} />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Teams</Label>
+                  <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+                    <TeamsMultiSelect
+                      value={teams}
+                      onChange={(next) => { setTeams(next); setTeamsDirty(true); }}
+                      align="start"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-task-dur">Duration (business days)</Label>
+                    <Input
+                      id="new-task-dur"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={duration}
+                      onChange={e => handleDurationChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Tags</Label>
+                    <div className="rounded-md border border-input bg-background px-2 py-1.5 min-h-9">
+                      <TagPicker
+                        value={tags}
+                        onChange={setTags}
+                        editableNamespaces={["feature", "type"]}
+                        placeholder="Tag"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {types.includes("dev") && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-task-env">Dev environment</Label>
+                    <Input
+                      id="new-task-env"
+                      value={devEnv}
+                      onChange={e => setDevEnv(e.target.value)}
+                      placeholder="staging.acme.com"
+                    />
+                  </div>
+                )}
+
                 <IntakeAttachmentsField
                   files={files}
                   onFilesChange={setFiles}
@@ -594,7 +599,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   label="Attachments & links (Figma, GDoc, Sheets, files…)"
                 />
 
-                {/* Checklist */}
                 <div className="space-y-1.5">
                   <Label>Checklist</Label>
                   <div className="flex gap-2">
@@ -638,7 +642,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   )}
                 </div>
 
-                {/* Blocked by */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label>Blocked by</Label>
@@ -661,16 +664,22 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   {deps.length > 0 ? (
                     <ul className="space-y-1">
                       {deps.map(d => (
-                        <li key={d.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm truncate">{d.title}</div>
-                            {d.project_title && <div className="text-[11px] text-muted-foreground truncate">{d.project_title}</div>}
+                        <li key={d.id} className="px-2 py-1.5 rounded bg-muted/40 space-y-1">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium leading-snug break-words whitespace-normal">{d.title}</div>
+                              {d.project_title && (
+                                <div className="text-[11px] text-muted-foreground break-words">{d.project_title}</div>
+                              )}
+                            </div>
+                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0"
+                              onClick={() => setDeps(deps.filter(x => x.id !== d.id))}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <Badge className={(STATUS_COLORS as any)[d.status] ?? ""}>{d.status.replace("_", " ")}</Badge>
-                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive"
-                            onClick={() => setDeps(deps.filter(x => x.id !== d.id))}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <Badge className={`capitalize ${(STATUS_COLORS as any)[d.status] ?? ""}`}>
+                            {d.status.replace(/_/g, " ")}
+                          </Badge>
                         </li>
                       ))}
                     </ul>
@@ -679,7 +688,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   )}
                 </div>
 
-                {/* Watchers */}
                 <div className="space-y-1.5">
                   <Label>Watchers <span className="text-xs text-muted-foreground font-normal">(notified but not responsible)</span></Label>
                   <div className="flex flex-wrap items-center gap-1.5 min-h-9 rounded-md border border-input bg-background px-2 py-1.5">
@@ -715,7 +723,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                   </div>
                 </div>
 
-                {/* Estimated hours */}
                 <div className="space-y-1.5">
                   <Label htmlFor="new-task-est">Estimated hours</Label>
                   <Input
@@ -728,7 +735,6 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
                     placeholder="e.g. 2.5"
                     className="max-w-[160px]"
                   />
-                  <p className="text-[11px] text-muted-foreground">Used for workload capacity planning.</p>
                 </div>
               </div>
             )}
@@ -739,20 +745,36 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
           open={depPickerOpen}
           onClose={() => setDepPickerOpen(false)}
           excludeIds={deps.map(d => d.id)}
-          onPick={async (id) => {
-            // Hydrate title/status/project for chip display
-            const { data: t } = await supabase.from("pm_tasks").select("id,title,status,project_id").eq("id", id).maybeSingle();
-            if (!t) return;
-            const { data: p } = await supabase.from("pm_projects").select("title").eq("id", (t as any).project_id).maybeSingle();
-            setDeps(prev => [...prev, {
-              id: (t as any).id, title: (t as any).title, status: (t as any).status,
-              project_title: (p as any)?.title,
-            }]);
+          title="Add blocked-by tasks"
+          onPickMany={async (ids) => {
+            const { data: ts } = await supabase
+              .from("pm_tasks")
+              .select("id,title,status,project_id")
+              .in("id", ids);
+            if (!ts?.length) return;
+            const pids = Array.from(new Set(ts.map((t: any) => t.project_id)));
+            const { data: ps } = pids.length
+              ? await supabase.from("pm_projects").select("id,title").in("id", pids)
+              : { data: [] as any[] };
+            const pmap = new Map((ps || []).map((p: any) => [p.id, p.title]));
+            setDeps((prev) => {
+              const have = new Set(prev.map((d) => d.id));
+              const next = [...prev];
+              for (const t of ts as any[]) {
+                if (have.has(t.id)) continue;
+                next.push({
+                  id: t.id,
+                  title: t.title,
+                  status: t.status,
+                  project_title: pmap.get(t.project_id),
+                });
+              }
+              return next;
+            });
           }}
         />
 
-
-        <DialogFooter>
+        <DialogFooter className="px-4 pb-4 sm:px-6 sm:pb-6 pt-3 border-t shrink-0 bg-background">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={!title.trim() || saving}>
             {saving ? "Creating…" : "Create task"}

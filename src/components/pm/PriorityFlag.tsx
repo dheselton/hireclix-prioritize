@@ -2,6 +2,7 @@ import { Flag } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { TaskPriority } from "@/types/pm";
+import { getQaPriorityLabel, type TaskKind } from "@/lib/pm/taskKind";
 
 const SIZE_CLASS: Record<"xs" | "sm" | "md", string> = {
   xs: "h-3 w-3",
@@ -35,17 +36,20 @@ interface Props {
   priority: TaskPriority | null | undefined;
   size?: "xs" | "sm" | "md";
   className?: string;
+  /** When kind is qa, tooltip uses Pre Launch / Post-Launch labels. */
+  kind?: TaskKind;
 }
 
-export function PriorityFlag({ priority, size = "sm", className }: Props) {
+export function PriorityFlag({ priority, size = "sm", className, kind = "task" }: Props) {
   if (!priority) return null;
   const filled = FILLED[priority];
+  const label = kind === "qa" ? getQaPriorityLabel(priority) : LABEL[priority];
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            aria-label={`Priority: ${LABEL[priority]}`}
+            aria-label={`Priority: ${label}`}
             className={cn("inline-flex items-center shrink-0", className)}
           >
             <Flag
@@ -58,7 +62,7 @@ export function PriorityFlag({ priority, size = "sm", className }: Props) {
             />
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top">Priority: {LABEL[priority]}</TooltipContent>
+        <TooltipContent side="top">Priority: {label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

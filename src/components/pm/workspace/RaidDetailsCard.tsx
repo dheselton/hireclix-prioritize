@@ -17,10 +17,10 @@ interface Props {
   patch: (p: Partial<PmTask>) => Promise<void>;
 }
 
-/** Extra fields for Decision or Risk kinds — hidden for plain tasks. */
+/** Extra fields for Decision or Risk kinds — hidden for plain tasks and QA (QA uses Control Panel). */
 export function RaidDetailsCard({ task, patch }: Props) {
   const kind = getTaskKind(task);
-  if (kind === "task") return null;
+  if (kind === "task" || kind === "qa") return null;
   const meta = KIND_META[kind];
   const Icon = meta.icon;
   const initial = useMemo(() => getRaidDetails(task), [task]);

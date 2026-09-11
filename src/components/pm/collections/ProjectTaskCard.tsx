@@ -21,7 +21,7 @@ import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { TagPillList } from "@/components/pm/tags/TagPill";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
-import { getTaskKind } from "@/lib/pm/taskKind";
+import { getTaskKind, getQaDetails } from "@/lib/pm/taskKind";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 
 interface Props {
@@ -87,11 +87,15 @@ export function ProjectTaskCard({
           onClick={() => onOpen(task.id)}
           className="w-full text-left flex items-center gap-2"
         >
-          <PriorityFlag priority={task.priority} size="xs" />
+          <PriorityFlag priority={task.priority} size="xs" kind={getTaskKind(task)} />
           {overdue && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
           <span className="text-sm font-medium flex-1 truncate hover:underline">{task.title}</span>
           <KindBadge kind={getTaskKind(task)} />
-          <StatusPill status={task.status} kind={getTaskKind(task)} />
+          <StatusPill
+            status={task.status}
+            kind={getTaskKind(task)}
+            resolution={getTaskKind(task) === "qa" ? getQaDetails(task).resolution : undefined}
+          />
         </button>
         {teams.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">

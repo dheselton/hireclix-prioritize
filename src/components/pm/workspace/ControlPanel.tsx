@@ -19,6 +19,14 @@ import { TagPicker } from "@/components/pm/tags/TagPicker";
 import { TaskTypePicker } from "@/components/pm/tasks/TaskTypePicker";
 import { syncTypeTags, typesFromTask } from "@/lib/pm/taskTypes";
 import { getKindStatusLabel, getTaskKind } from "@/lib/pm/taskKind";
+import {
+  QA_PRIORITY_OPTIONS,
+  QA_RESOLUTIONS,
+  coerceQaPriority,
+  getQaDetails,
+  getQaPriorityLabel,
+  type QaResolution,
+} from "@/lib/pm/taskKind";
 import type { TaskType } from "@/types/pm";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { AttributionChip } from "@/components/pm/AttributionChip";
@@ -64,6 +72,9 @@ export function ControlPanel({
     if (next !== task.assignee_id) setTask({ ...task, assignee_id: next });
   }
   const showEnv = task.type === "dev" || !!task.dev_environment;
+  const kind = getTaskKind(task);
+  const isQa = kind === "qa";
+  const qaDetails = isQa ? getQaDetails(task) : null;
 
   function handleTypesChange(types: TaskType[]) {
     const primaryType = types[0];
@@ -71,6 +82,24 @@ export function ControlPanel({
       type: primaryType,
       tags: syncTypeTags(task.tags, types),
     });
+  }
+
+  async function setQaResolution(resolution: QaResolution) {
+    const cf = {
+      ...(task.custom_fields ?? {}),
+      kind: "qa",
+      qa: { ...(qaDetails ?? {}), resolution },
+    };
+    // Align status with resolution default when moving into a done state
+    const nextStatus: TaskStatus =
+      resolution === "wont_fix" || resolution === "duplicate"
+        ? "approved"
+        : task.status === "approved" || task.status === "complete"
+          ? task.status === "approved" && resolution === "fixed"
+            ? "complete"
+            : task.status
+          : "complete";
+    await patch({ custom_fields: cf, status: nextStatus } as any);
   }
 
   return (
@@ -82,13 +111,18 @@ export function ControlPanel({
       {/* Status */}
       <Row label="Status">
         <Select value={task.status} onValueChange={(v: TaskStatus) => patch({ status: v })}>
-          <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5", statusClass(task.status))}>
-            <SelectValue />
+          <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5 max-w-[220px]", statusClass(task.status))}>
+            <span className="truncate">
+              {kind !== "task"
+                ? getKindStatusLabel(task.status, kind, { resolution: qaDetails?.resolution })
+                : task.status.replace(/_/g, " ")}
+            </span>
           </SelectTrigger>
           <SelectContent className="z-50 bg-popover">
             {TASK_STATUSES.map(s => {
-              const kind = getTaskKind(task);
-              const label = kind !== "task" ? getKindStatusLabel(s, kind) : s.replace(/_/g, " ");
+              const label = kind !== "task"
+                ? getKindStatusLabel(s, kind, s === task.status ? { resolution: qaDetails?.resolution } : undefined)
+                : s.replace(/_/g, " ");
               return <SelectItem key={s} value={s}>{label}</SelectItem>;
             })}
           </SelectContent>
@@ -97,15 +131,51 @@ export function ControlPanel({
 
       {/* Priority */}
       <Row label="Priority">
-        <Select value={task.priority} onValueChange={(v: TaskPriority) => patch({ priority: v })}>
-          <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5 capitalize", priorityClass(task.priority))}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-50 bg-popover">
-            {PRIORITIES.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {isQa ? (
+          <Select
+            value={coerceQaPriority(task.priority)}
+            onValueChange={(v: TaskPriority) => patch({ priority: v })}
+          >
+            <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5 max-w-[220px]", priorityClass(coerceQaPriority(task.priority)))}>
+              <span className="truncate">{getQaPriorityLabel(task.priority)}</span>
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {QA_PRIORITY_OPTIONS.map((p) => (
+                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select value={task.priority} onValueChange={(v: TaskPriority) => patch({ priority: v })}>
+            <SelectTrigger className={cn("h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5 capitalize", priorityClass(task.priority))}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {PRIORITIES.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </Row>
+
+      {isQa && (
+        <Row label="Resolution">
+          <Select
+            value={qaDetails?.resolution ?? ""}
+            onValueChange={(v) => setQaResolution(v as QaResolution)}
+          >
+            <SelectTrigger className="h-7 px-2 py-0 text-xs font-semibold border rounded-full w-auto gap-1.5 max-w-[220px]">
+              <span className="truncate">
+                {QA_RESOLUTIONS.find((r) => r.value === qaDetails?.resolution)?.label ?? "Set…"}
+              </span>
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              {QA_RESOLUTIONS.map((r) => (
+                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Row>
+      )}
 
       {/* Type */}
       <Row label="Type">

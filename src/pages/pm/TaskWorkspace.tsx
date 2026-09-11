@@ -27,6 +27,7 @@ import { SubtasksSection } from "@/components/pm/workspace/SubtasksSection";
 import { TimerPill } from "@/components/pm/workspace/TimerPill";
 
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
+import { getTaskKind } from "@/lib/pm/taskKind";
 
 import { SnippetsSection } from "@/components/pm/workspace/SnippetsSection";
 import { DescriptionSection } from "@/components/pm/workspace/DescriptionSection";
@@ -192,7 +193,7 @@ export default function TaskWorkspace() {
               className="h-2.5 w-2.5 rounded-full shrink-0"
               style={{ backgroundColor: dotColor }}
             />
-            <PriorityFlag priority={task.priority} size="md" />
+            <PriorityFlag priority={task.priority} size="md" kind={getTaskKind(task)} />
             <Input
               value={task.title}
               onChange={e => setTask({ ...task, title: e.target.value })}
@@ -203,9 +204,9 @@ export default function TaskWorkspace() {
         </div>
       </div>
 
-      {/* BODY: 1fr / 300px */}
+      {/* BODY: 1fr / 400px — wide enough for dependency titles + status */}
       <div className="max-w-[1400px] mx-auto px-3 md:px-4 py-4 md:py-6">
-        <div className="grid gap-4 md:gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_300px]">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 lg:[grid-template-columns:minmax(0,1fr)_400px]">
           {/* LEFT */}
           <div className="space-y-4 md:space-y-6 min-w-0">
             <RequestContextPanel projectId={task.project_id} />

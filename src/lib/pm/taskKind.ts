@@ -4,7 +4,7 @@
 // no schema change is required. Renders alongside normal tasks so the
 // whole team can see RAID items on the same board.
 import { CheckSquare, GitBranch, AlertTriangle, Bug, type LucideIcon } from "lucide-react";
-import type { PmTask, TaskStatus } from "@/types/pm";
+import type { PmTask, TaskStatus, TaskPriority } from "@/types/pm";
 import type { StatusGroupId } from "@/lib/pm/statusGroups";
 
 /** Canonical list of accepted values for custom_fields.kind. */
@@ -131,13 +131,13 @@ const RISK_STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 const QA_STATUS_LABEL: Record<TaskStatus, string> = {
-  unclaimed: "New",
-  claimed: "Triaging",
-  in_progress: "In Fix",
-  blocked: "Blocked",
-  in_review: "Ready to Verify",
-  complete: "Verified",
-  approved: "Closed",
+  unclaimed: "New Needs BA Review",
+  claimed: "Task Ready",
+  in_progress: "In Progress",
+  blocked: "Need Info",
+  in_review: "Testing",
+  complete: "Done - Work Complete",
+  approved: "Done - Ignore",
 };
 
 const DECISION_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
@@ -157,11 +157,11 @@ const RISK_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
 };
 
 const QA_GROUP_LABEL: Partial<Record<StatusGroupId, string>> = {
-  ready: "New",
-  claimed: "Triaging",
-  in_progress: "In Fix",
-  in_review: "Ready to Verify",
-  complete: "Verified",
+  ready: "New Needs BA Review",
+  claimed: "Task Ready",
+  in_progress: "In Progress",
+  in_review: "Testing",
+  complete: "Done - Work Complete",
 };
 
 // Lookup tables keyed by kind — anything not present here (including an
@@ -180,9 +180,32 @@ const GROUP_LABEL_BY_KIND: Partial<Record<TaskKind, Partial<Record<StatusGroupId
 };
 
 /** Returns "" to mean "use the default status vocabulary". */
-export function getKindStatusLabel(status: TaskStatus, kind: TaskKind): string {
+export function getKindStatusLabel(
+  status: TaskStatus,
+  kind: TaskKind,
+  opts?: { resolution?: QaResolution | null },
+): string {
   const safe = coerceTaskKind(kind);
+  if (safe === "qa") {
+    return getQaStatusDisplayLabel(status, opts?.resolution);
+  }
   return STATUS_LABEL_BY_KIND[safe]?.[status] ?? "";
+}
+
+/** GLAAT-style QA status label, including resolution-aware Done variants. */
+export function getQaStatusDisplayLabel(
+  status: TaskStatus,
+  resolution?: QaResolution | null,
+): string {
+  if (status === "complete" || status === "approved") {
+    if (resolution === "cannot_reproduce") return "Done - Cannot Reproduce";
+    if (resolution === "wont_fix") return "Done - Ignore";
+    if (resolution === "fixed") return "Done - Work Complete";
+    // Defaults when resolution is unset
+    if (status === "approved") return "Done - Ignore";
+    return "Done - Work Complete";
+  }
+  return QA_STATUS_LABEL[status] ?? "";
 }
 
 /** Returns null to mean "use the default group vocabulary". */
@@ -255,6 +278,13 @@ export type QaResolution = "fixed" | "wont_fix" | "duplicate" | "cannot_reproduc
 
 export const QA_SEVERITIES: QaSeverity[] = ["blocker", "major", "minor", "cosmetic"];
 
+export const QA_RESOLUTIONS: { value: QaResolution; label: string }[] = [
+  { value: "fixed", label: "Done - Work Complete" },
+  { value: "cannot_reproduce", label: "Done - Cannot Reproduce" },
+  { value: "wont_fix", label: "Done - Ignore" },
+  { value: "duplicate", label: "Duplicate" },
+];
+
 export const QA_SEVERITY_STYLE: Record<QaSeverity, string> = {
   blocker: "bg-destructive/15 text-destructive border-destructive/30",
   major: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
@@ -278,6 +308,23 @@ export function getQaDetails(task: unknown): QaDetails {
   const cf = (task as any)?.custom_fields;
   const qa = cf?.qa;
   return (qa && typeof qa === "object" ? qa : {}) as QaDetails;
+}
+
+/** QA priority vocabulary mapped onto existing TaskPriority values. */
+export const QA_PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+  { value: "high", label: "Pre Launch" },
+  { value: "medium", label: "Post-Launch (Fast Follow)" },
+];
+
+export function getQaPriorityLabel(priority: TaskPriority | null | undefined): string {
+  if (priority === "high" || priority === "urgent") return "Pre Launch";
+  return "Post-Launch (Fast Follow)";
+}
+
+/** Normalize any priority to the two QA options when editing. */
+export function coerceQaPriority(priority: TaskPriority | null | undefined): TaskPriority {
+  if (priority === "high" || priority === "urgent") return "high";
+  return "medium";
 }
 
 export function isQaOpen(t: PmTask): boolean {

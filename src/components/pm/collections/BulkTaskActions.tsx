@@ -14,8 +14,9 @@ import { TASK_STATUSES, type TaskStatus } from "@/types/pm";
 import { supabase } from "@/integrations/supabase/client";
 import { updateTask } from "@/lib/pm/api";
 import { toast } from "sonner";
-import { Trash2, X, CalendarClock } from "lucide-react";
+import { Trash2, X, CalendarClock, ArrowLeft, ArrowRight } from "lucide-react";
 import { format, addDays, parse, isValid } from "date-fns";
+import { TaskPicker } from "@/components/pm/drawer/TaskPicker";
 
 interface Props {
   selected: Set<string>;
@@ -23,14 +24,17 @@ interface Props {
   onChanged?: () => void;
 }
 
+type DepPickerMode = null | "blocked_by" | "blocking";
+
 export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
   const users = useMockUsers();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reschedOpen, setReschedOpen] = useState(false);
   const [shiftDays, setShiftDays] = useState("7");
+  const [depMode, setDepMode] = useState<DepPickerMode>(null);
   const n = selected.size;
-  if (!n) return null;
+  if (!n && !depMode) return null;
 
   const ids = Array.from(selected);
   const plural = n === 1 ? "" : "s";
@@ -101,9 +105,86 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
     onChanged?.();
   }
 
-  const bar = (
+  async function bulkAddDeps(pickedIds: string[], mode: "blocked_by" | "blocking") {
+    if (busy || !pickedIds.length || !ids.length) return;
+    setBusy(true);
+
+    // Load existing edges for the selected tasks, then filter in JS
+    const selectedSet = new Set(ids);
+    const pickedSet = new Set(pickedIds);
+    const { data: existingBb } = await supabase
+      .from("pm_task_dependencies")
+      .select("task_id, depends_on_task_id")
+      .in("task_id", mode === "blocked_by" ? ids : pickedIds);
+    const { data: existingBk } =
+      mode === "blocking"
+        ? await supabase
+            .from("pm_task_dependencies")
+            .select("task_id, depends_on_task_id")
+            .in("depends_on_task_id", ids)
+        : { data: existingBb };
+
+    const have = new Set(
+      [...(existingBb || []), ...(existingBk || [])].map(
+        (e: any) => `${e.task_id}:${e.depends_on_task_id}`,
+      ),
+    );
+
+    const rows: {
+      task_id: string;
+      depends_on_task_id: string;
+      type: string;
+      lag_days: number;
+      reveal_mode: string;
+    }[] = [];
+
+    for (const selectedId of ids) {
+      for (const otherId of pickedIds) {
+        if (selectedId === otherId) continue;
+        const edge =
+          mode === "blocked_by"
+            ? { task_id: selectedId, depends_on_task_id: otherId }
+            : { task_id: otherId, depends_on_task_id: selectedId };
+        // Only care about duplicates among the pairs we're creating
+        if (mode === "blocked_by") {
+          if (!selectedSet.has(edge.task_id) || !pickedSet.has(edge.depends_on_task_id)) continue;
+        } else {
+          if (!pickedSet.has(edge.task_id) || !selectedSet.has(edge.depends_on_task_id)) continue;
+        }
+        const key = `${edge.task_id}:${edge.depends_on_task_id}`;
+        if (have.has(key)) continue;
+        have.add(key);
+        rows.push({
+          ...edge,
+          type: "finish_start",
+          lag_days: 0,
+          reveal_mode: "on_complete",
+        });
+      }
+    }
+
+    if (!rows.length) {
+      setBusy(false);
+      toast.message("No new dependencies to add");
+      setDepMode(null);
+      return;
+    }
+
+    const { error } = await supabase.from("pm_task_dependencies").insert(rows as any);
+    setBusy(false);
+    setDepMode(null);
+    if (error) {
+      toast.error("Couldn't add dependencies");
+      return;
+    }
+    toast.success(`Added ${rows.length} dependenc${rows.length === 1 ? "y" : "ies"}`);
+    onClear();
+    onChanged?.();
+  }
+
+  const bar = n > 0 ? (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-in fade-in slide-in-from-bottom-2">
-      <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-popover shadow-lg text-sm">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-popover shadow-lg text-sm flex-wrap justify-center max-w-[95vw]">
         <span className="pl-2 pr-1 font-medium tabular-nums">{n} selected</span>
         <span className="h-5 w-px bg-border mx-1" />
         <Select onValueChange={(v) => bulkStatus(v as TaskStatus)} disabled={busy}>
@@ -154,6 +235,24 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
             </div>
           </PopoverContent>
         </Popover>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          className="h-8 rounded-full"
+          onClick={() => setDepMode("blocked_by")}
+        >
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Blocked by
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          className="h-8 rounded-full"
+          onClick={() => setDepMode("blocking")}
+        >
+          <ArrowRight className="h-3.5 w-3.5 mr-1" /> Blocking
+        </Button>
         <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)} disabled={busy} className="h-8 rounded-full">
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
         </Button>
@@ -168,11 +267,18 @@ export function BulkTaskActions({ selected, onClear, onChanged }: Props) {
         </button>
       </div>
     </div>
-  );
+  ) : null;
 
   return (
     <>
-      {typeof document !== "undefined" ? createPortal(bar, document.body) : bar}
+      {bar && (typeof document !== "undefined" ? createPortal(bar, document.body) : bar)}
+      <TaskPicker
+        open={!!depMode}
+        onClose={() => setDepMode(null)}
+        excludeIds={ids}
+        title={depMode === "blocking" ? "Add blocking tasks" : "Add blocked-by tasks"}
+        onPickMany={(picked) => depMode && bulkAddDeps(picked, depMode)}
+      />
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>

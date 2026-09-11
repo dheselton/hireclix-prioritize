@@ -22,12 +22,13 @@ type ColumnTone = "default" | "done" | "archive";
 
 // Ordered QA columns (mapped from underlying TaskStatus).
 const COLUMNS: { id: string; label: string; statuses: TaskStatus[]; tone: ColumnTone }[] = [
-  { id: "new", label: "New", statuses: ["unclaimed"], tone: "default" },
-  { id: "triage", label: "Triaging", statuses: ["claimed"], tone: "default" },
-  { id: "fix", label: "In Fix", statuses: ["in_progress", "blocked"], tone: "default" },
-  { id: "verify", label: "Ready to Verify", statuses: ["in_review"], tone: "default" },
-  { id: "verified", label: "Verified", statuses: ["complete"], tone: "done" },
-  { id: "closed", label: "Closed", statuses: ["approved"], tone: "archive" },
+  { id: "new", label: "New Needs BA Review", statuses: ["unclaimed"], tone: "default" },
+  { id: "ready", label: "Task Ready", statuses: ["claimed"], tone: "default" },
+  { id: "progress", label: "In Progress", statuses: ["in_progress"], tone: "default" },
+  { id: "info", label: "Need Info", statuses: ["blocked"], tone: "default" },
+  { id: "testing", label: "Testing", statuses: ["in_review"], tone: "default" },
+  { id: "done", label: "Done - Work Complete", statuses: ["complete"], tone: "done" },
+  { id: "ignore", label: "Done - Ignore", statuses: ["approved"], tone: "archive" },
 ];
 
 function columnShellClass(tone: ColumnTone): string {
@@ -134,9 +135,9 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
           <Bug className="h-4 w-4 text-[hsl(345_80%_55%)]" />
           <span className="font-medium">QA triage</span>
           <span className="text-muted-foreground">·</span>
-          <StatChip label="New" value={newCount} tone="muted" active={statFilter === "new"} onClick={() => setStatFilter(statFilter === "new" ? null : "new")} />
-          <StatChip label="In fix" value={inFix} tone="amber" active={statFilter === "in_fix"} onClick={() => setStatFilter(statFilter === "in_fix" ? null : "in_fix")} />
-          <StatChip label="Ready to verify" value={readyToVerify} tone="info" active={statFilter === "ready"} onClick={() => setStatFilter(statFilter === "ready" ? null : "ready")} />
+          <StatChip label="New Needs BA Review" value={newCount} tone="muted" active={statFilter === "new"} onClick={() => setStatFilter(statFilter === "new" ? null : "new")} />
+          <StatChip label="In Progress" value={inFix} tone="amber" active={statFilter === "in_fix"} onClick={() => setStatFilter(statFilter === "in_fix" ? null : "in_fix")} />
+          <StatChip label="Testing" value={readyToVerify} tone="info" active={statFilter === "ready"} onClick={() => setStatFilter(statFilter === "ready" ? null : "ready")} />
           <StatChip label="Blockers" value={blockers} tone={blockers > 0 ? "destructive" : "muted"} active={statFilter === "blockers"} onClick={() => setStatFilter(statFilter === "blockers" ? null : "blockers")} />
         </div>
         <div className="flex items-center gap-2">
@@ -299,7 +300,7 @@ function QaCard({
       )}
     >
       <div className="flex items-start gap-2">
-        <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
+        <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" kind="qa" />
         <div className="text-[13px] leading-snug font-medium flex-1 line-clamp-2">{task.title}</div>
         <MultiAssigneeChip taskId={task.id} primaryId={task.assignee_id} size="xs" />
       </div>
@@ -311,7 +312,7 @@ function QaCard({
           "text-[10px]",
           isDone ? "text-success font-medium" : "text-muted-foreground",
         )}>
-          {getKindStatusLabel(task.status, "qa")}
+          {getKindStatusLabel(task.status, "qa", { resolution: details.resolution })}
         </span>
         {details.environment && (
           <span className="text-[10px] text-muted-foreground truncate max-w-[160px]" title={details.environment}>

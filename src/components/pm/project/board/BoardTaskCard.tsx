@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { TagPillList } from "@/components/pm/tags/TagPill";
 import { KindBadge } from "@/components/pm/tasks/KindBadge";
 import { TimeTotalBadge } from "@/components/pm/time/TimeTotalBadge";
-import { getTaskKind, getKindGroupLabel } from "@/lib/pm/taskKind";
+import { getTaskKind, getKindGroupLabel, getQaDetails } from "@/lib/pm/taskKind";
 import { AttributionChip } from "@/components/pm/AttributionChip";
 
 
@@ -125,7 +125,7 @@ function BoardTaskCardInner({
         )}
         <CardContent className={cn("p-3 space-y-2 flex flex-col", showTeamBar && "pl-4")}>
           <div className="flex items-start gap-2">
-            <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" />
+            <PriorityFlag priority={task.priority} size="xs" className="mt-0.5" kind={getTaskKind(task)} />
             <div className={cn(
               "text-[12px] leading-snug line-clamp-2 flex-1",
               vis.waiting ? "font-medium text-muted-foreground" : "font-bold",
@@ -138,6 +138,7 @@ function BoardTaskCardInner({
           </div>
           {(() => {
             const kind = getTaskKind(task);
+            const group = groupForStatus(task.status);
             const groupLabel = getKindGroupLabel(group.id, kind) ?? group.label;
             return (
               <>
@@ -156,7 +157,12 @@ function BoardTaskCardInner({
                       {groupLabel}
                     </span>
                   ) : (
-                    <StatusPill status={task.status} kind={kind} className="text-[10px] py-0 px-1.5" />
+                    <StatusPill
+                      status={task.status}
+                      kind={kind}
+                      resolution={kind === "qa" ? getQaDetails(task).resolution : undefined}
+                      className="text-[10px] py-0 px-1.5"
+                    />
                   )}
                   {vis.teams.map(t => <TeamPill key={t} team={t} />)}
                   <span className="text-[10px] text-muted-foreground lowercase">· {task.type}</span>

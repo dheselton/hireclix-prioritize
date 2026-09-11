@@ -120,11 +120,15 @@ const TYPE_ALIASES: Record<string, TaskType> = {
 };
 
 export function severityToPriority(severity: QaSeverity): TaskPriority {
+  // Maps onto QA's two-bucket vocabulary:
+  // high = Pre Launch, medium = Post-Launch (Fast Follow)
   switch (severity) {
-    case "blocker": return "urgent";
-    case "major": return "high";
-    case "minor": return "medium";
-    case "cosmetic": return "low";
+    case "blocker":
+    case "major":
+      return "high";
+    case "minor":
+    case "cosmetic":
+      return "medium";
   }
 }
 
