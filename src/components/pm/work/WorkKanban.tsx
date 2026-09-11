@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { PriorityFlag } from "@/components/pm/PriorityFlag";
 import { StatusPill } from "@/components/pm/StatusPill";
+import { RecentlyDoneBadge } from "@/components/pm/RecentlyDoneBadge";
 import type { PmTask, PmProject, TaskStatus } from "@/types/pm";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -202,6 +203,7 @@ function KCard({ task, project, onOpen, overlay }: {
           />
           <div className="flex items-center gap-1.5 flex-wrap">
             <StatusPill status={task.status} className="text-[10px] py-0 px-1.5" />
+            <RecentlyDoneBadge task={task} />
             <Badge variant="outline" className="text-[10px]">{task.type}</Badge>
           </div>
           {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}

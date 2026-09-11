@@ -17,7 +17,7 @@ export function isRetiredProject(
 }
 
 /** Hours a just-completed task stays visible under Open scope (kanban grace). */
-export const RECENTLY_DONE_WINDOW_HOURS = 48;
+export const RECENTLY_DONE_WINDOW_HOURS = 6;
 
 export function isRecentlyDone(task: PmTask, now: Date = new Date()): boolean {
   if (!isDone(task.status)) return false;
@@ -29,9 +29,17 @@ export function isRecentlyDone(task: PmTask, now: Date = new Date()): boolean {
   return now.getTime() - ts <= windowMs;
 }
 
+/** Hours left before a done task drops out of Open scope; null if not applicable. */
+export function recentlyDoneHoursLeft(task: PmTask, now: Date = new Date()): number | null {
+  if (!isRecentlyDone(task, now)) return null;
+  const at = task.status_changed_at ?? task.updated_at;
+  const elapsedMs = now.getTime() - new Date(at!).getTime();
+  return Math.max(0, RECENTLY_DONE_WINDOW_HOURS - elapsedMs / 3_600_000);
+}
+
 /**
  * Scope filter for current-work surfaces.
- * - open: hide done (except last 48h) and tasks on retired projects
+ * - open: hide done (except last 6h) and tasks on retired projects
  * - completed: only done tasks
  * - all: unfiltered
  */

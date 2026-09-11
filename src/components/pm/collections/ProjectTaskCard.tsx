@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
+import { RecentlyDoneBadge } from "@/components/pm/RecentlyDoneBadge";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
@@ -96,6 +97,7 @@ export function ProjectTaskCard({
             kind={getTaskKind(task)}
             resolution={getTaskKind(task) === "qa" ? getQaDetails(task).resolution : undefined}
           />
+          <RecentlyDoneBadge task={task} />
         </button>
         {teams.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">

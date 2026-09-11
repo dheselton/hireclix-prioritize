@@ -3,6 +3,7 @@ import {
   applyWorkScope,
   isRecentlyDone,
   isRetiredProject,
+  recentlyDoneHoursLeft,
   RECENTLY_DONE_WINDOW_HOURS,
   RETIRED_PROJECT_STATUSES,
 } from "@/lib/pm/filters";
@@ -66,13 +67,13 @@ const recentDone = makeTask({
   id: "t-recent",
   project_id: active.id,
   status: "complete",
-  status_changed_at: "2026-09-10T01:00:00.000Z", // 14h ago
+  status_changed_at: "2026-09-10T12:00:00.000Z", // 3h ago — inside 6h window
 });
 const oldDone = makeTask({
   id: "t-old",
   project_id: active.id,
   status: "complete",
-  status_changed_at: "2026-09-01T01:00:00.000Z", // >48h ago
+  status_changed_at: "2026-09-01T01:00:00.000Z", // >6h ago
 });
 const approvedOld = makeTask({
   id: "t-approved",
@@ -152,8 +153,28 @@ describe("isRecentlyDone", () => {
     expect(isRecentlyDone(mixed, now)).toBe(false);
   });
 
-  it("exposes a 48-hour window constant", () => {
-    expect(RECENTLY_DONE_WINDOW_HOURS).toBe(48);
+  it("exposes a 6-hour window constant", () => {
+    expect(RECENTLY_DONE_WINDOW_HOURS).toBe(6);
+  });
+});
+
+describe("recentlyDoneHoursLeft", () => {
+  it("returns null for open tasks", () => {
+    expect(recentlyDoneHoursLeft(openTask, now)).toBeNull();
+  });
+
+  it("returns null for done tasks outside the window", () => {
+    expect(recentlyDoneHoursLeft(oldDone, now)).toBeNull();
+  });
+
+  it("returns remaining hours for tasks inside the window", () => {
+    // recentDone finished at 12:00; now is 15:00 → 3h left of 6h
+    expect(recentlyDoneHoursLeft(recentDone, now)).toBe(3);
+  });
+
+  it("returns remaining hours via updated_at fallback", () => {
+    // doneFallbackUpdated finished at 10:00; now is 15:00 → 1h left of 6h
+    expect(recentlyDoneHoursLeft(doneFallbackUpdated, now)).toBe(1);
   });
 });
 

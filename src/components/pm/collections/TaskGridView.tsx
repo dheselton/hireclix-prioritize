@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { StatusPill } from "@/components/pm/StatusPill";
+import { RecentlyDoneBadge } from "@/components/pm/RecentlyDoneBadge";
 import { cn } from "@/lib/utils";
 import type { PmTask, PmProject } from "@/types/pm";
 import { BulkTaskActions } from "./BulkTaskActions";
@@ -93,6 +94,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                   <div className="flex items-center gap-2 min-w-0">
                     <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" />
                     <StatusPill status={t.status} />
+                    <RecentlyDoneBadge task={t} />
                   </div>
                   {t.status === "unclaimed"
                     ? <ClaimButton task={t} onChanged={onChanged} />

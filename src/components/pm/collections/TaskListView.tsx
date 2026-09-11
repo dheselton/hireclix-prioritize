@@ -3,6 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
 import { StatusPill } from "@/components/pm/StatusPill";
+import { RecentlyDoneBadge } from "@/components/pm/RecentlyDoneBadge";
 import { cn } from "@/lib/utils";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
@@ -174,7 +175,12 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       <span className="text-[10px] text-muted-foreground lowercase">{t.type}</span>
                     </div>
                   </td>
-                  <td className="p-2"><StatusPill status={t.status} /></td>
+                  <td className="p-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <StatusPill status={t.status} />
+                      <RecentlyDoneBadge task={t} />
+                    </div>
+                  </td>
                   <td className="p-2 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                     <MultiAssigneeChip taskId={t.id} primaryId={t.assignee_id} size="xs" onChanged={onChanged} />
                   </td>

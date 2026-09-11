@@ -2,6 +2,7 @@ import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/pm/format";
 import { StatusPill } from "@/components/pm/StatusPill";
+import { RecentlyDoneBadge } from "@/components/pm/RecentlyDoneBadge";
 import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
@@ -95,6 +96,7 @@ export function RequestTaskCard({ task, clientName, parentSiteName, onOpen, onCh
         </div>
       </div>
       <StatusPill status={task.status} />
+      <RecentlyDoneBadge task={task} />
       {unclaimed ? (
         team.length > 0 ? <AvatarStack userIds={team} max={3} size="xs" muted /> : null
       ) : (
