@@ -64,46 +64,73 @@ async function resolveSecret(
   return typeof data === "string" && data.length > 0 ? data : null;
 }
 
+/** Normalize + strip trailing careers/jobs/career site(s) for brand matching. */
+function clientNameStem(name: string): string {
+  const key = name.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!key) return key;
+  const stripped = key
+    .replace(/\s+career\s+sites?$/i, "")
+    .replace(/\s+(careers|jobs)$/i, "")
+    .trim();
+  return stripped || key;
+}
+
 async function findOrCreateClient(
   supabase: Sb,
   clientName: string,
   clientByName: Map<string, string>,
 ): Promise<string> {
-  const key = clientName.trim().toLowerCase();
-  const existing = clientByName.get(key);
+  const trimmed = clientName.trim().replace(/\s+/g, " ");
+  const key = trimmed.toLowerCase();
+  const stem = clientNameStem(trimmed);
+
+  const existing = clientByName.get(key) ?? clientByName.get(stem);
   if (existing) return existing;
 
+  // Exact ilike first
   const { data: found } = await supabase
     .from("clients")
     .select("id, name")
-    .ilike("name", clientName.trim())
+    .ilike("name", trimmed)
     .limit(1)
     .maybeSingle();
   if (found?.id) {
     clientByName.set((found.name as string).trim().toLowerCase(), found.id);
+    clientByName.set(clientNameStem(found.name as string), found.id);
     return found.id as string;
+  }
+
+  // Stem scan (roster is small)
+  const { data: all } = await supabase.from("clients").select("id, name");
+  const stemHit = ((all ?? []) as { id: string; name: string }[]).find(
+    (c) => clientNameStem(c.name) === stem,
+  );
+  if (stemHit?.id) {
+    clientByName.set(stemHit.name.trim().toLowerCase(), stemHit.id);
+    clientByName.set(stem, stemHit.id);
+    return stemHit.id;
   }
 
   const { data: created, error } = await supabase
     .from("clients")
-    .insert({ name: clientName.trim(), is_internal: false })
+    .insert({ name: trimmed, is_internal: false })
     .select("id, name")
     .single();
   if (error) {
-    // Race: unique name — re-fetch
-    const { data: again } = await supabase
-      .from("clients")
-      .select("id, name")
-      .ilike("name", clientName.trim())
-      .limit(1)
-      .maybeSingle();
+    // Race: unique name or stem — re-fetch
+    const { data: againList } = await supabase.from("clients").select("id, name");
+    const again = ((againList ?? []) as { id: string; name: string }[]).find(
+      (c) => c.name.trim().toLowerCase() === key || clientNameStem(c.name) === stem,
+    );
     if (again?.id) {
-      clientByName.set((again.name as string).trim().toLowerCase(), again.id);
-      return again.id as string;
+      clientByName.set(again.name.trim().toLowerCase(), again.id);
+      clientByName.set(clientNameStem(again.name), again.id);
+      return again.id;
     }
     throw error;
   }
   clientByName.set((created.name as string).trim().toLowerCase(), created.id);
+  clientByName.set(clientNameStem(created.name as string), created.id);
   return created.id as string;
 }
 
@@ -230,12 +257,12 @@ Deno.serve(async (req) => {
     }
 
     const { data: clients } = await supabase.from("clients").select("id, name");
-    const clientByName = new Map(
-      ((clients ?? []) as { id: string; name: string }[]).map((c) => [
-        c.name.trim().toLowerCase(),
-        c.id,
-      ]),
-    );
+    const clientByName = new Map<string, string>();
+    for (const c of (clients ?? []) as { id: string; name: string }[]) {
+      const key = c.name.trim().toLowerCase();
+      clientByName.set(key, c.id);
+      clientByName.set(clientNameStem(c.name), c.id);
+    }
 
     let linked = 0;
     let unmappedAfterMatch = 0;

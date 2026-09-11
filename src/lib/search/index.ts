@@ -82,7 +82,6 @@ export async function runGlobalSearch(rawQuery: string, opts: { meId?: string | 
       const ct = await supabase.from("pm_tasks")
         .select("id,title,project_id,status,type,tags,assignee_id,due_date,updated_at")
         .in("project_id", pids)
-        .neq("status", "done")
         .order("updated_at", { ascending: false })
         .limit(20);
       cascadeTasks = ct.data ?? [];

@@ -4,7 +4,9 @@ import {
   normalizeClientName,
   normalizeEmail,
   clientNameKey,
+  clientNameStem,
   namesMatchClient,
+  namesMatchClientStem,
   uniqueViolationMessage,
 } from "@/lib/pm/identity";
 
@@ -18,6 +20,23 @@ describe("identity uniqueness helpers", () => {
     expect(clientNameKey("  Hire  Clix ")).toBe("hire clix");
     expect(namesMatchClient("ACME Corp", "acme   corp")).toBe(true);
     expect(namesMatchClient("ACME", "ACME Inc")).toBe(false);
+  });
+
+  it("stems Careers/Jobs suffixes to the brand name", () => {
+    expect(clientNameStem("Parsons Careers")).toBe("parsons");
+    expect(clientNameStem("Parsons")).toBe("parsons");
+    expect(clientNameStem("Penfed Careers")).toBe("penfed");
+    expect(clientNameStem("Resideo Career Site")).toBe("resideo");
+    expect(clientNameStem("Mobility Global Career Sites")).toBe("mobility global");
+    expect(clientNameStem("Acme Jobs")).toBe("acme");
+    expect(namesMatchClientStem("Parsons Careers", "Parsons")).toBe(true);
+    expect(namesMatchClientStem("Penfed Careers", "Penfed")).toBe(true);
+  });
+
+  it("does not stem unrelated names like CHS vs Community Health Systems", () => {
+    expect(clientNameStem("CHS")).toBe("chs");
+    expect(clientNameStem("Community Health Systems")).toBe("community health systems");
+    expect(namesMatchClientStem("CHS", "Community Health Systems")).toBe(false);
   });
 
   it("detects Postgres unique violations", () => {

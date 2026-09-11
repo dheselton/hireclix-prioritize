@@ -13,10 +13,32 @@ export function clientNameKey(name: string): string {
   return normalizeClientName(name).toLowerCase();
 }
 
+/**
+ * Brand stem for Careers/Jobs aliases.
+ * "Parsons Careers" → "parsons"; "CHS" stays "chs" (does not match Community Health Systems).
+ * Empty after strip keeps the original key.
+ */
+export function clientNameStem(name: string): string {
+  const key = clientNameKey(name);
+  if (!key) return key;
+  const stripped = key
+    .replace(/\s+career\s+sites?$/i, "")
+    .replace(/\s+(careers|jobs)$/i, "")
+    .trim();
+  return stripped || key;
+}
+
 export function namesMatchClient(a: string, b: string): boolean {
   const ka = clientNameKey(a);
   const kb = clientNameKey(b);
   return !!ka && !!kb && ka === kb;
+}
+
+/** True when two names share the same Careers/Jobs brand stem. */
+export function namesMatchClientStem(a: string, b: string): boolean {
+  const sa = clientNameStem(a);
+  const sb = clientNameStem(b);
+  return !!sa && !!sb && sa === sb;
 }
 
 export function normalizeEmail(email: string): string {
@@ -40,7 +62,7 @@ export function uniqueViolationMessage(
     return e?.message || fallback;
   }
   const msg = `${(error as { message?: string }).message ?? ""}`.toLowerCase();
-  if (msg.includes("clients_name_normalized") || msg.includes("clients")) {
+  if (msg.includes("clients_name_stem") || msg.includes("clients_name_normalized") || msg.includes("clients")) {
     return "A client with this name already exists";
   }
   if (msg.includes("pm_users_email") || msg.includes("pm_users")) {

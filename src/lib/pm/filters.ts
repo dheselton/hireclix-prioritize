@@ -1,9 +1,58 @@
 import { isDone } from "@/types/pm";
 import type { PmTask, PmProject, TaskType } from "@/types/pm";
 import type { ChipId } from "@/hooks/useChipFilters";
+import type { WorkScope } from "@/hooks/useWorkScope";
 import { isHardOverdue, isSlipped } from "@/lib/pm/dueState";
 import { isInSupportMode } from "@/lib/pm/liveSites";
 import { todayISO } from "@/lib/pm/format";
+
+/** Project statuses that are retired from current-work views. */
+export const RETIRED_PROJECT_STATUSES = new Set(["complete", "archived", "cancelled"]);
+
+export function isRetiredProject(
+  project: Pick<PmProject, "status"> | null | undefined,
+): boolean {
+  if (!project) return false;
+  return RETIRED_PROJECT_STATUSES.has(project.status);
+}
+
+/** Hours a just-completed task stays visible under Open scope (kanban grace). */
+export const RECENTLY_DONE_WINDOW_HOURS = 48;
+
+export function isRecentlyDone(task: PmTask, now: Date = new Date()): boolean {
+  if (!isDone(task.status)) return false;
+  const at = task.status_changed_at ?? task.updated_at;
+  if (!at) return false;
+  const ts = new Date(at).getTime();
+  if (Number.isNaN(ts)) return false;
+  const windowMs = RECENTLY_DONE_WINDOW_HOURS * 60 * 60 * 1000;
+  return now.getTime() - ts <= windowMs;
+}
+
+/**
+ * Scope filter for current-work surfaces.
+ * - open: hide done (except last 48h) and tasks on retired projects
+ * - completed: only done tasks
+ * - all: unfiltered
+ */
+export function applyWorkScope(
+  tasks: PmTask[],
+  scope: WorkScope,
+  projById: Map<string, PmProject>,
+  now: Date = new Date(),
+): PmTask[] {
+  if (scope === "all") return tasks;
+  if (scope === "completed") {
+    return tasks.filter(t => isDone(t.status));
+  }
+  // open
+  return tasks.filter(t => {
+    const project = projById.get(t.project_id);
+    if (isRetiredProject(project)) return false;
+    if (isDone(t.status)) return isRecentlyDone(t, now);
+    return true;
+  });
+}
 
 /** Filter tasks by a type allow-list. Empty set = no filter (show all). */
 export function applyTaskTypes(tasks: PmTask[], types: Set<TaskType>): PmTask[] {

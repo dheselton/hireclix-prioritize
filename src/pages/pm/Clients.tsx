@@ -16,6 +16,7 @@ import { isHardOverdue } from "@/lib/pm/dueState";
 import { NewClientPopover } from "@/components/pm/NewClientPopover";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { useClientBrandMap } from "@/lib/pm/clients";
+import { RETIRED_PROJECT_STATUSES } from "@/lib/pm/filters";
 
 interface ClientRow {
   id: string;
@@ -31,8 +32,6 @@ interface ClientRow {
 
 type SortId = "name" | "active" | "goLive";
 type ScopeId = "all" | "clients" | "internal" | "archived";
-
-const INACTIVE = new Set(["complete", "archived", "cancelled"]);
 
 export default function Clients() {
   const navigate = useNavigate();
@@ -75,7 +74,7 @@ export default function Clients() {
           if (!p.client_id) continue;
           const c = counts.get(p.client_id) ?? { total: 0, active: 0, nextGoLive: null };
           c.total += 1;
-          if (!INACTIVE.has(p.status)) {
+          if (!RETIRED_PROJECT_STATUSES.has(p.status)) {
             c.active += 1;
             if (p.go_live_date && p.go_live_date >= today && (!c.nextGoLive || p.go_live_date < c.nextGoLive)) {
               c.nextGoLive = p.go_live_date;

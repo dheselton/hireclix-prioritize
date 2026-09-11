@@ -19,7 +19,7 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { WorkFiltersSheet } from "@/components/pm/WorkFiltersSheet";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
-import { applyTaskChips, applyTaskMeMode, applyTaskTypes, isWorkStateFilter, matchesWorkState, WORK_STATE_LABEL, type WorkStateFilter } from "@/lib/pm/filters";
+import { applyTaskChips, applyTaskMeMode, applyTaskTypes, applyWorkScope, isWorkStateFilter, matchesWorkState, WORK_STATE_LABEL, type WorkStateFilter } from "@/lib/pm/filters";
 import { useWatchedTaskIds } from "@/lib/pm/watchers";
 import { useTaskAssigneesMap } from "@/lib/pm/assignees";
 import { useOpenVendorBlockedTaskIds } from "@/lib/pm/vendors";
@@ -28,6 +28,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { useWorkScope } from "@/hooks/useWorkScope";
+import { WorkScopeToggle } from "@/components/pm/WorkScopeToggle";
 import { useCreateWork } from "@/components/pm/CreateWorkProvider";
 
 const EMPTY_VENDOR_SET = new Set<string>();
@@ -108,6 +110,7 @@ export default function Work() {
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
   const workType = useWorkTypeFilter("board");
+  const scope = useWorkScope();
 
   const coMap = useTaskAssigneesMap();
   const myCoTaskIds = useMemo(() => {
@@ -169,8 +172,25 @@ export default function Work() {
       .then(({ data }) => setClientName((data as { name?: string } | null)?.name ?? null));
   }, [clientId]);
 
+  const taskMatchesSearch = (t: PmTask, q: string) => {
+    const proj = projById.get(t.project_id);
+    const haystack = [
+      t.title,
+      t.type,
+      t.status?.replace(/_/g, " "),
+      t.priority,
+      proj?.title,
+      ...(t.tags ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(q);
+  };
+
   const visibleTasks = useMemo(() => {
-    let v = applyTaskTypes(tasks, types);
+    let v = applyWorkScope(tasks, scope.value, projById);
+    v = applyTaskTypes(v, types);
     v = applyTaskMeMode(v, isMe, user?.id, myCoTaskIds);
     v = applyTaskChips(v, chips.active, user?.id, watchedTaskIds, myCoTaskIds, vendorBlockedSet);
     if (workType.value !== "all") {
@@ -196,25 +216,18 @@ export default function Work() {
     }
     if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
     const q = search.trim().toLowerCase();
-    if (q) {
-      v = v.filter(t => {
-        const proj = projById.get(t.project_id);
-        const haystack = [
-          t.title,
-          t.type,
-          t.status?.replace(/_/g, " "),
-          t.priority,
-          proj?.title,
-          ...(t.tags ?? []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(q);
-      });
-    }
+    if (q) v = v.filter(t => taskMatchesSearch(t, q));
     return v;
-  }, [tasks, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, vendorBlockedSet, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap, search]);
+  }, [tasks, scope.value, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, vendorBlockedSet, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap, search]);
+
+  /** Matches suppressed by Open scope while searching — offer "show all". */
+  const hiddenSearchMatches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q || scope.value !== "open") return 0;
+    const allScoped = applyWorkScope(tasks, "all", projById).filter(t => taskMatchesSearch(t, q));
+    const openScoped = applyWorkScope(tasks, "open", projById).filter(t => taskMatchesSearch(t, q));
+    return Math.max(0, allScoped.length - openScoped.length);
+  }, [tasks, scope.value, projById, search]);
 
   // Client tags in-use, gathered from all tasks (before filtering) so the picker offers them.
   const clientTagsInUse = useMemo(() => {
@@ -227,6 +240,7 @@ export default function Work() {
     chips.active.size +
     tagFilter.tags.length +
     (workType.value !== "all" ? 1 : 0) +
+    (scope.value !== "open" ? 1 : 0) +
     (personId ? 1 : 0) +
     (clientId ? 1 : 0) +
     (stateFilter ? 1 : 0) +
@@ -236,6 +250,7 @@ export default function Work() {
     chips.clear();
     tagFilter.clear();
     workType.set("all");
+    scope.set("open");
     setPersonId(null);
     setClientId(null);
     setStateFilter(null);
@@ -285,6 +300,8 @@ export default function Work() {
               activeCount={mobileFilterCount}
               workType={workType.value}
               onWorkTypeChange={workType.set}
+              scope={scope.value}
+              onScopeChange={scope.set}
               chipState={chips}
               tagValue={tagFilter.tags}
               onTagToggle={tagFilter.toggle}
@@ -298,6 +315,7 @@ export default function Work() {
           <div className="flex items-center gap-2">
             {!isMobile && (
               <>
+                <WorkScopeToggle value={scope.value} onChange={scope.set} />
                 <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
                 <TagFilterChip
                   value={tagFilter.tags}
@@ -397,9 +415,20 @@ export default function Work() {
       />
 
       {(search.trim() || mobileFilterCount > 0) && (
-        <div className="text-xs text-muted-foreground">
-          Showing {visibleTasks.length} task{visibleTasks.length === 1 ? "" : "s"}
-          {search.trim() ? ` matching “${search.trim()}”` : ""}
+        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>
+            Showing {visibleTasks.length} task{visibleTasks.length === 1 ? "" : "s"}
+            {search.trim() ? ` matching “${search.trim()}”` : ""}
+          </span>
+          {hiddenSearchMatches > 0 && (
+            <button
+              type="button"
+              onClick={() => scope.set("all")}
+              className="text-primary hover:underline font-medium"
+            >
+              {hiddenSearchMatches} completed match{hiddenSearchMatches === 1 ? "" : "es"} — show all
+            </button>
+          )}
         </div>
       )}
 

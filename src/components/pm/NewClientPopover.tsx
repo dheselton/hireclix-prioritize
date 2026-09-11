@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/pm/clientHub";
-import { clientNameKey, normalizeClientName } from "@/lib/pm/identity";
+import { clientNameKey, clientNameStem, normalizeClientName } from "@/lib/pm/identity";
 
 interface ExistingClient {
   id: string;
@@ -32,7 +32,12 @@ export function NewClientPopover({ onCreated, trigger, existingClients = [] }: P
   const match = useMemo(() => {
     const key = clientNameKey(name);
     if (!key) return null;
-    return existingClients.find((c) => clientNameKey(c.name) === key) ?? null;
+    const exact = existingClients.find((c) => clientNameKey(c.name) === key);
+    if (exact) return exact;
+    const stem = clientNameStem(name);
+    const stemHits = existingClients.filter((c) => clientNameStem(c.name) === stem);
+    if (!stemHits.length) return null;
+    return stemHits.find((c) => !c.archived_at) ?? stemHits[0];
   }, [name, existingClients]);
 
   function reset() {
@@ -93,8 +98,8 @@ export function NewClientPopover({ onCreated, trigger, existingClients = [] }: P
             />
             {match && (
               <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1">
-                Already exists as <span className="font-medium">{match.name}</span>
-                {match.archived_at ? " (archived — will restore)" : ""}. We’ll use that record instead of creating a duplicate.
+                Looks like <span className="font-medium">{match.name}</span>
+                {match.archived_at ? " (archived — will restore)" : ""}. We’ll use that client instead of creating a duplicate.
               </p>
             )}
           </div>

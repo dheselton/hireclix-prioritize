@@ -63,11 +63,25 @@ async function resolveSecret(
   return typeof data === "string" && data.length > 0 ? data : null;
 }
 
+/** Normalize + strip trailing careers/jobs/career site(s) for brand matching. */
+function clientNameStem(name: string): string {
+  const key = name.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!key) return key;
+  const stripped = key
+    .replace(/\s+career\s+sites?$/i, "")
+    .replace(/\s+(careers|jobs)$/i, "")
+    .trim();
+  return stripped || key;
+}
+
 async function findOrCreateClient(
   supabase: Sb,
   clientName: string,
 ): Promise<string> {
-  const trimmed = clientName.trim();
+  const trimmed = clientName.trim().replace(/\s+/g, " ");
+  const key = trimmed.toLowerCase();
+  const stem = clientNameStem(trimmed);
+
   const { data: found } = await supabase
     .from("clients")
     .select("id")
@@ -76,19 +90,23 @@ async function findOrCreateClient(
     .maybeSingle();
   if (found?.id) return found.id as string;
 
+  const { data: all } = await supabase.from("clients").select("id, name");
+  const stemHit = ((all ?? []) as { id: string; name: string }[]).find(
+    (c) => clientNameStem(c.name) === stem,
+  );
+  if (stemHit?.id) return stemHit.id;
+
   const { data: created, error } = await supabase
     .from("clients")
     .insert({ name: trimmed, is_internal: false })
     .select("id")
     .single();
   if (error) {
-    const { data: again } = await supabase
-      .from("clients")
-      .select("id")
-      .ilike("name", trimmed)
-      .limit(1)
-      .maybeSingle();
-    if (again?.id) return again.id as string;
+    const { data: againList } = await supabase.from("clients").select("id, name");
+    const again = ((againList ?? []) as { id: string; name: string }[]).find(
+      (c) => c.name.trim().toLowerCase() === key || clientNameStem(c.name) === stem,
+    );
+    if (again?.id) return again.id;
     throw error;
   }
   return (created as { id: string }).id;

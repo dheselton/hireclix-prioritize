@@ -14,10 +14,12 @@ import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useMeMode } from "@/hooks/useMeMode";
 import { useChipFilters } from "@/hooks/useChipFilters";
 import { useCurrentUser } from "@/lib/pm/mockUser";
-import { applyTaskChips, applyTaskMeMode, applyTaskTypes } from "@/lib/pm/filters";
+import { applyTaskChips, applyTaskMeMode, applyTaskTypes, applyWorkScope } from "@/lib/pm/filters";
 import { useTypeFilter } from "@/hooks/useTypeFilter";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { useWorkScope } from "@/hooks/useWorkScope";
+import { WorkScopeToggle } from "@/components/pm/WorkScopeToggle";
 import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { WorkListSkeleton, WorkLoadError } from "@/components/pm/WorkLoadingState";
 
@@ -37,9 +39,11 @@ export default function GlobalTimeline() {
 
   const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
   const workType = useWorkTypeFilter("globalTimeline");
+  const scope = useWorkScope();
 
   const visible = useMemo(() => {
     let v = filter === "all" ? tasks : tasks.filter(t => t.project_id === filter);
+    v = applyWorkScope(v, scope.value, projById);
     v = applyTaskTypes(v, types);
     v = applyTaskMeMode(v, isMe, user?.id);
     v = applyTaskChips(v, chips.active, user?.id);
@@ -50,7 +54,7 @@ export default function GlobalTimeline() {
       });
     }
     return v;
-  }, [tasks, filter, isMe, user?.id, chips.active, types, workType.value, projById]);
+  }, [tasks, filter, scope.value, isMe, user?.id, chips.active, types, workType.value, projById]);
 
   const isMobile = useIsMobile();
 
@@ -76,7 +80,12 @@ export default function GlobalTimeline() {
         onModeChange={(m) => setMode(m as any)}
         chipState={chips}
         typeFilterPage="globalTimeline"
-        actions={<WorkTypeFilterToggle value={workType.value} onChange={workType.set} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <WorkScopeToggle value={scope.value} onChange={scope.set} />
+            <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+          </div>
+        }
         extraControls={
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-full sm:w-64 h-8"><SelectValue /></SelectTrigger>

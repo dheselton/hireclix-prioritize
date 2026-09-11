@@ -2,9 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { FilterChipBar } from "@/components/pm/FilterChipBar";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { WorkScopeToggle } from "@/components/pm/WorkScopeToggle";
 import { TagFilterChip } from "@/components/pm/tags/TagFilterChip";
 import type { ChipId } from "@/hooks/useChipFilters";
 import type { WorkTypeFilter } from "@/hooks/useWorkTypeFilter";
+import type { WorkScope } from "@/hooks/useWorkScope";
 import { SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,6 +16,8 @@ interface Props {
   activeCount: number;
   workType: WorkTypeFilter;
   onWorkTypeChange: (v: WorkTypeFilter) => void;
+  scope: WorkScope;
+  onScopeChange: (v: WorkScope) => void;
   chipState: {
     active: Set<ChipId>;
     toggle: (id: ChipId) => void;
@@ -35,6 +39,8 @@ export function WorkFiltersSheet({
   activeCount,
   workType,
   onWorkTypeChange,
+  scope,
+  onScopeChange,
   chipState,
   tagValue,
   onTagToggle,
@@ -80,6 +86,13 @@ export function WorkFiltersSheet({
           </SheetHeader>
 
           <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Scope
+              </div>
+              <WorkScopeToggle value={scope} onChange={onScopeChange} className="flex w-full [&>button]:flex-1" />
+            </div>
+
             <div className="space-y-2">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Work type

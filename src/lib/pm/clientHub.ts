@@ -12,10 +12,12 @@ import { isHardOverdue } from "@/lib/pm/dueState";
 import {
   normalizeClientName,
   clientNameKey,
+  clientNameStem,
   isUniqueViolation,
   uniqueViolationMessage,
 } from "@/lib/pm/identity";
 import { refreshClientNames, refreshInternalClients } from "@/lib/pm/clients";
+import { RETIRED_PROJECT_STATUSES } from "@/lib/pm/filters";
 
 export interface ClientRecord {
   id: string;
@@ -57,8 +59,6 @@ export interface ClientContact {
   projectId: string;
   projectTitle: string;
 }
-
-const ACTIVE_EXCLUDED = new Set(["complete", "archived", "cancelled"]);
 
 export function useClientRecord(clientId: string | undefined) {
   const [client, setClient] = useState<ClientRecord | null>(null);
@@ -136,14 +136,14 @@ export function useClientHub(clientId: string | undefined) {
       const today = todayISO();
       const open = taskRows.filter(t => !isDone(t.status as TaskStatus));
       const nextGoLive = projs
-        .filter(p => p.go_live_date && !ACTIVE_EXCLUDED.has(p.status) && p.go_live_date >= today)
+        .filter(p => p.go_live_date && !RETIRED_PROJECT_STATUSES.has(p.status) && p.go_live_date >= today)
         .map(p => p.go_live_date!)
         .sort()[0] ?? null;
 
       setProjects(projs);
       setTasks(taskRows);
       setStats({
-        activeProjects: projs.filter(p => !ACTIVE_EXCLUDED.has(p.status)).length,
+        activeProjects: projs.filter(p => !RETIRED_PROJECT_STATUSES.has(p.status)).length,
         totalProjects: projs.length,
         openTasks: open.length,
         overdueTasks: open.filter(t => isHardOverdue(t, today)).length,
@@ -312,23 +312,30 @@ export type CreatedClient = {
   restored: boolean;
 };
 
-/** Find a client by the same normalized key as the DB unique index. */
+/** Find a client by exact normalized key, then by Careers/Jobs brand stem. */
 export async function findClientByNormalizedName(
   name: string,
 ): Promise<{ id: string; name: string; archived_at: string | null } | null> {
   const key = clientNameKey(name);
   if (!key) return null;
+  const stem = clientNameStem(name);
 
-  // Client roster is small; load names and match the unique-index key exactly
-  // (trim + collapse whitespace + case-insensitive).
+  // Client roster is small; load names and match exact key, then stem.
   const { data, error } = await supabase
     .from("clients")
     .select("id,name,archived_at");
   if (error) throw error;
 
-  const hit = ((data ?? []) as { id: string; name: string; archived_at: string | null }[])
-    .find((c) => clientNameKey(c.name) === key);
-  return hit ?? null;
+  const rows = (data ?? []) as { id: string; name: string; archived_at: string | null }[];
+
+  const exact = rows.find((c) => clientNameKey(c.name) === key);
+  if (exact) return exact;
+
+  // Prefer non-archived stem matches; then earliest-ish by list order.
+  const stemHits = rows.filter((c) => clientNameStem(c.name) === stem);
+  if (!stemHits.length) return null;
+  const active = stemHits.find((c) => !c.archived_at);
+  return active ?? stemHits[0];
 }
 
 /**
