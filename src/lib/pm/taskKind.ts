@@ -90,13 +90,13 @@ export const KIND_META: Record<TaskKind, KindMeta> = {
   },
   qa: {
     id: "qa",
-    label: "QA Ticket",
-    short: "QA",
+    label: "QA/GLAAT Ticket",
+    short: "QA/GLAAT",
     icon: Bug,
     badgeClass:
       "bg-[hsl(345_80%_55%/0.12)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)]",
     dotHsl: "hsl(345 80% 55%)",
-    description: "A bug or issue reported during QA / go-live testing.",
+    description: "A bug or issue reported during QA/GLAAT / go-live testing.",
   },
 };
 

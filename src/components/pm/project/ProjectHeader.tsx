@@ -160,7 +160,7 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
               </Badge>
             ) : inQa ? (
               <Badge variant="outline" className="bg-[hsl(345_80%_55%/0.15)] text-[hsl(345_80%_45%)] border-[hsl(345_80%_55%/0.4)] gap-1">
-                <Bug className="h-3 w-3" /> QA / Go-live testing
+                <Bug className="h-3 w-3" /> QA/GLAAT / Go-live testing
               </Badge>
             ) : (
               <Badge variant="outline" className={`capitalize ${STATUS_STYLE[project.status] ?? ""}`}>
@@ -197,7 +197,7 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
           )}
           {inQa && !inSupport && onLogQaBatch && (
             <Button size="sm" onClick={onLogQaBatch} className="flex-1 sm:flex-none">
-              <ListPlus className="h-4 w-4 mr-1" /> <span className="truncate">Log QA batch</span>
+              <ListPlus className="h-4 w-4 mr-1" /> <span className="truncate">Log QA/GLAAT batch</span>
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onAddTask} className="flex-1 sm:flex-none">
@@ -239,14 +239,14 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
                       disabled={enteringQa}
                       onSelect={(e) => { e.preventDefault(); enterQa(); }}
                     >
-                      <Bug className="h-4 w-4 mr-2" /> Enter QA / Go-live mode
+                      <Bug className="h-4 w-4 mr-2" /> Enter QA/GLAAT / Go-live mode
                     </DropdownMenuItem>
                   ) : (
                     <DropdownMenuItem
                       disabled={exitingQa}
                       onSelect={(e) => { e.preventDefault(); setConfirmExitQa(true); }}
                     >
-                      <RotateCcw className="h-4 w-4 mr-2" /> Exit QA mode
+                      <RotateCcw className="h-4 w-4 mr-2" /> Exit QA/GLAAT mode
                     </DropdownMenuItem>
                   )
                 )}
@@ -334,9 +334,9 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
       <ConfirmDialog
         open={confirmExitQa}
         onOpenChange={setConfirmExitQa}
-        title="Exit QA mode?"
-        description="QA tickets stay in the project, but the QA tab will be hidden."
-        confirmLabel="Exit QA mode"
+        title="Exit QA/GLAAT mode?"
+        description="QA/GLAAT tickets stay in the project, but the QA/GLAAT tab will be hidden."
+        confirmLabel="Exit QA/GLAAT mode"
         destructive={false}
         onConfirm={async () => { await exitQa(); }}
       />

@@ -133,7 +133,7 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex items-center gap-2 text-sm flex-wrap">
           <Bug className="h-4 w-4 text-[hsl(345_80%_55%)]" />
-          <span className="font-medium">QA triage</span>
+          <span className="font-medium">QA/GLAAT triage</span>
           <span className="text-muted-foreground">·</span>
           <StatChip label="New Needs BA Review" value={newCount} tone="muted" active={statFilter === "new"} onClick={() => setStatFilter(statFilter === "new" ? null : "new")} />
           <StatChip label="In Progress" value={inFix} tone="amber" active={statFilter === "in_fix"} onClick={() => setStatFilter(statFilter === "in_fix" ? null : "in_fix")} />
@@ -142,7 +142,7 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onBatchPaste}>
-            <ListPlus className="h-4 w-4 mr-1" /> Log QA batch
+            <ListPlus className="h-4 w-4 mr-1" /> Log QA/GLAAT batch
           </Button>
           <Button size="sm" onClick={onNewTicket}>
             <Plus className="h-4 w-4 mr-1" /> New ticket
@@ -192,7 +192,7 @@ export function QaTab({ tasks, onNewTicket, onBatchPaste }: Props) {
         <Card className="bg-secondary/50">
           <CardContent className="p-8 text-center space-y-3">
             <Bug className="h-8 w-8 mx-auto text-muted-foreground" />
-            <div className="text-sm text-muted-foreground">No QA tickets yet.</div>
+            <div className="text-sm text-muted-foreground">No QA/GLAAT tickets yet.</div>
             <div className="flex items-center justify-center gap-2">
               <Button size="sm" onClick={onBatchPaste}>
                 <ListPlus className="h-4 w-4 mr-1" /> Paste a list from the client

@@ -34,7 +34,7 @@ export function DefinePagesBanner({ projectId }: { projectId: string }) {
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {ready
-            ? "Each page has stamped its concept, design, build and QA tasks and is consuming the reserved time. Add more pages any time before you complete this task."
+            ? "Each page has stamped its concept, design, build and QA/GLAAT tasks and is consuming the reserved time. Add more pages any time before you complete this task."
             : "Add every page this site needs from the project's Pages tab. Each page stamps its full task bundle and unblocks the reserved page work. This task can't be completed until at least one page exists."}
         </p>
       </div>

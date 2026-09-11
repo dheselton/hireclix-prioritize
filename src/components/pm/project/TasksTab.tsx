@@ -468,7 +468,7 @@ export function TasksTab({ tasks, deps = [], projectId, meId, templateId, onAddT
     { id: "all", label: "All types" },
     { id: "design", label: "Design", teamColor: TEAM_COLORS.design },
     { id: "dev", label: "Dev", teamColor: TEAM_COLORS.dev },
-    { id: "qa", label: "QA", teamColor: TEAM_COLORS.qa },
+    { id: "qa", label: "QA/GLAAT", teamColor: TEAM_COLORS.qa },
     { id: "me", label: "My Tasks" },
   ];
 

@@ -18,7 +18,7 @@ const IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp
 const ROLE_LABEL: Record<string, string> = {
   pm: "Project Manager", designer: "Designer", developer: "Developer", submitter: "Submitter",
   ba: "Business Analyst", tech_lead: "Technical Resource",
-  qa: "QA", strategist: "Strategist", analyst: "Analyst", csm: "CSM", support: "Support",
+  qa: "QA/GLAAT", strategist: "Strategist", analyst: "Analyst", csm: "CSM", support: "Support",
 };
 
 function storagePathFromAvatarUrl(url: string | null | undefined): string | null {

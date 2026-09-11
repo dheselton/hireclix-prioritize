@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Search, ArrowUpRight, Plus } from "lucide-react";
 import type { Feature, ProductCategory, ReleaseVersion, FeatureStatus } from "@/types/roadmap";
+import { featureStatusLabel } from "@/types/roadmap";
 import { updateFeature, createFeature } from "@/lib/roadmapService";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -298,7 +299,7 @@ export function BacklogList({
                   <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                   <SelectItem value="Design">Design</SelectItem>
                   <SelectItem value="In Development">In Development</SelectItem>
-                  <SelectItem value="QA">QA</SelectItem>
+                  <SelectItem value="QA">QA/GLAAT</SelectItem>
                   <SelectItem value="Approved">Approved</SelectItem>
                 </SelectContent>
               </Select>
@@ -329,7 +330,7 @@ export function BacklogList({
                         <Badge variant="outline">{getCategoryName(feature.product_category_id)}</Badge>
                         <Badge variant="secondary">{feature.feature_level}</Badge>
                         <Badge variant="secondary">{feature.feature_type}</Badge>
-                        <Badge>{feature.status}</Badge>
+                        <Badge>{featureStatusLabel(feature.status)}</Badge>
                       </div>
 
                       <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
@@ -439,7 +440,7 @@ export function BacklogList({
                     <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                     <SelectItem value="Design">Design</SelectItem>
                     <SelectItem value="In Development">In Development</SelectItem>
-                    <SelectItem value="QA">QA</SelectItem>
+                    <SelectItem value="QA">QA/GLAAT</SelectItem>
                     <SelectItem value="Approved">Approved</SelectItem>
                     <SelectItem value="Released">Released</SelectItem>
                   </SelectContent>
@@ -515,7 +516,7 @@ export function BacklogList({
                   <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                   <SelectItem value="Design">Design</SelectItem>
                   <SelectItem value="In Development">In Development</SelectItem>
-                  <SelectItem value="QA">QA</SelectItem>
+                  <SelectItem value="QA">QA/GLAAT</SelectItem>
                   <SelectItem value="Approved">Approved</SelectItem>
                 </SelectContent>
               </Select>

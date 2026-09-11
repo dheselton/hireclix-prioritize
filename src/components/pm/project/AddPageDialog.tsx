@@ -122,7 +122,7 @@ export function AddPageDialog({
                 <div className="text-sm">
                   <div className="font-semibold">"{selectedGroup?.name}" has no task slots yet.</div>
                   <p className="text-muted-foreground text-xs mt-1">
-                    Page groups stamp a bundle of tasks onto every page you add (e.g. Design → Dev → QA → Content review).
+                    Page groups stamp a bundle of tasks onto every page you add (e.g. Design → Dev → QA/GLAAT → Content review).
                     This group has none defined, so adding pages would create empty shells. Open the template editor, attach the task
                     slots you want repeated per page, then come back here.
                   </p>

@@ -20,6 +20,11 @@ export type FeatureLevel = 'Core' | 'Integrations' | 'Add-On';
 export type FeatureType = 'Front End UI' | 'Back End CMS/Data' | 'SEO' | 'Full Feature' | '3rd Party Integration';
 export type FeatureStatus = 'Scope/Ideation' | 'Design' | 'In Development' | 'QA' | 'Approved' | 'Released';
 
+/** Display label for a feature status (DB value stays `'QA'`). */
+export function featureStatusLabel(status: string): string {
+  return status === 'QA' ? 'QA/GLAAT' : status;
+}
+
 export interface Feature {
   id: string;
   title: string;

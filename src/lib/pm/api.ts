@@ -712,7 +712,7 @@ export async function createDefinePagesTask(params: {
     title: `Define pages (${names})`,
     description:
       `After Discovery wraps, list every page this site needs for: ${names}.\n\n` +
-      `Adding a page automatically stamps its full task bundle (concept, design, build, QA) ` +
+      `Adding a page automatically stamps its full task bundle (concept, design, build, QA/GLAAT) ` +
       `and consumes the reserved time. This task can't be completed until at least one page is defined.`,
     type: 'research',
     status: assigneeId ? 'claimed' : 'unclaimed',

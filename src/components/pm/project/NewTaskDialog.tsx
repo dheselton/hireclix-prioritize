@@ -329,7 +329,7 @@ export function NewTaskDialog({ open, onOpenChange, project, phases, meId, meRol
             <DialogTitle>
               {kind === "decision" ? "Log a decision"
                 : kind === "issue" ? "Log a risk / issue"
-                : kind === "qa" ? "New QA ticket"
+                : kind === "qa" ? "New QA/GLAAT ticket"
                 : "New task"}
             </DialogTitle>
           </DialogHeader>

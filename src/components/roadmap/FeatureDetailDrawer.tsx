@@ -372,7 +372,7 @@ export function FeatureDetailDrawer({
             <TabsTrigger value="requirements" className="shrink-0">Requirements</TabsTrigger>
             <TabsTrigger value="design" className="shrink-0">Design</TabsTrigger>
             <TabsTrigger value="technical" className="shrink-0">Technical</TabsTrigger>
-            <TabsTrigger value="qa" className="shrink-0">QA</TabsTrigger>
+            <TabsTrigger value="qa" className="shrink-0">QA/GLAAT</TabsTrigger>
             <TabsTrigger value="rollout" className="shrink-0">Rollout</TabsTrigger>
           </TabsList>
 

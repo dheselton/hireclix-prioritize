@@ -102,7 +102,7 @@ export default function TemplateBuilder() {
           <Button size="sm" variant="outline" onClick={addGroup}><Plus className="h-3 w-3 mr-1" /> Add group</Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Define a bundle of tasks (e.g. Wireframe → Design → Build → QA) that gets stamped out once per page when starting a project.
+          Define a bundle of tasks (e.g. Wireframe → Design → Build → QA/GLAAT) that gets stamped out once per page when starting a project.
           Below in the Tasks list, assign tasks to a group to mark them as page slots.
         </p>
         {!groups.length && <div className="text-sm text-muted-foreground italic">No page groups yet.</div>}

@@ -29,10 +29,10 @@ export function useEnterQaMode(project: PmProject | null | undefined) {
         .update({ custom_fields: next })
         .eq("id", project.id);
       if (error) throw error;
-      toast.success("Project is now in QA mode");
+      toast.success("Project is now in QA/GLAAT mode");
       emitTasksChanged();
     } catch (err: any) {
-      toast.error(err?.message ?? "Could not enter QA mode");
+      toast.error(err?.message ?? "Could not enter QA/GLAAT mode");
     } finally {
       setBusy(false);
     }
@@ -53,10 +53,10 @@ export function useExitQaMode(project: PmProject | null | undefined) {
         .update({ custom_fields: next })
         .eq("id", project.id);
       if (error) throw error;
-      toast.success("Exited QA mode");
+      toast.success("Exited QA/GLAAT mode");
       emitTasksChanged();
     } catch (err: any) {
-      toast.error(err?.message ?? "Could not exit QA mode");
+      toast.error(err?.message ?? "Could not exit QA/GLAAT mode");
     } finally {
       setBusy(false);
     }

@@ -18,7 +18,7 @@ import { toast } from "sonner";
 const ROLE_BADGE_LABEL: Record<string, string> = {
   pm: "Project Manager", designer: "Designer", developer: "Developer", submitter: "Submitter",
   ba: "Business Analyst", tech_lead: "Technical Resource",
-  qa: "QA", strategist: "Strategist", analyst: "Analyst", csm: "CSM", support: "Support",
+  qa: "QA/GLAAT", strategist: "Strategist", analyst: "Analyst", csm: "CSM", support: "Support",
 };
 
 const ROLE_BADGE_STYLE: Record<string, string> = {

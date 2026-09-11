@@ -18,7 +18,7 @@ export const TEAM_LABEL: Record<Team, string> = {
   design: "Design",
   dev: "Dev",
   pm: "PM",
-  qa: "QA",
+  qa: "QA/GLAAT",
   strategy: "Strategy",
   analytics: "Analytics",
   csm: "CSM",

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FeatureDetailDrawer } from "@/components/roadmap/FeatureDetailDrawer";
 import { fetchFeatures, fetchProductCategories, fetchReleaseVersions } from "@/lib/roadmapService";
 import type { Feature, ReleaseVersion, FeatureStatus } from "@/types/roadmap";
+import { featureStatusLabel } from "@/types/roadmap";
 import { format, isAfter, isBefore, subDays } from "date-fns";
 import { Calendar, AlertCircle, TrendingUp, CheckCircle2 } from "lucide-react";
 
@@ -266,7 +267,7 @@ export default function RoadmapDashboard() {
                     <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                     <SelectItem value="Design">Design</SelectItem>
                     <SelectItem value="In Development">In Development</SelectItem>
-                    <SelectItem value="QA">QA</SelectItem>
+                    <SelectItem value="QA">QA/GLAAT</SelectItem>
                     <SelectItem value="Approved">Approved</SelectItem>
                     <SelectItem value="Released">Released</SelectItem>
                   </SelectContent>
@@ -308,7 +309,7 @@ export default function RoadmapDashboard() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-foreground">
-                <div className="text-sm font-medium mb-1">In QA / Testing</div>
+                <div className="text-sm font-medium mb-1">In QA/GLAAT / Testing</div>
                 <div className="text-3xl font-bold">{metrics.inQA}</div>
               </div>
             </CardContent>
@@ -378,7 +379,7 @@ export default function RoadmapDashboard() {
                           <span className="font-medium text-foreground">{inDevelopment}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">QA</span>
+                          <span className="text-muted-foreground">QA/GLAAT</span>
                           <span className="font-medium text-foreground">{inQA}</span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -429,7 +430,7 @@ export default function RoadmapDashboard() {
                               <Badge className="badge-muted text-xs">{feature.release_version.name}</Badge>
                             )}
                             <Badge className={`${statusColors[feature.status]} text-xs`}>
-                              {feature.status}
+                              {featureStatusLabel(feature.status)}
                             </Badge>
                           </div>
 
@@ -486,7 +487,7 @@ export default function RoadmapDashboard() {
                               <Badge className="badge-muted text-xs">{feature.release_version.name}</Badge>
                             )}
                             <Badge className={`${statusColors[feature.status]} text-xs`}>
-                              {feature.status}
+                              {featureStatusLabel(feature.status)}
                             </Badge>
                           </div>
 
@@ -539,7 +540,7 @@ export default function RoadmapDashboard() {
                           <Badge className="badge-muted text-xs">{feature.release_version.name}</Badge>
                         )}
                         <Badge className={`${statusColors[feature.status]} text-xs`}>
-                          {feature.status}
+                          {featureStatusLabel(feature.status)}
                         </Badge>
                       </div>
                     </div>

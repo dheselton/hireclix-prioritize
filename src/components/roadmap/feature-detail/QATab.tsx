@@ -92,7 +92,7 @@ export function QATab({ data, onChange }: QATabProps) {
     <div className="space-y-6">
       {/* QA Owner */}
       <div>
-        <Label>QA Owner <span className="text-destructive">*</span></Label>
+        <Label>QA/GLAAT Owner <span className="text-destructive">*</span></Label>
         <AssigneePicker
           value={data.qaOwner ? [data.qaOwner] : []}
           onChange={(assignees) => onChange({ ...data, qaOwner: assignees[0] || '' })}

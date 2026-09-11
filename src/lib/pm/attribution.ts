@@ -29,7 +29,7 @@ const SOURCE_LABELS: Record<CreationSource, string> = {
   intake: "Intake",
   public_form: "Public form",
   csv_import: "CSV import",
-  qa_batch: "QA batch",
+  qa_batch: "QA/GLAAT batch",
   template: "Template",
   page_generator: "Page generator",
   automation: "Automation",

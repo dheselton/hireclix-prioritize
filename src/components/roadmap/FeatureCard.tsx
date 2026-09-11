@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, CheckSquare } from "lucide-react";
 import type { Feature } from "@/types/roadmap";
+import { featureStatusLabel } from "@/types/roadmap";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +62,7 @@ export function FeatureCard({ feature, onClick }: FeatureCardProps) {
           <Badge className="badge-muted text-xs">{feature.feature_level}</Badge>
           <Badge className="badge-muted text-xs">{feature.feature_type}</Badge>
           <Badge className={`${statusColors[feature.status]} text-xs`}>
-            {feature.status}
+            {featureStatusLabel(feature.status)}
           </Badge>
         </div>
 

@@ -12,7 +12,7 @@ export const TYPE_LABEL: Record<TaskType, string> = {
   design: "Design",
   content: "Content",
   dev: "Dev",
-  qa: "QA",
+  qa: "QA/GLAAT",
   review: "Review",
   approval: "Approval",
   strategy: "Strategy",

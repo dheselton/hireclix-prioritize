@@ -174,7 +174,7 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
       }));
       const { error } = await supabase.from("pm_tasks").insert(payload as any);
       if (error) throw error;
-      toast.success(`Created ${rows.length} QA ticket${rows.length === 1 ? "" : "s"}`);
+      toast.success(`Created ${rows.length} QA/GLAAT ticket${rows.length === 1 ? "" : "s"}`);
       emitTasksChanged();
       onCreated?.();
       onOpenChange(false);
@@ -191,7 +191,7 @@ export function QaBatchPasteDialog({ open, onOpenChange, project, onCreated }: P
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ListPlus className="h-5 w-5" /> Log QA batch
+            <ListPlus className="h-5 w-5" /> Log QA/GLAAT batch
           </DialogTitle>
           <DialogDescription>
             Paste a list, or upload a CSV. Download the template if you want to format tickets in a spreadsheet first.

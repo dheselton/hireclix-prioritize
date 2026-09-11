@@ -126,7 +126,7 @@ export function SummaryHeader({
                 <SelectItem value="Scope/Ideation">Scope/Ideation</SelectItem>
                 <SelectItem value="Design">Design</SelectItem>
                 <SelectItem value="In Development">In Development</SelectItem>
-                <SelectItem value="QA">QA</SelectItem>
+                <SelectItem value="QA">QA/GLAAT</SelectItem>
                 <SelectItem value="Approved">Approved</SelectItem>
                 <SelectItem value="Released">Released</SelectItem>
               </SelectContent>

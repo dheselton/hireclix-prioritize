@@ -240,7 +240,7 @@ export function TimelineSetupWizard({
                   Time is reserved now across every phase your page work touches
                   ({pageGroups.map(g => g.name).join(", ")}). A <strong className="text-foreground">Define pages</strong> task
                   will be created for the BA — once they list the real pages, each one stamps out its full
-                  concept / design / build / QA bundle and consumes the reserved time.
+                  concept / design / build / QA/GLAAT bundle and consumes the reserved time.
                 </div>
               </div>
             )}

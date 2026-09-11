@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AssigneePicker } from "../AssigneePicker";
 import type { Feature, ProductCategory, ReleaseVersion } from "@/types/roadmap";
+import { featureStatusLabel } from "@/types/roadmap";
 import type { OverviewData, FeaturePriority, EffortSize, ExtendedFeatureStatus } from "@/types/featureDetail";
 
 interface OverviewTabProps {
@@ -166,7 +167,7 @@ export function OverviewTab({
                 <SelectItem key={status} value={status}>
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${STATUS_COLORS[status]}`} />
-                    {status}
+                    {featureStatusLabel(status)}
                   </div>
                 </SelectItem>
               ))}

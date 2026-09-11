@@ -31,7 +31,7 @@ const HEALTH_OPEN_KEY = "pm.workload.health.open";
 function formatRoleLabel(role: string) {
   if (!role) return "";
   if (role.toLowerCase() === "csm") return "CSM";
-  if (role.toLowerCase() === "qa") return "QA";
+  if (role.toLowerCase() === "qa") return "QA/GLAAT";
   if (role.toLowerCase() === "pm") return "PM";
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }

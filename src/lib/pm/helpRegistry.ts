@@ -84,7 +84,7 @@ export const HELP_PACKS: HelpPack[] = [
   {
     id: "specialists",
     label: "Specialists",
-    description: "Strategist, analyst, QA, CSM, support",
+    description: "Strategist, analyst, QA/GLAAT, CSM, support",
     roles: ["strategist", "analyst", "qa", "csm", "support"],
     guides: [
       { slug: "specialists/your-day", title: "Your day", minutes: 4, surfaces: ["queue", "work", "time"] },

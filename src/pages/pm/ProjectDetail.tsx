@@ -52,7 +52,7 @@ import { WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingStat
 
 /** Why a mode-gated tab isn't reachable on a given project. */
 const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
-  qa: "QA mode isn't available — showing Overview instead.",
+  qa: "QA/GLAAT mode isn't available — showing Overview instead.",
   support: "This project isn't in Support mode — showing Overview instead.",
   pages: "This project doesn't have a Pages tab — showing Overview instead.",
   documentation: "This project isn't in Support mode — showing Overview instead.",
@@ -211,7 +211,7 @@ export default function ProjectDetail() {
       setSearchParams(next, { replace: true });
       const qaInSupport =
         requested === "qa" && inSupport
-          ? "QA mode ends when a site goes live — showing Support instead."
+          ? "QA/GLAAT mode ends when a site goes live — showing Support instead."
           : null;
       toast.info(
         qaInSupport ??
@@ -265,7 +265,7 @@ export default function ProjectDetail() {
       : []),
     { id: "overview", label: "Overview" },
     { id: "tasks", label: "Tasks" },
-    ...(inQa ? [{ id: "qa" as const, label: "QA" }] : []),
+    ...(inQa ? [{ id: "qa" as const, label: "QA/GLAAT" }] : []),
     ...(!isRequest ? [{ id: "timeline" as const, label: "Project Timeline" }] : []),
     ...(!isRequest && hasTemplate ? [{ id: "pages" as const, label: "Pages" }] : []),
     { id: "files", label: "Files" },

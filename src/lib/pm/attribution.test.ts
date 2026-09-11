@@ -98,7 +98,7 @@ describe("attribution helpers", () => {
       },
       users,
     );
-    expect(d.primary).toBe("Created by Alex Rivera · QA batch");
+    expect(d.primary).toBe("Created by Alex Rivera · QA/GLAAT batch");
   });
 
   it("labels system paths without a creator", () => {
