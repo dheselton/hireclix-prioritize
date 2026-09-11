@@ -7,6 +7,7 @@ import { localDateISO } from '@/lib/pm/format';
 import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
 import { RESERVED_PREFIX, definedPageCount } from '@/lib/pm/pageGroups';
 import { attributionPayload, type CreationSource } from '@/lib/pm/attribution';
+import { notifyNewClientProject } from '@/lib/pm/notifications';
 
 
 export const fetchProjects = async () => {
@@ -289,6 +290,7 @@ export const deleteProject = async (id: string) => {
 export const createProject = async (p: Partial<PmProject> & { requested_by?: string | null; creation_source?: CreationSource }) => {
   const uid = getCurrentUserId();
   const payload: any = { ...p };
+  let clientName: string | null = null;
   if (uid && payload.created_by === undefined) payload.created_by = uid;
   if (payload.creation_source === undefined) {
     Object.assign(payload, attributionPayload('manual'));
@@ -300,6 +302,7 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
     try {
       const { clientTag } = await import('./tags');
       const { data: c } = await supabase.from('clients').select('name,is_internal').eq('id', payload.client_id).maybeSingle();
+      clientName = (c as { name?: string } | null)?.name ?? null;
       const ct = clientTag((c as any)?.name);
       if (ct) {
         const existing = (payload.tags ?? []) as string[];
@@ -327,6 +330,15 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
     await supabase.from('pm_project_members').insert({
       project_id: projectId, user_id: reqId, role: 'requester',
     } as any);
+  }
+  if (projectId && payload.work_type === 'project' && payload.visibility === 'client_shared' && payload.client_id) {
+    void notifyNewClientProject({
+      projectId,
+      clientId: payload.client_id,
+      projectTitle: payload.title,
+      clientName,
+      actorId: uid,
+    }).catch(() => {});
   }
   return data as unknown as PmProject;
 };
@@ -563,12 +575,14 @@ export const createProjectFromTemplate = async (params: {
 
   const uid = getCurrentUserId();
   let visibility: 'client_shared' | 'internal_shared' | 'personal_private' = 'personal_private';
+  let templateClientName: string | null = null;
   if (client_id) {
     const { data: client } = await supabase
       .from('clients')
-      .select('is_internal')
+      .select('is_internal,name')
       .eq('id', client_id)
       .maybeSingle();
+    templateClientName = (client as { name?: string } | null)?.name ?? null;
     visibility = (client as { is_internal?: boolean } | null)?.is_internal
       ? 'internal_shared'
       : 'client_shared';
@@ -605,6 +619,15 @@ export const createProjectFromTemplate = async (params: {
   await stampDiscoveryLinks({ templateId: template.id, idByTemp });
   await createDefinePagesTask({ projectId: (proj as any).id, templateId: template.id, idByTemp });
 
+  if (client_id && visibility === 'client_shared') {
+    void notifyNewClientProject({
+      projectId: (proj as any).id,
+      clientId: client_id,
+      projectTitle: (proj as any).title,
+      clientName: templateClientName,
+      actorId: uid,
+    }).catch(() => {});
+  }
 
   emitTasksChanged();
   return proj as unknown as PmProject;

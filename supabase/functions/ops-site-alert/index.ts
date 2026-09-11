@@ -479,6 +479,7 @@ Deno.serve(async (req) => {
         work_type: "request",
         status: "active",
         client_id: resolvedClientId,
+        visibility: "client_shared",
         parent_project_id: projectId,
         description,
         start_date: today,

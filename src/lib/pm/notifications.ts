@@ -15,6 +15,7 @@ export type NotifEventType =
   | "overdue"
   | "due_date_slipped"
   | "new_request"
+  | "new_client_work"
   | "unclaimed_team"
   | "vendor_follow_up_due";
 
@@ -31,6 +32,7 @@ export const EVENT_META: Record<NotifEventType, { label: string; desc: string; u
     urgent: false,
   },
   new_request:    { label: "New request submitted",    desc: "Creative/production quick requests (web, career site, design, dev). Other requests appear on the Daily Briefing dashboard only.", urgent: false },
+  new_client_work:{ label: "New client work",          desc: "A shared project was created for a client you manage or watch", urgent: false },
   unclaimed_team: { label: "Unclaimed work in my team", desc: "Legacy — no longer broadcast. Unclaimed requests appear on the Daily Briefing dashboard.", urgent: false },
   vendor_follow_up_due: {
     label: "Vendor follow-up due",
@@ -179,6 +181,34 @@ export async function createNotification(params: {
     link: params.link ?? null,
   });
   if (inApp) emitNotificationsChanged();
+}
+
+/** Surface a newly created shared client project to managers and client watchers. */
+export async function notifyNewClientProject(params: {
+  projectId: string;
+  clientId: string;
+  projectTitle: string;
+  clientName?: string | null;
+  actorId?: string | null;
+}) {
+  const [{ data: managers }, { data: watchers }] = await Promise.all([
+    supabase.from("pm_users").select("id,role,roles").eq("is_active", true),
+    supabase.from("pm_client_watchers").select("user_id").eq("client_id", params.clientId),
+  ]);
+  const recipients = new Set<string>();
+  for (const member of (managers ?? []) as { id: string; role: string; roles?: string[] | null }[]) {
+    const roles = member.roles?.length ? member.roles : [member.role];
+    if (roles.includes("pm") || roles.includes("ba")) recipients.add(member.id);
+  }
+  for (const watcher of (watchers ?? []) as { user_id: string }[]) recipients.add(watcher.user_id);
+  if (params.actorId) recipients.delete(params.actorId);
+  await Promise.all([...recipients].map((userId) => createNotification({
+    user_id: userId,
+    event_type: "new_client_work",
+    title: `New client project: ${params.projectTitle}`,
+    body: params.clientName ? `${params.clientName} · Client / Shared` : "Client / Shared",
+    link: `/pm/projects/${params.projectId}`,
+  })));
 }
 
 export function extractMentionIds(html: string | null | undefined): string[] {
