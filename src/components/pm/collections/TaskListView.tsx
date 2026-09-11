@@ -184,7 +184,8 @@ export function TaskListView({ tasks, projects, onOpen, onChanged, enableBulk = 
                       creation_source={t.creation_source}
                       creation_context={t.creation_context}
                       requested_by={proj?.requested_by}
-                      className="max-w-[160px]"
+                      created_at={t.created_at}
+                      className="max-w-[200px]"
                     />
                   </td>
                   <td className="p-2 whitespace-nowrap"><DueBadge dueDate={t.due_date} status={t.status} statusChangedAt={t.status_changed_at} updatedAt={t.updated_at} dueDateChanges={t.due_date_changes} /></td>

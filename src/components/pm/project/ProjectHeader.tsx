@@ -175,6 +175,7 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
               creation_source={project.creation_source}
               creation_context={project.creation_context}
               requested_by={project.requested_by}
+              created_at={project.created_at}
               variant="badge"
               hideManualSource={false}
             />

@@ -197,6 +197,7 @@ function KCard({ task, project, onOpen, overlay }: {
             creation_source={task.creation_source}
             creation_context={task.creation_context}
             requested_by={project?.requested_by}
+            created_at={task.created_at}
             className="max-w-full"
           />
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -245,6 +246,7 @@ function MobileCard({ task, project, columns, onOpen, onMove }: {
           creation_source={task.creation_source}
           creation_context={task.creation_context}
           requested_by={project?.requested_by}
+          created_at={task.created_at}
           className="max-w-full"
         />
         {blocked && task.dev_blocker && <div className="text-[11px] text-red-600 italic">⚠ {task.dev_blocker}</div>}

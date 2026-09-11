@@ -103,6 +103,7 @@ export function TaskGridView({ tasks, projects, onOpen, onChanged }: Props) {
                   creation_source={t.creation_source}
                   creation_context={t.creation_context}
                   requested_by={proj?.requested_by}
+                  created_at={t.created_at}
                   className="max-w-full"
                 />
               </CardContent>

@@ -180,6 +180,7 @@ function BoardTaskCardInner({
                   created_by={task.created_by}
                   creation_source={task.creation_source}
                   creation_context={task.creation_context}
+                  created_at={task.created_at}
                   className="max-w-full"
                 />
                 <div className="flex items-center justify-between gap-2 pt-1 mt-auto">

@@ -630,9 +630,9 @@ export default function Inbox() {
                                           creation_source={task.creation_source}
                                           creation_context={task.creation_context}
                                           requested_by={project?.requested_by}
-                                          className="max-w-[220px]"
+                                          created_at={task.created_at}
+                                          className="max-w-[280px]"
                                         />
-                                        <span>Submitted {fmtDate(task.created_at)}</span>
                                         {project && (
                                           <Link to={`/pm/projects/${project.id}`} className="hover:underline inline-flex items-center gap-1">
                                             {project.title} <ExternalLink className="h-3 w-3" />

@@ -84,6 +84,7 @@ function MyTaskRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => void }
           created_by={t.created_by}
           creation_source={t.creation_source}
           creation_context={t.creation_context}
+          created_at={t.created_at}
           className="max-w-full"
         />
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -121,6 +122,7 @@ function UnclaimedRow({ t, onOpen }: { t: QuickTask; onOpen: (id: string) => voi
           created_by={t.created_by}
           creation_source={t.creation_source}
           creation_context={t.creation_context}
+          created_at={t.created_at}
           className="max-w-full"
         />
         <TypePill value={t.request_type} />

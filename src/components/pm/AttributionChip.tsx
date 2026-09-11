@@ -7,9 +7,12 @@ import {
   type AttributionFields,
   type CreationSource,
 } from "@/lib/pm/attribution";
+import { fmtDateTime } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 
 interface Props extends AttributionFields {
+  /** ISO timestamp when the item was created */
+  created_at?: string | null;
   /** compact = avatar + short text; badge = outlined chip; detail = full rows */
   variant?: "compact" | "badge" | "detail";
   className?: string;
@@ -20,12 +23,14 @@ interface Props extends AttributionFields {
 /**
  * Shows who created a task/project and how it was created.
  * Collapses Requested by into Created by when they are the same person.
+ * Optionally shows when it was created.
  */
 export function AttributionChip({
   created_by,
   creation_source,
   creation_context,
   requested_by,
+  created_at,
   variant = "compact",
   className,
   hideManualSource = true,
@@ -35,6 +40,7 @@ export function AttributionChip({
     { created_by, creation_source, creation_context, requested_by },
     users,
   );
+  const when = fmtDateTime(created_at);
 
   const showSourceBadge =
     display.source !== "unknown" &&
@@ -42,11 +48,17 @@ export function AttributionChip({
 
   if (variant === "detail") {
     return (
-      <div className={cn("space-y-1 min-w-0", className)} title={display.primary}>
+      <div
+        className={cn("space-y-1 min-w-0", className)}
+        title={[display.primary, when].filter(Boolean).join(" · ")}
+      >
         <div className="flex items-center gap-2 min-w-0">
           <UserAvatar userId={display.creatorId} size="xs" />
           <span className="text-sm truncate">{display.primary}</span>
         </div>
+        {when && (
+          <div className="text-xs text-muted-foreground tabular-nums">{when}</div>
+        )}
         {display.secondary && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
             <UserCheck className="h-3.5 w-3.5 shrink-0" />
@@ -64,11 +76,16 @@ export function AttributionChip({
         <Badge
           variant="outline"
           className="gap-1 max-w-full font-normal"
-          title={display.primary}
+          title={[display.primary, when].filter(Boolean).join(" · ")}
         >
           <UserAvatar userId={display.creatorId} size="xs" />
           <span className="truncate">{display.compact}</span>
         </Badge>
+        {when && (
+          <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+            {when}
+          </span>
+        )}
         {display.showRequesterSeparately && (
           <Badge variant="outline" className="bg-info/10 text-info border-info/30 gap-1 font-normal">
             <UserCheck className="h-3 w-3" />
@@ -83,10 +100,12 @@ export function AttributionChip({
   return (
     <div
       className={cn("inline-flex items-center gap-1.5 min-w-0 text-[11px] text-muted-foreground", className)}
-      title={[display.primary, display.secondary].filter(Boolean).join(" · ")}
+      title={[display.primary, display.secondary, when].filter(Boolean).join(" · ")}
     >
       <UserAvatar userId={display.creatorId} size="xs" />
-      <span className="truncate">{display.compact}</span>
+      <span className="min-w-0 truncate">
+        {display.compact}{when ? ` · ${when}` : ""}
+      </span>
       {showSourceBadge && display.source === "unknown" && (
         <span className="shrink-0 rounded px-1 py-0.5 text-[9px] uppercase tracking-wide bg-muted text-muted-foreground">
           ?

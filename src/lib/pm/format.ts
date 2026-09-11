@@ -5,6 +5,11 @@ export function fmtDate(d: string | null | undefined) {
   try { return format(parseISO(d), "MM/dd/yyyy"); } catch { return d; }
 }
 
+export function fmtDateTime(d: string | null | undefined) {
+  if (!d) return null;
+  try { return format(parseISO(d), "MM/dd/yyyy h:mm a"); } catch { return d; }
+}
+
 export function fmtDateShort(d: string | null | undefined) {
   if (!d) return "—";
   try { return format(parseISO(d), "MMM d"); } catch { return d; }

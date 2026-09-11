@@ -25,6 +25,7 @@ interface Meta {
   created_by: string | null;
   creation_source: string | null;
   creation_context: Record<string, unknown> | null;
+  created_at: string | null;
   client_name: string | null;
   parent_title: string | null;
 }
@@ -60,7 +61,7 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
     (async () => {
       const { data } = await supabase
         .from("pm_projects")
-        .select("title, work_type, custom_fields, client_id, parent_project_id, requested_by, created_by, creation_source, creation_context, clients(name)")
+        .select("title, work_type, custom_fields, client_id, parent_project_id, requested_by, created_by, creation_source, creation_context, created_at, clients(name)")
         .eq("id", projectId)
         .maybeSingle();
       if (cancelled || !data) return;
@@ -85,6 +86,7 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
         created_by: d.created_by ?? null,
         creation_source: d.creation_source ?? null,
         creation_context: d.creation_context ?? null,
+        created_at: d.created_at ?? null,
         client_name: d.clients?.name ?? null,
         parent_title: parentTitle,
       });
@@ -115,7 +117,7 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
     template_id: null,
     created_by: meta.created_by,
     custom_fields: meta.custom_fields ?? {},
-    created_at: "",
+    created_at: meta.created_at ?? "",
     updated_at: "",
   } satisfies PmProject;
 
@@ -188,12 +190,13 @@ export function TaskMetaCard({ projectId, phaseName }: Props) {
             <span>{phaseName}</span>
           </Row>
         )}
-        <Row icon={UserPlus} label="Created by">
+        <Row icon={UserPlus} label="Created">
           <AttributionChip
             created_by={meta.created_by}
             creation_source={meta.creation_source}
             creation_context={meta.creation_context}
             requested_by={meta.requested_by}
+            created_at={meta.created_at}
             variant="detail"
             hideManualSource={false}
           />

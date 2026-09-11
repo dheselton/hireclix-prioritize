@@ -119,7 +119,8 @@ export function ProjectTaskCard({
               creation_source={task.creation_source}
               creation_context={task.creation_context}
               requested_by={project?.requested_by}
-              className="max-w-[160px]"
+              created_at={task.created_at}
+              className="max-w-[200px]"
             />
           </div>
           <div className="flex items-center gap-2">

@@ -191,13 +191,14 @@ export function ControlPanel({
         <AssigneeChips taskId={task.id} primaryId={task.assignee_id} onChanged={refetchAssignee} />
       </Row>
 
-      {/* Created by */}
-      <Row label="Created by">
-        <div className="flex justify-end max-w-[220px]">
+      {/* Created */}
+      <Row label="Created">
+        <div className="flex justify-end max-w-[280px]">
           <AttributionChip
             created_by={task.created_by}
             creation_source={task.creation_source}
             creation_context={task.creation_context}
+            created_at={task.created_at}
             variant="detail"
             hideManualSource={false}
             className="items-end text-right"

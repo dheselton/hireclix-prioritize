@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusPill } from "@/components/pm/StatusPill";
 import { MultiAssigneeChip } from "@/components/pm/MultiAssigneeChip";
+import { AttributionChip } from "@/components/pm/AttributionChip";
 import { InlineDatePopover } from "@/components/pm/project/board/InlineDatePopover";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { createTask, updateTask, deleteTask } from "@/lib/pm/api";
@@ -135,6 +136,13 @@ export function SubtasksSection({ task }: { task: PmTask }) {
             <StatusPill status={c.status} className="text-[10px] py-0 px-1.5 hidden sm:inline-flex" />
             <InlineDatePopover value={c.due_date} onChange={iso => setDue(c, iso)} />
             <MultiAssigneeChip taskId={c.id} primaryId={c.assignee_id} size="xs" onChanged={load} />
+            <AttributionChip
+              created_by={c.created_by}
+              creation_source={c.creation_source}
+              creation_context={c.creation_context}
+              created_at={c.created_at}
+              className="hidden md:inline-flex max-w-[200px]"
+            />
             <Link
               to={`/pm/tasks/${c.id}`}
               className="text-muted-foreground hover:text-foreground"

@@ -89,7 +89,8 @@ export function RequestTaskCard({ task, clientName, parentSiteName, onOpen, onCh
             created_by={task.created_by}
             creation_source={task.creation_source}
             creation_context={task.creation_context}
-            className="ml-auto shrink-0 max-w-[140px]"
+            created_at={task.created_at}
+            className="ml-auto shrink-0 max-w-[180px]"
           />
         </div>
       </div>
