@@ -65,6 +65,13 @@ function stepFromInitial(initialStep: "select" | "request" | "project"): Step {
   return initialStep;
 }
 
+/** Which entry point a step belongs to, so we only move the user when they switched sides. */
+function stepFamily(step: Step): "select" | "request" | "project" {
+  if (step === "request") return "request";
+  if (step === "project-entry" || step === "project-blank") return "project";
+  return "select";
+}
+
 export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
   const { user } = useCurrentUser();
   const navigate = useNavigate();
@@ -218,21 +225,39 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
 
     void loadLookups();
 
-    if (success || hasUnsavedWork()) {
+    const requestedStep = stepFromInitial(initialStep);
+    const explicitEntry = initialStep !== "select";
+
+    // Reopening after a submit from an explicit entry point starts a clean form
+    // instead of showing the previous confirmation screen.
+    if (success) {
+      if (explicitEntry) {
+        clearCreateWorkDraft(user?.id);
+        resetToDefaults(requestedStep);
+      }
       readyToPersistRef.current = true;
-      if (initialStep === "request" && step === "select") setStep("request");
-      if (initialStep === "project" && step === "select") setStep("project-entry");
+      return;
+    }
+
+    if (hasUnsavedWork()) {
+      // Keep the in-memory work, but the button the user clicked decides the step.
+      if (explicitEntry && stepFamily(step) !== initialStep) setStep(requestedStep);
+      readyToPersistRef.current = true;
       return;
     }
 
     const draft = readCreateWorkDraft(user?.id);
     if (draft) {
-      applyDraft(draft);
+      applyDraft(
+        explicitEntry && stepFamily(draft.step) !== initialStep
+          ? { ...draft, step: requestedStep }
+          : draft,
+      );
       readyToPersistRef.current = true;
       return;
     }
 
-    resetToDefaults(stepFromInitial(initialStep));
+    resetToDefaults(requestedStep);
     readyToPersistRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open transition
   }, [open, initialStep, user?.id]);

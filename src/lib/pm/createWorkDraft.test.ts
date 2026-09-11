@@ -61,6 +61,20 @@ describe("createWorkDraft", () => {
     expect(draftHasContent(sampleDraft())).toBe(true);
   });
 
+  it("draftHasContent ignores the step so browsing a step is not a draft", () => {
+    const blankFields = {
+      reqForm: { title: "", client_id: "", description: "" },
+      reqFieldValues: {},
+      quickTasks: [""],
+      reqLinks: [],
+      reqRequestedBy: null,
+      parentProjectId: null,
+    };
+    expect(draftHasContent(sampleDraft({ ...blankFields, step: "request" }))).toBe(false);
+    expect(draftHasContent(sampleDraft({ ...blankFields, step: "project-entry" }))).toBe(false);
+    expect(draftHasContent(sampleDraft({ ...blankFields, step: "project-blank" }))).toBe(false);
+  });
+
   it("round-trips write/read for the same user", () => {
     writeCreateWorkDraft("user-1", sampleDraft());
     const restored = readCreateWorkDraft("user-1");

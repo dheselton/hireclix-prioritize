@@ -52,9 +52,12 @@ function sanitizeLinks(value: unknown): StagedLink[] {
     }));
 }
 
-/** True when the draft has something worth restoring (beyond defaults). */
+/**
+ * True when the draft has something worth restoring (beyond defaults).
+ * The current step is deliberately not content — otherwise merely opening the
+ * dialog on a step would persist a draft that hijacks the next entry point.
+ */
 export function draftHasContent(draft: CreateWorkDraft): boolean {
-  if (draft.step !== "select") return true;
   if (draft.reqForm.title.trim() || draft.reqForm.client_id || draft.reqForm.description.trim()) return true;
   if (Object.keys(draft.reqFieldValues).length > 0) return true;
   if (draft.quickTasks.some((t) => t.trim())) return true;
