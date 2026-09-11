@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Archive, ArchiveRestore, Link2, MoreHorizontal, Pencil } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, MoreHorizontal, Pencil, Plus, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { PortalAccessPanel } from "@/components/pm/portal/PortalAccessPanel";
 import { ClientOverviewTab } from "@/components/pm/client/ClientOverviewTab";
@@ -15,6 +15,7 @@ import { ClientNotesTab } from "@/components/pm/client/ClientNotesTab";
 import { ClientAssetsTab } from "@/components/pm/client/ClientAssetsTab";
 import { EditClientDialog } from "@/components/pm/client/EditClientDialog";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
+import { useCreateWork } from "@/components/pm/CreateWorkProvider";
 import { archiveClient, useClientHub, useClientRecord } from "@/lib/pm/clientHub";
 import { useClientsWithPortal } from "@/lib/pm/portalAccess";
 import { useCurrentUser } from "@/lib/pm/mockUser";
@@ -30,11 +31,12 @@ export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const [params, setParams] = useSearchParams();
   const { client, loading: clientLoading, reload: reloadClient } = useClientRecord(id);
-  const { projects, stats, contacts, loading, error } = useClientHub(id);
+  const { projects, stats, contacts, loading, error, reload: reloadHub } = useClientHub(id);
   const withPortal = useClientsWithPortal();
   const brands = useClientBrandMap();
   const { roles } = useCurrentUser();
   const canManage = canSee(roles, "clients");
+  const { openCreateWork } = useCreateWork();
 
   const [editOpen, setEditOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -70,6 +72,10 @@ export default function ClientDetail() {
 
   const archived = !!client?.archived_at;
 
+  const openCreateForClient = (step: "request" | "project") => {
+    openCreateWork(step, { clientId: id, onCreated: () => { void reloadHub(); } });
+  };
+
   return (
     <div className="page-shell space-y-4 max-w-4xl">
       <nav className="text-xs text-muted-foreground">
@@ -102,7 +108,26 @@ export default function ClientDetail() {
         </div>
 
         {canManage && client && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!archived && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openCreateForClient("request")}
+                  title="Lightweight project (1–3 tasks)"
+                >
+                  <Zap className="h-4 w-4 mr-1" /> Quick Request
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => openCreateForClient("project")}
+                  title="Multi-phase project with timeline"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Project
+                </Button>
+              </>
+            )}
             <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4 mr-1" /> Edit
             </Button>
@@ -159,9 +184,30 @@ export default function ClientDetail() {
 
           {loading && <p className="text-sm text-muted-foreground">Loading projects…</p>}
           {!loading && visibleProjects.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              {showAll ? "No projects for this client yet." : "No active projects — switch to “Show all”."}
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {showAll ? "No projects for this client yet." : "No active projects — switch to “Show all”."}
+              </p>
+              {canManage && !archived && projects.length === 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openCreateForClient("request")}
+                    title="Lightweight project (1–3 tasks)"
+                  >
+                    <Zap className="h-4 w-4 mr-1" /> Quick Request
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => openCreateForClient("project")}
+                    title="Multi-phase project with timeline"
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Project
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
 
           {grouped.map(([group, rows]) => (

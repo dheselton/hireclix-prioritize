@@ -1,10 +1,15 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
 
 export type CreateWorkStep = "select" | "request" | "project";
 
+export type CreateWorkOptions = {
+  clientId?: string;
+  onCreated?: () => void;
+};
+
 type CreateWorkContextValue = {
-  openCreateWork: (step?: CreateWorkStep) => void;
+  openCreateWork: (step?: CreateWorkStep, options?: CreateWorkOptions) => void;
   closeCreateWork: () => void;
 };
 
@@ -16,14 +21,24 @@ const CreateWorkContext = createContext<CreateWorkContextValue | null>(null);
  */
 export function CreateWorkProvider({ children }: { children: ReactNode }) {
   const [openStep, setOpenStep] = useState<CreateWorkStep | null>(null);
+  const [presetClientId, setPresetClientId] = useState<string | null>(null);
+  const onCreatedRef = useRef<(() => void) | undefined>();
 
-  const openCreateWork = useCallback((step: CreateWorkStep = "select") => {
+  const clearOpenState = useCallback(() => {
+    setOpenStep(null);
+    setPresetClientId(null);
+    onCreatedRef.current = undefined;
+  }, []);
+
+  const openCreateWork = useCallback((step: CreateWorkStep = "select", options?: CreateWorkOptions) => {
+    setPresetClientId(options?.clientId ?? null);
+    onCreatedRef.current = options?.onCreated;
     setOpenStep(step);
   }, []);
 
   const closeCreateWork = useCallback(() => {
-    setOpenStep(null);
-  }, []);
+    clearOpenState();
+  }, [clearOpenState]);
 
   const value = useMemo(
     () => ({ openCreateWork, closeCreateWork }),
@@ -35,8 +50,10 @@ export function CreateWorkProvider({ children }: { children: ReactNode }) {
       {children}
       <CreateWorkDialog
         open={openStep !== null}
-        onOpenChange={(v) => { if (!v) setOpenStep(null); }}
+        onOpenChange={(v) => { if (!v) clearOpenState(); }}
         initialStep={openStep ?? "select"}
+        presetClientId={presetClientId}
+        onCreated={() => onCreatedRef.current?.()}
       />
     </CreateWorkContext.Provider>
   );

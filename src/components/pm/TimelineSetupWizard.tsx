@@ -14,8 +14,14 @@ import { toast } from "sonner";
 type Step = 1 | 2;
 
 export function TimelineSetupWizard({
-  templateId, open, onOpenChange,
-}: { templateId: string | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+  templateId, open, onOpenChange, clientId = null,
+}: {
+  templateId: string | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** Optional client to attach when creating from a client hub. */
+  clientId?: string | null;
+}) {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
   const [template, setTemplate] = useState<any>(null);
@@ -124,6 +130,7 @@ export function TimelineSetupWizard({
         placement: fit.placement,
         kickoff,
         goLive,
+        client_id: clientId || null,
       });
       toast.success("Project created");
       onOpenChange(false);

@@ -56,6 +56,8 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   onCreated?: () => void;
   initialStep?: "select" | "request" | "project";
+  /** When opening from a client hub, pre-fill empty client fields. */
+  presetClientId?: string | null;
 }
 
 type Step = CreateWorkDraftStep;
@@ -72,7 +74,19 @@ function stepFamily(step: Step): "select" | "request" | "project" {
   return "select";
 }
 
-export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = "select" }: Props) {
+/** Fill client_id only when the form/draft does not already have one. */
+function withPresetClient<T extends { client_id: string }>(form: T, preset: string | null | undefined): T {
+  if (!preset || form.client_id) return form;
+  return { ...form, client_id: preset };
+}
+
+export function CreateWorkDialog({
+  open,
+  onOpenChange,
+  onCreated,
+  initialStep = "select",
+  presetClientId = null,
+}: Props) {
   const { user } = useCurrentUser();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(stepFromInitial(initialStep));
@@ -124,16 +138,17 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
   const readyToPersistRef = useRef(false);
 
   function blankDraftSnapshot(nextStep: Step): Omit<CreateWorkDraft, "v" | "userId" | "updatedAt"> {
+    const clientId = presetClientId ?? "";
     return {
       step: nextStep,
       requestType: "web_edit",
-      reqForm: { title: "", client_id: "", description: "" },
+      reqForm: { title: "", client_id: clientId, description: "" },
       reqFieldValues: {},
       quickTasks: [""],
       reqRequestedBy: user?.id ?? null,
       reqLinks: [],
       parentProjectId: null,
-      projForm: { title: "", type: "career_site", status: "active", client_id: "", kickoff_date: "", go_live_date: "" },
+      projForm: { title: "", type: "career_site", status: "active", client_id: clientId, kickoff_date: "", go_live_date: "" },
       projRequestedBy: user?.id ?? null,
       projLinks: [],
     };
@@ -143,13 +158,13 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     skipFieldResetRef.current = true;
     setStep(draft.step);
     setRequestType(draft.requestType);
-    setReqForm(draft.reqForm);
+    setReqForm(withPresetClient(draft.reqForm, presetClientId));
     setReqFieldValues(draft.reqFieldValues);
     setQuickTasks(draft.quickTasks.length ? draft.quickTasks : [""]);
     setReqRequestedBy(draft.reqRequestedBy);
     setReqLinks(draft.reqLinks);
     setParentProjectId(draft.parentProjectId);
-    setProjForm(draft.projForm);
+    setProjForm(withPresetClient(draft.projForm, presetClientId));
     setProjRequestedBy(draft.projRequestedBy);
     setProjLinks(draft.projLinks);
     // Files cannot be restored from sessionStorage after a hard refresh.
@@ -242,6 +257,10 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     if (hasUnsavedWork()) {
       // Keep the in-memory work, but the button the user clicked decides the step.
       if (explicitEntry && stepFamily(step) !== initialStep) setStep(requestedStep);
+      if (presetClientId) {
+        setReqForm((prev) => withPresetClient(prev, presetClientId));
+        setProjForm((prev) => withPresetClient(prev, presetClientId));
+      }
       readyToPersistRef.current = true;
       return;
     }
@@ -260,7 +279,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     resetToDefaults(requestedStep);
     readyToPersistRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open transition
-  }, [open, initialStep, user?.id]);
+  }, [open, initialStep, user?.id, presetClientId]);
 
   // Autosave serializable fields (not File[]) while the dialog is open.
   useEffect(() => {
@@ -870,6 +889,7 @@ export function CreateWorkDialog({ open, onOpenChange, onCreated, initialStep = 
     <TimelineSetupWizard
       templateId={wizardTemplateId}
       open={!!wizardTemplateId}
+      clientId={projForm.client_id || presetClientId || null}
       onOpenChange={(v) => { if (!v) { setWizardTemplateId(null); onCreated?.(); } }}
     />
     </>
