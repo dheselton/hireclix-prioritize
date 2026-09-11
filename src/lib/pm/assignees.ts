@@ -63,6 +63,30 @@ async function fetchPrimary(taskId: string): Promise<string | null> {
   return (data as any)?.assignee_id ?? null;
 }
 
+/**
+ * Claim state follows ownership — assigning someone to unclaimed work claims it
+ * so nobody has to flip the status by hand. The `status` match keeps this from
+ * dragging work that's already further along back to "claimed".
+ */
+async function claimIfUnclaimed(taskId: string) {
+  await supabase
+    .from("pm_tasks")
+    .update({ status: "claimed", status_changed_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .eq("status", "unclaimed");
+}
+
+/** Mirror of claimIfUnclaimed: work with nobody on it belongs back in the queue. */
+async function releaseIfUnassigned(taskId: string) {
+  const [primary, co] = await Promise.all([fetchPrimary(taskId), fetchCo(taskId)]);
+  if (primary || co.length) return;
+  await supabase
+    .from("pm_tasks")
+    .update({ status: "unclaimed", status_changed_at: new Date().toISOString() })
+    .eq("id", taskId)
+    .eq("status", "claimed");
+}
+
 /** Add a co-assignee (no-op if already primary or already co). */
 export async function addAssignee(taskId: string, userId: string) {
   const primary = await fetchPrimary(taskId);
@@ -71,6 +95,7 @@ export async function addAssignee(taskId: string, userId: string) {
     // No primary yet → promote this user to primary
     await supabase.from("pm_tasks").update({ assignee_id: userId }).eq("id", taskId);
     await supabase.from("pm_task_assignees").delete().match({ task_id: taskId, user_id: userId });
+    await claimIfUnclaimed(taskId);
     emitTasksChanged();
     await notifyTaskAssigneeChange({ user_id: userId, event_type: "assigned", taskId });
     return;
@@ -78,6 +103,7 @@ export async function addAssignee(taskId: string, userId: string) {
   await supabase
     .from("pm_task_assignees")
     .upsert({ task_id: taskId, user_id: userId }, { onConflict: "task_id,user_id" });
+  await claimIfUnclaimed(taskId);
   emitTasksChanged();
   await notifyTaskAssigneeChange({ user_id: userId, event_type: "assigned", taskId });
 }
@@ -95,6 +121,7 @@ export async function removeAssignee(taskId: string, userId: string) {
   } else {
     await supabase.from("pm_task_assignees").delete().match({ task_id: taskId, user_id: userId });
   }
+  await releaseIfUnassigned(taskId);
   emitTasksChanged();
   await notifyTaskAssigneeChange({ user_id: userId, event_type: "unassigned", taskId });
 }
@@ -112,5 +139,6 @@ export async function setPrimaryAssignee(taskId: string, userId: string) {
       .from("pm_task_assignees")
       .upsert({ task_id: taskId, user_id: primary }, { onConflict: "task_id,user_id" });
   }
+  await claimIfUnclaimed(taskId);
   emitTasksChanged();
 }

@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { emitTasksChanged } from '@/lib/pm/refresh';
 import { getCurrentUserId } from '@/lib/pm/mockUser';
-import type { PmProject, PmTask, PmPhase, PmDependency } from '@/types/pm';
+import type { PmProject, PmTask, PmPhase, PmDependency, TaskStatus } from '@/types/pm';
 import { isDone } from '@/types/pm';
 import { localDateISO } from '@/lib/pm/format';
 import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
@@ -70,6 +70,29 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
   if (patch.status && (prev as any)?.status && patch.status !== (prev as any).status) {
     writePatch.status_changed_at = new Date().toISOString();
   }
+
+  // Claim state follows ownership: giving unclaimed work an owner claims it, and
+  // dropping the last owner puts it back in the queue. An explicit status in the
+  // patch always wins.
+  let autoClaimed = false;
+  if (patch.status === undefined && Object.prototype.hasOwnProperty.call(patch, 'assignee_id')) {
+    const prevStatus = (prev as any)?.status as TaskStatus | undefined;
+    if (patch.assignee_id && prevStatus === 'unclaimed') {
+      writePatch.status = 'claimed';
+      writePatch.status_changed_at = new Date().toISOString();
+      autoClaimed = true;
+    } else if (!patch.assignee_id && prevStatus === 'claimed') {
+      const { count } = await supabase
+        .from('pm_task_assignees')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('task_id', id);
+      if (!count) {
+        writePatch.status = 'unclaimed';
+        writePatch.status_changed_at = new Date().toISOString();
+        autoClaimed = true;
+      }
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(patch, 'due_date')) {
     const nextDue = patch.due_date ?? null;
     const prevDue = (prev as any)?.due_date as string | null | undefined;
@@ -117,7 +140,7 @@ export const updateTask = async (id: string, patch: Partial<PmTask>) => {
     }
     const newStatus = (data as any).status as string;
     const oldStatus = (prev as any)?.status as string | undefined;
-    if (newStatus && oldStatus && newStatus !== oldStatus) {
+    if (newStatus && oldStatus && newStatus !== oldStatus && !autoClaimed) {
       const { data: coRows } = await supabase
         .from("pm_task_assignees")
         .select("user_id")
