@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Pencil, Check, X } from "lucide-react";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { fmtDate } from "@/lib/pm/format";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { addTimeEntry, deleteTimeEntry, updateTimeEntry, fmtDur, type EnrichedEntry } from "@/lib/pm/time";
@@ -25,11 +26,11 @@ interface Props {
 }
 
 export function EntryPopover({ taskId, activityId, taskTitle, dateISO, entries, children, onChange }: Props) {
-  const { user, role } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const [h, setH] = useState("");
   const [m, setM] = useState("");
   const [note, setNote] = useState("");
-  const canEdit = (e: EnrichedEntry) => role === "pm" || e.user_id === user?.id;
+  const canEdit = (e: EnrichedEntry) => isOperator(roles, { isAdmin }) || e.user_id === user?.id;
 
   async function add() {
     if (!user) return;

@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { canCreateWork } from "@/lib/pm/permissions";
 import { toast } from "sonner";
 import { FormFieldRenderer, isFieldVisible, type FormFieldRow } from "@/components/pm/forms/FormFieldRenderer";
 import { useInternalRequestForm, slugifyLabel } from "@/components/pm/forms/useInternalRequestForm";
@@ -39,7 +40,7 @@ import { aliasFor } from "@/lib/pm/requestAliases";
 import { sendRequestReceivedEmail } from "@/lib/pm/requestEmails";
 import { useInternalClientIds, resolveDevInternalClientId } from "@/lib/pm/clients";
 import { useLiveSitesForClient, resolveParentProjectId } from "@/lib/pm/liveSites";
-import { createCareerSiteSupportRequest } from "@/lib/pm/supportQueue";
+import { createQuickRequest } from "@/lib/pm/supportQueue";
 import { Sparkle } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
 import {
@@ -87,7 +88,8 @@ export function CreateWorkDialog({
   initialStep = "select",
   presetClientId = null,
 }: Props) {
-  const { user } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
+  const canCreate = canCreateWork(roles, { isAdmin });
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(stepFromInitial(initialStep));
   const [clients, setClients] = useState<{ id: string; name: string; is_internal?: boolean }[]>([]);
@@ -362,6 +364,10 @@ export function CreateWorkDialog({
   }, [visibleInternalFields, reqFieldValues]);
 
   async function submitRequest() {
+    if (!canCreate) {
+      toast.error("You don't have permission to create work");
+      return;
+    }
     if (!reqForm.title.trim() || !reqForm.client_id) {
       toast.error("Title and client are required");
       return;
@@ -391,7 +397,7 @@ export function CreateWorkDialog({
 
     setBusy(true);
     try {
-      const { project: proj, watcherIds } = await createCareerSiteSupportRequest({
+      const { project: proj, watcherIds } = await createQuickRequest({
         title: reqForm.title.trim(),
         clientId: reqForm.client_id,
         parentProjectId: resolvedParent,
@@ -462,6 +468,10 @@ export function CreateWorkDialog({
   }
 
   async function submitProject() {
+    if (!canCreate) {
+      toast.error("You don't have permission to create work");
+      return;
+    }
     if (!projForm.title.trim()) { toast.error("Title is required"); return; }
     setBusy(true);
     try {
@@ -477,6 +487,9 @@ export function CreateWorkDialog({
         created_by: user?.id ?? null,
         requested_by: projRequestedBy ?? user?.id ?? null,
         creation_source: "manual",
+        visibility: projForm.client_id
+          ? (clients.find((c) => c.id === projForm.client_id)?.is_internal ? "internal_shared" : "client_shared")
+          : "personal_private",
       } as any);
       if (projFiles.length || projLinks.length) {
         await persistIntakeAttachments({

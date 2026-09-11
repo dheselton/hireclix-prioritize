@@ -15,6 +15,17 @@ const toDate = (s: string | null | undefined) => (s ? new Date(s + 'T00:00:00') 
 const fmt = (d: Date) => localDateISO(d);
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * day);
 
+/** Dynamic PP Go-Live: the latest scheduled task completion in the current plan. */
+export function derivePlanGoLive(
+  tasks: Pick<PmTask, 'due_date'>[],
+): string | null {
+  return tasks
+    .map((task) => task.due_date)
+    .filter((date): date is string => Boolean(date))
+    .sort()
+    .at(-1) ?? null;
+}
+
 /**
  * Recalculate downstream tasks after a task's dates change.
  * Returns a diff list. Does NOT write to DB.

@@ -23,13 +23,14 @@ describe("projectTimeLink", () => {
 });
 
 describe("canSeeProjectTimeTotal", () => {
-  it("allows PM and BA only", () => {
+  it("allows operators (PM/BA) and admin overlay", () => {
     expect(canSeeProjectTimeTotal("pm")).toBe(true);
     expect(canSeeProjectTimeTotal("ba")).toBe(true);
     expect(canSeeProjectTimeTotal(["pm", "designer"])).toBe(true);
     expect(canSeeProjectTimeTotal("designer")).toBe(false);
     expect(canSeeProjectTimeTotal("developer")).toBe(false);
     expect(canSeeProjectTimeTotal("submitter")).toBe(false);
+    expect(canSeeProjectTimeTotal("developer", { isAdmin: true })).toBe(true);
   });
 });
 

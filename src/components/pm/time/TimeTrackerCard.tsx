@@ -6,6 +6,7 @@ import { Play, Square, Plus, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useActiveTimer, formatHMS } from "@/components/pm/timer/ActiveTimerProvider";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { DatePicker } from "@/components/ui/date-picker";
 import { addTimeEntry, deleteTimeEntry, fmtDur, localDateISO, useEnrichedEntries } from "@/lib/pm/time";
@@ -15,8 +16,9 @@ import { Trash2 } from "lucide-react";
 
 export function TimeTrackerCard({ taskId, taskTitle }: { taskId: string; taskTitle: string }) {
   const { current, elapsedMs, start, stop, isRunning } = useActiveTimer();
-  const { user, role } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const users = useMockUsers();
+  const canManage = isOperator(roles, { isAdmin });
   const running = isRunning(taskId);
   const otherRunning = !!current && !running;
 
@@ -107,7 +109,7 @@ export function TimeTrackerCard({ taskId, taskTitle }: { taskId: string; taskTit
         {recent.length === 0 && <div className="text-xs text-muted-foreground italic px-1">No time logged yet.</div>}
         {recent.map(e => {
           const u = users.find(x => x.id === e.user_id);
-          const canDelete = role === "pm" || e.user_id === user?.id;
+          const canDelete = canManage || e.user_id === user?.id;
           return (
             <div key={e.id} className="flex items-center gap-2 text-xs px-1 py-1 rounded hover:bg-muted/40">
               <UserAvatar userId={e.user_id} size="xs" />

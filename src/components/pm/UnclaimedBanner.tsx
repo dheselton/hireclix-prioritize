@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { buildQueueLink, projectFilterLink } from "@/lib/pm/links";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { teamForRole, teamForTask, TEAM_LABEL } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
 import {
@@ -27,7 +28,7 @@ interface Props {
  * Dismiss is per-session and resets when the count grows.
  */
 export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const { isMe } = useMeMode();
   const allTasksQuery = useTasksQuery();
   const projectTasksQuery = useProjectTasksQuery(projectId);
@@ -38,7 +39,7 @@ export function UnclaimedBanner({ projectId, hideCta = false }: Props) {
   const projects = projectsQuery.data ?? EMPTY_PROJECTS;
   const [dismissedAt, setDismissedAt] = useState<number>(0);
 
-  const isPM = roles.includes("pm");
+  const isPM = isOperator(roles, { isAdmin });
   const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);
   const myTeam = useMemo(() => teamForRole(roles[0]), [roles]);
 

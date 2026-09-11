@@ -10,6 +10,7 @@ import type { PmTask, PmProject, TaskStatus, PmRole } from "@/types/pm";
 import { TASK_STATUSES } from "@/types/pm";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { isSubmitterOnly } from "@/lib/pm/permissions";
 import { getTaskKind, isRaidOpen } from "@/lib/pm/taskKind";
 import { toast } from "sonner";
 import { TaskListView } from "@/components/pm/collections/TaskListView";
@@ -28,6 +29,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { useWorkTypeFilter } from "@/hooks/useWorkTypeFilter";
 import { WorkTypeFilterToggle } from "@/components/pm/WorkTypeFilterToggle";
+import { MilestoneFilterToggle } from "@/components/pm/MilestoneFilterToggle";
+import { UNSET_MILESTONE_KEY, useMilestoneDefinitions } from "@/lib/pm/milestones";
 import { useWorkScope } from "@/hooks/useWorkScope";
 import { WorkScopeToggle } from "@/components/pm/WorkScopeToggle";
 import { useCreateWork } from "@/components/pm/CreateWorkProvider";
@@ -71,6 +74,7 @@ export default function Work() {
   const projectsQuery = useProjectsQuery();
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const projects = projectsQuery.data ?? EMPTY_PROJECTS;
+  const milestoneDefinitions = useMilestoneDefinitions().data ?? [];
   const { openCreateWork } = useCreateWork();
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -133,6 +137,14 @@ export default function Work() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState<WorkStateFilter | null>(null);
   const [raidOnly, setRaidOnly] = useState(false);
+  const [milestoneFilter, setMilestoneFilter] = useState<string[]>([]);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
+  const [requestTypeFilter, setRequestTypeFilter] = useState<string | null>(null);
+  const [blockerFilter, setBlockerFilter] = useState<"blocked" | "waiting_on_vendor" | null>(null);
+  const [clientWorkOnly, setClientWorkOnly] = useState(false);
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
+  const [allClients, setAllClients] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -144,17 +156,42 @@ export default function Work() {
       if (c) setClientId(c);
       if (isWorkStateFilter(f)) setStateFilter(f);
       if (section === "raid") setRaidOnly(true);
-      if (u || c || f || section) {
-        params.delete("user");
-        params.delete("client");
-        params.delete("filter");
-        if (section === "raid") params.delete("section");
-        const url = new URL(window.location.href);
-        url.search = params.toString();
-        window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams}` : "") + url.hash);
-      }
+      setOwnerId(params.get("owner"));
+      setStatusFilter((params.get("status") as TaskStatus | null));
+      setRequestTypeFilter(params.get("requestType"));
+      const milestone = params.get("milestone");
+      if (milestone) setMilestoneFilter([milestone]);
+      const blocker = params.get("blocker");
+      if (blocker === "blocked" || blocker === "waiting_on_vendor") setBlockerFilter(blocker);
+      setClientWorkOnly(params.get("clientWorkOnly") === "1");
     } catch {}
+    setFiltersHydrated(true);
   }, []);
+
+  useEffect(() => {
+    void supabase.from("clients").select("id,name").is("archived_at", null).order("name")
+      .then(({ data }) => setAllClients((data ?? []) as { id: string; name: string }[]));
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const url = new URL(window.location.href);
+    const setOrDelete = (key: string, value: string | null) => {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    };
+    setOrDelete("user", personId);
+    setOrDelete("client", clientId);
+    setOrDelete("filter", stateFilter);
+    setOrDelete("owner", ownerId);
+    setOrDelete("status", statusFilter);
+    setOrDelete("requestType", requestTypeFilter);
+    setOrDelete("blocker", blockerFilter);
+    setOrDelete("workType", workType.value === "all" ? null : workType.value);
+    setOrDelete("milestone", milestoneFilter[0] ?? null);
+    setOrDelete("clientWorkOnly", clientWorkOnly ? "1" : null);
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+  }, [filtersHydrated, personId, clientId, stateFilter, ownerId, statusFilter, requestTypeFilter, blockerFilter, workType.value, milestoneFilter, clientWorkOnly]);
 
   const allUsers = useMockUsers();
   const personName = useMemo(
@@ -202,9 +239,23 @@ export default function Work() {
     if (personId) {
       v = v.filter(t => t.assignee_id === personId || (coMap.get(t.id) ?? []).includes(personId));
     }
+    if (ownerId) v = v.filter((t) => projById.get(t.project_id)?.created_by === ownerId);
     if (clientId) {
       v = v.filter(t => clientProjectIds.has(t.project_id));
     }
+    if (statusFilter) v = v.filter((t) => t.status === statusFilter);
+    if (requestTypeFilter) {
+      v = v.filter((t) => {
+        const project = projById.get(t.project_id);
+        return project?.work_type === "request"
+          && (project.custom_fields as { request_type?: string } | null)?.request_type === requestTypeFilter;
+      });
+    }
+    if (clientWorkOnly) {
+      v = v.filter((t) => projById.get(t.project_id)?.visibility === "client_shared");
+    }
+    if (blockerFilter === "blocked") v = v.filter((t) => t.status === "blocked");
+    if (blockerFilter === "waiting_on_vendor") v = v.filter((t) => vendorBlockedSet.has(t.id));
     if (stateFilter) {
       v = v.filter(t => matchesWorkState(t, stateFilter));
     }
@@ -215,10 +266,18 @@ export default function Work() {
       });
     }
     if (tagFilter.tags.length) v = v.filter(t => taskMatchesTagFilter(t.tags ?? [], tagFilter.tags));
+    if (milestoneFilter.length) {
+      const set = new Set(milestoneFilter);
+      v = v.filter((t) => {
+        const m = projById.get(t.project_id)?.milestone ?? null;
+        if (!m) return set.has(UNSET_MILESTONE_KEY);
+        return set.has(m);
+      });
+    }
     const q = search.trim().toLowerCase();
     if (q) v = v.filter(t => taskMatchesSearch(t, q));
     return v;
-  }, [tasks, scope.value, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, vendorBlockedSet, tagFilter.tags, personId, clientId, clientProjectIds, stateFilter, raidOnly, coMap, search]);
+  }, [tasks, scope.value, isMe, user?.id, chips.active, types, workType.value, projById, myCoTaskIds, watchedTaskIds, vendorBlockedSet, tagFilter.tags, personId, ownerId, clientId, clientProjectIds, statusFilter, requestTypeFilter, clientWorkOnly, blockerFilter, stateFilter, raidOnly, coMap, search, milestoneFilter]);
 
   /** Matches suppressed by Open scope while searching — offer "show all". */
   const hiddenSearchMatches = useMemo(() => {
@@ -235,6 +294,12 @@ export default function Work() {
     for (const t of tasks) for (const tag of (t.tags ?? [])) if (tag.startsWith("client:")) s.add(tag);
     return [...s];
   }, [tasks]);
+  const requestTypes = useMemo(() => Array.from(new Set(
+    projects
+      .filter((project) => project.work_type === "request")
+      .map((project) => (project.custom_fields as { request_type?: string } | null)?.request_type)
+      .filter((value): value is string => Boolean(value)),
+  )).sort(), [projects]);
 
   const mobileFilterCount =
     chips.active.size +
@@ -243,6 +308,11 @@ export default function Work() {
     (scope.value !== "open" ? 1 : 0) +
     (personId ? 1 : 0) +
     (clientId ? 1 : 0) +
+    (ownerId ? 1 : 0) +
+    (statusFilter ? 1 : 0) +
+    (requestTypeFilter ? 1 : 0) +
+    (blockerFilter ? 1 : 0) +
+    (clientWorkOnly ? 1 : 0) +
     (stateFilter ? 1 : 0) +
     (raidOnly ? 1 : 0);
 
@@ -253,6 +323,11 @@ export default function Work() {
     scope.set("open");
     setPersonId(null);
     setClientId(null);
+    setOwnerId(null);
+    setStatusFilter(null);
+    setRequestTypeFilter(null);
+    setBlockerFilter(null);
+    setClientWorkOnly(false);
     setStateFilter(null);
     setRaidOnly(false);
   };
@@ -275,7 +350,7 @@ export default function Work() {
     mode === "projects" ? "All projects with active work. Quick requests show as compact cards." :
     "Tasks across all statuses.";
 
-  const canCreate = !(roles.length === 1 && roles[0] === "submitter");
+  const canCreate = !isSubmitterOnly(roles);
 
   return (
     <div className="page-shell space-y-4">
@@ -317,6 +392,7 @@ export default function Work() {
               <>
                 <WorkScopeToggle value={scope.value} onChange={scope.set} />
                 <WorkTypeFilterToggle value={workType.value} onChange={workType.set} />
+                <MilestoneFilterToggle value={milestoneFilter} onChange={setMilestoneFilter} />
                 <TagFilterChip
                   value={tagFilter.tags}
                   onToggle={tagFilter.toggle}
@@ -413,6 +489,71 @@ export default function Work() {
           </div>
         }
       />
+
+      <Card className="p-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-xs text-muted-foreground">
+            Client
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={clientId ?? ""} onChange={(event) => setClientId(event.target.value || null)}>
+              <option value="">All clients</option>
+              {allClients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Milestone
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={milestoneFilter[0] ?? ""} onChange={(event) => setMilestoneFilter(event.target.value ? [event.target.value] : [])}>
+              <option value="">All milestones</option>
+              {milestoneDefinitions.map((milestone) => <option key={milestone.key} value={milestone.key}>{milestone.label}</option>)}
+              <option value={UNSET_MILESTONE_KEY}>Unset</option>
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Project owner
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={ownerId ?? ""} onChange={(event) => setOwnerId(event.target.value || null)}>
+              <option value="">All owners</option>
+              {allUsers.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Assignee
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={personId ?? ""} onChange={(event) => setPersonId(event.target.value || null)}>
+              <option value="">All assignees</option>
+              {allUsers.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Status
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={statusFilter ?? ""} onChange={(event) => setStatusFilter((event.target.value || null) as TaskStatus | null)}>
+              <option value="">All statuses</option>
+              {TASK_STATUSES.map((status) => <option key={status} value={status}>{COL_LABELS[status]}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Request type
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={requestTypeFilter ?? ""} onChange={(event) => setRequestTypeFilter(event.target.value || null)}>
+              <option value="">All request types</option>
+              {requestTypes.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Blocker status
+            <select className="mt-1 block h-8 rounded-md border bg-background px-2 text-foreground" value={blockerFilter ?? ""} onChange={(event) => setBlockerFilter((event.target.value || null) as "blocked" | "waiting_on_vendor" | null)}>
+              <option value="">Any</option>
+              <option value="blocked">Blocked</option>
+              <option value="waiting_on_vendor">Waiting on vendor</option>
+            </select>
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            variant={clientWorkOnly ? "default" : "outline"}
+            className="h-8"
+            onClick={() => setClientWorkOnly((value) => !value)}
+          >
+            Client Work Only
+          </Button>
+        </div>
+      </Card>
 
       {(search.trim() || mobileFilterCount > 0) && (
         <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">

@@ -9,15 +9,21 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
+  createClientAlias,
   clientLogoPublicUrl,
+  deleteClientAlias,
   removeClientLogo,
   updateClient,
+  useClientFamily,
   uploadClientLogo,
   type ClientRecord,
 } from "@/lib/pm/clientHub";
 import { refreshClientBrands, refreshInternalClients } from "@/lib/pm/clients";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { Trash2, Upload } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from "@/lib/pm/mockUser";
 
 interface Props {
   open: boolean;
@@ -30,17 +36,25 @@ export function EditClientDialog({ open, onOpenChange, client, onSaved }: Props)
   const [name, setName] = useState(client.name);
   const [notes, setNotes] = useState(client.notes ?? "");
   const [internal, setInternal] = useState(client.is_internal);
+  const [parentClientId, setParentClientId] = useState(client.parent_client_id ?? "none");
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [newAlias, setNewAlias] = useState("");
   const [logoPath, setLogoPath] = useState(client.logo_path);
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useCurrentUser();
+  const family = useClientFamily(client.id, client.parent_client_id);
 
   useEffect(() => {
     if (open) {
       setName(client.name);
       setNotes(client.notes ?? "");
       setInternal(client.is_internal);
+      setParentClientId(client.parent_client_id ?? "none");
       setLogoPath(client.logo_path);
+      void supabase.from("clients").select("id,name").neq("id", client.id).order("name")
+        .then(({ data }) => setClients((data ?? []) as { id: string; name: string }[]));
     }
   }, [open, client]);
 
@@ -48,7 +62,12 @@ export function EditClientDialog({ open, onOpenChange, client, onSaved }: Props)
     if (!name.trim()) { toast.error("Client name is required"); return; }
     setSaving(true);
     try {
-      await updateClient(client.id, { name: name.trim(), notes: notes.trim() || null, is_internal: internal });
+      await updateClient(client.id, {
+        name: name.trim(),
+        notes: notes.trim() || null,
+        is_internal: internal,
+        parent_client_id: parentClientId === "none" ? null : parentClientId,
+      });
       await refreshInternalClients();
       await refreshClientBrands();
       onSaved();
@@ -94,6 +113,18 @@ export function EditClientDialog({ open, onOpenChange, client, onSaved }: Props)
   }
 
   const logoUrl = clientLogoPublicUrl(logoPath);
+
+  async function addAlias() {
+    try {
+      await createClientAlias(client.id, newAlias, user?.id);
+      setNewAlias("");
+      await family.reload();
+      onSaved();
+      toast.success("Alias added");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Couldn't add alias");
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,6 +187,44 @@ export function EditClientDialog({ open, onOpenChange, client, onSaved }: Props)
               onChange={e => setNotes(e.target.value)}
               placeholder="One-liner about this account…"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Parent client / account</Label>
+            <Select value={parentClientId} onValueChange={setParentClientId}>
+              <SelectTrigger><SelectValue placeholder="No parent" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No parent</SelectItem>
+                {clients.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">Keep distinct brands separate while grouping them into one account portfolio.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Aliases</Label>
+            <div className="flex gap-2">
+              <Input value={newAlias} onChange={(event) => setNewAlias(event.target.value)} placeholder="Alternate client name" />
+              <Button type="button" variant="outline" onClick={() => void addAlias()} disabled={!newAlias.trim()}>Add</Button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {family.aliases.map((alias) => (
+                <Button
+                  key={alias.id}
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={async () => {
+                    await deleteClientAlias(alias.id);
+                    await family.reload();
+                    onSaved();
+                  }}
+                >
+                  {alias.alias} ×
+                </Button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <div>

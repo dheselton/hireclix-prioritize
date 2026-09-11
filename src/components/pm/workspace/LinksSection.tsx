@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, Trash2, Plus } from "lucide-react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { getLinkProvider, hostnameOf } from "@/lib/pm/linkProvider";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
@@ -22,8 +23,9 @@ export function LinksSection({ taskId }: { taskId: string }) {
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const [pendingDelete, setPendingDelete] = useState<TaskLink | null>(null);
+  const canManage = isOperator(roles, { isAdmin });
 
   async function load() {
     const { data } = await supabase.from("pm_task_links").select("*").eq("task_id", taskId).order("created_at");
@@ -79,7 +81,7 @@ export function LinksSection({ taskId }: { taskId: string }) {
       <div className="space-y-1.5">
         {items.map(l => {
           const p = getLinkProvider(l.url);
-          const canDelete = roles.includes("pm") || (!!user && l.created_by === user.id);
+          const canDelete = canManage || (!!user && l.created_by === user.id);
           return (
             <a
               key={l.id}

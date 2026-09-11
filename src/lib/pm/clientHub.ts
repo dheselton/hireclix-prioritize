@@ -12,12 +12,12 @@ import { isHardOverdue } from "@/lib/pm/dueState";
 import {
   normalizeClientName,
   clientNameKey,
-  clientNameStem,
   isUniqueViolation,
   uniqueViolationMessage,
 } from "@/lib/pm/identity";
 import { refreshClientNames, refreshInternalClients } from "@/lib/pm/clients";
 import { RETIRED_PROJECT_STATUSES } from "@/lib/pm/filters";
+import { derivePlanGoLive } from "@/lib/pm/scheduler";
 
 export interface ClientRecord {
   id: string;
@@ -27,6 +27,7 @@ export interface ClientRecord {
   archived_at: string | null;
   created_at: string;
   logo_path?: string | null;
+  parent_client_id: string | null;
 }
 
 export interface ClientProjectRow {
@@ -35,9 +36,20 @@ export interface ClientProjectRow {
   status: string;
   work_type: string | null;
   type: string | null;
+  milestone: string | null;
+  visibility: string;
   go_live_date: string | null;
+  pp_go_live_date: string | null;
   start_date: string | null;
   created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  owner_ids: string[];
+  open_tasks: number;
+  blocked_tasks: number;
+  overdue_tasks: number;
+  unclaimed_tasks: number;
+  next_due: string | null;
   client_contact_name: string | null;
   client_contact_email: string | null;
 }
@@ -51,6 +63,9 @@ export interface ClientStats {
   hours30d: number;
   portalInvites: number;
   nextGoLive: string | null;
+  nextPpGoLive: string | null;
+  activeQuickRequests: number;
+  blockedTasks: number;
 }
 
 export interface ClientContact {
@@ -68,7 +83,7 @@ export function useClientRecord(clientId: string | undefined) {
     if (!clientId) return;
     const { data } = await supabase
       .from("clients")
-      .select("id,name,notes,is_internal,archived_at,created_at,logo_path")
+      .select("id,name,notes,is_internal,archived_at,created_at,logo_path,parent_client_id")
       .eq("id", clientId)
       .maybeSingle();
     setClient((data ?? null) as ClientRecord | null);
@@ -78,6 +93,56 @@ export function useClientRecord(clientId: string | undefined) {
   useEffect(() => { reload(); }, [reload]);
 
   return { client, loading, reload };
+}
+
+export interface ClientFamilyRecord {
+  id: string;
+  name: string;
+  parent_client_id: string | null;
+}
+
+export interface ClientAlias {
+  id: string;
+  alias: string;
+}
+
+export function useClientFamily(clientId: string | undefined, parentClientId?: string | null) {
+  const [parent, setParent] = useState<ClientFamilyRecord | null>(null);
+  const [children, setChildren] = useState<ClientFamilyRecord[]>([]);
+  const [aliases, setAliases] = useState<ClientAlias[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!clientId) return;
+    const [childrenResult, aliasesResult, parentResult] = await Promise.all([
+      supabase.from("clients").select("id,name,parent_client_id").eq("parent_client_id", clientId).order("name"),
+      (supabase as any).from("pm_client_aliases").select("id,alias").eq("client_id", clientId).order("alias"),
+      parentClientId
+        ? supabase.from("clients").select("id,name,parent_client_id").eq("id", parentClientId).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    setChildren((childrenResult.data ?? []) as ClientFamilyRecord[]);
+    setAliases((aliasesResult.data ?? []) as ClientAlias[]);
+    setParent((parentResult.data ?? null) as ClientFamilyRecord | null);
+  }, [clientId, parentClientId]);
+
+  useEffect(() => { void reload(); }, [reload]);
+  return { parent, children, aliases, reload };
+}
+
+export async function createClientAlias(clientId: string, alias: string, createdBy?: string | null) {
+  const normalized = normalizeClientName(alias);
+  if (!normalized) throw new Error("Alias is required");
+  const { error } = await (supabase as any).from("pm_client_aliases").insert({
+    client_id: clientId,
+    alias: normalized,
+    created_by: createdBy ?? null,
+  });
+  if (error) throw new Error(uniqueViolationMessage(error, "Failed to add alias"));
+}
+
+export async function deleteClientAlias(id: string) {
+  const { error } = await (supabase as any).from("pm_client_aliases").delete().eq("id", id);
+  if (error) throw error;
 }
 
 /** Projects + tasks + time + portal invites rolled into actionable numbers. */
@@ -96,7 +161,7 @@ export function useClientHub(clientId: string | undefined) {
       const [{ data: projRows, error: projErr }, { count: inviteCount }] = await Promise.all([
         supabase
           .from("pm_projects")
-          .select("id,title,status,work_type,type,go_live_date,start_date,created_at,client_contact_name,client_contact_email")
+          .select("id,title,status,work_type,type,milestone,visibility,go_live_date,start_date,created_at,updated_at,created_by,client_contact_name,client_contact_email")
           .eq("client_id", clientId)
           .order("created_at", { ascending: false }),
         supabase
@@ -107,18 +172,53 @@ export function useClientHub(clientId: string | undefined) {
       ]);
       if (projErr) throw projErr;
 
-      const projs = (projRows ?? []) as ClientProjectRow[];
-      const ids = projs.map(p => p.id);
+      const baseProjects = (projRows ?? []) as unknown as Omit<ClientProjectRow,
+        "pp_go_live_date" | "owner_ids" | "open_tasks" | "blocked_tasks" |
+        "overdue_tasks" | "unclaimed_tasks" | "next_due">[];
+      const ids = baseProjects.map(p => p.id);
 
       let taskRows: PmTask[] = [];
+      const memberIdsByProject = new Map<string, string[]>();
       if (ids.length) {
-        const { data: t, error: tErr } = await supabase
-          .from("pm_tasks")
-          .select("*")
-          .in("project_id", ids);
+        const [{ data: t, error: tErr }, { data: members, error: memberErr }] = await Promise.all([
+          supabase.from("pm_tasks").select("*").in("project_id", ids),
+          supabase.from("pm_project_members").select("project_id,user_id,role").in("project_id", ids),
+        ]);
         if (tErr) throw tErr;
+        if (memberErr) throw memberErr;
         taskRows = (t ?? []) as unknown as PmTask[];
+        for (const member of (members ?? []) as { project_id: string; user_id: string; role: string }[]) {
+          if (!["pm", "ba", "owner", "creator", "lead"].includes(member.role)) continue;
+          const ownerIds = memberIdsByProject.get(member.project_id) ?? [];
+          if (!ownerIds.includes(member.user_id)) ownerIds.push(member.user_id);
+          memberIdsByProject.set(member.project_id, ownerIds);
+        }
       }
+
+      const today = todayISO();
+      const tasksByProject = new Map<string, PmTask[]>();
+      for (const task of taskRows) {
+        const rows = tasksByProject.get(task.project_id) ?? [];
+        rows.push(task);
+        tasksByProject.set(task.project_id, rows);
+      }
+      const projs: ClientProjectRow[] = baseProjects.map((project) => {
+        const projectTasks = tasksByProject.get(project.id) ?? [];
+        const openTasks = projectTasks.filter((task) => !isDone(task.status as TaskStatus));
+        const dueDates = openTasks.map((task) => task.due_date).filter((date): date is string => Boolean(date)).sort();
+        const ownerIds = memberIdsByProject.get(project.id) ?? [];
+        if (project.created_by && !ownerIds.includes(project.created_by)) ownerIds.unshift(project.created_by);
+        return {
+          ...project,
+          pp_go_live_date: derivePlanGoLive(projectTasks),
+          owner_ids: ownerIds,
+          open_tasks: openTasks.length,
+          blocked_tasks: openTasks.filter((task) => task.status === "blocked").length,
+          overdue_tasks: openTasks.filter((task) => isHardOverdue(task, today)).length,
+          unclaimed_tasks: openTasks.filter((task) => task.status === "unclaimed").length,
+          next_due: dueDates[0] ?? null,
+        };
+      });
 
       // Hours logged in the last 30 days against this client's tasks.
       let minutes = 0;
@@ -133,7 +233,6 @@ export function useClientHub(clientId: string | undefined) {
         for (const e of ((entries ?? []) as { minutes: number }[])) minutes += e.minutes ?? 0;
       }
 
-      const today = todayISO();
       const open = taskRows.filter(t => !isDone(t.status as TaskStatus));
       const nextGoLive = projs
         .filter(p => p.go_live_date && !RETIRED_PROJECT_STATUSES.has(p.status) && p.go_live_date >= today)
@@ -143,14 +242,27 @@ export function useClientHub(clientId: string | undefined) {
       setProjects(projs);
       setTasks(taskRows);
       setStats({
-        activeProjects: projs.filter(p => !RETIRED_PROJECT_STATUSES.has(p.status)).length,
+        activeProjects: projs.filter(
+          (p) => p.work_type !== "request" && !RETIRED_PROJECT_STATUSES.has(p.status),
+        ).length,
         totalProjects: projs.length,
         openTasks: open.length,
         overdueTasks: open.filter(t => isHardOverdue(t, today)).length,
-        unclaimedTasks: open.filter(t => t.status === "unclaimed").length,
+        unclaimedTasks: open.filter(
+          (t) => t.status === "unclaimed"
+            && projs.find((p) => p.id === t.project_id)?.work_type === "request",
+        ).length,
         hours30d: Math.round((minutes / 60) * 10) / 10,
         portalInvites: inviteCount ?? 0,
         nextGoLive,
+        nextPpGoLive: projs
+          .map((p) => p.pp_go_live_date)
+          .filter((date): date is string => Boolean(date) && date >= today)
+          .sort()[0] ?? null,
+        activeQuickRequests: projs.filter(
+          (p) => p.work_type === "request" && !RETIRED_PROJECT_STATUSES.has(p.status),
+        ).length,
+        blockedTasks: open.filter((t) => t.status === "blocked").length,
       });
 
       const seen = new Set<string>();
@@ -318,9 +430,9 @@ export async function findClientByNormalizedName(
 ): Promise<{ id: string; name: string; archived_at: string | null } | null> {
   const key = clientNameKey(name);
   if (!key) return null;
-  const stem = clientNameStem(name);
 
-  // Client roster is small; load names and match exact key, then stem.
+  // Exact client names and explicit aliases are reusable. Similar names are
+  // suggestions in the UI only; distinct brands are never merged automatically.
   const { data, error } = await supabase
     .from("clients")
     .select("id,name,archived_at");
@@ -331,11 +443,13 @@ export async function findClientByNormalizedName(
   const exact = rows.find((c) => clientNameKey(c.name) === key);
   if (exact) return exact;
 
-  // Prefer non-archived stem matches; then earliest-ish by list order.
-  const stemHits = rows.filter((c) => clientNameStem(c.name) === stem);
-  if (!stemHits.length) return null;
-  const active = stemHits.find((c) => !c.archived_at);
-  return active ?? stemHits[0];
+  const { data: alias } = await (supabase as any)
+    .from("pm_client_aliases")
+    .select("client_id")
+    .eq("alias_key", key)
+    .maybeSingle();
+  if (!alias?.client_id) return null;
+  return rows.find((client) => client.id === alias.client_id) ?? null;
 }
 
 /**
@@ -347,6 +461,7 @@ export async function createClient(input: {
   name: string;
   notes?: string | null;
   is_internal?: boolean;
+  parent_client_id?: string | null;
 }): Promise<CreatedClient> {
   const name = normalizeClientName(input.name);
   if (!name) throw new Error("Client name is required");
@@ -369,6 +484,7 @@ export async function createClient(input: {
       name,
       notes: input.notes?.trim() || null,
       is_internal: input.is_internal ?? false,
+      parent_client_id: input.parent_client_id ?? null,
     })
     .select("id,name")
     .single();
@@ -402,7 +518,13 @@ export async function createClient(input: {
 
 export async function updateClient(
   id: string,
-  patch: { name?: string; notes?: string | null; is_internal?: boolean; logo_path?: string | null },
+  patch: {
+    name?: string;
+    notes?: string | null;
+    is_internal?: boolean;
+    logo_path?: string | null;
+    parent_client_id?: string | null;
+  },
 ) {
   const next = {
     ...patch,

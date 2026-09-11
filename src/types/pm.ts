@@ -15,6 +15,8 @@ export interface PmUser {
   role: PmRole;
   secondary_role?: PmRole | null;
   roles?: PmRole[] | null;
+  /** Admin overlay — not a job. Grants all surfaces + operator DB privileges. */
+  is_admin?: boolean;
   email: string | null;
   avatar_url: string | null;
   avatar_color?: string | null;
@@ -30,6 +32,7 @@ export type Track = 'pm' | 'production' | 'strategy' | 'analytics';
 
 export type WorkType = 'request' | 'project';
 export const WORK_TYPES: WorkType[] = ['request', 'project'];
+export type WorkVisibility = 'client_shared' | 'internal_shared' | 'personal_private';
 
 export type { CreationSource, CreationContext } from '@/lib/pm/attribution';
 
@@ -41,9 +44,15 @@ export interface PmProject {
   parent_project_id?: string | null;
   type: ProjectType;
   work_type: WorkType;
+  visibility: WorkVisibility;
   status: ProjectStatus;
   /** When status last changed — drives status-clock badges. */
   status_changed_at?: string | null;
+  /**
+   * Project lifecycle milestone key (matches pm_milestone_definitions.key).
+   * Null = unset. Separate from task/template phases (pm_project_phases).
+   */
+  milestone?: string | null;
   go_live_date: string | null;
   start_date: string | null;
   kickoff_date: string | null;
@@ -55,6 +64,17 @@ export interface PmProject {
   creation_source?: import('@/lib/pm/attribution').CreationSource | null;
   creation_context?: import('@/lib/pm/attribution').CreationContext | null;
   custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Admin-configurable project lifecycle milestone option. */
+export interface PmMilestoneDefinition {
+  id: string;
+  key: string;
+  label: string;
+  sort_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

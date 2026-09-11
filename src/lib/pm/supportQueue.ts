@@ -5,7 +5,6 @@
  * a live career site via parent_project_id, with one or more unclaimed tasks.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { createProject } from "@/lib/pm/api";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { fanoutNewRequestNotifications } from "@/lib/pm/newRequestNotify";
 import { isHardOverdue } from "@/lib/pm/dueState";
@@ -310,60 +309,45 @@ export async function fetchUnlinkedCareerSiteRequests(): Promise<PmProject[]> {
  * Create a career-site support request (child project + unclaimed task(s)).
  * Shared by CreateWorkDialog and LogSupportRequestDialog.
  */
-export async function createCareerSiteSupportRequest(
+export async function createQuickRequest(
   input: CreateCareerSiteSupportRequestInput,
 ): Promise<CreateCareerSiteSupportRequestResult> {
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
   if (!input.clientId) throw new Error("Client is required");
 
-  const today = todayISO();
   const creationSource = input.creationSource ?? "manual";
   const creationContext = {
     request_type: input.requestType,
     ...(input.creationContext ?? {}),
   };
 
-  const project = await createProject({
-    title,
-    type: "quick_request",
-    work_type: "request",
-    status: "active",
-    client_id: input.clientId,
-    parent_project_id: input.parentProjectId,
-    description: input.description?.trim() || null,
-    start_date: today,
-    go_live_date: input.dueDate ?? null,
-    created_by: input.createdBy ?? null,
-    requested_by: input.requestedBy ?? input.createdBy ?? null,
-    custom_fields: { request_type: input.requestType, ...(input.customFields ?? {}) },
-    creation_source: creationSource,
-    creation_context: creationContext,
-  } as Partial<PmProject> & { requested_by?: string | null; creation_source?: CreationSource });
-
   let titles = (input.taskTitles ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 3);
   if (!titles.length) titles = [title];
-  const taskDescription = input.description?.trim() || null;
   const taskType = intakeTaskTypeForRequest(input.requestType);
 
-  const { error: taskErr } = await supabase.from("pm_tasks").insert(
-    titles.map((taskTitle, i) => ({
-      project_id: project.id,
-      title: taskTitle,
-      type: taskType,
-      status: "unclaimed",
-      priority: "medium",
-      duration_days: 1,
-      sort_order: i * 10,
-      created_by: input.createdBy ?? null,
-      assignee_id: null,
-      description: taskDescription,
-      due_date: input.dueDate ?? null,
-      creation_source: creationSource,
-      creation_context: creationContext,
-    })) as never,
-  );
-  if (taskErr) throw taskErr;
+  const { data: projectId, error: createErr } = await (supabase.rpc as any)("create_quick_request", {
+    p_title: title,
+    p_client_id: input.clientId,
+    p_request_type: input.requestType,
+    p_description: input.description?.trim() || null,
+    p_custom_fields: input.customFields ?? {},
+    p_requested_by: input.requestedBy ?? input.createdBy ?? null,
+    p_task_titles: titles,
+    p_task_type: taskType,
+    p_due_date: input.dueDate ?? null,
+    p_parent_project_id: input.parentProjectId,
+    p_creation_source: creationSource,
+    p_creation_context: creationContext,
+  });
+  if (createErr) throw createErr;
+  const { data: projectRow, error: projectErr } = await supabase
+    .from("pm_projects")
+    .select("*")
+    .eq("id", projectId)
+    .single();
+  if (projectErr || !projectRow) throw projectErr ?? new Error("Quick Request was created but could not be loaded");
+  const project = projectRow as unknown as PmProject;
 
   if (input.requestType.startsWith("careersite_")) {
     refreshCareerSiteProjects().catch(() => {});
@@ -383,6 +367,9 @@ export async function createCareerSiteSupportRequest(
   emitTasksChanged();
   return { project, watcherIds };
 }
+
+/** @deprecated Use createQuickRequest; retained for existing support entry points. */
+export const createCareerSiteSupportRequest = createQuickRequest;
 
 /** Summary counts for the Support tab header. */
 export function summarizeQueue(rows: SupportRequestRollup[]): {

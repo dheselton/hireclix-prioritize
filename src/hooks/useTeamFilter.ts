@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isOperator, isSubmitterOnly } from "@/lib/pm/permissions";
 import { ROLE_TO_TEAM, TEAM_LABEL, TEAM_PEERS, TEAM_PEER_LABEL, peerTeamsForRoles, teamsFromTask, type Team } from "@/lib/pm/teams";
 import type { PmTask } from "@/types/pm";
 
@@ -8,11 +9,11 @@ const key = (scope: string, userId: string | null | undefined) =>
 
 /**
  * "My team only" default filter. Sticky per scope (e.g. projectId) + user.
- * - PM role and submitter bypass (always show all).
+ * - Operators (PM/BA/admin) and submitter-only bypass (always show all).
  * - User without a mapped team falls back to showAll.
  */
 export function useTeamFilter(scope: string) {
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const role = user?.role ?? null;
   const meId = user?.id ?? null;
   const myTeam: Team | null = role ? ROLE_TO_TEAM[role] : null;
@@ -24,7 +25,9 @@ export function useTeamFilter(scope: string) {
     const uniq = Array.from(new Set(teams));
     return uniq.length > 1 ? uniq : null;
   })();
-  const bypass = !override && !multiRolePeers && (role === "pm" || role === "submitter" || !myTeam);
+  const bypass = !override && !multiRolePeers && (
+    isOperator(roles, { isAdmin }) || isSubmitterOnly(roles) || !myTeam
+  );
 
   const read = useCallback((): boolean => {
     if (bypass) return true;

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Zap, FolderKanban } from "lucide-react";
 import { useCreateWork } from "@/components/pm/CreateWorkProvider";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isSubmitterOnly } from "@/lib/pm/permissions";
 import { TaskDrawer, useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { UnclaimedBanner } from "@/components/pm/UnclaimedBanner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,12 +22,12 @@ import { useProjectsQuery, useTasksQuery } from "@/lib/pm/queries";
 import { WorkListSkeleton, WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingState";
 
 export default function WorkQueue() {
-  const { user, role } = useCurrentUser();
+  const { user, roles } = useCurrentUser();
   const drawer = useTaskDrawerLink();
   const { openCreateWork } = useCreateWork();
 
   // Submitter-only data (preserved from prior version)
-  const isSubmitter = role === "submitter";
+  const isSubmitter = isSubmitterOnly(roles);
   const [latestFormSlug, setLatestFormSlug] = useState<string | null>(null);
   const tasksQuery = useTasksQuery();
   const projectsQuery = useProjectsQuery();

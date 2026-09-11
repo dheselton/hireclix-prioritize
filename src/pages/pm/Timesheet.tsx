@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { timesheetScope } from "@/lib/pm/permissions";
 import { addDays, fmtDur, localDateISO, startOfWeek, useEnrichedEntries } from "@/lib/pm/time";
 import { WeekPaginator } from "@/components/pm/time/WeekPaginator";
 import { TimesheetGrid } from "@/components/pm/time/TimesheetGrid";
@@ -20,11 +21,11 @@ const WEEK_WARN_MIN = 80 * 60;
 const ALL_USERS = "__all__";
 
 export default function Timesheet() {
-  const { user: me, role } = useCurrentUser();
+  const { user: me, roles, isAdmin } = useCurrentUser();
   const allUsers = useMockUsers().filter(u => u.role !== "submitter");
   const [params, setParams] = useSearchParams();
 
-  const isManager = role === "pm";
+  const isManager = timesheetScope(roles, { isAdmin }) === "team-toggle";
   const [weekStart, setWeekStart] = useState<Date>(startOfWeek(new Date()));
   const [view, setView] = useState<"timesheet" | "entries">("timesheet");
   const [selectedUserId, setSelectedUserId] = useState<string>(me?.id ?? "");

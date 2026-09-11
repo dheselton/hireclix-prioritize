@@ -2,16 +2,25 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  BarChart3, AlertTriangle, ChevronDown, ChevronRight, CheckCircle2, PlusCircle, Inbox, Activity,
+  BarChart3, AlertTriangle, ChevronDown, ChevronRight, CheckCircle2, PlusCircle, Inbox, Activity, Flag,
 } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { buildQueueLink, projectFilterLink } from "@/lib/pm/links";
 import { fmtDate } from "@/lib/pm/format";
 import { useMockUsers } from "@/lib/pm/mockUser";
 import { useReportData, computeAtRisk, isOverdue, startOfToday, daysSince } from "@/lib/pm/report";
-import { isDone, type PmProject, type PmTask } from "@/types/pm";
+import { isDone, PROJECT_STATUSES, type PmProject, type PmTask } from "@/types/pm";
 import { cn } from "@/lib/utils";
 import { WorkLoadError, WorkPageSkeleton } from "@/components/pm/WorkLoadingState";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MilestoneFilterToggle } from "@/components/pm/MilestoneFilterToggle";
+import {
+  UNSET_MILESTONE_KEY,
+  UNSET_MILESTONE_LABEL,
+  milestoneLabel,
+  useMilestoneDefinitions,
+} from "@/lib/pm/milestones";
+import { applyProjectMilestones } from "@/lib/pm/filters";
 
 /* ------------------------------------------------------------------ */
 
@@ -92,22 +101,83 @@ export default function Report() {
   const { loading, error, reload, tasks, projects, clientNames, lastActivity, weekStart } = useReportData();
   const users = useMockUsers();
   const [openTile, setOpenTile] = useState<string | null>(null);
+  const { data: milestoneDefs = [] } = useMilestoneDefinitions({ includeInactive: true });
+  const [filterClient, setFilterClient] = useState<string>("all");
+  const [filterOwner, setFilterOwner] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterMilestones, setFilterMilestones] = useState<string[]>([]);
 
-  const projById = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
+  const filteredProjects = useMemo(() => {
+    let v = projects;
+    if (filterClient !== "all") {
+      v = v.filter((p) => (filterClient === "__none" ? !p.client_id : p.client_id === filterClient));
+    }
+    if (filterOwner !== "all") {
+      v = v.filter((p) => p.created_by === filterOwner || p.requested_by === filterOwner);
+    }
+    if (filterStatus !== "all") {
+      v = v.filter((p) => p.status === filterStatus);
+    }
+    v = applyProjectMilestones(v, filterMilestones);
+    return v;
+  }, [projects, filterClient, filterOwner, filterStatus, filterMilestones]);
+
+  const filteredProjectIds = useMemo(() => new Set(filteredProjects.map((p) => p.id)), [filteredProjects]);
+  const filteredTasks = useMemo(
+    () => tasks.filter((t) => filteredProjectIds.has(t.project_id)),
+    [tasks, filteredProjectIds],
+  );
+
+  const projById = useMemo(() => new Map(filteredProjects.map(p => [p.id, p])), [filteredProjects]);
   const today = startOfToday();
   const weekIso = weekStart.toISOString();
 
+  const clientOptions = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of projects) if (p.client_id) ids.add(p.client_id);
+    return [...ids]
+      .map((id) => ({ id, name: clientNames.get(id) ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects, clientNames]);
+
+  const ownerOptions = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of projects) {
+      if (p.created_by) ids.add(p.created_by);
+      if (p.requested_by) ids.add(p.requested_by);
+    }
+    return [...ids]
+      .map((id) => ({ id, name: users.find((u) => u.id === id)?.name ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects, users]);
+
+  const milestoneCounts = useMemo(() => {
+    const order = [...milestoneDefs.map((d) => d.key), UNSET_MILESTONE_KEY];
+    const map = new Map<string, PmProject[]>();
+    for (const p of filteredProjects) {
+      const key = p.milestone ?? UNSET_MILESTONE_KEY;
+      map.set(key, [...(map.get(key) ?? []), p]);
+    }
+    return order
+      .filter((k) => (map.get(k)?.length ?? 0) > 0)
+      .map((k) => ({
+        key: k,
+        label: k === UNSET_MILESTONE_KEY ? UNSET_MILESTONE_LABEL : milestoneLabel(k, milestoneDefs),
+        projects: map.get(k) ?? [],
+      }));
+  }, [filteredProjects, milestoneDefs]);
+
   const thisWeek = useMemo(() => {
-    const completed = tasks.filter(t => isDone(t.status) && t.updated_at >= weekIso);
-    const added = tasks.filter(t => t.created_at >= weekIso);
-    const requests = projects.filter(p => p.work_type === "request" && p.created_at >= weekIso);
+    const completed = filteredTasks.filter(t => isDone(t.status) && t.updated_at >= weekIso);
+    const added = filteredTasks.filter(t => t.created_at >= weekIso);
+    const requests = filteredProjects.filter(p => p.work_type === "request" && p.created_at >= weekIso);
     const movedIds = new Set<string>();
     lastActivity.forEach((iso, pid) => { if (iso >= weekIso) movedIds.add(pid); });
-    const moved = projects.filter(p => movedIds.has(p.id));
+    const moved = filteredProjects.filter(p => movedIds.has(p.id));
     return { completed, added, requests, moved };
-  }, [tasks, projects, lastActivity, weekIso]);
+  }, [filteredTasks, filteredProjects, lastActivity, weekIso]);
 
-  const overdueTasks = useMemo(() => tasks.filter(t => isOverdue(t, today)), [tasks, today]);
+  const overdueTasks = useMemo(() => filteredTasks.filter(t => isOverdue(t, today)), [filteredTasks, today]);
   const pushedOverdue = useMemo(
     () => overdueTasks.filter(t => (t.due_date_changes ?? 0) > 0).length,
     [overdueTasks],
@@ -148,8 +218,8 @@ export default function Report() {
   }, [overdueTasks, projById, clientNames]);
 
   const atRisk = useMemo(
-    () => computeAtRisk(projects, tasks, clientNames, lastActivity),
-    [projects, tasks, clientNames, lastActivity],
+    () => computeAtRisk(filteredProjects, filteredTasks, clientNames, lastActivity),
+    [filteredProjects, filteredTasks, clientNames, lastActivity],
   );
 
   const toggle = (id: string) => setOpenTile(prev => (prev === id ? null : id));
@@ -171,6 +241,62 @@ export default function Report() {
           Week of {fmtDate(weekStart.toISOString())} — every number opens the work behind it.
         </p>
       </header>
+
+      <Card>
+        <CardContent className="p-3 flex flex-wrap items-center gap-2">
+          <Select value={filterClient} onValueChange={setFilterClient}>
+            <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Client" /></SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              <SelectItem value="all">All clients</SelectItem>
+              <SelectItem value="__none">No client</SelectItem>
+              {clientOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterOwner} onValueChange={setFilterOwner}>
+            <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Owner" /></SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              <SelectItem value="all">All owners</SelectItem>
+              {ownerOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="h-8 w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent className="z-50 bg-popover">
+              <SelectItem value="all">All statuses</SelectItem>
+              {PROJECT_STATUSES.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, " ")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <MilestoneFilterToggle value={filterMilestones} onChange={setFilterMilestones} />
+          <span className="text-xs text-muted-foreground ml-auto">
+            {filteredProjects.length} project{filteredProjects.length === 1 ? "" : "s"}
+          </span>
+        </CardContent>
+      </Card>
+
+      <PanelShell title="By Milestone" icon={Flag} hint="Where projects sit in the delivery lifecycle.">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 min-w-0">
+          {milestoneCounts.map((row) => (
+            <StatTile
+              key={row.key}
+              label={`in ${row.label}`}
+              count={row.projects.length}
+              open={openTile === `ms-${row.key}`}
+              onToggle={() => toggle(`ms-${row.key}`)}
+              projects={row.projects}
+              projById={projById}
+            />
+          ))}
+          {milestoneCounts.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full">No projects match the current filters.</p>
+          )}
+        </div>
+      </PanelShell>
 
       {/* 1 — This week */}
       <PanelShell title="This week" icon={Activity} hint="Since Monday. Click a number to see the items.">

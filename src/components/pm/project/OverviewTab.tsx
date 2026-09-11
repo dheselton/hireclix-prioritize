@@ -8,15 +8,17 @@ import { isHardOverdue } from "@/lib/pm/dueState";
 import { projectFilterLink, projectTimeLink } from "@/lib/pm/links";
 import { updateProject } from "@/lib/pm/api";
 import { notifyNewMentions } from "@/lib/pm/notifications";
+import { toast } from "sonner";
 import { fmtDur } from "@/lib/pm/time";
 import { canSeeProjectTimeTotal, useProjectTimeTotal } from "@/lib/pm/projectTime";
 import { useProjectAttachments } from "@/lib/pm/projectAttachments";
 import { labelProjectActivity, useProjectActivity } from "@/lib/pm/projectActivity";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
 import { UserAvatar } from "@/components/pm/UserAvatar";
+import { MilestoneBadge, MilestoneSelect } from "@/components/pm/MilestoneSelect";
 import {
   AlertTriangle, CalendarClock, MessageSquare, Clock, Paperclip,
-  ExternalLink, Activity,
+  ExternalLink, Activity, Flag,
 } from "lucide-react";
 import type { PmProject, PmTask } from "@/types/pm";
 
@@ -27,7 +29,7 @@ function daysUntil(date: string | null | undefined): number | null {
   return Math.round((d - today.getTime()) / 86400000);
 }
 
-function nextMilestone(project: PmProject): { label: string; date: string; days: number } | null {
+function nextKeyDate(project: PmProject): { label: string; date: string; days: number } | null {
   const candidates: { label: string; date: string }[] = [];
   if (project.kickoff_date) candidates.push({ label: "Kickoff", date: project.kickoff_date });
   if (project.start_date) candidates.push({ label: "Client review", date: project.start_date });
@@ -57,10 +59,10 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange: _
 
   const goLiveDays = daysUntil(project.go_live_date);
   const kickoffDays = daysUntil(project.kickoff_date);
-  const milestone = nextMilestone(project);
+  const keyDate = nextKeyDate(project);
 
-  const { roles } = useCurrentUser();
-  const showTime = canSeeProjectTimeTotal(roles);
+  const { roles, isAdmin } = useCurrentUser();
+  const showTime = canSeeProjectTimeTotal(roles, { isAdmin });
   const timeMinutes = useProjectTimeTotal(showTime ? project.id : null);
   const { files } = useProjectAttachments(project.id);
   const { events } = useProjectActivity(project.id, 6);
@@ -129,6 +131,35 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange: _
         <MiniMetric label="In review" value={inReview} to={projectFilterLink(project.id, "in_review")} />
       </div>
 
+      <Card className="bg-secondary">
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Flag className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Milestone</div>
+              <p className="text-xs text-muted-foreground">Delivery lifecycle for this project (not task status).</p>
+            </div>
+          </div>
+          {_isPM ? (
+            <MilestoneSelect
+              value={project.milestone}
+              className="w-[200px]"
+              onChange={async (key) => {
+                try {
+                  const updated = await updateProject(project.id, { milestone: key } as any);
+                  onProjectChange(updated);
+                  toast.success("Milestone updated");
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Could not update milestone");
+                }
+              }}
+            />
+          ) : (
+            <MilestoneBadge milestone={project.milestone} />
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4">
         {/* Left */}
         <div className="space-y-4">
@@ -136,12 +167,12 @@ export function OverviewTab({ project, tasks, onProjectChange, onGoLiveChange: _
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Start here</div>
-                {milestone && (
+                {keyDate && (
                   <div className="text-xs text-muted-foreground">
-                    Next: <span className="font-medium text-foreground">{milestone.label}</span>
+                    Next: <span className="font-medium text-foreground">{keyDate.label}</span>
                     {" · "}
-                    <span className="tabular-nums">{fmtDate(milestone.date)}</span>
-                    {milestone.days === 0 ? " (today)" : ` (${milestone.days}d)`}
+                    <span className="tabular-nums">{fmtDate(keyDate.date)}</span>
+                    {keyDate.days === 0 ? " (today)" : ` (${keyDate.days}d)`}
                   </div>
                 )}
               </div>

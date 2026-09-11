@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { Plus, X, Eye, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
@@ -24,7 +25,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
   const [pickRole, setPickRole] = useState<string>("Designer");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const users = useMockUsers();
   const [pendingRemove, setPendingRemove] = useState<Member | null>(null);
   const [openTaskCount, setOpenTaskCount] = useState<number | null>(null);
@@ -35,7 +36,7 @@ export function TeamCard({ projectId }: { projectId: string }) {
   }
   useEffect(() => { load(); }, [projectId]);
 
-  const isPM = roles.includes("pm");
+  const isPM = isOperator(roles, { isAdmin });
   const pmCount = rows.filter(r => PM_LIKE_ROLES.has(r.role)).length;
 
   const team = rows.filter(r => !isWatcher(r.role) && !isRequester(r.role));

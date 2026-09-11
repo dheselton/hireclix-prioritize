@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { CreateWorkDialog } from "@/components/pm/CreateWorkDialog";
+import { useCurrentUser } from "@/lib/pm/mockUser";
+import { canCreateWork } from "@/lib/pm/permissions";
 
 export type CreateWorkStep = "select" | "request" | "project";
 
@@ -20,6 +22,8 @@ const CreateWorkContext = createContext<CreateWorkContextValue | null>(null);
  * in-app navigation (Daily Briefing ↔ All Work, etc.).
  */
 export function CreateWorkProvider({ children }: { children: ReactNode }) {
+  const { roles, isAdmin } = useCurrentUser();
+  const canCreate = canCreateWork(roles, { isAdmin });
   const [openStep, setOpenStep] = useState<CreateWorkStep | null>(null);
   const [presetClientId, setPresetClientId] = useState<string | null>(null);
   const onCreatedRef = useRef<(() => void) | undefined>();
@@ -31,10 +35,11 @@ export function CreateWorkProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openCreateWork = useCallback((step: CreateWorkStep = "select", options?: CreateWorkOptions) => {
+    if (!canCreate) return;
     setPresetClientId(options?.clientId ?? null);
     onCreatedRef.current = options?.onCreated;
     setOpenStep(step);
-  }, []);
+  }, [canCreate]);
 
   const closeCreateWork = useCallback(() => {
     clearOpenState();

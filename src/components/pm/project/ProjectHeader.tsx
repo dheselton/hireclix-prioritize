@@ -10,6 +10,7 @@ import { EditProjectDialog } from "./EditProjectDialog";
 import { ProjectAssignmentsBar } from "./ProjectAssignmentsBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { canPostClientVisible, isOperator } from "@/lib/pm/permissions";
 import { useClientBrandMap, useInternalClientIds } from "@/lib/pm/clients";
 import { isCareerSiteBuildProject } from "@/lib/pm/liveSites";
 import { deleteProject } from "@/lib/pm/api";
@@ -30,8 +31,11 @@ import {
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { SharePortalDialog } from "@/components/pm/portal/SharePortalDialog";
 import { AttributionChip } from "@/components/pm/AttributionChip";
+import { MilestoneBadge, MilestoneSelect } from "@/components/pm/MilestoneSelect";
+import { updateProject } from "@/lib/pm/api";
 import { toast } from "sonner";
 import type { PmProject, PmTask, ProjectStatus } from "@/types/pm";
+import { derivePlanGoLive } from "@/lib/pm/scheduler";
 
 const STATUS_STYLE: Record<ProjectStatus, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -42,12 +46,13 @@ const STATUS_STYLE: Record<ProjectStatus, string> = {
   archived: "bg-muted text-muted-foreground",
 };
 
-export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequest, onLogQaBatch }: {
+export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequest, onLogQaBatch, onProjectChange }: {
   project: PmProject;
   tasks?: PmTask[];
   onAddTask: () => void;
   onLogSupportRequest?: () => void;
   onLogQaBatch?: () => void;
+  onProjectChange?: (p: PmProject) => void;
 }) {
   const [clientName, setClientName] = useState<string>("");
   const brands = useClientBrandMap();
@@ -67,12 +72,13 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
   const supportModeAt = (project.custom_fields as any)?.support_mode_at as string | undefined;
   const inSupport = !!supportModeAt;
   const inQa = isInQaMode(project);
-  const { roles } = useCurrentUser();
-  const isPM = roles.includes("pm");
+  const { roles, isAdmin } = useCurrentUser();
+  const isPM = isOperator(roles, { isAdmin });
   const navigate = useNavigate();
   const { enter: enterSupport, busy: enteringSupport } = useEnterSupportMode(project);
   const { enter: enterQa, busy: enteringQa } = useEnterQaMode(project);
   const { exit: exitQa, busy: exitingQa } = useExitQaMode(project);
+  const ppGoLive = derivePlanGoLive(tasks);
 
   const contactName = (project as any).client_contact_name as string | null | undefined;
   const contactEmail = (project as any).client_contact_email as string | null | undefined;
@@ -94,7 +100,7 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
     })();
   }, [project.id, project.client_id]);
 
-  const canManagePortal = roles.some(r => r === "pm" || r === "ba" || r === "tech_lead");
+  const canManagePortal = canPostClientVisible(roles, { isAdmin });
 
   return (
     <header className="space-y-3">
@@ -170,6 +176,33 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
             <Badge variant="outline" className="bg-muted text-muted-foreground capitalize">
               {(project.work_type ?? "project")}
             </Badge>
+            <Badge variant="outline">
+              {project.visibility === "client_shared"
+                ? "Client / Shared"
+                : project.visibility === "personal_private"
+                  ? "Personal / Private"
+                  : "Internal / Shared"}
+            </Badge>
+            {isPM ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground shrink-0">Milestone</span>
+                <MilestoneSelect
+                  value={project.milestone}
+                  className="w-[160px]"
+                  onChange={async (key) => {
+                    try {
+                      const updated = await updateProject(project.id, { milestone: key } as any);
+                      onProjectChange?.(updated);
+                      toast.success("Milestone updated");
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Could not update milestone");
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <MilestoneBadge milestone={project.milestone} />
+            )}
             <AttributionChip
               created_by={project.created_by}
               creation_source={project.creation_source}
@@ -185,7 +218,8 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
             <MetaDate label="Kickoff" value={project.kickoff_date} />
             <MetaDate label="Client review" value={project.start_date} />
-            <MetaDate label="Go-live" value={project.go_live_date} emphasize />
+            <MetaDate label="Proposed Go-Live" value={project.go_live_date} emphasize />
+            <MetaDate label="Dynamic PP Go-Live" value={ppGoLive} emphasize />
           </div>
         </div>
 
@@ -342,7 +376,16 @@ export function ProjectHeader({ project, tasks = [], onAddTask, onLogSupportRequ
       />
 
       {isPM && (
-        <EditProjectDialog open={editOpen} onOpenChange={setEditOpen} project={project} />
+        <EditProjectDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          project={project}
+          onSaved={() => {
+            // Parent reloads via emit / query; also nudge if callback provided.
+            void supabase.from("pm_projects").select("*").eq("id", project.id).maybeSingle()
+              .then(({ data }) => { if (data) onProjectChange?.(data as unknown as PmProject); });
+          }}
+        />
       )}
 
       <SupportHandoffDialog

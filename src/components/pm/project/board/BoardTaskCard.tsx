@@ -13,6 +13,7 @@ import { useInternalProjectIds, useCareerSiteProjects, careerSiteSubtype } from 
 import { groupForStatus } from "@/lib/pm/statusGroups";
 import { computeTaskVisualState } from "@/lib/pm/taskVisualState";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import type { PmTask, PmDependency } from "@/types/pm";
 import type { SubtaskCount } from "@/components/pm/SubtaskBadge";
 import { useSortable } from "@dnd-kit/sortable";
@@ -77,8 +78,8 @@ function BoardTaskCardInner({
   const isCareerSite = !!csRequestType;
   const csLabel = isCareerSite ? careerSiteSubtype({ request_type: csRequestType }) : null;
   const unclaimed = task.status === "unclaimed";
-  const { user, roles } = useCurrentUser();
-  const isPM = roles.includes("pm");
+  const { user, roles, isAdmin } = useCurrentUser();
+  const isPM = isOperator(roles, { isAdmin });
   const isDone = task.status === "complete" || task.status === "approved";
   const needsAssignee = isProject && !task.assignee_id && !isDone;
   const mutedNoOwner = !isProject && unclaimed;

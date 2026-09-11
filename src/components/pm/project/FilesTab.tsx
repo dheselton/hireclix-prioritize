@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronRight, Upload, Link as LinkIcon, Download, Trash2, X } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { fmtDate } from "@/lib/pm/format";
 import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
@@ -51,9 +52,9 @@ export function FilesTab({ projectId, tasks, onOpenTask }: { projectId: string; 
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const users = useMockUsers();
-  const isPM = roles.includes("pm");
+  const isPM = isOperator(roles, { isAdmin });
   const { openPreview } = usePreview();
 
   const [type, setType] = useState<FilterType>("all");

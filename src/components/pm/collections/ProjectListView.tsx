@@ -1,47 +1,107 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { fmtDate } from "@/lib/pm/format";
 import { cn } from "@/lib/utils";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { MilestoneBadge } from "@/components/pm/MilestoneSelect";
+import {
+  UNSET_MILESTONE_KEY,
+  UNSET_MILESTONE_LABEL,
+  compareProjectsByMilestone,
+  milestoneLabel,
+  useMilestoneDefinitions,
+} from "@/lib/pm/milestones";
 import type { PmProject, PmTask } from "@/types/pm";
 
-type SortKey = "title" | "type" | "status" | "go_live_date" | "progress";
+type SortKey = "title" | "type" | "status" | "milestone" | "go_live_date" | "progress";
 
 interface Props {
   projects: PmProject[];
   tasks: PmTask[];
+  /** When set, only show projects whose milestone key is in the set (`__unset__` = null). */
+  milestoneFilter?: string[];
+  groupByMilestone?: boolean;
+  onGroupByMilestoneChange?: (v: boolean) => void;
 }
 
-export function ProjectListView({ projects, tasks }: Props) {
+export function ProjectListView({
+  projects,
+  tasks,
+  milestoneFilter,
+  groupByMilestone = false,
+  onGroupByMilestoneChange,
+}: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("go_live_date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const { data: defs = [] } = useMilestoneDefinitions({ includeInactive: true });
 
-  const enriched = useMemo(() => projects.map(p => {
+  const filtered = useMemo(() => {
+    if (!milestoneFilter?.length) return projects;
+    const set = new Set(milestoneFilter);
+    return projects.filter((p) => {
+      if (!p.milestone) return set.has(UNSET_MILESTONE_KEY);
+      return set.has(p.milestone);
+    });
+  }, [projects, milestoneFilter]);
+
+  const enriched = useMemo(() => filtered.map(p => {
     const projTasks = tasks.filter(t => t.project_id === p.id);
     const done = projTasks.filter(t => t.status === "complete" || t.status === "approved").length;
     const pct = projTasks.length ? Math.round((done / projTasks.length) * 100) : 0;
     return { p, pct };
-  }), [projects, tasks]);
+  }), [filtered, tasks]);
 
   const sorted = useMemo(() => {
     const arr = [...enriched];
     arr.sort((a, b) => {
-      let av: any, bv: any;
+      let cmp = 0;
       switch (sortKey) {
-        case "title": av = a.p.title; bv = b.p.title; break;
-        case "type": av = a.p.type; bv = b.p.type; break;
-        case "status": av = a.p.status; bv = b.p.status; break;
-        case "go_live_date": av = a.p.go_live_date ?? "9999"; bv = b.p.go_live_date ?? "9999"; break;
-        case "progress": av = a.pct; bv = b.pct; break;
+        case "title":
+          cmp = a.p.title.localeCompare(b.p.title);
+          break;
+        case "type":
+          cmp = a.p.type.localeCompare(b.p.type);
+          break;
+        case "status":
+          cmp = a.p.status.localeCompare(b.p.status);
+          break;
+        case "milestone":
+          cmp = compareProjectsByMilestone(a.p, b.p, defs);
+          break;
+        case "go_live_date":
+          cmp = (a.p.go_live_date ?? "9999").localeCompare(b.p.go_live_date ?? "9999");
+          break;
+        case "progress":
+          cmp = a.pct - b.pct;
+          break;
       }
-      if (av < bv) return sortDir === "asc" ? -1 : 1;
-      if (av > bv) return sortDir === "asc" ? 1 : -1;
-      return 0;
+      return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
-  }, [enriched, sortKey, sortDir]);
+  }, [enriched, sortKey, sortDir, defs]);
+
+  const grouped = useMemo(() => {
+    if (!groupByMilestone) return null;
+    const order = [
+      ...defs.map((d) => d.key),
+      UNSET_MILESTONE_KEY,
+    ];
+    const map = new Map<string, typeof sorted>();
+    for (const row of sorted) {
+      const key = row.p.milestone ?? UNSET_MILESTONE_KEY;
+      map.set(key, [...(map.get(key) ?? []), row]);
+    }
+    return order
+      .filter((k) => map.has(k))
+      .map((k) => ({
+        key: k,
+        label: k === UNSET_MILESTONE_KEY ? UNSET_MILESTONE_LABEL : milestoneLabel(k, defs),
+        rows: map.get(k)!,
+      }));
+  }, [groupByMilestone, sorted, defs]);
 
   function toggleSort(k: SortKey) {
     if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -57,43 +117,79 @@ export function ProjectListView({ projects, tasks }: Props) {
     </th>
   );
 
+  function renderRows(rows: typeof sorted) {
+    return rows.map(({ p, pct }) => (
+      <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+        <td className="p-3">
+          <div className="flex items-center gap-2">
+            <WorkTypeBadge workType={(p as any).work_type ?? "project"} />
+            <Link to={`/pm/projects/${p.id}`} className="font-medium hover:underline">{p.title}</Link>
+          </div>
+        </td>
+        <td className="p-3"><Badge variant="outline">{p.type}</Badge></td>
+        <td className="p-3"><Badge variant="outline" className="capitalize">{p.status.replace(/_/g, " ")}</Badge></td>
+        <td className="p-3"><MilestoneBadge milestone={p.milestone} /></td>
+        <td className="p-3 text-muted-foreground">{fmtDate(p.go_live_date)}</td>
+        <td className="p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 max-w-[140px] h-2 bg-muted rounded-full overflow-hidden">
+              <div className={cn("h-full bg-primary")} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-xs text-muted-foreground">{pct}%</span>
+          </div>
+        </td>
+      </tr>
+    ));
+  }
+
   return (
-    <div className="border border-border rounded-md overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 border-b border-border text-left">
-          <tr>
-            <SortHead k="title">Project</SortHead>
-            <SortHead k="type">Type</SortHead>
-            <SortHead k="status">Status</SortHead>
-            <SortHead k="go_live_date">Go-Live</SortHead>
-            <SortHead k="progress">Progress</SortHead>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map(({ p, pct }) => (
-            <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-              <td className="p-3">
-                <div className="flex items-center gap-2">
-                  <WorkTypeBadge workType={(p as any).work_type ?? "project"} />
-                  <Link to={`/pm/projects/${p.id}`} className="font-medium hover:underline">{p.title}</Link>
-                </div>
-              </td>
-              <td className="p-3"><Badge variant="outline">{p.type}</Badge></td>
-              <td className="p-3"><Badge variant="outline">{p.status}</Badge></td>
-              <td className="p-3 text-muted-foreground">{fmtDate(p.go_live_date)}</td>
-              <td className="p-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 max-w-[140px] h-2 bg-muted rounded-full overflow-hidden">
-                    <div className={cn("h-full bg-primary")} style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-xs text-muted-foreground">{pct}%</span>
-                </div>
-              </td>
+    <div className="space-y-2">
+      {onGroupByMilestoneChange && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant={groupByMilestone ? "default" : "outline"}
+            onClick={() => onGroupByMilestoneChange(!groupByMilestone)}
+          >
+            Group by Milestone
+          </Button>
+        </div>
+      )}
+      <div className="border border-border rounded-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 border-b border-border text-left">
+            <tr>
+              <SortHead k="title">Project</SortHead>
+              <SortHead k="type">Type</SortHead>
+              <SortHead k="status">Status</SortHead>
+              <SortHead k="milestone">Milestone</SortHead>
+              <SortHead k="go_live_date">Go-Live</SortHead>
+              <SortHead k="progress">Progress</SortHead>
             </tr>
-          ))}
-          {!sorted.length && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground italic">No projects yet. Start a Quick Request or Full Project to get going.</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {grouped
+              ? grouped.map((g) => (
+                <Fragment key={`g-${g.key}`}>
+                  <tr className="bg-muted/30">
+                    <td colSpan={6} className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.label} ({g.rows.length})
+                    </td>
+                  </tr>
+                  {renderRows(g.rows)}
+                </Fragment>
+              ))
+              : renderRows(sorted)}
+            {!sorted.length && (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-muted-foreground italic">
+                  No projects yet. Start a Quick Request or Full Project to get going.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

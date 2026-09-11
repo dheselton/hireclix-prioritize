@@ -36,12 +36,11 @@ import { EMPTY_PROJECTS, EMPTY_TASKS, useProjectsQuery, useTasksQuery } from "@/
 import { WorkListSkeleton, WorkLoadError } from "@/components/pm/WorkLoadingState";
 
 
-type TabId = "all" | "quick" | "projects" | "declined";
+type TabId = "all" | "quick" | "declined";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "all", label: "All types" },
+  { id: "all", label: "Approval / claim queue" },
   { id: "quick", label: "Quick requests" },
-  { id: "projects", label: "SOW + Projects" },
   { id: "declined", label: "Declined" },
 ];
 const EMPTY_CLIENTS = new Map<string, string>();
@@ -134,7 +133,7 @@ export default function Inbox() {
   const rows = useMemo<Row[]>(() => {
     const projMap = new Map(projects.map(p => [p.id, p]));
     return tasks
-      .filter(t => t.status === "unclaimed")
+      .filter(t => t.status === "unclaimed" && projMap.get(t.project_id)?.work_type === "request")
       .map(t => {
         const project = projMap.get(t.project_id);
         return {
@@ -157,7 +156,6 @@ export default function Inbox() {
       if (declined) return false;
       const wt = (r.project as any)?.work_type ?? "project";
       if (tab === "quick") return wt === "request";
-      if (tab === "projects") return wt !== "request";
       return true;
     });
   }, [rows, tab]);
@@ -192,7 +190,6 @@ export default function Inbox() {
     return {
       all: open.length,
       quick: open.filter(r => ((r.project as any)?.work_type ?? "project") === "request").length,
-      projects: open.filter(r => ((r.project as any)?.work_type ?? "project") !== "request").length,
       declined: rows.filter(r => isDeclined(r.task)).length,
     } as Record<TabId, number>;
   }, [rows]);

@@ -5,16 +5,22 @@ const LINKS = [
   { to: "/pm/settings", label: "Settings", end: true },
   { to: "/pm/settings/profile", label: "Profile" },
   { to: "/pm/settings/notifications", label: "Notifications" },
+  { to: "/pm/settings/milestones", label: "Milestones" },
 ];
 
-export function SettingsSubnav({ current }: { current: "hub" | "profile" | "notifications" }) {
+export function SettingsSubnav({
+  current,
+}: {
+  current: "hub" | "profile" | "notifications" | "milestones";
+}) {
   return (
     <nav className="flex flex-wrap gap-2 text-sm">
       {LINKS.map((l) => {
         const active =
           (current === "hub" && l.end) ||
           (current === "profile" && l.to.endsWith("/profile")) ||
-          (current === "notifications" && l.to.endsWith("/notifications"));
+          (current === "notifications" && l.to.endsWith("/notifications")) ||
+          (current === "milestones" && l.to.endsWith("/milestones"));
         return (
           <Link
             key={l.to}

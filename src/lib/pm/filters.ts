@@ -135,6 +135,20 @@ export function applyProjectMeMode(
   );
 }
 
+/** Filter projects by milestone keys. Empty = no filter. Use `__unset__` for null milestone. */
+export function applyProjectMilestones(
+  projects: PmProject[],
+  milestoneKeys: string[],
+  unsetKey = "__unset__",
+): PmProject[] {
+  if (!milestoneKeys.length) return projects;
+  const set = new Set(milestoneKeys);
+  return projects.filter((p) => {
+    if (!p.milestone) return set.has(unsetKey);
+    return set.has(p.milestone);
+  });
+}
+
 export function applyProjectChips(
   projects: PmProject[],
   tasks: PmTask[],

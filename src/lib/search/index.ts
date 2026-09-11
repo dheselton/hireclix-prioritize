@@ -43,7 +43,7 @@ export async function runGlobalSearch(rawQuery: string, opts: { meId?: string | 
       : Promise.resolve({ data: [] as any[] }),
     wants("projects") && term
       ? supabase.from("pm_projects")
-          .select("id,title,client_id,status,work_type,updated_at,tags,description")
+          .select("id,title,client_id,status,work_type,milestone,updated_at,tags,description")
           .or(`title.ilike.${like},description.ilike.${like}`)
           .limit(30)
       : Promise.resolve({ data: [] as any[] }),
@@ -72,7 +72,7 @@ export async function runGlobalSearch(rawQuery: string, opts: { meId?: string | 
   let cascadeTasks: any[] = [];
   if (matchedClientIds.length && (scope === "all" || scope === "projects" || scope === "tasks")) {
     const cp = await supabase.from("pm_projects")
-      .select("id,title,client_id,status,work_type,updated_at,tags,description")
+      .select("id,title,client_id,status,work_type,milestone,updated_at,tags,description")
       .in("client_id", matchedClientIds)
       .order("updated_at", { ascending: false })
       .limit(20);
@@ -131,11 +131,15 @@ export async function runGlobalSearch(rawQuery: string, opts: { meId?: string | 
       + recencyBoost(p.updated_at)
       + (p.status === "active" ? 10 : 0)
       + (isCascade && matchedClientIds.includes(p.client_id) ? 25 : 0);
+    const client = p.client_id ? clientNameMap.get(p.client_id) : undefined;
+    const milestoneLabel = p.milestone
+      ? String(p.milestone).replace(/_/g, " ")
+      : null;
     return {
       kind: "project" as const,
       id: p.id,
       title: p.title,
-      sub: p.client_id ? clientNameMap.get(p.client_id) : undefined,
+      sub: [client, milestoneLabel ? `Milestone: ${milestoneLabel}` : null].filter(Boolean).join(" · ") || undefined,
       meta: p.status,
       href: `/pm/projects/${p.id}`,
       score: s,

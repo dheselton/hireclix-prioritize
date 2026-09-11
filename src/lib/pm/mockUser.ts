@@ -50,7 +50,8 @@ export function useCurrentUser() {
     users,
     setCurrent,
     role: (user?.role ?? roles[0] ?? 'pm') as PmRole,
-    roles: roles.length ? roles : (['pm'] as PmRole[]),
+    roles,
+    isAdmin: !!user?.is_admin || auth.isAdmin,
     loading: auth.loading || auth.access === 'loading',
     access: auth.access,
   };

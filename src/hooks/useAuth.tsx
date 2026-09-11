@@ -17,6 +17,7 @@ interface AuthContextType {
   access: AccessState;
   pmUser: PmUser | null;
   roles: PmRole[];
+  isAdmin: boolean;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshPmUser: () => Promise<void>;
@@ -155,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         access,
         pmUser,
         roles: rolesFromMember(pmUser),
+        isAdmin: !!pmUser?.is_admin,
         signInWithGoogle,
         signOut,
         refreshPmUser,

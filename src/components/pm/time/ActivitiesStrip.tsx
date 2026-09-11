@@ -9,6 +9,7 @@ import { useActivities, createActivity, updateActivity, archiveActivity, unarchi
 import { useActiveTimer, formatHMS } from "@/components/pm/timer/ActiveTimerProvider";
 import { addTimeEntry, fmtDur, localDateISO } from "@/lib/pm/time";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { ConfirmDialog } from "@/components/pm/ConfirmDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -17,10 +18,11 @@ const COLORS = ["#6366f1", "#10b981", "#64748b", "#f59e0b", "#ec4899", "#0ea5e9"
 
 export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
   const { activities, reload } = useActivities();
-  const { user, role } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const { current, elapsedMs, startActivity, stop, isRunningActivity } = useActiveTimer();
   const [manageOpen, setManageOpen] = useState(false);
   const [runningNote, setRunningNote] = useState("");
+  const canManage = isOperator(roles, { isAdmin });
 
   async function quickLog(activity: PmActivity, mins: number, note = "") {
     if (!user) { toast.error("Select a user first"); return; }
@@ -54,7 +56,7 @@ export function ActivitiesStrip({ onLogged }: { onLogged?: () => void }) {
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overhead activities</span>
           <span className="text-[11px] text-muted-foreground">Log time without creating a task</span>
         </div>
-        {role === "pm" && (
+        {canManage && (
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setManageOpen(true)}>
             <Settings className="h-3 w-3 mr-1" /> Manage
           </Button>

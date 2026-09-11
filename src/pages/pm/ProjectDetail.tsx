@@ -20,7 +20,7 @@ import { FilesTab } from "@/components/pm/project/FilesTab";
 import { ProjectHeader } from "@/components/pm/project/ProjectHeader";
 import { KpiStrip } from "@/components/pm/project/KpiStrip";
 import { ProjectTabs, PROJECT_TAB_IDS, type ProjectTabId } from "@/components/pm/project/ProjectTabs";
-import { canPostClientVisible } from "@/lib/pm/permissions";
+import { canPostClientVisible, canSee, isOperator, type RoleOrRoles } from "@/lib/pm/permissions";
 import { PortalMessageThread } from "@/components/pm/portal/PortalMessageThread";
 import { OverviewTab } from "@/components/pm/project/OverviewTab";
 import { TasksTab } from "@/components/pm/project/TasksTab";
@@ -61,14 +61,17 @@ const UNAVAILABLE_TAB_REASON: Partial<Record<ProjectTabId, string>> = {
 };
 
 /** The tabs a given project + viewer can actually render. Mirrors the tab strip. */
-function computeAvailableTabs(project: PmProject, user: { roles?: string[]; role?: string } | null): ProjectTabId[] {
+function computeAvailableTabs(
+  project: PmProject,
+  user: { roles?: string[]; role?: string; is_admin?: boolean } | null,
+): ProjectTabId[] {
   const isRequest = ((project as { work_type?: string }).work_type ?? "project") === "request";
   const inSupport = !!(project.custom_fields as { support_mode_at?: string } | null)?.support_mode_at;
   const inQa = isInQaMode(project) && !inSupport;
   const hasTemplate = !!project.template_id;
-  const canSeeSnippets =
-    !!user?.roles?.some((r: string) => r === "developer" || r === "designer") ||
-    user?.role === "developer" || user?.role === "designer";
+  const roleOrRoles = (user?.roles ?? user?.role) as RoleOrRoles;
+  const opts = { isAdmin: !!user?.is_admin };
+  const canSeeSnippetsTab = canSee(roleOrRoles, "snippets", opts);
 
   return [
     ...(inSupport ? (["support"] as const) : []),
@@ -78,8 +81,8 @@ function computeAvailableTabs(project: PmProject, user: { roles?: string[]; role
     ...(!isRequest ? (["timeline"] as const) : []),
     ...(!isRequest && hasTemplate ? (["pages"] as const) : []),
     "files",
-    ...(canPostClientVisible(user?.roles ?? user?.role) ? (["client"] as const) : []),
-    ...(canSeeSnippets ? (["snippets"] as const) : []),
+    ...(canPostClientVisible(roleOrRoles, opts) ? (["client"] as const) : []),
+    ...(canSeeSnippetsTab ? (["snippets"] as const) : []),
     ...(inSupport ? (["documentation"] as const) : []),
   ] as ProjectTabId[];
 }
@@ -87,7 +90,8 @@ function computeAvailableTabs(project: PmProject, user: { roles?: string[]; role
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
 
-  const { user } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
+  const accessOpts = { isAdmin };
   const queryClient = useQueryClient();
   const projectQuery = useProjectQuery(id);
   const tasksQuery = useProjectTasksQuery(id);
@@ -237,8 +241,8 @@ export default function ProjectDetail() {
   if (!project) return <div className="page-shell text-sm text-muted-foreground">Project not found.</div>;
   const p = project as PmProject & { work_type?: string };
   const isRequest = (p.work_type ?? "project") === "request";
-  const myRoles = user?.roles ?? (user?.role ? [user.role] : []);
-  const isPM = myRoles.includes("pm");
+  const myRoles = roles.length ? roles : (user?.roles ?? (user?.role ? [user.role] : []));
+  const isPM = isOperator(myRoles, accessOpts);
   // Prefer a "doer" role for the New Task default type; PM is the fallback.
   const defaultTaskRole =
     ((["developer", "designer", "strategist", "analyst"] as string[]).find(r => myRoles.includes(r as never))) ??
@@ -246,10 +250,10 @@ export default function ProjectDetail() {
   const inSupport = !!(project.custom_fields as { support_mode_at?: string } | null)?.support_mode_at;
   const inQa = isInQaMode(project) && !inSupport;
 
-  const canSeeSnippets = !!user?.roles?.some(r => r === "developer" || r === "designer") || user?.role === "developer" || user?.role === "designer";
+  const canSeeSnippets = canSee(myRoles, "snippets", accessOpts);
 
   const hasTemplate = !!project.template_id;
-  const canShareWithClient = canPostClientVisible(user?.roles ?? user?.role);
+  const canShareWithClient = canPostClientVisible(myRoles, accessOpts);
   const tabs: { id: ProjectTabId; label: string; badge?: React.ReactNode }[] = [
     ...(inSupport
       ? [{
@@ -285,6 +289,7 @@ export default function ProjectDetail() {
         onAddTask={() => { handleSetTab("tasks"); setNewTaskKind("task"); setNewTaskOpen(true); }}
         onLogSupportRequest={() => { handleSetTab("support"); setSupportRequestOpen(true); }}
         onLogQaBatch={() => { handleSetTab("qa"); setQaBatchOpen(true); }}
+        onProjectChange={setProject}
       />
       <SupportReadyBanner project={project} tasks={tasks} />
       <SupportLeftoverBanner project={project} tasks={tasks} />

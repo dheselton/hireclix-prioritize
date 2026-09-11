@@ -38,10 +38,11 @@ export function defaultTypesForRole(role: PmRole | null | undefined): Set<TaskTy
   return defaultsForSingleRole(role);
 }
 
-export function defaultTypesForRoles(roles: PmRole[] | null | undefined): Set<TaskType> {
+export function defaultTypesForRoles(roles: PmRole[] | null | undefined, isAdmin = false): Set<TaskType> {
+  if (isAdmin) return new Set<TaskType>();
   if (!roles || !roles.length) return new Set<TaskType>();
-  // PM in the set = show all (empty set means "all").
-  if (roles.includes("pm") || roles.includes("submitter")) return new Set<TaskType>();
+  // Operator or submitter in the set = show all (empty set means "all").
+  if (roles.includes("pm") || roles.includes("ba") || roles.includes("submitter")) return new Set<TaskType>();
   const out = new Set<TaskType>();
   for (const r of roles) for (const t of defaultsForSingleRole(r)) out.add(t);
   return out;
@@ -51,9 +52,9 @@ const keyFor = (page: string, role: PmRole | null | undefined) =>
   `pm.typeFilter.${page}.${role ?? "anon"}`;
 
 export function useTypeFilter(page: string) {
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const role = user?.role ?? null;
-  const defaultSet = useMemo(() => defaultTypesForRoles(roles), [roles]);
+  const defaultSet = useMemo(() => defaultTypesForRoles(roles, isAdmin), [roles, isAdmin]);
 
   const read = useCallback((): Set<TaskType> => {
     if (typeof window === "undefined") return new Set(defaultSet);

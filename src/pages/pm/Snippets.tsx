@@ -34,8 +34,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 type SortKey = "newest" | "az" | "used";
 
 export default function Snippets() {
-  const { roles } = useCurrentUser();
-  const allowed = canSee(roles, "snippets");
+  const { roles, isAdmin } = useCurrentUser();
+  const allowed = canSee(roles, "snippets", { isAdmin });
 
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [categories, setCategories] = useState<SnippetCategory[]>([]);

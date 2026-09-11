@@ -5,7 +5,7 @@
 
 import type { PmRole } from "@/types/pm";
 import type { Surface } from "@/lib/pm/permissions";
-import { canSee, toRoles, type RoleOrRoles } from "@/lib/pm/permissions";
+import { canSee, isSubmitterOnly, toRoles, type RoleOrRoles } from "@/lib/pm/permissions";
 
 export type HelpPackId =
   | "operators"
@@ -121,7 +121,7 @@ const PACK_BY_ID = Object.fromEntries(HELP_PACKS.map((p) => [p.id, p])) as Recor
 /** Packs that match the signed-in user's roles (not including External peek). */
 export function matchedPacks(role: RoleOrRoles): HelpPack[] {
   const roles = toRoles(role);
-  const submitterOnly = roles.every((r) => r === "submitter");
+  const submitterOnly = isSubmitterOnly(roles);
   const matched: HelpPack[] = [];
 
   for (const pack of HELP_PACKS) {
@@ -138,7 +138,7 @@ export function matchedPacks(role: RoleOrRoles): HelpPack[] {
 /** Matched packs first, then other packs for peeking (submitter pack hidden unless submitter-only). */
 export function packsForRoles(role: RoleOrRoles): HelpPack[] {
   const roles = toRoles(role);
-  const submitterOnly = roles.every((r) => r === "submitter");
+  const submitterOnly = isSubmitterOnly(roles);
   const matched = matchedPacks(role);
 
   const peek = HELP_PACKS.filter((p) => {
@@ -153,7 +153,7 @@ export function packsForRoles(role: RoleOrRoles): HelpPack[] {
 /** Default pack for the signed-in user. */
 export function defaultPackId(role: RoleOrRoles): HelpPackId {
   const roles = toRoles(role);
-  if (roles.every((r) => r === "submitter")) return "submitter";
+  if (isSubmitterOnly(roles)) return "submitter";
   if (roles.some((r) => r === "pm" || r === "ba")) return "operators";
   if (roles.some((r) => r === "tech_lead")) return "tech-lead";
   if (roles.some((r) => r === "designer" || r === "developer")) return "production";

@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientSelect } from "@/components/pm/ClientSelect";
+import { MilestoneSelect } from "@/components/pm/MilestoneSelect";
 import { RequesterPicker } from "@/components/pm/intake/RequesterPicker";
 import { GroupedRequestTypeSelect } from "@/components/pm/intake/GroupedRequestTypeSelect";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,12 +36,11 @@ import {
 } from "@/lib/pm/requestCorrections";
 import { toast } from "sonner";
 import type { RequestType } from "@/lib/pm/requestTypes";
-import type { PmProject, ProjectStatus, WorkType } from "@/types/pm";
+import type { PmProject, ProjectStatus, WorkType, WorkVisibility } from "@/types/pm";
 
 type Client = { id: string; name: string; is_internal?: boolean };
 
 const STATUSES: ProjectStatus[] = ["draft", "active", "on_hold", "in_review", "complete", "archived"];
-const WORK_TYPES: WorkType[] = ["project", "request"];
 const RETIRE_STATUSES = new Set<ProjectStatus>(["complete", "archived"]);
 const NO_SITE = "__none__";
 
@@ -55,6 +55,8 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
   const [title, setTitle] = useState(project.title);
   const [status, setStatus] = useState<ProjectStatus>(project.status);
   const [workType, setWorkType] = useState<WorkType>(project.work_type);
+  const [visibility, setVisibility] = useState<WorkVisibility>(project.visibility ?? "internal_shared");
+  const [milestone, setMilestone] = useState<string | null>(project.milestone ?? null);
   const [clientId, setClientId] = useState<string>(project.client_id ?? "");
   const [requestedBy, setRequestedBy] = useState<string | null>((project as any).requested_by ?? null);
   const [goLive, setGoLive] = useState<string>(project.go_live_date ?? "");
@@ -77,6 +79,8 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
     setTitle(project.title);
     setStatus(project.status);
     setWorkType(project.work_type);
+    setVisibility(project.visibility ?? "internal_shared");
+    setMilestone(project.milestone ?? null);
     setClientId(project.client_id ?? "");
     setRequestedBy((project as any).requested_by ?? null);
     setGoLive(project.go_live_date ?? "");
@@ -173,6 +177,10 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
         title: title.trim(),
         status,
         work_type: workType,
+        visibility: isRequest
+          ? (clients.find((client) => client.id === clientId)?.is_internal ? "internal_shared" : "client_shared")
+          : visibility,
+        milestone,
         client_id: clientId || null,
         go_live_date: goLive || null,
         kickoff_date: kickoff || null,
@@ -259,15 +267,17 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
               </div>
               <div>
                 <Label>Work type</Label>
-                <Select value={workType} onValueChange={(v) => setWorkType(v as WorkType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="z-50 bg-popover">
-                    {WORK_TYPES.map(t => (
-                      <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input value={workType === "request" ? "Quick Request" : "Project"} disabled />
+                <p className="text-[11px] text-muted-foreground mt-1">Use the explicit conversion action to turn a request into a project.</p>
               </div>
+            </div>
+
+            <div>
+              <Label>Milestone</Label>
+              <MilestoneSelect value={milestone} onChange={setMilestone} className="w-full h-10" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Where this project sits in its delivery lifecycle. Independent of task status.
+              </p>
             </div>
 
             {isRequest && (
@@ -295,6 +305,23 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
                 onClientsChanged={(next) => setClients(next)}
               />
             </div>
+
+            {!isRequest && (
+              <div>
+                <Label>Visibility</Label>
+                <Select value={visibility} onValueChange={(value) => setVisibility(value as WorkVisibility)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {clientId && <SelectItem value="client_shared">Client / Shared</SelectItem>}
+                    <SelectItem value="internal_shared">Internal / Shared</SelectItem>
+                    <SelectItem value="personal_private">Personal / Private</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Private work is visible only to its owner and invited project members.
+                </p>
+              </div>
+            )}
 
             {isRequest && careerTypeSelected && (
               <div>
@@ -341,7 +368,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
                 <DatePicker value={kickoff} onChange={v => setKickoff(v ?? "")} className="w-full" />
               </div>
               <div>
-                <Label>Go-live</Label>
+                <Label>Proposed Go-Live</Label>
                 <DatePicker value={goLive} onChange={v => setGoLive(v ?? "")} className="w-full" />
               </div>
             </div>

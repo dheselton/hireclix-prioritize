@@ -8,6 +8,7 @@ import { coerceTaskKind } from "@/lib/pm/taskKind";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import type { PmProject, PmTask } from "@/types/pm";
 import { CalendarDays } from "lucide-react";
+import { MilestoneBadge } from "@/components/pm/MilestoneSelect";
 
 /** Monday of the week containing this local date key (YYYY-MM-DD). */
 function weekStartKey(dateKey: string): string {
@@ -111,9 +112,15 @@ export function ProjectTimelineTab({ project, tasks, onGoToOverview }: Props) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Tasks with a due date, grouped by week relative to go-live ({fmtDate(goLive)}).
-      </p>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-xs text-muted-foreground">
+          Tasks with a due date, grouped by week relative to go-live ({fmtDate(goLive)}).
+        </p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Milestone</span>
+          <MilestoneBadge milestone={project.milestone} />
+        </div>
+      </div>
 
       {groups.map(g => (
         <Card key={g.week} className={g.isGoLive ? "border-info" : undefined}>

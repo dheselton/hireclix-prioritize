@@ -299,13 +299,18 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
   if (payload.client_id) {
     try {
       const { clientTag } = await import('./tags');
-      const { data: c } = await supabase.from('clients').select('name').eq('id', payload.client_id).maybeSingle();
+      const { data: c } = await supabase.from('clients').select('name,is_internal').eq('id', payload.client_id).maybeSingle();
       const ct = clientTag((c as any)?.name);
       if (ct) {
         const existing = (payload.tags ?? []) as string[];
         if (!existing.includes(ct)) payload.tags = [...existing, ct];
       }
+      if (payload.visibility === undefined) {
+        payload.visibility = (c as any)?.is_internal ? 'internal_shared' : 'client_shared';
+      }
     } catch {}
+  } else if (payload.visibility === undefined) {
+    payload.visibility = 'personal_private';
   }
   const { data, error } = await supabase.from('pm_projects').insert(payload).select().single();
   if (error) throw error;
@@ -557,6 +562,17 @@ export const createProjectFromTemplate = async (params: {
   const { template, previewTasks, previewDeps, placement, kickoff, goLive, title, client_id } = params;
 
   const uid = getCurrentUserId();
+  let visibility: 'client_shared' | 'internal_shared' | 'personal_private' = 'personal_private';
+  if (client_id) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('is_internal')
+      .eq('id', client_id)
+      .maybeSingle();
+    visibility = (client as { is_internal?: boolean } | null)?.is_internal
+      ? 'internal_shared'
+      : 'client_shared';
+  }
   const { data: proj, error: pe } = await supabase.from('pm_projects').insert({
     title: title || `${template.name} — ${new Date().toLocaleDateString()}`,
     type: template.type,
@@ -568,6 +584,7 @@ export const createProjectFromTemplate = async (params: {
     start_date: kickoff,
     go_live_date: goLive,
     created_by: uid ?? null,
+    visibility,
     ...attributionPayload('template', {
       context: { template_id: template.id },
     }),

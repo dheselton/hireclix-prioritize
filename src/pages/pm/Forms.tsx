@@ -13,10 +13,11 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { fmtDate } from "@/lib/pm/format";
 import { CollectionToolbar } from "@/components/pm/CollectionToolbar";
 import { useCurrentUser } from "@/lib/pm/mockUser";
+import { isSubmitterOnly } from "@/lib/pm/permissions";
 
 export default function Forms() {
-  const { role } = useCurrentUser();
-  const isSubmitter = role === "submitter";
+  const { roles } = useCurrentUser();
+  const isSubmitter = isSubmitterOnly(roles);
   const [forms, setForms] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");

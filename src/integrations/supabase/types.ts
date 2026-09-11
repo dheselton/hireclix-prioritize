@@ -53,6 +53,7 @@ export type Database = {
           logo_path: string | null
           name: string
           notes: string | null
+          parent_client_id: string | null
         }
         Insert: {
           archived_at?: string | null
@@ -62,6 +63,7 @@ export type Database = {
           logo_path?: string | null
           name: string
           notes?: string | null
+          parent_client_id?: string | null
         }
         Update: {
           archived_at?: string | null
@@ -71,6 +73,7 @@ export type Database = {
           logo_path?: string | null
           name?: string
           notes?: string | null
+          parent_client_id?: string | null
         }
         Relationships: []
       }
@@ -1650,6 +1653,36 @@ export type Database = {
           },
         ]
       }
+      pm_milestone_definitions: {
+        Row: {
+          id: string
+          key: string
+          label: string
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          label: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          label?: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pm_project_templates: {
         Row: {
           created_at: string
@@ -1691,6 +1724,7 @@ export type Database = {
           go_live_date: string | null
           id: string
           kickoff_date: string | null
+          milestone: string | null
           page_group_overrides: Json
           pages_locked_at: string | null
           parent_project_id: string | null
@@ -1702,6 +1736,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          visibility: string
           work_type: string
         }
         Insert: {
@@ -1717,6 +1752,7 @@ export type Database = {
           go_live_date?: string | null
           id?: string
           kickoff_date?: string | null
+          milestone?: string | null
           page_group_overrides?: Json
           pages_locked_at?: string | null
           parent_project_id?: string | null
@@ -1728,6 +1764,7 @@ export type Database = {
           title: string
           type?: string
           updated_at?: string
+          visibility?: string
           work_type?: string
         }
         Update: {
@@ -1743,6 +1780,7 @@ export type Database = {
           go_live_date?: string | null
           id?: string
           kickoff_date?: string | null
+          milestone?: string | null
           page_group_overrides?: Json
           pages_locked_at?: string | null
           parent_project_id?: string | null
@@ -1754,6 +1792,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          visibility?: string
           work_type?: string
         }
         Relationships: [
@@ -2676,6 +2715,7 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean
+          is_admin: boolean
           name: string
           role: string
           roles: string[]
@@ -2690,6 +2730,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          is_admin?: boolean
           name: string
           role: string
           roles?: string[]
@@ -2704,6 +2745,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          is_admin?: boolean
           name?: string
           role?: string
           roles?: string[]

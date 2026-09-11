@@ -45,6 +45,7 @@ const Timesheet = lazy(() => import("./pages/pm/Timesheet"));
 const NotificationsSettings = lazy(() => import("./pages/pm/NotificationsSettings"));
 const ProfileSettings = lazy(() => import("./pages/pm/ProfileSettings"));
 const SettingsHub = lazy(() => import("./pages/pm/SettingsHub"));
+const MilestoneSettings = lazy(() => import("./pages/pm/MilestoneSettings"));
 const ProductRoadmap = lazy(() => import("./pages/ProductRoadmap"));
 const RoadmapDashboard = lazy(() => import("./pages/RoadmapDashboard"));
 
@@ -141,6 +142,7 @@ function App() {
                 <Route path="/pm/settings" element={<AppLayout><SettingsHub /></AppLayout>} />
                 <Route path="/pm/settings/profile" element={<AppLayout><ProfileSettings /></AppLayout>} />
                 <Route path="/pm/settings/notifications" element={<AppLayout><NotificationsSettings /></AppLayout>} />
+                <Route path="/pm/settings/milestones" element={<AppLayout><MilestoneSettings /></AppLayout>} />
 
                 {/* Legacy roadmap */}
                 <Route path="/roadmap" element={<AppLayout><ProductRoadmap /></AppLayout>} />

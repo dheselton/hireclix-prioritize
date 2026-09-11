@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { useCurrentUser, useMockUsers } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import {
   addTimeEntry,
   deleteTimeEntry,
@@ -31,8 +32,9 @@ export function TimeLogDialog({
   onOpenChange: (v: boolean) => void;
   lastTracked?: Date | null;
 }) {
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const users = useMockUsers();
+  const canManage = isOperator(roles, { isAdmin });
   const today = localDateISO(new Date());
   const { entries, reload } = useEnrichedEntries({ taskId }, [taskId, open]);
 
@@ -126,7 +128,7 @@ export function TimeLogDialog({
                 key={e.id}
                 entry={e}
                 userName={users.find(u => u.id === e.user_id)?.name}
-                canEdit={roles.includes("pm") || e.user_id === user?.id}
+                canEdit={canManage || e.user_id === user?.id}
                 onChanged={reload}
               />
             ))}

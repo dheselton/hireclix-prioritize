@@ -36,7 +36,7 @@ function storagePathFromAvatarUrl(url: string | null | undefined): string | null
 
 export default function ProfileSettings() {
   const { user: authUser, refreshPmUser } = useAuth();
-  const { user, roles } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
   const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(user?.name ?? "");
   const [color, setColor] = useState(user?.avatar_color ?? PRESET_COLORS[0]);
@@ -158,7 +158,10 @@ export default function ProfileSettings() {
     }
   }
 
-  const roleLabels = roles.map((r) => ROLE_LABEL[r] ?? r).join(" · ");
+  const roleLabels = [
+    ...roles.map((r) => ROLE_LABEL[r] ?? r),
+    ...(isAdmin ? ["Admin"] : []),
+  ].join(" · ");
 
   return (
     <div className="max-w-3xl mx-auto page-shell space-y-6">

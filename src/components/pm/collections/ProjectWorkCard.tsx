@@ -11,6 +11,7 @@ import { ClaimButton } from "@/components/pm/ClaimButton";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
 import { ClientContext } from "@/components/pm/ClientContext";
 import { DueBadge } from "@/components/pm/DueBadge";
+import { MilestoneBadge } from "@/components/pm/MilestoneSelect";
 import { clientNameForProject, useClientNamesMap } from "@/lib/pm/clients";
 import { isHardOverdue } from "@/lib/pm/dueState";
 import type { PmProject, PmTask } from "@/types/pm";
@@ -128,6 +129,9 @@ export function ProjectWorkCard({ project, tasks, meId, onOpenTask, onOpenProjec
             <div className={cn("font-semibold leading-tight group-hover:underline", isRequest && "text-sm")}>{project.title}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
               <WorkTypeBadge workType={(project as any).work_type ?? "project"} />
+              {!isRequest && project.milestone && (
+                <MilestoneBadge milestone={project.milestone} className="text-[10px]" />
+              )}
               {!isRequest && (
                 <Badge variant="outline" className="text-[10px] capitalize">{project.type.replace(/_/g," ")}</Badge>
               )}

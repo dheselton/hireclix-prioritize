@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { teamForRole, teamForTask } from "@/lib/pm/track";
 import { useMeMode } from "@/hooks/useMeMode";
-import { canSee, type Surface } from "@/lib/pm/permissions";
+import { canSee, isOperator, isSubmitterOnly, type Surface } from "@/lib/pm/permissions";
 import {
   useInternalProjectIds,
   useCareerSiteProjects,
@@ -353,18 +353,18 @@ function useMyWork() {
 }
 
 function useUnclaimedCount() {
-  const { roles } = useCurrentUser();
+  const { roles, isAdmin } = useCurrentUser();
   const { isMe } = useMeMode();
   const { data: tasks = EMPTY_TASKS } = useTasksQuery();
-  const isPM = roles.includes("pm");
+  const isOp = isOperator(roles, { isAdmin });
   const myTeams = useMemo(() => new Set(roles.map(r => teamForRole(r))), [roles]);
   return useMemo(() => {
     return tasks.filter(t => {
       if (t.status !== "unclaimed") return false;
-      if (!isMe || isPM) return true;
+      if (!isMe || isOp) return true;
       return myTeams.has(teamForTask(t));
     }).length;
-  }, [tasks, myTeams, isPM, isMe]);
+  }, [tasks, myTeams, isOp, isMe]);
 }
 
 /** Small colored dot used to identify a project at a glance. */
@@ -507,7 +507,7 @@ function MetaLine({
 export function AppSidebar() {
   const { pathname } = useLocation();
   const unclaimed = useUnclaimedCount();
-  const { roles } = useCurrentUser();
+  const { roles, isAdmin } = useCurrentUser();
   const { myQuickTasks, myProjectsWithCounts, loading: myWorkLoading } = useMyWork();
   const internalIds = useInternalProjectIds();
   const careerSiteIds = useCareerSiteProjects();
@@ -515,17 +515,18 @@ export function AppSidebar() {
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [showAllQuick, setShowAllQuick] = useState(false);
 
-  const submitterOnly = roles.length > 0 && roles.every(r => r === "submitter");
+  const opts = { isAdmin };
+  const submitterOnly = isSubmitterOnly(roles);
   const visiblePrimary = submitterOnly
     ? primaryNav.filter(i => i.key === "myWork")
-    : primaryNav.filter(i => canSee(roles, i.key));
-  const visibleConfigure = submitterOnly ? [] : configureNav.filter(i => canSee(roles, i.key));
-  const canSeeSnippets = !submitterOnly && canSee(roles, "snippets");
-  const canSeeLoomLibrary = !submitterOnly && canSee(roles, "loomLibrary");
-  const canSeeHelp = canSee(roles, helpItem.key);
-  const canSeeSettings = canSee(roles, settingsItem.key);
-  const canSeeMyWork = !submitterOnly && canSee(roles, "work");
-  const canSeeRoadmap = canSee(roles, "roadmap");
+    : primaryNav.filter(i => canSee(roles, i.key, opts));
+  const visibleConfigure = submitterOnly ? [] : configureNav.filter(i => canSee(roles, i.key, opts));
+  const canSeeSnippets = !submitterOnly && canSee(roles, "snippets", opts);
+  const canSeeLoomLibrary = !submitterOnly && canSee(roles, "loomLibrary", opts);
+  const canSeeHelp = canSee(roles, helpItem.key, opts);
+  const canSeeSettings = canSee(roles, settingsItem.key, opts);
+  const canSeeMyWork = !submitterOnly && canSee(roles, "work", opts);
+  const canSeeRoadmap = canSee(roles, "roadmap", opts);
   const showResources = canSeeSnippets || canSeeLoomLibrary || canSeeHelp || canSeeSettings;
 
   const PROJ_LIMIT = 5;
@@ -548,8 +549,8 @@ export function AppSidebar() {
             <nav className="space-y-0.5 px-2">
               {visiblePrimary.map(item => {
                 const active = item.end ? pathname === item.url : pathname.startsWith(item.url);
-                const isSubmitterOnly = roles.length === 1 && roles[0] === "submitter";
-                const showBadge = (item.key === "queue" || item.key === "inbox") && unclaimed > 0 && !isSubmitterOnly;
+                const submitterOnlyNav = isSubmitterOnly(roles);
+                const showBadge = (item.key === "queue" || item.key === "inbox") && unclaimed > 0 && !submitterOnlyNav;
                 return (
                   <NavRow
                     key={item.title}

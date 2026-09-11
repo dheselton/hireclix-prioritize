@@ -38,7 +38,7 @@ function formatRoleLabel(role: string) {
 
 export default function Workload() {
   const users = useMockUsers().filter(u => u.role !== "submitter");
-  const { user: me, roles } = useCurrentUser();
+  const { user: me, roles, isAdmin } = useCurrentUser();
   const [healthOpen, setHealthOpen] = useState<boolean>(() => localStorage.getItem(HEALTH_OPEN_KEY) !== "0");
   useEffect(() => { localStorage.setItem(HEALTH_OPEN_KEY, healthOpen ? "1" : "0"); }, [healthOpen]);
   const tasksQuery = useTasksQuery();
@@ -70,7 +70,7 @@ export default function Workload() {
 
   // ── Project health roll-up (lead roles only) ──────────────────────────────
   const teamsMap = useProjectTeamsMap();
-  const canSeeHealth = roles.some(r => HEALTH_ROLES.includes(r));
+  const canSeeHealth = isAdmin || roles.some(r => HEALTH_ROLES.includes(r));
   const healthProjectIds = useMemo(() => {
     // Empty set = all active projects (ProjectHealthList treats it as "no filter").
     if (!isMe || !me?.id) return new Set<string>();

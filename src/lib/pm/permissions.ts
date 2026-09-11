@@ -1,20 +1,50 @@
 /**
  * Central role-based visibility rules for the PM app.
  *
- * Users can hold multiple roles at once (e.g. PM + Designer + Developer).
+ * Users can hold multiple job roles at once (e.g. PM + Designer + Developer).
  * Every helper accepts either a single role or a list; access is the UNION
  * across all roles the user holds.
+ *
+ * Admin is an overlay flag (not a job): when true, every surface is visible
+ * and operator-scope helpers treat the user like PM/BA.
  */
 
 import type { PmRole } from "@/types/pm";
 
 export type RoleOrRoles = PmRole | PmRole[] | null | undefined;
 
-/** Normalize any role input to a non-empty list. Defaults to ["pm"]. */
+/** Optional admin overlay for permission helpers. */
+export type AccessOpts = { isAdmin?: boolean };
+
+/** Normalize any role input to a list. Empty when missing — deny by default. */
 export function toRoles(input: RoleOrRoles): PmRole[] {
-  if (!input) return ["pm"];
-  if (Array.isArray(input)) return input.length ? input : ["pm"];
+  if (!input) return [];
+  if (Array.isArray(input)) return input;
   return [input];
+}
+
+/** True when the user only holds submitter (no staff job). */
+export function isSubmitterOnly(role: RoleOrRoles): boolean {
+  const roles = toRoles(role);
+  return roles.length > 0 && roles.every((r) => r === "submitter");
+}
+
+/** PM/BA job or admin overlay — roster, team timesheets, operator UI. */
+export function isOperator(role: RoleOrRoles, opts?: AccessOpts): boolean {
+  if (opts?.isAdmin) return true;
+  return toRoles(role).some((r) => r === "pm" || r === "ba");
+}
+
+/** Approved staff contributors can create both projects and Quick Requests. */
+export function canCreateWork(role: RoleOrRoles, opts?: AccessOpts): boolean {
+  if (opts?.isAdmin) return true;
+  const roles = toRoles(role);
+  return roles.length > 0 && !roles.every((r) => r === "submitter");
+}
+
+/** Project-level dates, milestones, assignments, and closure are manager actions. */
+export function canManageClientWork(role: RoleOrRoles, opts?: AccessOpts): boolean {
+  return isOperator(role, opts);
 }
 
 /** Logical surfaces in the app. Used by the sidebar + route guard. */
@@ -53,7 +83,10 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   if (r === "submitter") {
     return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
-  // Loom Library is creative-production only — even PM/BA need a production role.
+  // Every approved staff role can discover shared client work.
+  if (surface === "clients") return true;
+  // Loom Library is creative-production only — even PM/BA need a production role
+  // (unless admin overlay, handled in canSee).
   if (surface === "loomLibrary") return LOOM_LIBRARY_ROLES.has(r);
   // BA gets the same surface access as PM.
   if (r === "pm" || r === "ba") return true;
@@ -65,7 +98,6 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
       case "templates":
       case "formBuilder":
       case "integrations":
-      case "clients":
       case "team":
       case "roadmap":
         return false;
@@ -78,7 +110,6 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   switch (surface) {
     case "inbox":
     case "report":
-    case "clients":
     case "templates":
     case "formBuilder":
     case "integrations":
@@ -93,73 +124,73 @@ function canSeeSingle(r: PmRole, surface: Surface): boolean {
   }
 }
 
-/** True if ANY of the user's roles allows the surface. */
-export function canSee(role: RoleOrRoles, surface: Surface): boolean {
-  return toRoles(role).some(r => canSeeSingle(r, surface));
+/** True if ANY of the user's roles allows the surface (or admin overlay). */
+export function canSee(role: RoleOrRoles, surface: Surface, opts?: AccessOpts): boolean {
+  if (opts?.isAdmin) return true;
+  return toRoles(role).some((r) => canSeeSingle(r, surface));
 }
 
 /** Route prefixes blocked for the given role(s). */
-export function blockedRoutePrefixes(role: RoleOrRoles): string[] {
+export function blockedRoutePrefixes(role: RoleOrRoles, opts?: AccessOpts): string[] {
+  if (opts?.isAdmin) return [];
   const out: string[] = [];
-  if (!canSee(role, "inbox")) out.push("/pm/inbox");
-  if (!canSee(role, "report")) out.push("/pm/report");
-  if (!canSee(role, "clients")) out.push("/pm/clients");
-  if (!canSee(role, "templates")) out.push("/pm/templates");
-  if (!canSee(role, "formBuilder")) out.push("/pm/forms/");
-  if (!canSee(role, "integrations")) out.push("/pm/integrations");
-  if (!canSee(role, "vendors")) out.push("/pm/vendors");
-  if (!canSee(role, "team")) out.push("/pm/team");
-  if (!canSee(role, "roadmap")) out.push("/roadmap");
-  if (!canSee(role, "workload")) out.push("/pm/workload");
-  if (!canSee(role, "timeline")) out.push("/pm/timeline");
-  if (!canSee(role, "time")) out.push("/pm/time");
-  if (!canSee(role, "snippets")) out.push("/snippets");
-  if (!canSee(role, "work")) out.push("/pm/work");
+  if (!canSee(role, "inbox", opts)) out.push("/pm/inbox");
+  if (!canSee(role, "report", opts)) out.push("/pm/report");
+  if (!canSee(role, "clients", opts)) out.push("/pm/clients");
+  if (!canSee(role, "templates", opts)) out.push("/pm/templates");
+  if (!canSee(role, "formBuilder", opts)) out.push("/pm/forms/");
+  if (!canSee(role, "integrations", opts)) out.push("/pm/integrations");
+  if (!canSee(role, "vendors", opts)) out.push("/pm/vendors");
+  if (!canSee(role, "team", opts)) out.push("/pm/team");
+  if (!canSee(role, "roadmap", opts)) out.push("/roadmap");
+  if (!canSee(role, "workload", opts)) out.push("/pm/workload");
+  if (!canSee(role, "timeline", opts)) out.push("/pm/timeline");
+  if (!canSee(role, "time", opts)) out.push("/pm/time");
+  if (!canSee(role, "snippets", opts)) out.push("/snippets");
+  if (!canSee(role, "work", opts)) out.push("/pm/work");
   // Submitter-only users live in their personal portal.
-  if (toRoles(role).every(r => r === "submitter")) out.push("/pm/work");
+  if (isSubmitterOnly(role)) out.push("/pm/work");
   return out;
 }
 
 /** Where the user should be redirected when they hit a blocked route. */
-export function fallbackPath(role: RoleOrRoles): string {
-  const roles = toRoles(role);
-  const isSubmitterOnly = roles.every(r => r === "submitter");
-  if (isSubmitterOnly) return "/pm/my-work";
+export function fallbackPath(role: RoleOrRoles, opts?: AccessOpts): string {
+  if (opts?.isAdmin) return "/";
+  if (isSubmitterOnly(role)) return "/pm/my-work";
   return "/";
 }
 
-/** Only PM/BA (and tech leads) may publish comments to the client portal. */
-export function canPostClientVisible(role: RoleOrRoles): boolean {
-  return toRoles(role).some(r => r === "pm" || r === "ba" || r === "tech_lead");
+/** Only PM/BA/tech_lead (or admin) may publish comments to the client portal. */
+export function canPostClientVisible(role: RoleOrRoles, opts?: AccessOpts): boolean {
+  if (opts?.isAdmin) return true;
+  return toRoles(role).some((r) => r === "pm" || r === "ba" || r === "tech_lead");
 }
 
-/** Daily Briefing data scope. PM in the role set wins. */
+/** Daily Briefing data scope. Operator wins. */
 export type BriefingScope = "team" | "personal" | "submitter";
-export function briefingScope(role: RoleOrRoles): BriefingScope {
-  const roles = toRoles(role);
-  if (roles.some(r => r === "pm" || r === "ba")) return "team";
-  if (roles.every(r => r === "submitter")) return "submitter";
+export function briefingScope(role: RoleOrRoles, opts?: AccessOpts): BriefingScope {
+  if (isOperator(role, opts)) return "team";
+  if (isSubmitterOnly(role)) return "submitter";
   return "personal";
 }
 
 /** Timesheet visibility. */
 export type TimesheetScope = "team-toggle" | "self" | "hidden";
-export function timesheetScope(role: RoleOrRoles): TimesheetScope {
-  const roles = toRoles(role);
-  if (roles.some(r => r === "pm" || r === "ba")) return "team-toggle";
-  if (roles.every(r => r === "submitter")) return "hidden";
+export function timesheetScope(role: RoleOrRoles, opts?: AccessOpts): TimesheetScope {
+  if (isOperator(role, opts)) return "team-toggle";
+  if (isSubmitterOnly(role)) return "hidden";
   return "self";
 }
 
-/** True when a non-PM staff member should see a project. */
+/** True when a non-operator staff member should see a project. */
 export function canSeeProject(
   role: RoleOrRoles,
   userId: string | null | undefined,
   memberIds: Set<string> | string[],
+  opts?: AccessOpts,
 ): boolean {
-  const roles = toRoles(role);
-  if (roles.some(r => r === "pm" || r === "ba")) return true;
-  if (roles.every(r => r === "submitter")) return false;
+  if (isOperator(role, opts)) return true;
+  if (isSubmitterOnly(role)) return false;
   if (!userId) return false;
   const set = memberIds instanceof Set ? memberIds : new Set(memberIds);
   return set.has(userId);
@@ -172,9 +203,9 @@ export function canSeeTask(
   task: { assignee_id?: string | null; status?: string | null; created_by?: string | null },
   projectMemberIds: Set<string> | string[],
   coAssigneeIds: Set<string> | string[] = [],
+  opts?: AccessOpts,
 ): boolean {
-  const roles = toRoles(role);
-  if (roles.some(r => r === "pm" || r === "ba")) return true;
+  if (isOperator(role, opts)) return true;
   if (!userId) return false;
   if (task.assignee_id === userId) return true;
   if (task.created_by === userId) return true;
@@ -182,6 +213,6 @@ export function canSeeTask(
   if (co.has(userId)) return true;
   const members = projectMemberIds instanceof Set ? projectMemberIds : new Set(projectMemberIds);
   if (members.has(userId)) return true;
-  if (task.status === "unclaimed" && !roles.every(r => r === "submitter")) return true;
+  if (task.status === "unclaimed" && !isSubmitterOnly(role)) return true;
   return false;
 }

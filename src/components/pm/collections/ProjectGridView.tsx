@@ -13,6 +13,7 @@ import { useCurrentUser } from "@/lib/pm/mockUser";
 import { useTaskDrawerLink } from "@/components/pm/TaskDrawer";
 import { fmtAgo, getResumeForProject, onActivityChanged } from "@/lib/pm/activity";
 import { WorkTypeBadge } from "@/components/pm/WorkTypeBadge";
+import { MilestoneBadge } from "@/components/pm/MilestoneSelect";
 import type { PmProject, PmTask } from "@/types/pm";
 
 interface Props {
@@ -86,6 +87,9 @@ export function ProjectGridView({ projects, tasks, onChanged }: Props) {
                   <Badge variant="outline" className="text-[10px] shrink-0">{p.status}</Badge>
                 </div>
                 {!isRequest && <Badge variant="outline" className="text-[10px]">{p.type}</Badge>}
+                {!isRequest && p.milestone && (
+                  <MilestoneBadge milestone={p.milestone} className="text-[10px]" />
+                )}
                 {!isRequest && (
                   <div className="text-xs text-muted-foreground">Go-live: {fmtDate(p.go_live_date)}</div>
                 )}

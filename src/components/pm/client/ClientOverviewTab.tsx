@@ -6,6 +6,7 @@ import { AlertTriangle, CalendarClock, Clock, FolderKanban, Hand, Link2, ListTod
 import { clientWorkLink } from "@/lib/pm/links";
 import { fmtDate } from "@/lib/pm/format";
 import type { ClientContact, ClientProjectRow, ClientStats } from "@/lib/pm/clientHub";
+import { MilestoneBadge } from "@/components/pm/MilestoneSelect";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -87,7 +88,9 @@ export function ClientOverviewTab({ clientId, stats, projects, contacts, loading
           to={clientWorkLink(clientId)}
           hint={`${stats.totalProjects} total`}
         />
+        <StatTile label="Quick Requests" value={stats.activeQuickRequests} icon={Hand} to={`${clientWorkLink(clientId)}&workType=request`} />
         <StatTile label="Open tasks" value={stats.openTasks} icon={ListTodo} to={clientWorkLink(clientId)} />
+        <StatTile label="Blocked" value={stats.blockedTasks} icon={AlertTriangle} tone="warning" to={clientWorkLink(clientId, ["blocked"])} />
         <StatTile
           label="Overdue"
           value={stats.overdueTasks}
@@ -106,10 +109,12 @@ export function ClientOverviewTab({ clientId, stats, projects, contacts, loading
         <StatTile label="Portal invites" value={stats.portalInvites} icon={Link2} onClick={onOpenPortal} />
       </div>
 
-      {stats.nextGoLive && (
-        <Card className="p-3 flex items-center gap-2 text-sm">
+      {(stats.nextGoLive || stats.nextPpGoLive) && (
+        <Card className="p-3 flex items-center gap-2 text-sm flex-wrap">
           <CalendarClock className="h-4 w-4 text-info" />
-          Next go-live <span className="font-medium">{fmtDate(stats.nextGoLive)}</span>
+          Proposed Go-Live <span className="font-medium">{stats.nextGoLive ? fmtDate(stats.nextGoLive) : "—"}</span>
+          <span className="text-muted-foreground">·</span>
+          Dynamic PP Go-Live <span className="font-medium">{stats.nextPpGoLive ? fmtDate(stats.nextPpGoLive) : "—"}</span>
         </Card>
       )}
 
@@ -122,9 +127,11 @@ export function ClientOverviewTab({ clientId, stats, projects, contacts, loading
               <div className="min-w-0 flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium truncate">{p.title}</span>
                 <Badge variant="outline" className="capitalize">{p.status.replace(/_/g, " ")}</Badge>
+                {p.milestone && <MilestoneBadge milestone={p.milestone} />}
               </div>
               <span className="text-xs text-muted-foreground shrink-0">
-                {p.go_live_date ? `Go-live ${fmtDate(p.go_live_date)}` : "No go-live date"}
+                {p.go_live_date ? `Proposed ${fmtDate(p.go_live_date)}` : "No proposed date"}
+                {p.pp_go_live_date ? ` · PP ${fmtDate(p.pp_go_live_date)}` : ""}
               </span>
             </Card>
           </Link>

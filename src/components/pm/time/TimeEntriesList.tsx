@@ -5,6 +5,7 @@ import { Trash2, Download } from "lucide-react";
 import { UserAvatar } from "@/components/pm/UserAvatar";
 import { fmtDate } from "@/lib/pm/format";
 import { useMockUsers, useCurrentUser } from "@/lib/pm/mockUser";
+import { isOperator } from "@/lib/pm/permissions";
 import { deleteTimeEntry, fmtDur, fmtEntryRange, type EnrichedEntry } from "@/lib/pm/time";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -13,7 +14,8 @@ import {
 
 export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[]; onChange?: () => void }) {
   const users = useMockUsers();
-  const { user, role } = useCurrentUser();
+  const { user, roles, isAdmin } = useCurrentUser();
+  const canManage = isOperator(roles, { isAdmin });
 
   function exportCsv() {
     const rows = [
@@ -75,7 +77,7 @@ export function TimeEntriesList({ entries, onChange }: { entries: EnrichedEntry[
             )}
             {entries.map(e => {
               const u = users.find(x => x.id === e.user_id);
-              const canDelete = role === "pm" || e.user_id === user?.id;
+              const canDelete = canManage || e.user_id === user?.id;
               return (
                 <tr key={e.id} className="border-t border-border hover:bg-muted/20">
                   <td className="px-3 py-2 whitespace-nowrap text-xs leading-snug">{fmtEntryRange(e)}</td>

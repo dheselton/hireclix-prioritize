@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Bell, Columns, LayoutGrid, List, User } from "lucide-react";
+import { Bell, Columns, Flag, LayoutGrid, List, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MeModeToggle } from "@/components/pm/MeModeToggle";
@@ -41,6 +41,16 @@ export default function SettingsHub() {
               <Bell className="h-4 w-4" /> Notifications
             </div>
             <p className="text-sm text-muted-foreground mt-1">Choose in-app and email alerts per event type.</p>
+          </Card>
+        </Link>
+        <Link to="/pm/settings/milestones" className="block">
+          <Card className="p-4 h-full hover:bg-muted/40 transition-colors">
+            <div className="flex items-center gap-2 font-medium">
+              <Flag className="h-4 w-4" /> Milestones
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configure project lifecycle options used in lists and reporting.
+            </p>
           </Card>
         </Link>
       </div>

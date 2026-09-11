@@ -11,14 +11,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimeChanged } from "@/lib/pm/time";
-import { toRoles, type RoleOrRoles } from "@/lib/pm/permissions";
+import { isOperator, type AccessOpts, type RoleOrRoles } from "@/lib/pm/permissions";
 
 export const PROJECT_TIME_TOTAL_KEY = (projectId: string) =>
   ["pm", "project-time-total", projectId] as const;
 
 /** True when the viewer may see the all-team project time total. */
-export function canSeeProjectTimeTotal(role: RoleOrRoles): boolean {
-  return toRoles(role).some((r) => r === "pm" || r === "ba");
+export function canSeeProjectTimeTotal(role: RoleOrRoles, opts?: AccessOpts): boolean {
+  return isOperator(role, opts);
 }
 
 export async function fetchProjectTimeTotal(projectId: string): Promise<number> {

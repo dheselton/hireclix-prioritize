@@ -15,6 +15,7 @@ vi.mock("@/hooks/useAuth", () => ({
     loading: false,
     access: "approved",
     pmUser: null,
+    isAdmin: false,
     signInWithGoogle: async () => ({ error: null }),
     signOut: async () => undefined,
     refreshPmUser: async () => undefined,
