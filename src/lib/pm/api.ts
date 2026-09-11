@@ -7,7 +7,7 @@ import { localDateISO } from '@/lib/pm/format';
 import { uploadAttachments, reportUploadResult, type UploadResult } from '@/lib/pm/uploads';
 import { RESERVED_PREFIX, definedPageCount } from '@/lib/pm/pageGroups';
 import { attributionPayload, type CreationSource } from '@/lib/pm/attribution';
-import { notifyNewClientProject } from '@/lib/pm/notifications';
+import { notifyNewClientWork } from '@/lib/pm/notifications';
 
 
 export const fetchProjects = async () => {
@@ -291,6 +291,9 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
   const uid = getCurrentUserId();
   const payload: any = { ...p };
   let clientName: string | null = null;
+  if (payload.visibility === undefined) {
+    payload.visibility = payload.client_id ? 'client_shared' : 'personal_private';
+  }
   if (uid && payload.created_by === undefined) payload.created_by = uid;
   if (payload.creation_source === undefined) {
     Object.assign(payload, attributionPayload('manual'));
@@ -308,12 +311,10 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
         const existing = (payload.tags ?? []) as string[];
         if (!existing.includes(ct)) payload.tags = [...existing, ct];
       }
-      if (payload.visibility === undefined) {
+      if (p.visibility === undefined) {
         payload.visibility = (c as any)?.is_internal ? 'internal_shared' : 'client_shared';
       }
     } catch {}
-  } else if (payload.visibility === undefined) {
-    payload.visibility = 'personal_private';
   }
   const { data, error } = await supabase.from('pm_projects').insert(payload).select().single();
   if (error) throw error;
@@ -332,12 +333,13 @@ export const createProject = async (p: Partial<PmProject> & { requested_by?: str
     } as any);
   }
   if (projectId && payload.work_type === 'project' && payload.visibility === 'client_shared' && payload.client_id) {
-    void notifyNewClientProject({
+    void notifyNewClientWork({
       projectId,
       clientId: payload.client_id,
       projectTitle: payload.title,
       clientName,
       actorId: uid,
+      workType: 'project',
     }).catch(() => {});
   }
   return data as unknown as PmProject;
@@ -620,12 +622,13 @@ export const createProjectFromTemplate = async (params: {
   await createDefinePagesTask({ projectId: (proj as any).id, templateId: template.id, idByTemp });
 
   if (client_id && visibility === 'client_shared') {
-    void notifyNewClientProject({
+    void notifyNewClientWork({
       projectId: (proj as any).id,
       clientId: client_id,
       projectTitle: (proj as any).title,
       clientName: templateClientName,
       actorId: uid,
+      workType: 'project',
     }).catch(() => {});
   }
 

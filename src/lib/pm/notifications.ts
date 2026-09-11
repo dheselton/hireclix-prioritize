@@ -184,12 +184,14 @@ export async function createNotification(params: {
 }
 
 /** Surface a newly created shared client project to managers and client watchers. */
-export async function notifyNewClientProject(params: {
+export async function notifyNewClientWork(params: {
   projectId: string;
   clientId: string;
   projectTitle: string;
   clientName?: string | null;
   actorId?: string | null;
+  workType?: "project" | "request";
+  includeWatchers?: boolean;
 }) {
   const [{ data: managers }, { data: watchers }] = await Promise.all([
     supabase.from("pm_users").select("id,role,roles").eq("is_active", true),
@@ -200,13 +202,17 @@ export async function notifyNewClientProject(params: {
     const roles = member.roles?.length ? member.roles : [member.role];
     if (roles.includes("pm") || roles.includes("ba")) recipients.add(member.id);
   }
-  for (const watcher of (watchers ?? []) as { user_id: string }[]) recipients.add(watcher.user_id);
+  if (params.includeWatchers !== false) {
+    for (const watcher of (watchers ?? []) as { user_id: string }[]) recipients.add(watcher.user_id);
+  }
   if (params.actorId) recipients.delete(params.actorId);
   await Promise.all([...recipients].map((userId) => createNotification({
     user_id: userId,
     event_type: "new_client_work",
-    title: `New client project: ${params.projectTitle}`,
-    body: params.clientName ? `${params.clientName} · Client / Shared` : "Client / Shared",
+    title: `New ${params.workType === "request" ? "Quick Request" : "client project"}: ${params.projectTitle}`,
+    body: params.clientName
+      ? `${params.clientName} · Client / Shared · ${params.workType === "request" ? "unclaimed" : "active"}`
+      : "Client / Shared",
     link: `/pm/projects/${params.projectId}`,
   })));
 }

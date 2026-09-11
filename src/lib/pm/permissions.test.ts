@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   blockedRoutePrefixes,
   briefingScope,
+  canCreateWork,
+  canManageClientWork,
   canPostClientVisible,
   canSee,
   fallbackPath,
@@ -19,15 +21,13 @@ describe("permissions mobile role matrix", () => {
     expect(canSee([], "myWork")).toBe(false);
   });
 
-  it("submitter-only is blocked from work board and staff surfaces", () => {
+  it("submitter-only can discover shared client work but not manage staff surfaces", () => {
     const blocked = blockedRoutePrefixes("submitter");
     expect(blocked).toEqual(expect.arrayContaining([
       "/pm/inbox",
       "/pm/report",
-      "/pm/clients",
       "/pm/templates",
       "/pm/integrations",
-      "/pm/work",
       "/pm/team",
       "/roadmap",
     ]));
@@ -35,7 +35,8 @@ describe("permissions mobile role matrix", () => {
     expect(canSee("submitter", "myWork")).toBe(true);
     expect(canSee("submitter", "taskWorkspace")).toBe(true);
     expect(canSee("submitter", "projectDetail")).toBe(true);
-    expect(canSee("submitter", "clients")).toBe(false);
+    expect(canSee("submitter", "clients")).toBe(true);
+    expect(canSee("submitter", "work")).toBe(true);
     expect(canSee("submitter", "profile")).toBe(true);
     expect(canSee("submitter", "notifications")).toBe(true);
     expect(canSee("submitter", "settings")).toBe(true);
@@ -128,5 +129,18 @@ describe("permissions mobile role matrix", () => {
     expect(isOperator("designer")).toBe(false);
     expect(isOperator("designer", { isAdmin: true })).toBe(true);
     expect(isOperator(["designer", "pm"])).toBe(true);
+  });
+
+  it("uses one creation capability for projects and Quick Requests", () => {
+    expect(canCreateWork("designer")).toBe(true);
+    expect(canCreateWork(["submitter", "developer"])).toBe(true);
+    expect(canCreateWork("submitter")).toBe(false);
+    expect(canCreateWork([], { isAdmin: true })).toBe(true);
+  });
+
+  it("limits project-level management to operators", () => {
+    expect(canManageClientWork("pm")).toBe(true);
+    expect(canManageClientWork("ba")).toBe(true);
+    expect(canManageClientWork("developer")).toBe(false);
   });
 });

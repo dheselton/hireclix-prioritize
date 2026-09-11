@@ -686,6 +686,46 @@ export type Database = {
           },
         ]
       }
+      pm_client_aliases: {
+        Row: {
+          alias: string
+          alias_key: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          alias: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          alias?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pm_client_aliases_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pm_client_aliases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pm_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pm_client_environments: {
         Row: {
           client_id: string
@@ -3163,6 +3203,31 @@ export type Database = {
     }
     Functions: {
       claim_pm_user: { Args: never; Returns: string }
+      create_quick_request: {
+        Args: {
+          p_client_id: string
+          p_creation_context?: Json
+          p_creation_source?: string
+          p_custom_fields?: Json
+          p_description?: string | null
+          p_due_date?: string | null
+          p_parent_project_id?: string | null
+          p_request_type: string
+          p_requested_by?: string | null
+          p_task_titles?: string[]
+          p_task_type?: string
+          p_title: string
+        }
+        Returns: string
+      }
+      pm_lookup_client_identity: {
+        Args: { query_name: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          match_kind: string
+        }[]
+      }
       get_job_api_stats: {
         Args: never
         Returns: {

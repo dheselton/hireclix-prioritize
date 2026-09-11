@@ -291,6 +291,7 @@ export default function MyPortal() {
   const { threads, loading: msgLoading } = useMyMessageThreads(userId);
   const { projects: myProjects, loading: projLoading } = useMyProjects(userId, tab === "projects");
   const clientNames = useClientNamesMap();
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [openRequest, setOpenRequest] = useState<MyRequest | null>(null);
   const [openThread, setOpenThread] = useState<{ projectId: string; title: string } | null>(null);
 
@@ -303,6 +304,26 @@ export default function MyPortal() {
         <p className="text-sm text-muted-foreground">
           Tasks you're assigned to (primary or co-assignee), projects you created or are attached to, your requests, and your project conversations.
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Selected client"
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+            value={selectedClientId}
+            onChange={(event) => setSelectedClientId(event.target.value)}
+          >
+            <option value="">Optionally view all work for a client…</option>
+            {[...clientNames.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+          {selectedClientId && (
+            <Button size="sm" variant="outline" asChild>
+              <Link to={`/pm/work?client=${encodeURIComponent(selectedClientId)}&clientWorkOnly=1`}>
+                View all client work
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <ProjectTabs

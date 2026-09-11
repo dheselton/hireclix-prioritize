@@ -29,15 +29,17 @@ export function NewClientPopover({ onCreated, trigger, existingClients = [] }: P
   const [isInternal, setIsInternal] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const match = useMemo(() => {
+  const { exactMatch, similarMatch } = useMemo(() => {
     const key = clientNameKey(name);
-    if (!key) return null;
+    if (!key) return { exactMatch: null, similarMatch: null };
     const exact = existingClients.find((c) => clientNameKey(c.name) === key);
-    if (exact) return exact;
+    if (exact) return { exactMatch: exact, similarMatch: null };
     const stem = clientNameStem(name);
     const stemHits = existingClients.filter((c) => clientNameStem(c.name) === stem);
-    if (!stemHits.length) return null;
-    return stemHits.find((c) => !c.archived_at) ?? stemHits[0];
+    return {
+      exactMatch: null,
+      similarMatch: stemHits.find((c) => !c.archived_at) ?? stemHits[0] ?? null,
+    };
   }, [name, existingClients]);
 
   function reset() {
@@ -55,6 +57,7 @@ export function NewClientPopover({ onCreated, trigger, existingClients = [] }: P
         name: n,
         notes: notes.trim() || null,
         is_internal: isInternal,
+        parent_client_id: similarMatch?.id ?? null,
       });
       if (data.existed) {
         toast.success(
@@ -96,14 +99,31 @@ export function NewClientPopover({ onCreated, trigger, existingClients = [] }: P
               placeholder="Acme Corp"
               className="h-8"
             />
-            {match && (
+            {exactMatch && (
               <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1">
-                Looks like <span className="font-medium">{match.name}</span>
-                {match.archived_at ? " (archived — will restore)" : ""}. We’ll use that client instead of creating a duplicate.
+                Looks like <span className="font-medium">{exactMatch.name}</span>
+                {exactMatch.archived_at ? " (archived — will restore)" : ""}. We’ll use that client instead of creating a duplicate.
               </p>
             )}
+            {similarMatch && (
+              <div className="mt-1 rounded border border-amber-400/40 bg-amber-400/10 p-2 text-[11px]">
+                Similar to <span className="font-medium">{similarMatch.name}</span>. Create it as a separate brand under that parent, or use the existing client.
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 ml-1 text-[11px]"
+                  onClick={() => {
+                    onCreated({ id: similarMatch.id, name: similarMatch.name });
+                    reset();
+                    setOpen(false);
+                  }}
+                >
+                  Use existing
+                </Button>
+              </div>
+            )}
           </div>
-          {!match && (
+          {!exactMatch && (
             <>
               <div>
                 <Label className="text-xs">Notes (optional)</Label>
@@ -126,7 +146,7 @@ export function NewClientPopover({ onCreated, trigger, existingClients = [] }: P
           <div className="flex justify-end gap-2 pt-1">
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
             <Button size="sm" onClick={() => void save()} disabled={busy || !name.trim()}>
-              {match ? "Use existing" : "Create"}
+              {exactMatch ? "Use existing" : similarMatch ? "Create separate brand" : "Create"}
             </Button>
           </div>
         </div>

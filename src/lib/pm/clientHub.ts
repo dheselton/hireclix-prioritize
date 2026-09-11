@@ -115,7 +115,7 @@ export function useClientFamily(clientId: string | undefined, parentClientId?: s
     if (!clientId) return;
     const [childrenResult, aliasesResult, parentResult] = await Promise.all([
       supabase.from("clients").select("id,name,parent_client_id").eq("parent_client_id", clientId).order("name"),
-      (supabase as any).from("pm_client_aliases").select("id,alias").eq("client_id", clientId).order("alias"),
+      supabase.from("pm_client_aliases").select("id,alias").eq("client_id", clientId).order("alias"),
       parentClientId
         ? supabase.from("clients").select("id,name,parent_client_id").eq("id", parentClientId).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -132,7 +132,7 @@ export function useClientFamily(clientId: string | undefined, parentClientId?: s
 export async function createClientAlias(clientId: string, alias: string, createdBy?: string | null) {
   const normalized = normalizeClientName(alias);
   if (!normalized) throw new Error("Alias is required");
-  const { error } = await (supabase as any).from("pm_client_aliases").insert({
+  const { error } = await supabase.from("pm_client_aliases").insert({
     client_id: clientId,
     alias: normalized,
     created_by: createdBy ?? null,
@@ -141,7 +141,7 @@ export async function createClientAlias(clientId: string, alias: string, created
 }
 
 export async function deleteClientAlias(id: string) {
-  const { error } = await (supabase as any).from("pm_client_aliases").delete().eq("id", id);
+  const { error } = await supabase.from("pm_client_aliases").delete().eq("id", id);
   if (error) throw error;
 }
 
@@ -431,25 +431,20 @@ export async function findClientByNormalizedName(
   const key = clientNameKey(name);
   if (!key) return null;
 
-  // Exact client names and explicit aliases are reusable. Similar names are
-  // suggestions in the UI only; distinct brands are never merged automatically.
-  const { data, error } = await supabase
-    .from("clients")
-    .select("id,name,archived_at");
+  // Indexed canonical-name/alias lookup. Similar stems are suggestions only.
+  const { data: matches, error } = await supabase.rpc("pm_lookup_client_identity", {
+    query_name: name,
+  });
   if (error) throw error;
-
-  const rows = (data ?? []) as { id: string; name: string; archived_at: string | null }[];
-
-  const exact = rows.find((c) => clientNameKey(c.name) === key);
-  if (exact) return exact;
-
-  const { data: alias } = await (supabase as any)
-    .from("pm_client_aliases")
-    .select("client_id")
-    .eq("alias_key", key)
+  const match = matches?.[0];
+  if (!match) return null;
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .select("id,name,archived_at")
+    .eq("id", match.client_id)
     .maybeSingle();
-  if (!alias?.client_id) return null;
-  return rows.find((client) => client.id === alias.client_id) ?? null;
+  if (clientError) throw clientError;
+  return client;
 }
 
 /**

@@ -17,6 +17,8 @@ import { NewClientPopover } from "@/components/pm/NewClientPopover";
 import { ClientLogo } from "@/components/pm/client/ClientLogo";
 import { useClientBrandMap } from "@/lib/pm/clients";
 import { RETIRED_PROJECT_STATUSES } from "@/lib/pm/filters";
+import { useCurrentUser } from "@/lib/pm/mockUser";
+import { canManageClientWork } from "@/lib/pm/permissions";
 
 interface ClientRow {
   id: string;
@@ -24,8 +26,10 @@ interface ClientRow {
   is_internal: boolean;
   archived_at: string | null;
   logo_path: string | null;
+  parent_client_id: string | null;
   projectCount: number;
   activeCount: number;
+  quickRequestCount: number;
   overdueCount: number;
   nextGoLive: string | null;
 }
@@ -43,6 +47,8 @@ export default function Clients() {
   const [scope, setScope] = useState<ScopeId>("all");
   const withPortal = useClientsWithPortal();
   const brands = useClientBrandMap();
+  const { roles, isAdmin } = useCurrentUser();
+  const canManage = canManageClientWork(roles, { isAdmin });
 
   function reloadClients() {
     setLoading(true);
@@ -51,14 +57,14 @@ export default function Clients() {
       const today = todayISO();
       try {
         const [{ data: clients, error: cErr }, { data: projects, error: pErr }, { data: tasks, error: tErr }] = await Promise.all([
-          supabase.from("clients").select("id,name,is_internal,archived_at,logo_path").order("name"),
-          supabase.from("pm_projects").select("id,client_id,status,go_live_date"),
+          supabase.from("clients").select("id,name,is_internal,archived_at,logo_path,parent_client_id").order("name"),
+          supabase.from("pm_projects").select("id,client_id,status,go_live_date,work_type"),
           supabase.from("pm_tasks").select("project_id,status,due_date").lt("due_date", today),
         ]);
         const firstErr = cErr || pErr || tErr;
         if (firstErr) throw firstErr;
 
-        const projs = (projects ?? []) as { id: string; client_id: string | null; status: string; go_live_date: string | null }[];
+        const projs = (projects ?? []) as { id: string; client_id: string | null; status: string; go_live_date: string | null; work_type: string }[];
         const clientOfProject = new Map(projs.map(p => [p.id, p.client_id]));
 
         const overdue = new Map<string, number>();
@@ -69,14 +75,15 @@ export default function Clients() {
           overdue.set(cid, (overdue.get(cid) ?? 0) + 1);
         }
 
-        const counts = new Map<string, { total: number; active: number; nextGoLive: string | null }>();
+        const counts = new Map<string, { total: number; active: number; quick: number; nextGoLive: string | null }>();
         for (const p of projs) {
           if (!p.client_id) continue;
-          const c = counts.get(p.client_id) ?? { total: 0, active: 0, nextGoLive: null };
+          const c = counts.get(p.client_id) ?? { total: 0, active: 0, quick: 0, nextGoLive: null };
           c.total += 1;
           if (!RETIRED_PROJECT_STATUSES.has(p.status)) {
-            c.active += 1;
-            if (p.go_live_date && p.go_live_date >= today && (!c.nextGoLive || p.go_live_date < c.nextGoLive)) {
+            if (p.work_type === "request") c.quick += 1;
+            else c.active += 1;
+            if (p.work_type !== "request" && p.go_live_date && p.go_live_date >= today && (!c.nextGoLive || p.go_live_date < c.nextGoLive)) {
               c.nextGoLive = p.go_live_date;
             }
           }
@@ -89,8 +96,10 @@ export default function Clients() {
           is_internal: !!c.is_internal,
           archived_at: c.archived_at ?? null,
           logo_path: c.logo_path ?? null,
+          parent_client_id: c.parent_client_id ?? null,
           projectCount: counts.get(c.id)?.total ?? 0,
           activeCount: counts.get(c.id)?.active ?? 0,
+          quickRequestCount: counts.get(c.id)?.quick ?? 0,
           overdueCount: overdue.get(c.id) ?? 0,
           nextGoLive: counts.get(c.id)?.nextGoLive ?? null,
         })));
@@ -130,7 +139,7 @@ export default function Clients() {
             Every client, their active work, and who has access to their portal.
           </p>
         </div>
-        <NewClientPopover
+        {canManage && <NewClientPopover
           existingClients={rows}
           trigger={
             <Button size="sm">
@@ -141,7 +150,7 @@ export default function Clients() {
             reloadClients();
             navigate(`/pm/clients/${c.id}`);
           }}
-        />
+        />}
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -185,6 +194,11 @@ export default function Clients() {
                   size="xs"
                 />
                 <span className="text-sm font-medium truncate">{c.name}</span>
+                {c.parent_client_id && (
+                  <Badge variant="outline" className="text-[10px]">
+                    Brand of {rows.find((row) => row.id === c.parent_client_id)?.name ?? "parent account"}
+                  </Badge>
+                )}
                 {c.is_internal && <span className="internal-pill">Internal</span>}
                 {c.archived_at && <Badge variant="outline" className="text-muted-foreground">Archived</Badge>}
                 {withPortal.has(c.id) && (
@@ -213,6 +227,9 @@ export default function Clients() {
                     {c.activeCount} active / {c.projectCount} total
                   </Link>
                 </Button>
+                {c.quickRequestCount > 0 && (
+                  <Badge variant="outline">{c.quickRequestCount} quick</Badge>
+                )}
               </div>
             </div>
           </Card>

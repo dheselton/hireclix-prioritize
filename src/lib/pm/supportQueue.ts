@@ -7,6 +7,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { applyClientWatchers } from "@/lib/pm/clientWatchers";
 import { fanoutNewRequestNotifications } from "@/lib/pm/newRequestNotify";
+import { notifyNewClientWork } from "@/lib/pm/notifications";
 import { isHardOverdue } from "@/lib/pm/dueState";
 import { todayISO } from "@/lib/pm/format";
 import { emitTasksChanged } from "@/lib/pm/refresh";
@@ -326,7 +327,7 @@ export async function createQuickRequest(
   if (!titles.length) titles = [title];
   const taskType = intakeTaskTypeForRequest(input.requestType);
 
-  const { data: projectId, error: createErr } = await (supabase.rpc as any)("create_quick_request", {
+  const { data: projectId, error: createErr } = await supabase.rpc("create_quick_request", {
     p_title: title,
     p_client_id: input.clientId,
     p_request_type: input.requestType,
@@ -362,6 +363,14 @@ export async function createQuickRequest(
     requestType: input.requestType,
     clientId: input.clientId,
     actorId: input.createdBy ?? null,
+  }).catch(() => {});
+  await notifyNewClientWork({
+    projectId: project.id,
+    clientId: input.clientId,
+    projectTitle: title,
+    actorId: input.createdBy ?? null,
+    workType: "request",
+    includeWatchers: false,
   }).catch(() => {});
 
   emitTasksChanged();

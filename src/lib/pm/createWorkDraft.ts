@@ -1,5 +1,6 @@
 import type { RequestType } from "@/lib/pm/requestTypes";
 import type { StagedLink } from "@/components/pm/intake/IntakeAttachmentsField";
+import type { WorkVisibility } from "@/types/pm";
 
 export const CREATE_WORK_DRAFT_VERSION = 1 as const;
 
@@ -24,6 +25,7 @@ export type CreateWorkDraft = {
     client_id: string;
     kickoff_date: string;
     go_live_date: string;
+    visibility: WorkVisibility;
   };
   projRequestedBy: string | null;
   projLinks: StagedLink[];
@@ -104,6 +106,13 @@ export function parseCreateWorkDraft(raw: string | null, userId: string): Create
         client_id: String(parsed.projForm.client_id ?? ""),
         kickoff_date: String(parsed.projForm.kickoff_date ?? ""),
         go_live_date: String(parsed.projForm.go_live_date ?? ""),
+        visibility: (
+          parsed.projForm.visibility === "client_shared"
+          || parsed.projForm.visibility === "internal_shared"
+          || parsed.projForm.visibility === "personal_private"
+        )
+          ? parsed.projForm.visibility
+          : parsed.projForm.client_id ? "client_shared" : "personal_private",
       },
       projRequestedBy: typeof parsed.projRequestedBy === "string" ? parsed.projRequestedBy : null,
       projLinks: sanitizeLinks(parsed.projLinks),

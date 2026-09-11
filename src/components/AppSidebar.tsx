@@ -517,9 +517,7 @@ export function AppSidebar() {
 
   const opts = { isAdmin };
   const submitterOnly = isSubmitterOnly(roles);
-  const visiblePrimary = submitterOnly
-    ? primaryNav.filter(i => i.key === "myWork")
-    : primaryNav.filter(i => canSee(roles, i.key, opts));
+  const visiblePrimary = primaryNav.filter(i => canSee(roles, i.key, opts));
   const visibleConfigure = submitterOnly ? [] : configureNav.filter(i => canSee(roles, i.key, opts));
   const canSeeSnippets = !submitterOnly && canSee(roles, "snippets", opts);
   const canSeeLoomLibrary = !submitterOnly && canSee(roles, "loomLibrary", opts);

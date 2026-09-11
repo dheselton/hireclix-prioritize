@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { createProject, persistIntakeAttachments } from "@/lib/pm/api";
 import { PROJECT_TYPES, PROJECT_STATUSES } from "@/types/pm";
+import type { WorkVisibility } from "@/types/pm";
 import { useCurrentUser } from "@/lib/pm/mockUser";
 import { canCreateWork } from "@/lib/pm/permissions";
 import { toast } from "sonner";
@@ -76,9 +77,13 @@ function stepFamily(step: Step): "select" | "request" | "project" {
 }
 
 /** Fill client_id only when the form/draft does not already have one. */
-function withPresetClient<T extends { client_id: string }>(form: T, preset: string | null | undefined): T {
+function withPresetClient<T extends { client_id: string; visibility?: WorkVisibility }>(form: T, preset: string | null | undefined): T {
   if (!preset || form.client_id) return form;
-  return { ...form, client_id: preset };
+  return {
+    ...form,
+    client_id: preset,
+    ...("visibility" in form ? { visibility: "client_shared" as WorkVisibility } : {}),
+  };
 }
 
 export function CreateWorkDialog({
@@ -114,9 +119,17 @@ export function CreateWorkDialog({
   );
 
   // Project (blank)
-  const [projForm, setProjForm] = useState({
+  const [projForm, setProjForm] = useState<{
+    title: string;
+    type: string;
+    status: string;
+    client_id: string;
+    kickoff_date: string;
+    go_live_date: string;
+    visibility: WorkVisibility;
+  }>({
     title: "", type: "career_site", status: "active", client_id: "",
-    kickoff_date: "", go_live_date: "",
+    kickoff_date: "", go_live_date: "", visibility: "personal_private",
   });
   const [projRequestedBy, setProjRequestedBy] = useState<string | null>(null);
   const [projFiles, setProjFiles] = useState<File[]>([]);
@@ -150,7 +163,15 @@ export function CreateWorkDialog({
       reqRequestedBy: user?.id ?? null,
       reqLinks: [],
       parentProjectId: null,
-      projForm: { title: "", type: "career_site", status: "active", client_id: clientId, kickoff_date: "", go_live_date: "" },
+      projForm: {
+        title: "",
+        type: "career_site",
+        status: "active",
+        client_id: clientId,
+        kickoff_date: "",
+        go_live_date: "",
+        visibility: clientId ? "client_shared" : "personal_private",
+      },
       projRequestedBy: user?.id ?? null,
       projLinks: [],
     };
@@ -227,6 +248,15 @@ export function CreateWorkDialog({
       supabase.from("pm_project_templates").select("id,name,type").order("created_at", { ascending: false }),
     ]);
     setClients(c || []);
+    if (presetClientId) {
+      const presetClient = (c ?? []).find((client) => client.id === presetClientId);
+      setProjForm((previous) => previous.client_id === presetClientId
+        ? {
+          ...previous,
+          visibility: presetClient?.is_internal ? "internal_shared" : "client_shared",
+        }
+        : previous);
+    }
     setTemplates(t || []);
   }
 
@@ -487,9 +517,9 @@ export function CreateWorkDialog({
         created_by: user?.id ?? null,
         requested_by: projRequestedBy ?? user?.id ?? null,
         creation_source: "manual",
-        visibility: projForm.client_id
-          ? (clients.find((c) => c.id === projForm.client_id)?.is_internal ? "internal_shared" : "client_shared")
-          : "personal_private",
+        visibility: projForm.client_id && clients.find((c) => c.id === projForm.client_id)?.is_internal
+          ? "internal_shared"
+          : projForm.visibility,
       } as any);
       if (projFiles.length || projLinks.length) {
         await persistIntakeAttachments({
@@ -812,7 +842,16 @@ export function CreateWorkDialog({
               <Label>Client</Label>
               <ClientSelect
                 value={projForm.client_id}
-                onChange={(id) => setProjForm({ ...projForm, client_id: id })}
+                onChange={(id) => {
+                  const selected = clients.find((client) => client.id === id);
+                  setProjForm({
+                    ...projForm,
+                    client_id: id,
+                    visibility: id
+                      ? selected?.is_internal ? "internal_shared" : "client_shared"
+                      : "personal_private",
+                  });
+                }}
                 clients={clients}
                 onClientsChanged={(next) => setClients(next)}
               />
@@ -823,6 +862,20 @@ export function CreateWorkDialog({
               label="Requested by"
               helpText="They'll get visibility into project updates even if they aren't the primary worker."
             />
+            <div>
+              <Label>Visibility</Label>
+              <Select
+                value={projForm.visibility}
+                onValueChange={(value) => setProjForm({ ...projForm, visibility: value as WorkVisibility })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {projForm.client_id && <SelectItem value="client_shared">Client / Shared</SelectItem>}
+                  <SelectItem value="internal_shared">Internal / Shared</SelectItem>
+                  {!projForm.client_id && <SelectItem value="personal_private">Personal / Private</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>Type</Label>
@@ -851,7 +904,7 @@ export function CreateWorkDialog({
                 <DatePicker value={projForm.kickoff_date} onChange={v => setProjForm({ ...projForm, kickoff_date: v ?? "" })} />
               </div>
               <div>
-                <Label>Go-Live Date</Label>
+                <Label>Proposed Go-Live Date</Label>
                 <DatePicker value={projForm.go_live_date} onChange={v => setProjForm({ ...projForm, go_live_date: v ?? "" })} />
               </div>
             </div>

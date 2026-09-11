@@ -300,7 +300,13 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
               <Label>Client</Label>
               <ClientSelect
                 value={clientId}
-                onChange={setClientId}
+                onChange={(nextId) => {
+                  setClientId(nextId);
+                  const nextClient = clients.find((client) => client.id === nextId);
+                  setVisibility(nextId
+                    ? nextClient?.is_internal ? "internal_shared" : "client_shared"
+                    : "personal_private");
+                }}
                 clients={clients}
                 onClientsChanged={(next) => setClients(next)}
               />
@@ -314,7 +320,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSaved }: Prop
                   <SelectContent>
                     {clientId && <SelectItem value="client_shared">Client / Shared</SelectItem>}
                     <SelectItem value="internal_shared">Internal / Shared</SelectItem>
-                    <SelectItem value="personal_private">Personal / Private</SelectItem>
+                    {!clientId && <SelectItem value="personal_private">Personal / Private</SelectItem>}
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground mt-1">

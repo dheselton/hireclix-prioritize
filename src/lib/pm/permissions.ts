@@ -80,11 +80,11 @@ const LOOM_LIBRARY_ROLES = new Set<PmRole>(["designer", "developer", "tech_lead"
 function canSeeSingle(r: PmRole, surface: Surface): boolean {
   // Everyone has a personal "My Work" portal and can edit their own settings.
   if (surface === "myWork" || surface === "settings" || surface === "profile" || surface === "notifications") return true;
+  // Every approved internal user can discover shared client work.
+  if (surface === "clients" || surface === "work") return true;
   if (r === "submitter") {
-    return surface === "queue" || surface === "work" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
+    return surface === "queue" || surface === "forms" || surface === "help" || surface === "taskWorkspace" || surface === "projectDetail";
   }
-  // Every approved staff role can discover shared client work.
-  if (surface === "clients") return true;
   // Loom Library is creative-production only — even PM/BA need a production role
   // (unless admin overlay, handled in canSee).
   if (surface === "loomLibrary") return LOOM_LIBRARY_ROLES.has(r);
@@ -148,8 +148,6 @@ export function blockedRoutePrefixes(role: RoleOrRoles, opts?: AccessOpts): stri
   if (!canSee(role, "time", opts)) out.push("/pm/time");
   if (!canSee(role, "snippets", opts)) out.push("/snippets");
   if (!canSee(role, "work", opts)) out.push("/pm/work");
-  // Submitter-only users live in their personal portal.
-  if (isSubmitterOnly(role)) out.push("/pm/work");
   return out;
 }
 
